@@ -81,7 +81,7 @@ As figure 2.4 illustrates, when sending a message to RabbitMQ, a Basic.Publish c
 
 ***NOTE***. Although the default frame size is 131 KB, client libraries can negotiate a larger or smaller maximum frame size during the connection process, up to a 32-bit value for the number of bytes in a frame.
 
-![Single_Message_Composed_Of_Frames.png](Single_Message_Composed_Of_Frames.png)
+![Single_Message_Composed_Of_Frames](Single_Message_Composed_Of_Frames.png)
 
 
 
