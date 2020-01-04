@@ -125,8 +125,31 @@ Once the exchange has been created, it’s time to create a queue by sending a Q
 
 ### Binding a queue to an exchange
 
+Once the exchange and queue have been created, it’s time to bind them together. Like with Queue.Declare , the command to bind a queue to an exchange, Queue.Bind, can only specify one queue at a time.
 
+![Queue_Bind](Queue_Bind.png)
 
+### Publishing a message to RabbitMQ
+
+As you previously learned, when publishing messages to RabbitMQ, multiple frames encapsulate the message data that’s sent to the server. Before the actual message content ever reaches RabbitMQ, the client application sends a Basic.Publish method frame, a content header frame, and at least one body frame (figure 2.11).
+
+The **Basic.Publish** method frame carries with it the exchange name and routing key for the message. When evaluating this data, RabbitMQ will try to match the exchange name in the Basic.Publish frame against its database of configured exchanges.
+
+![Publishing_A_Message](Publishing_A_Message.png)
+
+***NOTE*** By default, if you’re publishing messages with an exchange that doesn’t exist in RabbitMQ’s configuration, it will silently drop the messages.
+
+When RabbitMQ finds a match to the exchange name in the Basic.Properties method frame, it evaluates the bindings in the exchange, looking to match queues with the routing key.
+
+### Consuming messages from RabbitMQ
+
+To consume messages from a queue in RabbitMQ, a consumer application subscribes to the queue in RabbitMQ by issuing a Basic.Consume command. Like the other synchronous commands, the server will respond with Basic.ConsumeOk to let the client know it’s going to open the floodgates. 
+
+At RabbitMQ’s discretion, the consumer will start receiving messages of **Basic.Deliver methods** and their content header and body frame counterparts.
+
+![Consuming_Messages](Consuming_Messages.png)
+
+If a consumer wants to stop receiving messages, it can issue a **Basic.Cancel** 
 
 
 
