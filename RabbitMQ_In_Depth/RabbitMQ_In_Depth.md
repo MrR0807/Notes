@@ -83,6 +83,10 @@ As figure 2.4 illustrates, when sending a message to RabbitMQ, a Basic.Publish c
 
 ![Single_Message_Composed_Of_Frames](Single_Message_Composed_Of_Frames.png)
 
+The content in the method frame and content header frame is binary packed data and is not human-readable. The message content carried inside the body frame isn’t packed or encoded and may be anything from plain text to binary image data.
+
+### The anatomy of a method frame
+
 
 
 
