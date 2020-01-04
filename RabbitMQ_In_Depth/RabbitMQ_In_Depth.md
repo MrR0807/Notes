@@ -87,6 +87,43 @@ The content in the method frame and content header frame is binary packed data a
 
 ### The anatomy of a method frame
 
+Method frames carry with them the class and method your RPC request is going to make as well as the arguments that are being passed along for processing.
+
+![Anatomy_Of_Method_Frame](Anatomy_Of_Method_Frame.png)
+
+***NOTE*** In fact, the AMQP specification goes as far as to say that success, as a general rule, is silent, whereas errors should be as noisy and intrusive as possible. But if you’re using the mandatory flag when publishing your messages, your application should be listening for a Basic.Return command sent from RabbitMQ. If RabbitMQ isn’t able to meet the requirements set by the mandatory flag, it will send a Basic.Return command to your client on the same channel.
+
+### The content header frame
+
+The header frame also carries attributes about your message that describe the message to both the RabbitMQ server and to any application that may receive it. These attributes, as values in a **Basic.Properties** table, may contain data that describes the **content of your message or they may be completely blank.** Most client libraries will prepopulate a minimal set of fields, such as the content type and the delivery mode.
+
+![Anatomy_Of_Method_Frame](Anatomy_Of_Method_Frame.png)
+
+### The body frame
+
+The body frame for a message is agnostic to the type of data being transferred, and it may contain either binary or text data.
+
+![Anatomy_Of_Body_Frame](Anatomy_Of_Body_Frame.png)
+
+## Putting the protocol to use
+
+There are a few configuration-related steps you must take care of before you can publish messages into a queue. **At a minimum, you must set up both an exchange and a queue, and then bind them together.**
+
+### Declaring an exchange
+
+**Exchanges are created using the Exchange.Declare command**, which has arguments that define the name of the exchange, its type, and other metadata that may be used for message processing. Once the command has been sent and RabbitMQ has created the exchange, an Exchange.DeclareOk method frame is sent in response (figure 2.8). **If, for whatever reason, the command should fail, RabbitMQ will close the channel that the Exchange.Declare command was sent on by sending a *Channel.Close* command.** This response will include a numeric reply code and text value indicating why the Exchange.Declare failed and the channel was closed.
+
+![Declare_Exchange](Declare_Exchange.png)
+
+### Declaring a queue
+
+Once the exchange has been created, it’s time to create a queue by sending a Queue.Declare command to RabbitMQ. Like the Exchange.Declare command, there’s a simple communication sequence that takes place (figure 2.9), and should the Queue.Declare command fail, the channel will be closed.
+
+![Declare_Queue](Declare_Queue.png)
+
+**When declaring a queue, there’s no harm in issuing the same Queue.Declare command more than once.**
+
+### Binding a queue to an exchange
 
 
 
