@@ -149,7 +149,11 @@ At RabbitMQ’s discretion, the consumer will start receiving messages of **Basi
 
 ![Consuming_Messages](Consuming_Messages.png)
 
-If a consumer wants to stop receiving messages, it can issue a **Basic.Cancel** 
+If a consumer wants to stop receiving messages, it can issue a **Basic.Cancel** command. It’s worth noting that this command is issued asynchronously while RabbitMQ may still be sending messages, so a consumer can still receive any number of messages RabbitMQ has preallocated for it prior to receiving a Basic.CancelOk response frame.
+
+### Writing a message publisher in Java
+
+
 
 
 
