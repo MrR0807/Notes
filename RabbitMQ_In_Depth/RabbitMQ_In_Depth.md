@@ -77,7 +77,11 @@ The AMQP specification defines five types of frames:
 
 **When publishing a message to RabbitMQ, the method, header, and body frames are used.** The **first frame sent is the method frame carrying the command** and the parameters required to execute it, such as the exchange and routing key. **Following the method frame are the content frames: a content header and body.** The content header frame contains the message properties along with the body size. AMQP has a maximum frame size, and if the body of your message exceeds that size, the content will be split into multiple body frames.
 
+As figure 2.4 illustrates, when sending a message to RabbitMQ, a Basic.Publish command is sent in the method frame, and that’s followed by a content header frame with the message’s properties, such as the message’s content type and the time when the message was sent. These properties are encapsulated in a data structure defined in the AMQP specification as Basic.Properties . Finally, the content of the message is marshaled into the appropriate number of body frames.
 
+***NOTE***. Although the default frame size is 131 KB, client libraries can negotiate a larger or smaller maximum frame size during the connection process, up to a 32-bit value for the number of bytes in a frame.
+
+![Single_Message_Composed_Of_Frames](Single_Message_Composed_Of_Frames.png)
 
 
 
