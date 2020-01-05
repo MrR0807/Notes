@@ -217,13 +217,27 @@ RabbitMQ checks every message published with a value in the user-id property aga
 
 ## Getting specific with the message type property
 
+Type property as the “message type name,” saying that it’s for application use and has no formal behavior.
 
+## Using reply-to for dynamic workflows
 
+The reply-to property has no formally defined behavior and is also specified for application use.
 
+## Custom properties using the headers property
 
+The **headers** property is a key/value table that allows for arbitrary, user-defined keys and values. Keys can be ASCII or Unicode strings that have a maximum length of 255 characters. Values can be any valid AMQP value type.
 
+![Headers_Property](Headers_Property.png)
 
+## The priority property
 
+**It’s defined as an integer with possible values of 0 through 9 to be used for message prioritization in queues.** As specified, if a message with a priority of 9 is published, and subsequently a message with a priority of 0 is published, a newly connected consumer would receive the message with the priority of 0 before the message with a priority of 9. Interestingly, RabbitMQ implements the priority field as an unsigned byte, so priorities could be anywhere from 0 to 255, but the priority should be limited to 0 through 9 to maintain interoperability with the specification.
+
+## A property you can’t use: cluster-id/reserved
+
+## Summary
+
+![Properties_Summary_Table](Properties_Summary_Table.png)
 
 
 
