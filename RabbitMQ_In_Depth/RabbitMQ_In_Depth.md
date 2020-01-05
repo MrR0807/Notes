@@ -153,6 +153,70 @@ If a consumer wants to stop receiving messages, it can issue a **Basic.Cancel** 
 
 ### Writing a message publisher in Java
 
+TODO
+
+# Chapter 3. An in-depth tour of message properties (Basic.Properties)
+
+## Using properties properly
+
+The message properties contained in the header frame are a predefined set of values specified by the Basic.Properties data structure (figure 3.2).
+
+![Basic_Properties](Basic_Properties.png)
+
+## Creating an explicit message contract with content-type
+
+Like in the various standardized HTTP specifications, content-type conveys the MIME type of the message body. If your application is sending a JSON-serialized data value, set the content-type property to application/json.
+
+## Reducing message size with gzip and content-encoding
+
+Messages sent over AMQP aren’t compressed by default. This can be problematic with overly verbose markup such as XML, or even with large messages using less markup-heavy formats like JSON or YAML. Your publishers can compress messages prior to publishing them and decompress them upon receipt, similarly to how web pages can be compressed on the server with gzip and the browser can decompress them on the fly prior to rendering.
+
+***NOTE***. Some AMQP clients automatically set the content-encoding value to UTF-8, but this is incorrect behavior. The AMQP specification states that content-encoding is for storing the MIME content encoding.
+
+## Referencing messages with message-id and correlation-id
+
+In the AMQP specification, **message-id** and **correlation-id** are specified **“for application use”** and have no formally defined behavior.
+
+### Message-id
+
+Some message types, such as a login event, aren’t likely to need a unique message ID associated with them, but it’s easy to imagine types of messages that would, such as sales orders or support requests. The message-id property enables the message to carry data in the header that uniquely identifies it as it flows through the various components in a loosely coupled system.
+
+### Correlation-id
+
+Although there’s no formal definition for the correlation-id in the AMQP specification, one use is to indicate that the message is a response to another message by having it carry the message-id of the related message. Another option is to use it to carry a transaction ID or other similar data that the message is referencing.
+
+## Born-on dating: the timestamp property
+
+One of the more useful fields in Basic.Properties is the timestamp property. Timestamp is specified as **“for application use.”**
+
+The timestamp is sent as a Unix epoch or integer-based timestamp indicating the number of seconds since midnight on January 1, 1970. For example, February 2,2002, at midnight would be represented as the integer value 1329696000. **Unfortunately there’s no time zone context for the timestamp, so it’s advisable to use UTC.**
+
+## Automatically expiring messages
+
+The expiration property tells RabbitMQ when it should discard a message if it hasn’t been consumed. In addition, the specification of the expiration property is a bit odd; **it’s specified “for implementation use, no formal behavior,” meaning RabbitMQ can implement its use however it sees fit. One final oddity is that it’s specified as a short string, allowing for up to 255 characters, whereas the other property that represents a unit of time, timestamp, is an integer value.**
+
+**Because of the ambiguity in the specification, the expiration value is likely to have different implications when using different message brokers or even different versions of the same message broker.** To auto-expire messages in RabbitMQ using the expiration property, it must contain a Unix epoch or integer-based timestamp, but stored as a string. **Instead of storing an ISO-8601 formatted timestamp such as "2002-02-20T00:00:00-00" , you must set the string value to the equivalent value of "1329696000".**
+When using the expiration property, if a message is published to the server with an expiration timestamp that has already passed, the message will not be routed to any queues, but instead will be discarded.
+
+## Balancing speed with safety using delivery-mode
+
+The delivery-mode property is a byte field that indicates to the message broker that you’d like to persist the message to disk prior to it being delivered to any awaiting consumers. The delivery-
+mode property has two possible values: 1 for a non-persisted message and 2 for a persisted message.
+
+## Validating message origin with app-id and user-id
+
+### app-id
+
+The app-id property is defined in the AMQP specification as a “short-string,” allowing for up to 255 UTF-8 characters. If your application has an API-centric design with versioning, you could use the app-id to convey the specific API and version that were used to generate the message. As a method of enforcing a contract between publisher and consumer, examining the app-id prior to processing allows the application to discard the message if it’s from an unknown or unsupported source. 
+
+Another possible use for app-id is in gathering statistical data.
+
+### user-id
+
+RabbitMQ checks every message published with a value in the user-id property against the RabbitMQ user publishing the message, and if the two values don’t match, the message is rejected. For example, if your application is authenticating with RabbitMQ as the user “www”, and the user-id property is set to “linus”, the message will be rejected.
+
+## Getting specific with the message type property
+
 
 
 
