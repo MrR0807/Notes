@@ -239,7 +239,7 @@ The **headers** property is a key/value table that allows for arbitrary, user-de
 
 ![Properties_Summary_Table](Properties_Summary_Table.png)
 
-
+# Chapter 4. Performance trade-offs in publishing
 
 
 
