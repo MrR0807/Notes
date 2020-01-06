@@ -516,6 +516,21 @@ private static void handleReturn(int replyCode, String replyText, String exchang
 }
 ```
 
+### Batch processing with transactions
+
+Before there were delivery confirmations, the only way you could be sure a message was delivered was through transactions. The AMQP transaction, or **TX**, class **provides a mechanism by which messages can be published to RabbitMQ in batches and then committed to a queue or rolled back**.
+
+The transactional mechanism provides a method by which a publisher can be **notified of the successful delivery of a message to a queue on the RabbitMQ broker.** To begin a transaction, the publisher sends a TX.Select RPC request to RabbitMQ, and RabbitMQ will respond with a TX.SelectOk response. Once the transaction has been opened, the publisher may send one or more messages to RabbitMQ (figure 4.6).
+
+![Publisher_Transactions](Publisher_Transactions.PNG)
+
+When RabbitMQ is unable to route a message due to an error, such as a non-existent exchange, it will return the message with a Basic.Return response prior to sending a TX.CommitOk response. Publishers wishing to abort a transaction should send a TX.Rollback RPC request and wait for a TX.RollbackOk response from the broker prior to continuing.
+
+***NOTE*** Unfortunately for those looking for true atomicity, RabbitMQ only implements atomic transactions when every command issued affects a single queue. If more than one queue is impacted by any of the commands in the transaction, the commit won’t be atomic.
+
+Consider using Publisher Confirms as a lightweight alternative—it's faster and can provide both positive and negative confirmation.
+
+### Surviving node failures with HA queues
 
 
 
