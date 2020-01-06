@@ -428,8 +428,93 @@ The Basic.Return call is an asynchronous call from RabbitMQ, and it may happen a
 
 ### Publisher Confirms as a lightweight alternative to transactions
 
+The **Publisher Confirms** feature in RabbitMQ is an enhancement to the AMQP specification and is **only supported by client libraries that support RabbitMQ-specific extensions**. **Storing messages on disk** is an important step in preventing message loss, but **doesn’t assure the publisher that a message was delivered.** Prior to publishing any messages, a message publisher must issue a Confirm.Select RPC request to RabbitMQ and wait for a Confirm.SelectOk response to know that delivery confirmations are enabled. At that point, for each message that a publisher sends to RabbitMQ, the server will respond with an acknowledgement response (Basic.Ack) or a negative acknowledgement response (Basic.Nack) (figure 4.4).
 
+![Publisher_Confirms](Publisher_Confirms.PNG)
 
+A Basic.Ack request is sent to a publisher when a message that it has published has been directly consumed by consumer applications on all queues it was routed to, or when the message was enqueued and persisted if requested. Publisher Confirms don’t work in conjunction with transactions and is considered a lightweight and more performant alternative to the AMQP TX process.
+
+### Using alternate exchanges for unroutable messages
+
+Alternate exchanges are another extension to the AMQ model, created by the RabbitMQ team as a way to handle unroutable messages.
+
+It is sometimes desirable to let clients handle messages that an exchange was unable to route (i.e. either because there were no bound queues or no matching bindings). Typical examples of this are:
+* detecting when clients accidentally or maliciously publish messages that cannot be routed
+* "or else" routing semantics where some messages are handled specially and the rest by a generic handler
+
+#### Configuration Using a Policy
+
+**This is the recommended way of of defining alternate exchanges.**
+
+To specify an AE using policy, add the key 'alternate-exchange' to a policy definition and make sure that the policy matches the exchange(s) that need the AE defined. For example:
+```
+rabbitmqctl set_policy AE "^my-direct$" '{"alternate-exchange":"my-ae"}'
+```
+
+#### Configuration Using Client-provided Arguments
+
+**This way of defining an alternate exchange is discouraged.**
+
+```
+Map<String, Object> args = new HashMap<String, Object>();
+args.put("alternate-exchange", "my-ae");
+channel.exchangeDeclare("my-direct", "direct", false, false, args);
+channel.exchangeDeclare("my-ae", "fanout");
+channel.queueDeclare("routed");
+channel.queueBind("routed", "my-direct", "key1");
+channel.queueDeclare("unrouted");
+channel.queueBind("unrouted", "my-ae", "");
+```
+
+#### How Alternate Exchanges Work
+
+Whenever an exchange with a configured AE cannot route a message to any queue, it publishes the message to the specified AE instead. If that AE does not exist then a warning is logged. If an AE cannot route a message, it in turn publishes the message to its AE, if it has one configured. This process continues until either the message is successfully routed, the end of the chain of AEs is reached, or an AE is encountered which has already attempted to route the message.
+
+For example if we publish a message to 'my-direct' with a routing key of 'key1' then that message is routed to the 'routed' queue, in accordance with the standard AMQP behaviour. However, when publishing a message to 'my-direct' with a routing key of 'key2', rather than being discarded the message is routed via our configured AE to the 'unrouted' queue.
+
+The behaviour of an AE purely pertains to routing. **If a message is routed via an AE it still counts as routed for the purpose of the 'mandatory' flag, and the message is otherwise unchanged (does NOT return via Basic.Return).**
+
+Example will **NOT print "Message Failed"**:
+```
+private static final String RABBIT_URI = "amqp://guest:guest@localhost:5672";
+
+public static void main(String[] args) throws NoSuchAlgorithmException, KeyManagementException, URISyntaxException {
+    ConnectionFactory factory = new ConnectionFactory();
+    factory.setUri(RABBIT_URI);
+    try (Connection connection = factory.newConnection();
+         Channel channel = connection.createChannel()) {
+
+        channel.exchangeDeclare("my-direct", "direct", false, false, Map.of("alternate-exchange", "my-ae"));
+        channel.exchangeDeclare("my-ae", "fanout");
+        channel.queueDeclare("routed", true, false, false, Map.of());
+        channel.queueBind("routed", "my-direct", "key1");
+        channel.queueDeclare("unrouted", true, false, false, Map.of());
+        channel.queueBind("unrouted", "my-ae", "");
+        channel.addReturnListener(Send::handleReturn);
+
+        String message = "Hello World!";
+        var i = 0;
+        while (i < 3) {
+            //Set true to mandatory field and send to different key than binded
+            channel.basicPublish("my-direct", "key2", true, null, message.getBytes());
+            System.out.println(" [x] Sent '" + message + "'");
+            i++;
+        }
+        TimeUnit.SECONDS.sleep(5); //To wait for error messages
+    } catch (TimeoutException | IOException | InterruptedException e) {
+        e.printStackTrace();
+    }
+}
+
+private static void handleReturn(int replyCode, String replyText, String exchange, String routingKey, AMQP.BasicProperties properties, byte[] body) {
+    System.out.println("-".repeat(10) + "Message Failed" + "-".repeat(10));
+    System.out.println(replyCode);
+    System.out.println(replyText);
+    System.out.println(exchange);
+    System.out.println(routingKey);
+    System.out.println(new String(body));
+}
+```
 
 
 
