@@ -564,6 +564,16 @@ Delivery-mode is one of the message properties specified as part of AMQP’s Bas
 * 1 - does not need to store message to disk (default)
 * 2 - all messages are stored to disk. If the RabbitMQ broker is restarted the message will still be in the queue once RabbitMQ is running again.
 
+***NOTE*** In **addition to delivery-mode of 2**, for messages to truly survive a restart of a RabbitMQ broker, your **queues must be declared as durable** when they’re created.
+
+It’s important to correctly size your hardware needs when using persisted messages. An undersized server that’s tasked with a heavy write workload can bring a whole RabbitMQ server to a crawl. **Although message persistence is one of the most important ways to guarantee that your messages will ultimately be delivered, it’s also one of the most costly.**
+
+## When RabbitMQ pushes back
+
+
+
+
+
 
 
 
