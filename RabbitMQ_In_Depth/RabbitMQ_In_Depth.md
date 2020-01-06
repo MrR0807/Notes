@@ -152,8 +152,81 @@ At RabbitMQ’s discretion, the consumer will start receiving messages of **Basi
 If a consumer wants to stop receiving messages, it can issue a **Basic.Cancel** command. It’s worth noting that this command is issued asynchronously while RabbitMQ may still be sending messages, so a consumer can still receive any number of messages RabbitMQ has preallocated for it prior to receiving a Basic.CancelOk response frame.
 
 ### Writing a message publisher in Java
+**In book it is written in Python**
+
+```
+    private static final String RABBIT_URI = "amqp://guest:guest@localhost:5672";
+    private static final String EXCHANGE_NAME = "chapter2-example";
+    private static final String QUEUE_NAME = "example";
+    private static final String ROUTING_KEY = "example-routing-key";
+
+    public static void main(String[] args) throws NoSuchAlgorithmException, KeyManagementException, URISyntaxException {
+        ConnectionFactory factory = new ConnectionFactory();
+        factory.setUri(RABBIT_URI);
+        try (Connection connection = factory.newConnection();
+             Channel channel = connection.createChannel()) {
+
+            channel.exchangeDeclare(EXCHANGE_NAME, "direct");
+            channel.queueDeclare(QUEUE_NAME, true, false, false, Map.of());
+            channel.queueBind(QUEUE_NAME, EXCHANGE_NAME, ROUTING_KEY);
+
+            String message = "Hello World!";
+            var i = 0;
+            while (i < 50) {
+                channel.basicPublish(EXCHANGE_NAME, ROUTING_KEY, null, message.getBytes());
+                System.out.println(" [x] Sent '" + message + "'");
+                i++;
+            }
+
+        } catch (TimeoutException | IOException e) {
+            e.printStackTrace();
+        }
+    }
+```
+
+This creates explicit Exchange named "chapter2-example".
+
+![RabbitMQ_Specific_Exchange](RabbitMQ_Specific_Exchange.PNG)
+![RabbitMQ_Specific_Exchange_2](RabbitMQ_Specific_Exchange_2.PNG)
+
+It is possible to use default Exchange.
+
+**Default Exchange**
+The default exchange is a direct exchange with no name (empty string) pre-declared by the broker. It has one special property that makes it very useful for simple applications: every queue that is created is automatically bound to it with a routing key which is the same as the queue name.
+
+For example, when you declare a queue with the name of "search-indexing-online", the AMQP 0-9-1 broker will bind it to the default exchange using "search-indexing-online" as the routing key (in this context sometimes referred to as the binding key). Therefore, a message published to the default exchange with the routing key "search-indexing-online" will be routed to the queue "search-indexing-online".
+
+```
+    private static final String QUEUE_NAME = "example";
+
+    public static void main(String[] args) {
+        ConnectionFactory factory = new ConnectionFactory();
+        factory.setHost("localhost");
+        try (Connection connection = factory.newConnection();
+             Channel channel = connection.createChannel()) {
+
+            channel.queueDeclare(QUEUE_NAME, true, false, false, Map.of());
+            String message = "Hello World!";
+            var i = 0;
+            while (i < 50) {
+                //QUEUE_NAME instead of ROUTING_KEY, because Default Exchange expects routing_key = queue_name
+                channel.basicPublish("", QUEUE_NAME, null, message.getBytes());
+                System.out.println(" [x] Sent '" + message + "'");
+                i++;
+            }
+
+        } catch (TimeoutException | IOException e) {
+            e.printStackTrace();
+        }
+    }
+```
+
+### Getting messages from RabbitMQ
 
 TODO
+
+
+
 
 # Chapter 3. An in-depth tour of message properties (Basic.Properties)
 
