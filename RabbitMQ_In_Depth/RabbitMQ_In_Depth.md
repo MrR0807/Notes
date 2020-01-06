@@ -389,7 +389,7 @@ To publish a message with the mandatory flag, you simply pass in the argument af
             var i = 0;
             while (i < 3) {
                 //Set true to mandatory field
-                **channel.basicPublish(EXCHANGE_NAME, "BAD-ROUTING-KEY", true, null, message.getBytes());**
+                channel.basicPublish(EXCHANGE_NAME, "BAD-ROUTING-KEY", true, null, message.getBytes());
                 System.out.println(" [x] Sent '" + message + "'");
                 i++;
             }
@@ -421,6 +421,12 @@ chapter2-example
 BAD-ROUTING-KEY
 Hello World!
 ```
+
+The Basic.Return call is an asynchronous call from RabbitMQ, and it may happen at any time after the message is published. If the code isn’t set up to listen for this call, it will fall on deaf ears, and collectd will never know that the message wasn’t published correctly.
+
+**NOTE** The **immediate flag** directs a broker to issue a Basic.Return if the message can’t be immediately routed to its destination. **This flag is deprecated as of RabbitMQ 2.9 and will raise an exception and close the channel if used.**
+
+### Publisher Confirms as a lightweight alternative to transactions
 
 
 
