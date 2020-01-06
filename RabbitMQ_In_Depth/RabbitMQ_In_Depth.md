@@ -343,10 +343,84 @@ The **headers** property is a key/value table that allows for arbitrary, user-de
 
 # Chapter 4. Performance trade-offs in publishing
 
+## Balancing delivery speed with guaranteed delivery
 
+![Performance_trade-offs](Performance_trade-offs.PNG)
 
+In RabbitMQ, each mechanism designed to create delivery guarantees will come with some impact on performance. Only by performing your own performance benchmarks can you determine the acceptable trade-off of performance versus guaranteed delivery. The following questions can help find the right balance between high performance and message safety:
+* How important is it that messages are guaranteed to be enqueued when published?
+* Should a message be returned to a publisher if it can’t be routed?
+* If a message can’t be routed, should it be sent somewhere else where it can later be reconciled?
+* Is it okay if messages are lost when a RabbitMQ server crashes?
+* Should RabbitMQ confirm that it has performed all requested routing and persistence tasks to a publisher when it processes a new message?
+* Should a publisher be able to batch message deliveries and then receive confirmation from RabbitMQ that all requested routing and persistence tasks have been applied to all of the messages in the batch?
+* If you’re batching the publishing of messages that require confirmation of routing and persistence, is there a need for true atomic commits to the destination queues for a message?
+* Are there acceptable trade-offs in reliable delivery that your publishers can use to achieve higher performance and message throughput?
+* What other aspects of message publishing will impact message throughput and performance?
 
+### What to expect with no guarantees
 
+No guarantees works great for applications like performance statistics gathering, where data is collected every minute. Even if you lose some data, it is not that crucial.
+
+### RabbitMQ won’t accept non-routable messages with mandatory set
+
+**The mandatory flag is an argument that’s passed along with the Basic.Publish** RPC command and tells RabbitMQ that if a message isn’t routable, it should send the message back to the publisher via a Basic.Return. **The mandatory flag can be thought of as turning on fault detection mode; it will only cause RabbitMQ to notify you of failures, not successes.**
+
+To publish a message with the mandatory flag, you simply pass in the argument after passing in the exchange, routing key, message, and properties.
+
+```
+    private static final String RABBIT_URI = "amqp://guest:guest@localhost:5672";
+    private static final String EXCHANGE_NAME = "chapter2-example";
+    private static final String QUEUE_NAME = "example";
+    private static final String ROUTING_KEY = "example-routing-key";
+
+    public static void main(String[] args) throws NoSuchAlgorithmException, KeyManagementException, URISyntaxException {
+        ConnectionFactory factory = new ConnectionFactory();
+        factory.setUri(RABBIT_URI);
+        try (Connection connection = factory.newConnection();
+             Channel channel = connection.createChannel()) {
+
+            channel.exchangeDeclare(EXCHANGE_NAME, "direct");
+            channel.queueDeclare(QUEUE_NAME, true, false, false, Map.of());
+            channel.queueBind(QUEUE_NAME, EXCHANGE_NAME, ROUTING_KEY);
+            channel.addReturnListener(Send::handleReturn);
+
+            String message = "Hello World!";
+            var i = 0;
+            while (i < 3) {
+                //Set true to mandatory field
+                **channel.basicPublish(EXCHANGE_NAME, "BAD-ROUTING-KEY", true, null, message.getBytes());**
+                System.out.println(" [x] Sent '" + message + "'");
+                i++;
+            }
+
+            //To wait for error messages
+            TimeUnit.SECONDS.sleep(5);
+        } catch (TimeoutException | IOException | InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private static void handleReturn(int replyCode, String replyText, String exchange, String routingKey, AMQP.BasicProperties properties, byte[] body) {
+        System.out.println("-".repeat(10) + "Message Failed" + "-".repeat(10));
+        System.out.println(replyCode);
+        System.out.println(replyText);
+        System.out.println(exchange);
+        System.out.println(routingKey);
+        System.out.println(new String(body));
+    }
+
+```
+
+This code will generate:
+```
+----------Message Failed----------
+312
+NO_ROUTE
+chapter2-example
+BAD-ROUTING-KEY
+Hello World!
+```
 
 
 
