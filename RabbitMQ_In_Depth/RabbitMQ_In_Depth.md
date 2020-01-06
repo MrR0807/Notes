@@ -570,10 +570,17 @@ It’s important to correctly size your hardware needs when using persisted mess
 
 ## When RabbitMQ pushes back
 
+**TCP Backpressure** - a mechanism which RabbitMQ utilizes and stops accepting low-level data on the TCP socket. This method works well to protect RabbitMQ from being overwhelmed by a single publisher.
 
+Internally, RabbitMQ uses the notion of credits to manage when it’s going to pushback against a publisher. When a new connection is made, the connection is allotted a predetermined amount of credits it can use. Then, as each RPC command is received by RabbitMQ, a credit is decremented. Once the RPC request has been internally processed, the connection is given the credit back. A connection’s credit balance is evaluated by RabbitMQ to determine if it should read from a connection’s socket. If a connection is out of credits, it’s simply skipped until it has enough credits.
 
+**Connection.Blocked** and **Connection.Unblocked** are asynchronous methods that can be sent at any time to notify the client when RabbitMQ has blocked the publishing client and when that block has been removed.
 
+### Checking the connection status with rabbitpy
 
+# CODE EXAMPLE TODO
+
+# Chapter 5. Don’t get messages; consume them
 
 
 
