@@ -155,33 +155,33 @@ If a consumer wants to stop receiving messages, it can issue a **Basic.Cancel** 
 **In book it is written in Python**
 
 ```
-    private static final String RABBIT_URI = "amqp://guest:guest@localhost:5672";
-    private static final String EXCHANGE_NAME = "chapter2-example";
-    private static final String QUEUE_NAME = "example";
-    private static final String ROUTING_KEY = "example-routing-key";
+private static final String RABBIT_URI = "amqp://guest:guest@localhost:5672";
+private static final String EXCHANGE_NAME = "chapter2-example";
+private static final String QUEUE_NAME = "example";
+private static final String ROUTING_KEY = "example-routing-key";
 
-    public static void main(String[] args) throws NoSuchAlgorithmException, KeyManagementException, URISyntaxException {
-        ConnectionFactory factory = new ConnectionFactory();
-        factory.setUri(RABBIT_URI);
-        try (Connection connection = factory.newConnection();
-             Channel channel = connection.createChannel()) {
+public static void main(String[] args) throws NoSuchAlgorithmException, KeyManagementException, URISyntaxException {
+    ConnectionFactory factory = new ConnectionFactory();
+    factory.setUri(RABBIT_URI);
+    try (Connection connection = factory.newConnection();
+         Channel channel = connection.createChannel()) {
 
-            channel.exchangeDeclare(EXCHANGE_NAME, "direct");
-            channel.queueDeclare(QUEUE_NAME, true, false, false, Map.of());
-            channel.queueBind(QUEUE_NAME, EXCHANGE_NAME, ROUTING_KEY);
+        channel.exchangeDeclare(EXCHANGE_NAME, "direct");
+        channel.queueDeclare(QUEUE_NAME, true, false, false, Map.of());
+        channel.queueBind(QUEUE_NAME, EXCHANGE_NAME, ROUTING_KEY);
 
-            String message = "Hello World!";
-            var i = 0;
-            while (i < 50) {
-                channel.basicPublish(EXCHANGE_NAME, ROUTING_KEY, null, message.getBytes());
-                System.out.println(" [x] Sent '" + message + "'");
-                i++;
-            }
-
-        } catch (TimeoutException | IOException e) {
-            e.printStackTrace();
+        String message = "Hello World!";
+        var i = 0;
+        while (i < 50) {
+            channel.basicPublish(EXCHANGE_NAME, ROUTING_KEY, null, message.getBytes());
+            System.out.println(" [x] Sent '" + message + "'");
+            i++;
         }
+
+    } catch (TimeoutException | IOException e) {
+        e.printStackTrace();
     }
+}
 ```
 
 This creates explicit Exchange named "chapter2-example".
@@ -198,28 +198,28 @@ The default exchange is a direct exchange with no name (empty string) pre-declar
 For example, when you declare a queue with the name of "search-indexing-online", the AMQP 0-9-1 broker will bind it to the default exchange using "search-indexing-online" as the routing key (in this context sometimes referred to as the binding key). Therefore, a message published to the default exchange with the routing key "search-indexing-online" will be routed to the queue "search-indexing-online".
 
 ```
-    private static final String QUEUE_NAME = "example";
+private static final String QUEUE_NAME = "example";
 
-    public static void main(String[] args) {
-        ConnectionFactory factory = new ConnectionFactory();
-        factory.setHost("localhost");
-        try (Connection connection = factory.newConnection();
-             Channel channel = connection.createChannel()) {
+public static void main(String[] args) {
+    ConnectionFactory factory = new ConnectionFactory();
+    factory.setHost("localhost");
+    try (Connection connection = factory.newConnection();
+         Channel channel = connection.createChannel()) {
 
-            channel.queueDeclare(QUEUE_NAME, true, false, false, Map.of());
-            String message = "Hello World!";
-            var i = 0;
-            while (i < 50) {
-                //QUEUE_NAME instead of ROUTING_KEY, because Default Exchange expects routing_key = queue_name
-                channel.basicPublish("", QUEUE_NAME, null, message.getBytes());
-                System.out.println(" [x] Sent '" + message + "'");
-                i++;
-            }
-
-        } catch (TimeoutException | IOException e) {
-            e.printStackTrace();
+        channel.queueDeclare(QUEUE_NAME, true, false, false, Map.of());
+        String message = "Hello World!";
+        var i = 0;
+        while (i < 50) {
+            //QUEUE_NAME instead of ROUTING_KEY, because Default Exchange expects routing_key = queue_name
+            channel.basicPublish("", QUEUE_NAME, null, message.getBytes());
+            System.out.println(" [x] Sent '" + message + "'");
+            i++;
         }
+
+    } catch (TimeoutException | IOException e) {
+        e.printStackTrace();
     }
+}
 ```
 
 ### Getting messages from RabbitMQ
@@ -227,33 +227,33 @@ For example, when you declare a queue with the name of "search-indexing-online",
 
 
 ```
-    public static final String QUEUE_NAME = "example";
+public static final String QUEUE_NAME = "example";
 
-    public static void main(String[] args) throws IOException, TimeoutException, NoSuchAlgorithmException, KeyManagementException, URISyntaxException {
-        String url = "amqp://guest:guest@localhost:5672";
-        ConnectionFactory factory = new ConnectionFactory();
-        factory.setUri(url);
+public static void main(String[] args) throws IOException, TimeoutException, NoSuchAlgorithmException, KeyManagementException, URISyntaxException {
+    String url = "amqp://guest:guest@localhost:5672";
+    ConnectionFactory factory = new ConnectionFactory();
+    factory.setUri(url);
 
-        Connection connection = factory.newConnection();
-        Channel channel = connection.createChannel();
+    Connection connection = factory.newConnection();
+    Channel channel = connection.createChannel();
 
-        DeliverCallback deliverCallback = (consumerTag, message) -> consumeMessage(channel, message);
+    DeliverCallback deliverCallback = (consumerTag, message) -> consumeMessage(channel, message);
 
-        boolean autoAck = false;
-        channel.basicConsume(QUEUE_NAME, autoAck, deliverCallback, consumerTag -> {});
-    }
+    boolean autoAck = false;
+    channel.basicConsume(QUEUE_NAME, autoAck, deliverCallback, consumerTag -> {});
+}
 
-    private static void consumeMessage(Channel channel, Delivery message) throws IOException {
-        Envelope envelope = message.getEnvelope();
-        AMQP.BasicProperties properties = message.getProperties();
-        String routingKey = envelope.getRoutingKey();
-        String contentType = properties.getContentType();
-        long deliveryTag = envelope.getDeliveryTag();
+private static void consumeMessage(Channel channel, Delivery message) throws IOException {
+    Envelope envelope = message.getEnvelope();
+    AMQP.BasicProperties properties = message.getProperties();
+    String routingKey = envelope.getRoutingKey();
+    String contentType = properties.getContentType();
+    long deliveryTag = envelope.getDeliveryTag();
 
-        String s = new String(message.getBody());
-        System.out.println(String.format("Body: %s, Routing Key: %s, Content type: %s, Delivery Tag: %d", s, routingKey, contentType, deliveryTag));
-        channel.basicAck(deliveryTag, false);
-    }
+    String s = new String(message.getBody());
+    System.out.println(String.format("Body: %s, Routing Key: %s, Content type: %s, Delivery Tag: %d", s, routingKey, contentType, deliveryTag));
+    channel.basicAck(deliveryTag, false);
+}
 
 ```
 
@@ -369,46 +369,46 @@ No guarantees works great for applications like performance statistics gathering
 To publish a message with the mandatory flag, you simply pass in the argument after passing in the exchange, routing key, message, and properties.
 
 ```
-    private static final String RABBIT_URI = "amqp://guest:guest@localhost:5672";
-    private static final String EXCHANGE_NAME = "chapter2-example";
-    private static final String QUEUE_NAME = "example";
-    private static final String ROUTING_KEY = "example-routing-key";
+private static final String RABBIT_URI = "amqp://guest:guest@localhost:5672";
+private static final String EXCHANGE_NAME = "chapter2-example";
+private static final String QUEUE_NAME = "example";
+private static final String ROUTING_KEY = "example-routing-key";
 
-    public static void main(String[] args) throws NoSuchAlgorithmException, KeyManagementException, URISyntaxException {
-        ConnectionFactory factory = new ConnectionFactory();
-        factory.setUri(RABBIT_URI);
-        try (Connection connection = factory.newConnection();
-             Channel channel = connection.createChannel()) {
+public static void main(String[] args) throws NoSuchAlgorithmException, KeyManagementException, URISyntaxException {
+    ConnectionFactory factory = new ConnectionFactory();
+    factory.setUri(RABBIT_URI);
+    try (Connection connection = factory.newConnection();
+         Channel channel = connection.createChannel()) {
 
-            channel.exchangeDeclare(EXCHANGE_NAME, "direct");
-            channel.queueDeclare(QUEUE_NAME, true, false, false, Map.of());
-            channel.queueBind(QUEUE_NAME, EXCHANGE_NAME, ROUTING_KEY);
-            channel.addReturnListener(Send::handleReturn);
+        channel.exchangeDeclare(EXCHANGE_NAME, "direct");
+        channel.queueDeclare(QUEUE_NAME, true, false, false, Map.of());
+        channel.queueBind(QUEUE_NAME, EXCHANGE_NAME, ROUTING_KEY);
+        channel.addReturnListener(Send::handleReturn);
 
-            String message = "Hello World!";
-            var i = 0;
-            while (i < 3) {
-                //Set true to mandatory field
-                channel.basicPublish(EXCHANGE_NAME, "BAD-ROUTING-KEY", true, null, message.getBytes());
-                System.out.println(" [x] Sent '" + message + "'");
-                i++;
-            }
-
-            //To wait for error messages
-            TimeUnit.SECONDS.sleep(5);
-        } catch (TimeoutException | IOException | InterruptedException e) {
-            e.printStackTrace();
+        String message = "Hello World!";
+        var i = 0;
+        while (i < 3) {
+            //Set true to mandatory field
+            channel.basicPublish(EXCHANGE_NAME, "BAD-ROUTING-KEY", true, null, message.getBytes());
+            System.out.println(" [x] Sent '" + message + "'");
+            i++;
         }
-    }
 
-    private static void handleReturn(int replyCode, String replyText, String exchange, String routingKey, AMQP.BasicProperties properties, byte[] body) {
-        System.out.println("-".repeat(10) + "Message Failed" + "-".repeat(10));
-        System.out.println(replyCode);
-        System.out.println(replyText);
-        System.out.println(exchange);
-        System.out.println(routingKey);
-        System.out.println(new String(body));
+        //To wait for error messages
+        TimeUnit.SECONDS.sleep(5);
+    } catch (TimeoutException | IOException | InterruptedException e) {
+        e.printStackTrace();
     }
+}
+
+private static void handleReturn(int replyCode, String replyText, String exchange, String routingKey, AMQP.BasicProperties properties, byte[] body) {
+    System.out.println("-".repeat(10) + "Message Failed" + "-".repeat(10));
+    System.out.println(replyCode);
+    System.out.println(replyText);
+    System.out.println(exchange);
+    System.out.println(routingKey);
+    System.out.println(new String(body));
+}
 
 ```
 
