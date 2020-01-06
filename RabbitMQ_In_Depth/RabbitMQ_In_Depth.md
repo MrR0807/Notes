@@ -528,12 +528,41 @@ When RabbitMQ is unable to route a message due to an error, such as a non-existe
 
 ***NOTE*** Unfortunately for those looking for true atomicity, RabbitMQ only implements atomic transactions when every command issued affects a single queue. If more than one queue is impacted by any of the commands in the transaction, the commit won’t be atomic.
 
-Consider using Publisher Confirms as a lightweight alternative—it's faster and can provide both positive and negative confirmation.
+**Consider using Publisher Confirms as a lightweight alternative - it's faster and can provide both positive and negative confirmation.**
 
 ### Surviving node failures with HA queues
 
+As you look to strengthen the contract between publishers and RabbitMQ to guarantee message delivery, don’t overlook the important role that **highly available queues (HA queues)** can play in mission-critical messaging architectures. HA queues - **not part of the AMQP specification** - is a feature that allows queues to have redundant copies across multiple servers.
 
+HA queues require a clustered RabbitMQ environment and can be set up in one of two ways: 
+* using AMQP 
+* using the web-based management interface
 
+# Code example TODO:
+
+**When a message is published into a queue that’s set up as an HA queue, it’s sent to each server in the cluster that’s responsible for the HA queue (figure 4.7). Once a message is consumed from any node in the cluster, all copies of the message will be immediately removed from the other nodes.**
+
+![HA_Queues](HA_Queues.png)
+
+HA queues **can span every server in a cluster, or only individual nodes.** To specify individual nodes, instead of passing in an argument of **"x-ha-policy": "all"**, pass in an **"x-ha-policy": "nodes"**  and then another argument, x-ha-nodes containing a list of the nodes the queue should be configured on.
+
+# CODE EXAMPLE TODO:
+
+***NOTE*** Even if you don’t have node1 , node2 , or node3 defined, RabbitMQ will allow you to define the queue,
+
+**HA queues have a single primary server node, and all the other nodes are secondary. Should the primary node fail, one of the secondary nodes will take over the role of primary node.** Should a secondary node be lost in an HA queue configuration, the other nodes would continue to operate as they were, sharing the state of operations that take place across all configured nodes. **When a lost node is added back**, or a new node is added to the cluster, it won’t contain any messages that are already in the queue across the existing nodes. Instead, **it will receive all new messages and only be in sync once all the previously published messages are consumed.**
+
+### HA queues with transactions
+
+If you’re using transactions or delivery confirmations, RabbitMQ won’t send a successful response until the message has been confirmed to be in all active nodes in the HA queue definition. This can create a delay in responding to your publishing application.
+
+### Persisting messages to disk via delivery-mode 2
+
+If the RabbitMQ broker dies prior to consuming the messages, they’ll be lost forever unless you tell RabbitMQ when publishing the message that you want the messages persisted to disk.
+
+Delivery-mode is one of the message properties specified as part of AMQP’s Basic.Properties definition. If deliver-mode is set to:
+* 1 - does not need to store message to disk (default)
+* 2 - all messages are stored to disk. If the RabbitMQ broker is restarted the message will still be in the queue once RabbitMQ is running again.
 
 
 
