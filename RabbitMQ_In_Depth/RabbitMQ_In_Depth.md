@@ -191,7 +191,8 @@ This creates explicit Exchange named "chapter2-example".
 
 It is possible to use default Exchange.
 
-**Default Exchange**
+#### Default Exchange
+
 The default exchange is a direct exchange with no name (empty string) pre-declared by the broker. It has one special property that makes it very useful for simple applications: every queue that is created is automatically bound to it with a routing key which is the same as the queue name.
 
 For example, when you declare a queue with the name of "search-indexing-online", the AMQP 0-9-1 broker will bind it to the default exchange using "search-indexing-online" as the routing key (in this context sometimes referred to as the binding key). Therefore, a message published to the default exchange with the routing key "search-indexing-online" will be routed to the queue "search-indexing-online".
@@ -223,10 +224,38 @@ For example, when you declare a queue with the name of "search-indexing-online",
 
 ### Getting messages from RabbitMQ
 
-TODO
 
 
+```
+    public static final String QUEUE_NAME = "example";
 
+    public static void main(String[] args) throws IOException, TimeoutException, NoSuchAlgorithmException, KeyManagementException, URISyntaxException {
+        String url = "amqp://guest:guest@localhost:5672";
+        ConnectionFactory factory = new ConnectionFactory();
+        factory.setUri(url);
+
+        Connection connection = factory.newConnection();
+        Channel channel = connection.createChannel();
+
+        DeliverCallback deliverCallback = (consumerTag, message) -> consumeMessage(channel, message);
+
+        boolean autoAck = false;
+        channel.basicConsume(QUEUE_NAME, autoAck, deliverCallback, consumerTag -> {});
+    }
+
+    private static void consumeMessage(Channel channel, Delivery message) throws IOException {
+        Envelope envelope = message.getEnvelope();
+        AMQP.BasicProperties properties = message.getProperties();
+        String routingKey = envelope.getRoutingKey();
+        String contentType = properties.getContentType();
+        long deliveryTag = envelope.getDeliveryTag();
+
+        String s = new String(message.getBody());
+        System.out.println(String.format("Body: %s, Routing Key: %s, Content type: %s, Delivery Tag: %d", s, routingKey, contentType, deliveryTag));
+        channel.basicAck(deliveryTag, false);
+    }
+
+```
 
 # Chapter 3. An in-depth tour of message properties (Basic.Properties)
 
