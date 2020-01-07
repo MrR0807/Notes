@@ -618,16 +618,59 @@ As figure 5.5 points out, there are several options that can be used to speed me
 
 ### Using no-ack mode for faster throughput
 
-In Java client, noAck as been change to autoAck. Github issue \[[1](https://github.com/rabbitmq/rabbitmq-dotnet-client/issues/255)\].
+In Java client, noAck as been change to autoAck. [Github issue](https://github.com/rabbitmq/rabbitmq-dotnet-client/issues/255).
 
+Consuming messages with no_ack=True is the fastest way to have RabbitMQ deliver messages to your consumer, but it’s also the least reliable way to send messages.
 
+Not recommended.
 
+### Controlling consumer prefetching via quality of service settings
 
+The AMQP specification calls for channels to have a quality of service (QoS) setting where a consumer can ask for a prespecified number of messages to be received prior to the consumer acknowledging receipt of the messages. The QoS setting allows RabbitMQ to more efficiently send messages by specifying how many messages to preallocate for the consumer.
 
+**Unlike a consumer with acknowledgments disabled (no_ack=True)**, if your consumer application crashes before it can acknowledge the messages, all the prefetched messages will be returned to the queue when the socket closes.
 
+As part of this RPC request, you can specify whether the QoS setting is for the channel it’s sent on or all channels open on the connection.
 
+More information can be found here: https://www.rabbitmq.com/consumer-prefetch.html
 
+#### ACKNOWLEDGING MULTIPLE MESSAGES AT ONCE
 
+One of the nice things about using the QoS setting is that you don’t need to acknowledge each message received with a Basic.Ack RPC response. Instead, the Basic.Ack RPC response has an attribute named multiple, and when it’s set to True it lets RabbitMQ know that your application would like to acknowledge all previous unacknowledged messages.
+
+```
+public static void main(String[] args) throws IOException, TimeoutException, NoSuchAlgorithmException, KeyManagementException, URISyntaxException {
+    String url = "amqp://guest:guest@localhost:5672";
+    ConnectionFactory factory = new ConnectionFactory();
+    factory.setUri(url);
+
+    Connection connection = factory.newConnection();
+    Channel channel = connection.createChannel();
+    final AtomicInteger window = new AtomicInteger(0);
+    final int prefetchCount = 5;
+
+    DeliverCallback deliverCallback = (consumerTag, message) -> {
+        consumeMessage(message);
+        window.getAndIncrement();
+        if (window.get() == prefetchCount) {
+            System.out.println("-".repeat(10) + "Window Limit Reached" + "-".repeat(10));
+            sleep(); //Sleep for 10 seconds for seeing the noack messages before in RabbitMQ management page
+            channel.basicAck(message.getEnvelope().getDeliveryTag(), true);
+            window.getAndSet(0);
+        }
+
+    };
+    channel.basicQos(prefetchCount);
+
+    boolean autoAck = false;
+    channel.basicConsume(QUEUE_NAME, autoAck, deliverCallback, consumerTag -> {
+    });
+}
+```
+
+**Acknowledging multiple messages at the same time allows you to minimize the network communications required to process your messages, improving message throughput.** Should you successfully process some messages and your application dies prior to acknowledging them, all the unacknowledged messages will return to the queue to be processed by another consumer process.
+
+### Using transactions with consumers
 
 
 
