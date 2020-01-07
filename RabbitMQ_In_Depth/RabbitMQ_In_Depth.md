@@ -594,6 +594,61 @@ Or you can check RabbitMQ Management page, next to Connection.
 
 # Chapter 5. Don’t get messages; consume them
 
+## Basic.Get vs. Basic.Consume
+
+RabbitMQ implements two different AMQP RPC commands for retrieving messages from a queue: Basic.Get and Basic.Consume. In the simplest terms, **Basic.Get is a polling model, whereas Basic.Consume is a push model**.
+
+### Basic.Get
+
+When your application uses a Basic.Get request to retrieve messages, it must send a new request each time it wants to receive a message, even if there are multiple messages in the queue.
+
+In simple message velocity tests, using **Basic.Consume is at least twice as fast as using Basic.Get.** The most obvious reason for the speed difference is that **with Basic.Get**, each message delivered carries with it the overhead of the **synchronous communication** with RabbitMQ.
+
+### Basic.Consume
+
+In contrast, by consuming messages with the Basic.Consume RPC command, you’re registering your application with RabbitMQ and telling it to send messages asynchronously to your consumer as they become available.
+
+![Basic_Consume](Basic_Consume.PNG)
+
+## Performance-tuning consumers
+
+As figure 5.5 points out, there are several options that can be used to speed message delivery from RabbitMQ to your application.
+
+![Consumer_Tuning_Perfomance)(Consumer_Tuning_Perfomance.PNG)
+
+### Using no-ack mode for faster throughput
+
+In Java client, noAck as been change to autoAck. Github issue \[[1](https://github.com/rabbitmq/rabbitmq-dotnet-client/issues/255)\].
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
