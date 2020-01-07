@@ -538,15 +538,11 @@ HA queues require a clustered RabbitMQ environment and can be set up in one of t
 * using AMQP 
 * using the web-based management interface
 
-# Code example TODO:
-
 **When a message is published into a queue that’s set up as an HA queue, it’s sent to each server in the cluster that’s responsible for the HA queue (figure 4.7). Once a message is consumed from any node in the cluster, all copies of the message will be immediately removed from the other nodes.**
 
 ![HA_Queues](HA_Queues.png)
 
 HA queues **can span every server in a cluster, or only individual nodes.** To specify individual nodes, instead of passing in an argument of **"x-ha-policy": "all"**, pass in an **"x-ha-policy": "nodes"**  and then another argument, x-ha-nodes containing a list of the nodes the queue should be configured on.
-
-# CODE EXAMPLE TODO:
 
 ***NOTE*** Even if you don’t have node1 , node2 , or node3 defined, RabbitMQ will allow you to define the queue,
 
@@ -576,9 +572,25 @@ Internally, RabbitMQ uses the notion of credits to manage when it’s going to p
 
 **Connection.Blocked** and **Connection.Unblocked** are asynchronous methods that can be sent at any time to notify the client when RabbitMQ has blocked the publishing client and when that block has been removed.
 
-### Checking the connection status with rabbitpy
+### Checking the connection status with Java listener
 
-# CODE EXAMPLE TODO
+```
+ConnectionFactory factory = new ConnectionFactory();
+Connection connection = factory.newConnection();
+connection.addBlockedListener(new BlockedListener() {
+    public void handleBlocked(String reason) throws IOException {
+        // Connection is now blocked
+    }
+
+    public void handleUnblocked() throws IOException {
+        // Connection is now unblocked
+    }
+});
+```
+
+Or you can check RabbitMQ Management page, next to Connection.
+
+![Blocked_Connection](Blocked_Connection.png)
 
 # Chapter 5. Don’t get messages; consume them
 
