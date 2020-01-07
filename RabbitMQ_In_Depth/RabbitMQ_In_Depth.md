@@ -746,6 +746,26 @@ channel.queueDeclare(QUEUE_NAME, false, false, false, Map.of("x-dead-letter-exch
 channel.queueBind(QUEUE_NAME, EXCHANGE_NAME, ROUTING_KEY);
 ```
 
+## Controlling queues
+
+When defining a queue, there are multiple settings that determine a queue’s behavior. Queues can do the following, and more:
+* Auto-delete themselves
+* Allow only one consumer to consume from them
+* Automatically expire messages
+* Keep a limited number of messages
+* Push old messages off the stack
+
+### Temporary queues
+
+#### AUTOMATICALLY DELETING QUEUES
+
+RabbitMQ provides for queues that will delete themselves once they’ve been used and are no longer needed. It’s important to note that any number of consumers can consume from an automatically deleting queue; the queue will only delete itself when there are no more consumers listening to it.
+
+One use case is a chat style application where each queue represents a user’s inbound chat buffer. If a user’s connection is severed, it’s not unreasonable for such an application to expect that the queue and any unread messages should be deleted.
+
+#### ALLOWING ONLY A SINGLE CONSUMER
+
+
 
 
 
