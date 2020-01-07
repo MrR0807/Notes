@@ -706,11 +706,45 @@ channel.basicConsume(QUEUE_NAME, autoAck, deliverCallback, consumerTag -> {});
 
 ### Basic.Nack
 
+**Basic.Reject allows for a single message to be rejected**. Basic.Nack method implements the same behavior as the Basic.Reject response method but it adds the missing multiple argument to complement the Basic.Ack multiple behavior.
+
+***WARNING*** This is not part of AMQP specification.
 
 
+### Dead letter exchanges
 
+RabbitMQ’s dead-letter exchange (DLX) feature is an extension to the AMQP specification and is an optional behavior that can be tied to rejecting a delivered message.
 
+For example, one type of consumer application I’ve written takes XML-based messages and turns them into PDF files using a standard markup language called XSL:FO. By combining the XSL:FO document and the XML from the message, I was able to use Apache’s FOP application to generate a PDF file and subsequently file it electronically. The process worked pretty well, but every now and then it would fail. By using a dead-letter exchange on the queue, I was able to inspect the failing XML documents and manually run them against the XSL:FO document to troubleshoot the failures. Without the dead-letter exchange, I would have had to add code to my consumer that wrote out the XML document to some place where I could then manually process it via the command line. Instead, I was able to interactively run my consumer by pointing it at a different queue.
 
+The only thing that makes an exchange a dead-letter exchange is the declared use of the exchange for rejected messages when creating a queue. Upon rejecting a message that isn’t requeued, RabbitMQ will route the message to the exchanged specified in the **queue’s x-dead-letter-exchange argument (figure 5.11).**
+
+![Dead_Letter_Exchange](Dead_Letter_Exchange.PNG)
+
+Specifying a dead-letter exchange when declaring a queue is fairly trivial. Simply pass in the exchange name as the dead_letter_exchange argument when creating the rabbitpy Queue object or as the x-dead-letter-exchange argument when issuing the Queue.Declare RPC request.
+
+***NOTE***. If routing key is not used, **exchange has to be of type fanout.**
+
+```
+channel.exchangeDeclare("dead-exchange", "fanout");
+channel.queueDeclare("dead-queue", false, false, false, Map.of());
+channel.queueBind("dead-queue", "dead-exchange", "");
+
+channel.exchangeDeclare(EXCHANGE_NAME, "direct");
+channel.queueDeclare(QUEUE_NAME, false, false, false, Map.of("x-dead-letter-exchange", "dead-exchange"));
+channel.queueBind(QUEUE_NAME, EXCHANGE_NAME, ROUTING_KEY);
+```
+If routing key is used, **exchange can be of type direct.**
+```
+channel.exchangeDeclare("dead-exchange", "direct");
+channel.queueDeclare("dead-queue", false, false, false, Map.of());
+channel.queueBind("dead-queue", "dead-exchange", "some-routing-key");
+
+channel.exchangeDeclare(EXCHANGE_NAME, "direct");
+channel.queueDeclare(QUEUE_NAME, false, false, false, Map.of("x-dead-letter-exchange", "dead-exchange",
+        "x-dead-letter-routing-key", "some-routing-key"));
+channel.queueBind(QUEUE_NAME, EXCHANGE_NAME, ROUTING_KEY);
+```
 
 
 
