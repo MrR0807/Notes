@@ -654,7 +654,8 @@ public static void main(String[] args) throws IOException, TimeoutException, NoS
         window.getAndIncrement();
         if (window.get() == prefetchCount) {
             System.out.println("-".repeat(10) + "Window Limit Reached" + "-".repeat(10));
-            sleep(); //Sleep for 10 seconds for seeing the noack messages before in RabbitMQ management page
+            //Sleep for 10 seconds to see the nack messages before ther are acknowledge in RabbitMQ management page
+            sleep();
             channel.basicAck(message.getEnvelope().getDeliveryTag(), true);
             window.getAndSet(0);
         }
@@ -672,6 +673,38 @@ public static void main(String[] args) throws IOException, TimeoutException, NoS
 
 ### Using transactions with consumers
 
+Like when publishing messages into RabbitMQ, transactions allows your consumer applications to commit and roll back batches of operations. **Transactions (AMQP TX class) can have a negative impact on message throughput with one exception. If you aren’t using QoS settings, you may actually see a slight performance improvement when using transactions to batch your message acknowledgments (figure 5.9).**
+
+![Perfomance_Improvement_Batch_Transactions](Perfomance_Improvement_Batch_Transactions.PNG)
+
+## Rejecting messages
+
+Acknowledging messages is a great way to ensure that RabbitMQ knows the consumer has received and processed a message before it discards it, but what happens when a problem is encountered, either with the message or while processing the message? In these scenarios, **RabbitMQ provides two mechanisms for kicking a message back to the broker: Basic.Reject and Basic.Nack**.
+
+### Basic.Reject
+
+Basic.Reject is an AMQP-specified RPC response to a delivered message that informs the broker that the message couldn’t be processed. When a consumer rejects a message, you can instruct RabbitMQ to either discard the message or to requeue the message with the **requeue flag. When the requeue flag is enabled, RabbitMQ will put the message back into the queue to be processed again.**
+
+I often use this feature in writing consumer applications that communicate with other services, such as databases or remote APIs. Instead of writing logic in my consumer for retrying on failure due to a remote exception, such as a disconnected database cursor or failure to contact a remote API, I simply catch the exception and reject the message with requeue set to True.
+
+Also, you can implement "two-strikes and you're out" policy via checking property [isRedeliver()](https://javadoc.io/static/com.rabbitmq/amqp-client/5.7.3/com/rabbitmq/client/Envelope.html#isRedeliver--). 
+
+In code example, check if message was redelivered. If yes, reject and set requeue:false.
+```
+DeliverCallback deliverCallback = (consumerTag, message) -> {
+    consumeMessage(message);
+    if (message.getEnvelope().isRedeliver()) {
+        channel.basicReject(message.getEnvelope().getDeliveryTag(), false);
+    } else {
+        channel.basicReject(message.getEnvelope().getDeliveryTag(), true);
+    }
+};
+
+boolean autoAck = false;
+channel.basicConsume(QUEUE_NAME, autoAck, deliverCallback, consumerTag -> {});
+```
+
+### Basic.Nack
 
 
 
