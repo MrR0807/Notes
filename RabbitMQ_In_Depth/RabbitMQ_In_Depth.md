@@ -614,7 +614,7 @@ In contrast, by consuming messages with the Basic.Consume RPC command, you’re 
 
 As figure 5.5 points out, there are several options that can be used to speed message delivery from RabbitMQ to your application.
 
-![Consumer_Tuning_Perfomance)(Consumer_Tuning_Perfomance.PNG)
+![Consumer_Tuning_Perfomance](Consumer_Tuning_Perfomance.PNG)
 
 ### Using no-ack mode for faster throughput
 
