@@ -827,6 +827,141 @@ channel.queueDeclare("myqueue", false, false, false, args);
 
 # Chapter 6. Message patterns via exchange routing
 
+Four basic types of exchanges:
+* Direct exchange
+* Fanout exchange
+* Topic exchange
+* Headers exchange
+
+## Simple message routing using the direct exchange
+
+The direct exchange is useful when you’re going to deliver a message with a specific target, or a set of targets. **Any queue that’s bound to an exchange with the same routing key that’s being used to publish a message will receive the message.**
+
+![Direct_Exchange](Direct_Exchange.PNG)
+
+This architecture is good for computationally complex processes such as image or video processing, leveraging remote RPC workers. If this application were running in the cloud, for example, the application publishing the request could live on small-scale virtual machines, and the image processing worker could make use of larger hardware
+
+## Broadcasting messages via the fanout exchange
+
+Where a direct exchange allows for queues to receive targeted messages, a fanout exchange doesn’t discriminate. All messages published through a fanout exchange are delivered to all queues in the fanout exchange. **This provides significant performance advantages** because RabbitMQ doesn’t need to evaluate the routing keys when delivering messages, but the lack of selectivity means all applications consuming from queues bound to a fanout exchange should be able to consume messages delivered through it.
+
+**When binding a queue and publishing message in fanout mode, routing key is not taken into consideration.**
+
+Fanout exchanges provide a great way to allow every consumer access to the fire hose of data. This can be a double-edged sword, however, because consumers can’t be selective about the messages they receive.
+
+## Selectively routing messages with the topic exchange
+
+Like direct exchanges, topic exchanges will route messages to any queue bound with a matching routing key. But by using a period-delimited format, queues may bind to routing keys using wildcard-based pattern matching.
+
+**An asterisk (\*) will match all characters up to a period in the routing key, and the pound character (#) will match all characters that follow, including any subsequent periods.**
+
+**There can be as many words in the routing key as you like, up to the limit of 255 bytes.**
+
+A topic exchange is excellent for routing a message to queues so that single-purpose consumers can perform different actions with it.
+
+**Using a topic exchange with namespaced routing keys is a good choice for futureproofing your applications. Even if the pattern matching in routing is overkill for your needs at the start, a topic exchange (used with the right queue bindings) can emulate the behavior of both direct and fanout exchanges.** To emulate the direct exchange behavior, bind queues with the full routing key instead of using pattern matching. Fanout exchange behavior is even easier to emulate, as queues bound with # as the routing key will receive all messages published to a topic exchange. With such flexibility, it’s easy to see why the topic exchange can be a powerful tool in your messagingbased architecture.
+
+## Selective routing with the headers exchange
+
+The fourth built-in exchange type is the headers exchange. It allows for arbitrary routing in RabbitMQ by using the headers table in the message properties. Queues that are bound to the headers exchange use the Queue.Bind arguments parameter to pass in an array of key/value pairs to route on and an x-match argument. **The x-match argument is a string value that’s set to any or all. If the value is any, messages will be routed if any of the headers table values match any of the binding values. If the value of x-match is all, all values passed in as Queue.Bind arguments must be matched.**
+
+Producer:
+
+```
+public static void main(String[] args) throws NoSuchAlgorithmException, KeyManagementException, URISyntaxException {
+    ConnectionFactory factory = new ConnectionFactory();
+    factory.setUri(RABBIT_URI);
+    try (Connection connection = factory.newConnection();
+         Channel channel = connection.createChannel()) {
+
+        channel.exchangeDeclare(EXCHANGE_NAME, BuiltinExchangeType.HEADERS);
+
+        var i = 0;
+        while (i < 5) {
+            //Set true to mandatory field
+            String message = "Hello World! Count: " + i;
+            AMQP.BasicProperties props = new AMQP.BasicProperties.Builder()
+                    .headers(Map.of("x-match", "all", "source", "profile", "object", "image"))
+                    .build();
+            channel.basicPublish(EXCHANGE_NAME, "", props, message.getBytes());
+            i++;
+        }
+        System.out.println("Sent message count: " + i);
+    } catch (TimeoutException | IOException e) {
+        e.printStackTrace();
+    }
+}
+```
+
+Consumer:
+
+```
+private static final String EXCHANGE_NAME = "my-exchange";
+public static final String QUEUE_NAME = "my-queue";
+
+public static void main(String[] args) throws IOException, TimeoutException, NoSuchAlgorithmException, KeyManagementException, URISyntaxException {
+    String url = "amqp://guest:guest@localhost:5672";
+    ConnectionFactory factory = new ConnectionFactory();
+    factory.setUri(url);
+
+    Connection connection = factory.newConnection();
+    Channel channel = connection.createChannel();
+
+    channel.queueDeclare(QUEUE_NAME, false, false, false, Map.of());
+    channel.queueBind(QUEUE_NAME, EXCHANGE_NAME, "", Map.of("x-match", "all", "source", "profile", "object", "image"));
+
+    DeliverCallback deliverCallback = Receive::consumeMessage;
+
+    boolean autoAck = true;
+    channel.basicConsume(QUEUE_NAME, autoAck, deliverCallback, consumerTag -> {});
+}
+```
+
+Conventional wisdom is that the headers exchange is significantly slower than the other exchange types due to the additional computational complexity. But in benchmarking for this chapter, I found that there was no significant difference between any of the built-in exchanges with regard to performance when using the same quantity of values in the headers property.
+
+## Going meta: exchange-to-exchange routing
+
+The mechanism for exchange-toexchange binding is very similar to queue binding, but instead of binding a queue to an exchange, you bind an exchange to another exchange using the Exchange.Bind RPC method.
+
+**When using exchange-to-exchange binding, the routing logic that’s applied to a bound exchange is the same as it would be if the bound object were a queue.**
+
+## Routing messages with the consistent-hashing exchange
+
+The consistent-hashing exchange, a plugin that’s distributed with RabbitMQ, distributes data among the queues that are bound to it. It can be used to load-balance the queues that receive messages published into it. You can use it to distribute messages to queues on different physical servers in a cluster or to queues with single consumers, providing the potential for faster throughput than if RabbitMQ were distributing messages to multiple consumers in a single queue. When using databases or other systems that can directly integrate with RabbitMQ as a consumer, the consistent-hashing exchange can provide a way to shard out data without having to write middleware.
+
+The consistent-hashing exchange uses a consistent-hashing algorithm to pick which queue will receive which message, with all queues being potential destinations. Instead of queues being bound with a routing key or header values, they’re bound with an integerbased weight that’s used as part of the algorithm for determining message delivery. Consistent-hashing algorithms are commonly used in clients for network-based caching systems.
+
+**The consistent-hashing exchange doesn’t roundrobin the messages**, but rather deterministically routes messages based upon a hash value of the routing key or a message properties header-type value.
+
+## Summary
+
+![Exchange_Types_Summary](Exchange_Types_Summary.PNG)
+
+# Managing RabbitMQ in the data center or the cloud
+
+# Chapter 7. Scaling RabbitMQ with clusters
+
+## About clusters
+
+A RabbitMQ cluster creates a seamless view of RabbitMQ across two or more servers. In a RabbitMQ cluster, runtime state containing exchanges, queues, bindings, users, virtual hosts, and policies are available to every node. Because of this shared runtime state, every node in a cluster can bind, publish, or delete an exchange that was created when connected to the first node (figure 7.1).
+
+![Cross_Node_Publishing](Cross_Node_Publishing.PNG)
+
+Despite the advantages of using RabbitMQ’s built-in clustering, it’s important to recognize the limitations and downsides of RabbitMQ clustering. **First, clusters are designed for low-latency environments. You should never create RabbitMQ clusters across a WAN or internet connection. State synchronization and cross-node message delivery demand low-latency communication that can only be achieved on a LAN.** You can run RabbitMQ in cloud environments such as Amazon EC2, but not across availability zones. To synchronize RabbitMQ messages in high-latency environments, you’ll want to look at the Shovel and Federation tools.
+
+Another important issue to consider with RabbitMQ clusters is cluster size. The work and overhead of maintaining the shared state of a cluster is directly proportionate to the number of nodes in the cluster.
+
+### Clusters and the management UI
+
+The Overview page of the management UI contains top-level information about a RabbitMQ cluster and its nodes (figure 7.2).
+
+![Rabbit_UI_Nodes](Rabbit_UI_Nodes.PNG)
+
+### Cluster node types
+
+There are two types of nodes:
+* **Disk Node.** Disk nodes store the runtime state of a cluster to both RAM and disk.
+* **RAM Node.** RAM nodes only store the runtime state information in an in-memory database.
 
 
 
