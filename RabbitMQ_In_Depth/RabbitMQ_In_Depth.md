@@ -357,6 +357,12 @@ In RabbitMQ, each mechanism designed to create delivery guarantees will come wit
 * If you’re batching the publishing of messages that require confirmation of routing and persistence, is there a need for true atomic commits to the destination queues for a message?
 * Are there acceptable trade-offs in reliable delivery that your publishers can use to achieve higher performance and message throughput?
 * What other aspects of message publishing will impact message throughput and performance?
+* Do you need to ensure that all messages are received, or can they be discarded?
+* Can you receive messages and then acknowledge or reject them as a batch operation?
+* If not, can you use transactions to improve performance by automatically batching your individual operations?
+* Do you really need transactional commit and rollback functionality in your consumers?
+* Does your consumer need exclusive access to the messages in the queues it’s consuming from?
+* What should happen when your consumer encounters an error? Should the message be discarded? Requeued? Dead-lettered?
 
 ### What to expect with no guarantees
 
@@ -818,6 +824,9 @@ Map<String, Object> args = new HashMap<String, Object>();
 args.put("x-max-length", 10);
 channel.queueDeclare("myqueue", false, false, false, args);
 ```
+
+# Chapter 6. Message patterns via exchange routing
+
 
 
 
