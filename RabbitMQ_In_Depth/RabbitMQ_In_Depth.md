@@ -765,10 +765,59 @@ One use case is a chat style application where each queue represents a user’s 
 
 #### ALLOWING ONLY A SINGLE CONSUMER
 
+Without the exclusive setting enabled on a queue, RabbitMQ allows for very promiscuous consumer behavior. It sets no restrictions on the number of consumers that can connect to a queue and consume from it.
 
+**A queue that’s declared as exclusive may only be consumed by the same connection and channel that it was declared on**, unlike queues that are declared with **auto_delete** set to True, which can have any number of consumers from any number of connections. An exclusive queue will also automatically be deleted when the channel that the queue was created on is closed, which is similar to how a queue that has auto-delete set will be removed once there are no more consumers subscribed to it.
 
+#### AUTOMATICALLY EXPIRING QUEUES
 
+While we’re on the subject of queues that are automatically deleted, RabbitMQ allows for an optional argument when declaring a queue that will tell RabbitMQ to delete the queue if it has gone unused for some length of time.
 
+Creating an automatically expiring queue is as simple as declaring a queue with an x-expires argument with the queue’s time to live (TTL) specified in milliseconds.
+
+```
+Map<String, Object> args = new HashMap<String, Object>();
+args.put("x-message-ttl", 60000);
+channel.queueDeclare("myqueue", false, false, false, args);
+```
+
+There are some strict rules around automatically expiring queues:
+* The queue will only expire if it has no consumers
+* The queue will only expire if there has been no Basic.Get request for the TTL duration
+* As with any other queue, the settings and arguments declared with an x-expires argument can’t be redeclared or changed
+* RabbitMQ makes no guarantees about how promptly it will remove the queue post expiration
+
+[More on this topic](https://www.rabbitmq.com/ttl.html)
+
+### Permanent queues
+
+#### QUEUE DURABILITY
+
+When declaring a queue that should persist across server restarts, the durable flag should be set to True. Often queue durability is confused with message persistence. As we discussed in the previous chapter, messages are stored on disk when a message is published with the delivery-mode property set to 2. The durable flag, in contrast, instructs RabbitMQ that you want the queue to be configured until a Queue.Delete request is called.
+
+**Durability of a queue does not make messages that are routed to that queue durable. If broker is taken down and then brought back up, durable queue will be re-declared during broker startup, however, only persistent messages will be recovered.**
+
+#### AUTO-EXPIRATION OF MESSAGES IN A QUEUE
+
+With non-mission-critical messages, sometimes it’s better to have them automatically go away if they hang around too long without being consumed.
+
+```
+byte[] messageBodyBytes = "Hello, world!".getBytes();
+AMQP.BasicProperties properties = new AMQP.BasicProperties.Builder()
+                                   .expiration("60000")
+                                   .build();
+channel.basicPublish("my-exchange", "routing-key", properties, messageBodyBytes);
+```
+
+#### MAXIMUM LENGTH QUEUES
+
+As of RabbitMQ 3.1.0, queues may be declared with a maximum size. If you set the x-max-length argument on a queue, once it reaches the maximum size, RabbitMQ will drop messages from the front of the queue as new messages are added.
+
+```
+Map<String, Object> args = new HashMap<String, Object>();
+args.put("x-max-length", 10);
+channel.queueDeclare("myqueue", false, false, false, args);
+```
 
 
 
