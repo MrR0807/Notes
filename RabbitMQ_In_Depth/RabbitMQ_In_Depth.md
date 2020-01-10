@@ -993,7 +993,6 @@ Alternatively, you can add and remove nodes from a cluster in an ad hoc manner b
 
 To secure multi-node communication, Erlang and the RabbitMQ process have a **shared secret file called a cookie.**
 
-
 The Erlang cookie file for RabbitMQ is contained in the RabbitMQ data directory. On \*NIX platforms, the file is usually at /var/lib/rabbitmq/.erlang.cookie, though this can vary by distribution and package. The cookie file contains a short string and should be the same on every node in a cluster. If the cookie file isn’t the same on each node in the cluster, the nodes won’t be able to communicate with each other.
 
 The cookie file will be created the first time you run RabbitMQ on any given server, or if the file is missing. **When setting up a cluster, you should ensure that RabbitMQ isn’t running and you overwrite the cookie file with the shared cookie file prior to starting RabbitMQ again.**
@@ -1039,7 +1038,9 @@ Starting node rabbit@secondary ...
 ```
 Congratulations! You now have a running RabbitMQ cluster with two nodes.
 
+# TODO
 
+# Chapter 8. Cross-cluster message distribution
 
 
 
