@@ -963,15 +963,81 @@ There are two types of nodes:
 * **Disk Node.** Disk nodes store the runtime state of a cluster to both RAM and disk.
 * **RAM Node.** RAM nodes only store the runtime state information in an in-memory database.
 
+#### THE STATS NODE
+
+The stats node only works in conjunction with disk nodes. The stats node is responsible for gathering all of the statistical and state data from each node in a cluster. **Only one node in a cluster can be the stats node at any given time.**
+
+A good strategy for larger cluster setups is to have a dedicated management node that’s your primary disk node and the stats node, and to have at least one more disk node to provide failover capabilities (figure 7.3).
+
+![Stats_Node](Stats_Node.PNG)
+
+In a cluster topology setup with two disk nodes, if the primary node fails, the stats node designation will be transferred to the secondary disk node. Should the primary disk node come back up, it will not regain the stats node designation unless the secondary disk node with the stats node designation stops or leaves the cluster.
+
+The stats node plays an important part in managing your RabbitMQ clusters. Without the rabbitmq-management plugin and a stats node, it can be difficult to get clusterwide visibility of performance, connections, queue depths, and operational issues.
+
+### Clusters and queue behavior
+
+#### HIGHLY AVAILABLE QUEUES
+
+In large clusters, you should consider just how many nodes your queue should use prior to declaring it. Because HA queues have a copy of each message on each node, you should ask yourself if you need more than two or three nodes to ensure that you don’t lose any messages.
+
+## Cluster setup
+
+### Adding nodes to the cluster
+
+There are two ways to add nodes to a cluster with RabbitMQ. The first involves editing the rabbitmq.config configuration file and defining each node in a cluster. This method is preferred if you’re using an automated configuration management tool.
+
+Alternatively, you can add and remove nodes from a cluster in an ad hoc manner by using the rabbitmqctl command-line tool.
+
+#### ERLANG COOKIES
+
+To secure multi-node communication, Erlang and the RabbitMQ process have a **shared secret file called a cookie.**
 
 
+The Erlang cookie file for RabbitMQ is contained in the RabbitMQ data directory. On \*NIX platforms, the file is usually at /var/lib/rabbitmq/.erlang.cookie, though this can vary by distribution and package. The cookie file contains a short string and should be the same on every node in a cluster. If the cookie file isn’t the same on each node in the cluster, the nodes won’t be able to communicate with each other.
 
+The cookie file will be created the first time you run RabbitMQ on any given server, or if the file is missing. **When setting up a cluster, you should ensure that RabbitMQ isn’t running and you overwrite the cookie file with the shared cookie file prior to starting RabbitMQ again.**
 
+#### CREATING AD HOC CLUSTERS
 
+To do so, you must first tell RabbitMQ on the secondary node to stop using rabbitmqctl. You won’t be stopping the RabbitMQ server process itself, but using rabbitmq to instruct RabbitMQ to halt internal processes in Erlang that allow it to process connections. Run the following command in the terminal:
+```
+rabbitmqctl stop_app
+```
 
-
-
-
+You should see output similar to the following:
+```
+Stopping node rabbit@secondary ...
+...done.
+```
+Now that the process has stopped, you need to erase the state in this RabbitMQ node, making it forget any runtime configuration data or state that it has. To do this, you’ll instruct it to reset its internal database:
+```
+rabbitmqctl reset
+```
+You should see a response similar to this:
+```
+Resetting node rabbit@secondary ...
+...done.
+```
+Now you can join it to the primary node and form the cluster:
+```
+rabbitmqctl join_cluster rabbit@primary
+```
+This should return with the following output:
+```
+Clustering node rabbit@secondary with rabbit@primary ...
+...done.
+```
+Finally, start the server again using the following command:
+```
+rabbitmqctl start_app
+```
+You should see the output that follows:
+```
+Starting node rabbit@secondary ...
+...done.
+```
+Congratulations! You now have a running RabbitMQ cluster with two nodes.
 
 
 
