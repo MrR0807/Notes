@@ -1116,6 +1116,40 @@ The Federation Upstreams tab is the first place you’ll go to start the configu
 
 **The full specification for URI can be found [here](https://www.rabbitmq.com/uri-spec.html).**
 
+The connection won’t be used until a policy is created that references the upstream. When a policy is applied using the upstream, the federation plugin will connect to the upstream node. Should it be disconnected due to a routing error or some other network event, the default behavior is to try to reconnect once per second.
+
+![Federation_Upstream_Input](Federation_Upstream_Input.PNG)
+
+### Defining a policy
+
+Federation configuration is managed using RabbitMQ’s policy system, which provides a flexible way to dynamically configure the rules that tell the federation plugin what to do. When you create a policy, you first specify a policy name and a pattern. The pattern can either evaluate for direct string matching or it can specify a regular expression (regex) pattern to match against RabbitMQ objects. The pattern can be compared against exchanges, queues, or both exchanges and queues. Policies can also specify a priority that’s used to determine which policy should be applied to queues or exchanges that match multiple policies. When a queue or exchange is matched by multiple policies, the policy with the highest priority value wins.
+
+For a first example, you’ll create a policy named federation-test that will do string-equality checking against an exchange named test (figure 8.17). To tell the federation plugin that you want to federate the exchange from the cluster-a upstream, enter a key of federation-upstream with a value of cluster-a in the definition table. Once you’ve entered that information, click the Add Policy button to add it to the system.
+
+![Federation_Policy](Federation_Policy.PNG)
+
+With the policy added, you’ll need to add the test exchange to both nodes. You can use the Exchanges tab of each management interface to add the exchange. To prevent the cluster-b node from trying to federate a non-existent exchange on the cluster-a node, declare the exchange on the cluster-a node first. You can use any of the built-in exchange types, but I recommend using a topic exchange for flexibility in experimenting. Whichever type you select, you should **be consistent and use the same exchange type for the test exchange on both cluster-a and cluster-b.**
+
+**Example**
+
+In downstream RabbitMQ add "Federation Upstream". ***Name*** has to be equal to the name of the RabbitMQ.
+
+![Add_Federation_Upstream_Example](Add_Federation_Upstream_Example.PNG)
+
+Add policy. ***federation-upstream*** has to be equal to upstream RabbitMQ.
+
+![Add_Federation_Policy](Add_Federation_Policy.PNG)
+
+Add exchange to upstream RabbitMQ.Add exchange to downstream RabbitMQ.
+
+![Upstream_Exchanges](Upstream_Exchanges.PNG)
+![Downstream_Exchanges](Downstream_Exchanges.PNG)
+
+
+
+
+
+
 
 
 
