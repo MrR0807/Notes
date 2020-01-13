@@ -1112,7 +1112,9 @@ Then Federation tabs will appear.
 
 ![RabbitMQ_With_Federation_Enabled.PNG](RabbitMQ_With_Federation_Enabled)
 
+The Federation Upstreams tab is the first place you’ll go to start the configuration process. Only the name and AMQP URI for the connection are required. In a production environment, you’ll likely want to configure the other options as well.
 
+**The full specification for URI can be found [here](https://www.rabbitmq.com/uri-spec.html).**
 
 
 
