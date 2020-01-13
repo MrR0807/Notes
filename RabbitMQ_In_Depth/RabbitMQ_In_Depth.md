@@ -1145,77 +1145,40 @@ Add exchange to upstream RabbitMQ.Add exchange to downstream RabbitMQ.
 ![Upstream_Exchanges](Upstream_Exchanges.PNG)
 ![Downstream_Exchanges](Downstream_Exchanges.PNG)
 
+To help identify messages that were distributed via federation, the federation plugin adds an **x-received-from** field to the headers table in the message properties. The value of the field is a key/value table that includes the upstream uri, exchange, cluster-name, and a flag indicating if the message was redelivered.
 
+### Leveraging upstream sets
 
+In addition to defining individual upstream nodes, the federation plugin provides the ability to group multiple nodes together for use in a policy.
 
+#### PROVIDING REDUNDANCY
 
+For example, imagine your upstream node is part of a cluster. You could create an upstream set that defines each node in the upstream cluster, allowing the downstream node to connect to every node in the cluster, ensuring that should any one node go down, messages published into the upstream cluster won’t be missed downstream (figure 8.21).
 
+#### CREATING AN UPSTREAM SET
 
+TODO
 
 
+#### Bidirectional federated exchanges
 
+The examples in this chapter have thus far covered distributing messages from an upstream exchange to a downstream exchange, but federated exchanges can be set up to be bidirectional.
 
+In a bidirectional setup, messages can be published into either node, and using the default configuration, they’ll only be routed once on each node. This setting can be tweaked by the max-hops setting in the upstream configuration. The default value of 1 for max-hops prevents message loops where messages received from an upstream node are cyclically sent back to the same node.
 
+![Bidirectional_Federation](Bidirectional_Federation.PNG)
 
+It’s important to recognize that like any graph structure, the more nodes you add, the more complex things become.
 
+### Federation for cluster upgrades
 
+One of the more difficult operational concerns with managing a RabbitMQ cluster is handling upgrades in a production environment where downtime is undesirable.
 
+If the cluster is large enough, you can move all traffic off a node, remove it from the cluster, and upgrade it. Then you could take another node offline, remove it from the cluster, upgrade it, and add it to a new cluster consisting of the node that was removed first.
 
+Alternatively, provided that you have the resources to set up a mirror of the cluster setup on a new version of the cluster, federation can provide a seamless way to migrate your messaging traffic from one cluster to another.
+When using federation as a means to upgrade RabbitMQ, you start by rolling out the new cluster, creating the same runtime configuration on the new cluster, including virtual hosts, users, exchanges, and queues. Once you’ve set up and configured the new cluster, add the federation configuration, including the upstreams and policies to wildcard-match on all exchanges.
 
+As you migrate the consumers off a queue, you should unbind the queue on the old cluster, but don’t delete it. Instead, you can create a temporary policy on the new cluster to federate that queue, moving the messages from the old cluster to the new one. It’s advisable to automate this process as much as possible, because you want to minimize the chance of duplicate messages being added to the new cluster’s queues due to using both the federated exchange and the federated queue.
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+Once you’ve finished moving all of the consumers off, and you’ve unbound the queues on the old cluster, you can migrate the publishers. When all of your publishers have been moved, you should be fully migrated to the upgraded RabbitMQ cluster. Of course, you may want to keep the federation going for a while to ensure that no rogue publishers are connecting to the old cluster when they’re not expected to do so.
