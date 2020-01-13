@@ -1042,6 +1042,112 @@ Congratulations! You now have a running RabbitMQ cluster with two nodes.
 
 # Chapter 8. Cross-cluster message distribution
 
+Federation plugin provides two different ways to get messages from one cluster to another:
+* By using a **federated exchange**, messages published to an exchange in another RabbitMQ server or cluster are automatically routed to bound exchanges and queues on the downstream host. 
+* Alternatively, if your needs are more specific, **federated queues** provide a way to target the messages in a single queue instead of an exchange. Federated queues, on the other hand, allow for downstream nodes to act as consumers of shared queues on upstream nodes, **providing the ability to roundrobin messages across multiple downstream nodes.**
+
+### Federated exchanges
+
+When the federated server is set up, all you have to do is create policies that apply to the exchanges you need the messages from. If the upstream RabbitMQ server has an exchange called events that the login, article, and comment messages are published into, your downstream RabbitMQ server should create a federation policy matching that exchange name.
+
+Once RabbitMQ is publishing messages from the upstream server to the downstream queue, you don’t have to worry about what will happen if the internet connectivity is severed between the two. When connectivity is restored, RabbitMQ will dutifully reconnect to the main RabbitMQ cluster and start locally queuing all of the messages that were published by the website while the connection was down.
+
+### Federated queues
+
+This is especially useful for messaging workloads where a particular queue may have heavy spikes of publishing activity and much slower or throttled consuming. When using a federated queue, message publishers use the upstream node or cluster, and messages are distributed to the same-named queue across all downstream nodes.
+
+Like the upstream queue, downstream queues can exist on a single node or as part of an HA queue in a cluster. **The federation plugin ensures that downstream queues will only receive messages when the queues have consumers available for processing messages.
+By checking the consumer count for each queue and only binding to the upstream node when consumers are present, it prevents idle messages from collecting in consumerless queues.**
+
+## Connecting upstream
+
+Federation configuration has **two parts: the upstream configuration and a federation policy.** 
+First, the downstream node is configured with the information required for the node to make an AMQP connection to the upstream node. Then policies are created that apply upstream connections and configuration options to downstream exchanges or queues. A single RabbitMQ server can have many federation upstreams and many federation policies.
+
+### Defining federation upstreams
+
+When installed, the federation management plugin adds two new Admin tabs to the RabbitMQ management interface: Federation Status and Federation Upstreams.
+
+When launching RabbitMQ in docker for the first time, **federation plugin will not be enabled.** You won't see "Federation Status" and "Federation Upstream"
+
+![RabbitMQ_With_Federation_Disabled](RabbitMQ_With_Federation_Disabled.PNG)
+
+To enable federation, run:
+```
+rabbitmq-plugins enable rabbitmq_federation
+```
+Output will be something like this:
+```
+Enabling plugins on node rabbit@rabbit_three:
+rabbitmq_federation
+The following plugins have been configured:
+  rabbitmq_federation
+  rabbitmq_management
+  rabbitmq_management_agent
+  rabbitmq_web_dispatch
+Applying plugin configuration to rabbit@rabbit_three...
+The following plugins have been enabled:
+  rabbitmq_federation
+```
+And then enable federation plugin management:
+```
+rabbitmq-plugins enable rabbitmq_federation_management
+```
+Output:
+```
+Enabling plugins on node rabbit@rabbit_three:
+rabbitmq_federation_management
+The following plugins have been configured:
+  rabbitmq_federation
+  rabbitmq_federation_management
+  rabbitmq_management
+  rabbitmq_management_agent
+  rabbitmq_web_dispatch
+Applying plugin configuration to rabbit@rabbit_three...
+The following plugins have been enabled:
+  rabbitmq_federation_management
+```
+
+Then Federation tabs will appear.
+
+![RabbitMQ_With_Federation_Enabled.PNG](RabbitMQ_With_Federation_Enabled)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
