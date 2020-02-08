@@ -42,7 +42,7 @@ Similar in concept to channels on a two-way radio, the AMQP specification define
 ## AMQP’s RPC frame structure
 
 Very similar in concept to object-oriented programming in languages such as C++, Java, and Python, AMQP uses classes and methods, referred to as AMQP commands, to create a common language between clients and servers. The classes in AMQP define a scope of functionality, and each class contains methods that perform different tasks.
-![AMQP_Class_Function](AMQP_Class_Function.PNG).
+![AMQP_Class_Function](pictures/AMQP_Class_Function.PNG).
 
 ### AMQP frame components
 
@@ -55,7 +55,7 @@ As figure 2.3 illustrates, a low-level AMQP frame is composed of five distinct c
 * Frame payload
 * End-byte marker (ASCII value 206)
 
-![AMQP_Frame_Anatomy](AMQP_Frame_Anatomy.PNG).
+![AMQP_Frame_Anatomy](pictures/AMQP_Frame_Anatomy.PNG).
 
 A low-level AMQP frame starts off with three fields, referred to as a **frame header** when combined:
 * First field is a single byte indicating the frame type
@@ -81,7 +81,7 @@ As figure 2.4 illustrates, when sending a message to RabbitMQ, a Basic.Publish c
 
 ***NOTE***. Although the default frame size is 131 KB, client libraries can negotiate a larger or smaller maximum frame size during the connection process, up to a 32-bit value for the number of bytes in a frame.
 
-![Single_Message_Composed_Of_Frames](Single_Message_Composed_Of_Frames.png)
+![Single_Message_Composed_Of_Frames](pictures/Single_Message_Composed_Of_Frames.png)
 
 The content in the method frame and content header frame is binary packed data and is not human-readable. The message content carried inside the body frame isn’t packed or encoded and may be anything from plain text to binary image data.
 
@@ -89,7 +89,7 @@ The content in the method frame and content header frame is binary packed data a
 
 Method frames carry with them the class and method your RPC request is going to make as well as the arguments that are being passed along for processing.
 
-![Anatomy_Of_Method_Frame](Anatomy_Of_Method_Frame.png)
+![Anatomy_Of_Method_Frame](pictures/Anatomy_Of_Method_Frame.png)
 
 ***NOTE*** In fact, the AMQP specification goes as far as to say that success, as a general rule, is silent, whereas errors should be as noisy and intrusive as possible. But if you’re using the mandatory flag when publishing your messages, your application should be listening for a Basic.Return command sent from RabbitMQ. If RabbitMQ isn’t able to meet the requirements set by the mandatory flag, it will send a Basic.Return command to your client on the same channel.
 
@@ -97,13 +97,13 @@ Method frames carry with them the class and method your RPC request is going to 
 
 The header frame also carries attributes about your message that describe the message to both the RabbitMQ server and to any application that may receive it. These attributes, as values in a **Basic.Properties** table, may contain data that describes the **content of your message or they may be completely blank.** Most client libraries will prepopulate a minimal set of fields, such as the content type and the delivery mode.
 
-![Anatomy_Of_Method_Frame](Anatomy_Of_Method_Frame.png)
+![Anatomy_Of_Method_Frame](pictures/Anatomy_Of_Method_Frame.png)
 
 ### The body frame
 
 The body frame for a message is agnostic to the type of data being transferred, and it may contain either binary or text data.
 
-![Anatomy_Of_Body_Frame](Anatomy_Of_Body_Frame.png)
+![Anatomy_Of_Body_Frame](pictures/Anatomy_Of_Body_Frame.png)
 
 ## Putting the protocol to use
 
@@ -113,13 +113,13 @@ There are a few configuration-related steps you must take care of before you can
 
 **Exchanges are created using the Exchange.Declare command**, which has arguments that define the name of the exchange, its type, and other metadata that may be used for message processing. Once the command has been sent and RabbitMQ has created the exchange, an Exchange.DeclareOk method frame is sent in response (figure 2.8). **If, for whatever reason, the command should fail, RabbitMQ will close the channel that the Exchange.Declare command was sent on by sending a *Channel.Close* command.** This response will include a numeric reply code and text value indicating why the Exchange.Declare failed and the channel was closed.
 
-![Declare_Exchange](Declare_Exchange.png)
+![Declare_Exchange](pictures/Declare_Exchange.png)
 
 ### Declaring a queue
 
 Once the exchange has been created, it’s time to create a queue by sending a Queue.Declare command to RabbitMQ. Like the Exchange.Declare command, there’s a simple communication sequence that takes place (figure 2.9), and should the Queue.Declare command fail, the channel will be closed.
 
-![Declare_Queue](Declare_Queue.png)
+![Declare_Queue](pictures/Declare_Queue.png)
 
 **When declaring a queue, there’s no harm in issuing the same Queue.Declare command more than once.**
 
@@ -127,7 +127,7 @@ Once the exchange has been created, it’s time to create a queue by sending a Q
 
 Once the exchange and queue have been created, it’s time to bind them together. Like with Queue.Declare , the command to bind a queue to an exchange, Queue.Bind, can only specify one queue at a time.
 
-![Queue_Bind](Queue_Bind.png)
+![Queue_Bind](pictures/Queue_Bind.png)
 
 ### Publishing a message to RabbitMQ
 
@@ -135,7 +135,7 @@ As you previously learned, when publishing messages to RabbitMQ, multiple frames
 
 The **Basic.Publish** method frame carries with it the exchange name and routing key for the message. When evaluating this data, RabbitMQ will try to match the exchange name in the Basic.Publish frame against its database of configured exchanges.
 
-![Publishing_A_Message](Publishing_A_Message.png)
+![Publishing_A_Message](pictures/Publishing_A_Message.png)
 
 ***NOTE*** By default, if you’re publishing messages with an exchange that doesn’t exist in RabbitMQ’s configuration, it will silently drop the messages.
 
@@ -147,7 +147,7 @@ To consume messages from a queue in RabbitMQ, a consumer application subscribes 
 
 At RabbitMQ’s discretion, the consumer will start receiving messages of **Basic.Deliver methods** and their content header and body frame counterparts.
 
-![Consuming_Messages](Consuming_Messages.png)
+![Consuming_Messages](pictures/Consuming_Messages.png)
 
 If a consumer wants to stop receiving messages, it can issue a **Basic.Cancel** command. It’s worth noting that this command is issued asynchronously while RabbitMQ may still be sending messages, so a consumer can still receive any number of messages RabbitMQ has preallocated for it prior to receiving a Basic.CancelOk response frame.
 
@@ -186,8 +186,8 @@ public static void main(String[] args) throws NoSuchAlgorithmException, KeyManag
 
 This creates explicit Exchange named "chapter2-example".
 
-![RabbitMQ_Specific_Exchange](RabbitMQ_Specific_Exchange.PNG)
-![RabbitMQ_Specific_Exchange_2](RabbitMQ_Specific_Exchange_2.PNG)
+![RabbitMQ_Specific_Exchange](pictures/RabbitMQ_Specific_Exchange.PNG)
+![RabbitMQ_Specific_Exchange_2](pictures/RabbitMQ_Specific_Exchange_2.PNG)
 
 It is possible to use default Exchange.
 
@@ -263,7 +263,7 @@ private static void consumeMessage(Channel channel, Delivery message) throws IOE
 
 The message properties contained in the header frame are a predefined set of values specified by the Basic.Properties data structure (figure 3.2).
 
-![Basic_Properties](Basic_Properties.png)
+![Basic_Properties](pictures/Basic_Properties.png)
 
 ## Creating an explicit message contract with content-type
 
@@ -329,7 +329,7 @@ The reply-to property has no formally defined behavior and is also specified for
 
 The **headers** property is a key/value table that allows for arbitrary, user-defined keys and values. Keys can be ASCII or Unicode strings that have a maximum length of 255 characters. Values can be any valid AMQP value type.
 
-![Headers_Property](Headers_Property.png)
+![Headers_Property](pictures/Headers_Property.png)
 
 ## The priority property
 
@@ -339,13 +339,13 @@ The **headers** property is a key/value table that allows for arbitrary, user-de
 
 ## Summary
 
-![Properties_Summary_Table](Properties_Summary_Table.png)
+![Properties_Summary_Table](pictures/Properties_Summary_Table.png)
 
 # Chapter 4. Performance trade-offs in publishing
 
 ## Balancing delivery speed with guaranteed delivery
 
-![Performance_trade-offs](Performance_trade-offs.PNG)
+![Performance_trade-offs](pictures/Performance_trade-offs.PNG)
 
 In RabbitMQ, each mechanism designed to create delivery guarantees will come with some impact on performance. Only by performing your own performance benchmarks can you determine the acceptable trade-off of performance versus guaranteed delivery. The following questions can help find the right balance between high performance and message safety:
 * How important is it that messages are guaranteed to be enqueued when published?
@@ -436,7 +436,7 @@ The Basic.Return call is an asynchronous call from RabbitMQ, and it may happen a
 
 The **Publisher Confirms** feature in RabbitMQ is an enhancement to the AMQP specification and is **only supported by client libraries that support RabbitMQ-specific extensions**. **Storing messages on disk** is an important step in preventing message loss, but **doesn’t assure the publisher that a message was delivered.** Prior to publishing any messages, a message publisher must issue a Confirm.Select RPC request to RabbitMQ and wait for a Confirm.SelectOk response to know that delivery confirmations are enabled. At that point, for each message that a publisher sends to RabbitMQ, the server will respond with an acknowledgement response (Basic.Ack) or a negative acknowledgement response (Basic.Nack) (figure 4.4).
 
-![Publisher_Confirms](Publisher_Confirms.PNG)
+![Publisher_Confirms](pictures/Publisher_Confirms.PNG)
 
 A Basic.Ack request is sent to a publisher when a message that it has published has been directly consumed by consumer applications on all queues it was routed to, or when the message was enqueued and persisted if requested. Publisher Confirms don’t work in conjunction with transactions and is considered a lightweight and more performant alternative to the AMQP TX process.
 
@@ -528,7 +528,7 @@ Before there were delivery confirmations, the only way you could be sure a messa
 
 The transactional mechanism provides a method by which a publisher can be **notified of the successful delivery of a message to a queue on the RabbitMQ broker.** To begin a transaction, the publisher sends a TX.Select RPC request to RabbitMQ, and RabbitMQ will respond with a TX.SelectOk response. Once the transaction has been opened, the publisher may send one or more messages to RabbitMQ (figure 4.6).
 
-![Publisher_Transactions](Publisher_Transactions.PNG)
+![Publisher_Transactions](pictures/Publisher_Transactions.PNG)
 
 When RabbitMQ is unable to route a message due to an error, such as a non-existent exchange, it will return the message with a Basic.Return response prior to sending a TX.CommitOk response. Publishers wishing to abort a transaction should send a TX.Rollback RPC request and wait for a TX.RollbackOk response from the broker prior to continuing.
 
@@ -546,7 +546,7 @@ HA queues require a clustered RabbitMQ environment and can be set up in one of t
 
 **When a message is published into a queue that’s set up as an HA queue, it’s sent to each server in the cluster that’s responsible for the HA queue (figure 4.7). Once a message is consumed from any node in the cluster, all copies of the message will be immediately removed from the other nodes.**
 
-![HA_Queues](HA_Queues.png)
+![HA_Queues](pictures/HA_Queues.png)
 
 HA queues **can span every server in a cluster, or only individual nodes.** To specify individual nodes, instead of passing in an argument of **"x-ha-policy": "all"**, pass in an **"x-ha-policy": "nodes"**  and then another argument, x-ha-nodes containing a list of the nodes the queue should be configured on.
 
@@ -596,7 +596,7 @@ connection.addBlockedListener(new BlockedListener() {
 
 Or you can check RabbitMQ Management page, next to Connection.
 
-![Blocked_Connection](Blocked_Connection.png)
+![Blocked_Connection](pictures/Blocked_Connection.png)
 
 # Chapter 5. Don’t get messages; consume them
 
@@ -614,13 +614,13 @@ In simple message velocity tests, using **Basic.Consume is at least twice as fas
 
 In contrast, by consuming messages with the Basic.Consume RPC command, you’re registering your application with RabbitMQ and telling it to send messages asynchronously to your consumer as they become available.
 
-![Basic_Consume](Basic_Consume.PNG)
+![Basic_Consume](pictures/Basic_Consume.PNG)
 
 ## Performance-tuning consumers
 
 As figure 5.5 points out, there are several options that can be used to speed message delivery from RabbitMQ to your application.
 
-![Consumer_Tuning_Perfomance](Consumer_Tuning_Perfomance.PNG)
+![Consumer_Tuning_Perfomance](pictures/Consumer_Tuning_Perfomance.PNG)
 
 ### Using no-ack mode for faster throughput
 
@@ -681,7 +681,7 @@ public static void main(String[] args) throws IOException, TimeoutException, NoS
 
 Like when publishing messages into RabbitMQ, transactions allows your consumer applications to commit and roll back batches of operations. **Transactions (AMQP TX class) can have a negative impact on message throughput with one exception. If you aren’t using QoS settings, you may actually see a slight performance improvement when using transactions to batch your message acknowledgments (figure 5.9).**
 
-![Perfomance_Improvement_Batch_Transactions](Perfomance_Improvement_Batch_Transactions.PNG)
+![Perfomance_Improvement_Batch_Transactions](pictures/Perfomance_Improvement_Batch_Transactions.PNG)
 
 ## Rejecting messages
 
@@ -725,7 +725,7 @@ For example, one type of consumer application I’ve written takes XML-based mes
 
 The only thing that makes an exchange a dead-letter exchange is the declared use of the exchange for rejected messages when creating a queue. Upon rejecting a message that isn’t requeued, RabbitMQ will route the message to the exchanged specified in the **queue’s x-dead-letter-exchange argument (figure 5.11).**
 
-![Dead_Letter_Exchange](Dead_Letter_Exchange.PNG)
+![Dead_Letter_Exchange](pictures/Dead_Letter_Exchange.PNG)
 
 Specifying a dead-letter exchange when declaring a queue is fairly trivial. Simply pass in the exchange name as the dead_letter_exchange argument when creating the rabbitpy Queue object or as the x-dead-letter-exchange argument when issuing the Queue.Declare RPC request.
 
@@ -837,7 +837,7 @@ Four basic types of exchanges:
 
 The direct exchange is useful when you’re going to deliver a message with a specific target, or a set of targets. **Any queue that’s bound to an exchange with the same routing key that’s being used to publish a message will receive the message.**
 
-![Direct_Exchange](Direct_Exchange.PNG)
+![Direct_Exchange](pictures/Direct_Exchange.PNG)
 
 This architecture is good for computationally complex processes such as image or video processing, leveraging remote RPC workers. If this application were running in the cloud, for example, the application publishing the request could live on small-scale virtual machines, and the image processing worker could make use of larger hardware
 
@@ -935,7 +935,7 @@ The consistent-hashing exchange uses a consistent-hashing algorithm to pick whic
 
 ## Summary
 
-![Exchange_Types_Summary](Exchange_Types_Summary.PNG)
+![Exchange_Types_Summary](pictures/Exchange_Types_Summary.PNG)
 
 # Managing RabbitMQ in the data center or the cloud
 
@@ -945,7 +945,7 @@ The consistent-hashing exchange uses a consistent-hashing algorithm to pick whic
 
 A RabbitMQ cluster creates a seamless view of RabbitMQ across two or more servers. In a RabbitMQ cluster, runtime state containing exchanges, queues, bindings, users, virtual hosts, and policies are available to every node. Because of this shared runtime state, every node in a cluster can bind, publish, or delete an exchange that was created when connected to the first node (figure 7.1).
 
-![Cross_Node_Publishing](Cross_Node_Publishing.PNG)
+![Cross_Node_Publishing](pictures/Cross_Node_Publishing.PNG)
 
 Despite the advantages of using RabbitMQ’s built-in clustering, it’s important to recognize the limitations and downsides of RabbitMQ clustering. **First, clusters are designed for low-latency environments. You should never create RabbitMQ clusters across a WAN or internet connection. State synchronization and cross-node message delivery demand low-latency communication that can only be achieved on a LAN.** You can run RabbitMQ in cloud environments such as Amazon EC2, but not across availability zones. To synchronize RabbitMQ messages in high-latency environments, you’ll want to look at the Shovel and Federation tools.
 
@@ -955,7 +955,7 @@ Another important issue to consider with RabbitMQ clusters is cluster size. The 
 
 The Overview page of the management UI contains top-level information about a RabbitMQ cluster and its nodes (figure 7.2).
 
-![Rabbit_UI_Nodes](Rabbit_UI_Nodes.PNG)
+![Rabbit_UI_Nodes](pictures/Rabbit_UI_Nodes.PNG)
 
 ### Cluster node types
 
@@ -969,7 +969,7 @@ The stats node only works in conjunction with disk nodes. The stats node is resp
 
 A good strategy for larger cluster setups is to have a dedicated management node that’s your primary disk node and the stats node, and to have at least one more disk node to provide failover capabilities (figure 7.3).
 
-![Stats_Node](Stats_Node.PNG)
+![Stats_Node](pictures/Stats_Node.PNG)
 
 In a cluster topology setup with two disk nodes, if the primary node fails, the stats node designation will be transferred to the secondary disk node. Should the primary disk node come back up, it will not regain the stats node designation unless the secondary disk node with the stats node designation stops or leaves the cluster.
 
@@ -1070,7 +1070,7 @@ When installed, the federation management plugin adds two new Admin tabs to the 
 
 When launching RabbitMQ in docker for the first time, **federation plugin will not be enabled.** You won't see "Federation Status" and "Federation Upstream"
 
-![RabbitMQ_With_Federation_Disabled](RabbitMQ_With_Federation_Disabled.PNG)
+![RabbitMQ_With_Federation_Disabled](pictures/RabbitMQ_With_Federation_Disabled.PNG)
 
 To enable federation, run:
 ```
@@ -1110,7 +1110,7 @@ The following plugins have been enabled:
 
 Then Federation tabs will appear.
 
-![RabbitMQ_With_Federation_Enabled.PNG](RabbitMQ_With_Federation_Enabled)
+![RabbitMQ_With_Federation_Enabled.PNG](pictures/RabbitMQ_With_Federation_Enabled)
 
 The Federation Upstreams tab is the first place you’ll go to start the configuration process. Only the name and AMQP URI for the connection are required. In a production environment, you’ll likely want to configure the other options as well.
 
@@ -1118,7 +1118,7 @@ The Federation Upstreams tab is the first place you’ll go to start the configu
 
 The connection won’t be used until a policy is created that references the upstream. When a policy is applied using the upstream, the federation plugin will connect to the upstream node. Should it be disconnected due to a routing error or some other network event, the default behavior is to try to reconnect once per second.
 
-![Federation_Upstream_Input](Federation_Upstream_Input.PNG)
+![Federation_Upstream_Input](pictures/Federation_Upstream_Input.PNG)
 
 ### Defining a policy
 
@@ -1126,7 +1126,7 @@ Federation configuration is managed using RabbitMQ’s policy system, which prov
 
 For a first example, you’ll create a policy named federation-test that will do string-equality checking against an exchange named test (figure 8.17). To tell the federation plugin that you want to federate the exchange from the cluster-a upstream, enter a key of federation-upstream with a value of cluster-a in the definition table. Once you’ve entered that information, click the Add Policy button to add it to the system.
 
-![Federation_Policy](Federation_Policy.PNG)
+![Federation_Policy](pictures/Federation_Policy.PNG)
 
 With the policy added, you’ll need to add the test exchange to both nodes. You can use the Exchanges tab of each management interface to add the exchange. To prevent the cluster-b node from trying to federate a non-existent exchange on the cluster-a node, declare the exchange on the cluster-a node first. You can use any of the built-in exchange types, but I recommend using a topic exchange for flexibility in experimenting. Whichever type you select, you should **be consistent and use the same exchange type for the test exchange on both cluster-a and cluster-b.**
 
@@ -1134,16 +1134,16 @@ With the policy added, you’ll need to add the test exchange to both nodes. You
 
 In downstream RabbitMQ add "Federation Upstream". ***Name*** has to be equal to the name of the RabbitMQ.
 
-![Add_Federation_Upstream_Example](Add_Federation_Upstream_Example.PNG)
+![Add_Federation_Upstream_Example](pictures/Add_Federation_Upstream_Example.PNG)
 
 Add policy. ***federation-upstream*** has to be equal to upstream RabbitMQ.
 
-![Add_Federation_Policy](Add_Federation_Policy.PNG)
+![Add_Federation_Policy](pictures/Add_Federation_Policy.PNG)
 
 Add exchange to upstream RabbitMQ.Add exchange to downstream RabbitMQ.
 
-![Upstream_Exchanges](Upstream_Exchanges.PNG)
-![Downstream_Exchanges](Downstream_Exchanges.PNG)
+![Upstream_Exchanges](pictures/Upstream_Exchanges.PNG)
+![Downstream_Exchanges](pictures/Downstream_Exchanges.PNG)
 
 To help identify messages that were distributed via federation, the federation plugin adds an **x-received-from** field to the headers table in the message properties. The value of the field is a key/value table that includes the upstream uri, exchange, cluster-name, and a flag indicating if the message was redelivered.
 
@@ -1166,7 +1166,7 @@ The examples in this chapter have thus far covered distributing messages from an
 
 In a bidirectional setup, messages can be published into either node, and using the default configuration, they’ll only be routed once on each node. This setting can be tweaked by the max-hops setting in the upstream configuration. The default value of 1 for max-hops prevents message loops where messages received from an upstream node are cyclically sent back to the same node.
 
-![Bidirectional_Federation](Bidirectional_Federation.PNG)
+![Bidirectional_Federation](pictures/Bidirectional_Federation.PNG)
 
 It’s important to recognize that like any graph structure, the more nodes you add, the more complex things become.
 
