@@ -18,6 +18,22 @@ The file /bin/sh is a pointer to the system’s default system shell - normally 
 
 ### Using Internal and External Commands
 
+Internal commands are, as you might expect, built into the shell program. Thus they are also called built-in commands. Internal commands that you’re likely to use enable you to perform some common tasks:
+* **Change the Working Directory** - cd. You can use shortcut characters with the cd command as well. The tilde ( ~ ) character is a useful shortcut; it stands for your home directory.
+* **Display the Working Directory** - pwd.
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
