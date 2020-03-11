@@ -1204,6 +1204,121 @@ The source and target containers can be located on the same cluster node, which 
 
 ### Load balancing
 
+Load balancing - process of distributing workload among service instances. Various algorithms exist for how the workload can be distributed. **Usually, a load balancer works using the so-called round robin algorithm**, which makes sure that the workload is distributed equally to the instances using a cyclic algorithm.
+
+### Scaling
+
+To handle an increased workload, we usually just schedule additional instances of a service that is experiencing this increased load. Load balancers will then automatically be configured to distribute the workload over more available target instances.
+
+### Self-healing
+
+Orchestrators monitor all containers running in the cluster and they automatically replace crashed or unresponsive ones with new instances. Orchestrators monitor the health of cluster nodes and take them out of the scheduler loop if a node becomes unhealthy or is down. A workload that was located on those nodes is automatically rescheduled to different available nodes.
+
+All these activities where the orchestrator monitors the current state and automatically repairs the damage or reconciles the desired state lead to a so-called self-healing system.
+
+But there are a few situations that the orchestrator cannot handle without our help. Imagine a situation where we have a service instance running in a container. The container is up and running and, from the outside, looks perfectly healthy. But the application inside is in an unhealthy state. The application did not crash, it just is not able to work as designed anymore.
+
+Now, orchestrators define seams or probes, over which an application service can communicate to the orchestrator in what state it is. Two fundamental types of probe exist:
+
+* The service can tell the orchestrator that it is healthy or not
+* The service can tell the orchestrator that it is ready or temporarily unavailable
+
+**How the service determines either of the preceding answers is totally up to the service.** The orchestrator only defines how it is going to ask, for example, through an HTTP GET request, or what type of answers it is expecting, for example, OK or NOT OK.
+
+If our services implement logic to answer the preceding health or availability questions, then we have a truly self-healing system, since the orchestrator can kill unhealthy service instances and replace them with new healthy ones, and it can take service instances that are temporarily unavailable out of the load balancer's round robin.
+
+### Zero downtime deployments
+
+The orchestrator needs to be able to update individual application services batch-wise. This is also called **rolling updates. At any given time, only one or a few of the total number of instances of a given service are taken down and replaced by the new version of the service. Only if the new instances are operational and do not produce any unexpected errors or show any misbehavior will the next batch of instances be updated.**
+
+Other possible zero downtime deployments are:
+* **blue-green deployments**. The router is switched from the current blue to the new green version. For some time, the new green version of the service is closely monitored and, if everything is fine, the old blue version can be decommissioned. If, on the other hand, the new green version does not work as expected, then it is only a matter of setting the router back to the old blue version to achieve a complete rollback.
+* **canary releases**. In the case of a canary release, the router is configured in such a way that it funnels a tiny percentage, say 1%, of the overall traffic through the new version of the service, while 99% of the traffic is still routed through the old version. The behavior of the new version is closely monitored and compared to the behavior of the old version. If everything looks good, then the percentage of the traffic funneled through the new service is slightly increased. This process is repeated until 100% of the traffic is routed through the new service. If the new service has run for a while and everything looks good, then the old service can be decommissioned.
+
+### Affinity and location awareness
+
+Sometimes, certain application services require the availability of dedicated hardware on the nodes they run on. For example I/O-bound services require cluster nodes with an attached high-performance solid-state drive (SSD), or some services require an Accelerated Processing Unit (APU). Orchestrators allow us to define node affinities per application service. The orchestrator will then make sure that its scheduler only schedules containers on cluster nodes that fulfill the required criteria.
+
+Defining an affinity to a particular node should be avoided; this would introduce a single point of failure and thus compromise high availability. **Always define a set of multiple cluster nodes as the target for an application service.**
+
+Some orchestration engines also support what is called **location awareness** or **geo-awareness**. What this means is that one can request the orchestrator to equally distribute instances of a service over a set of different locations.
+
+### Security
+
+## Overview of popular orchestrators
+
+List:
+* Kubernetes
+* Docker's SwarmKit
+* Apache Mesos
+* AWS Elastic Container Service (ECS)
+* Microsoft Azure Container Service (ACS)
+
+# Chapter 10. Introduction to Docker Swarm
+## Architecture
+
+Docker Swarm from a 30,000-foot view consists of two main parts:
+* **Raft consensus group of an odd number of manager nodes**
+* **Group of worker nodes** that communicate with each other over a gossip network, also called the **control plane**.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
