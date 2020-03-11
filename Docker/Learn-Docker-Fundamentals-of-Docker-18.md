@@ -1263,6 +1263,14 @@ Docker Swarm from a 30,000-foot view consists of two main parts:
 
 ![High-level architecture of a Docker Swarm](pictures/High-level-architecture-of-a-Docker-Swarm.jpeg)
 
+Managers communicate with each other in a synchronous way and the raft stores are always in sync.
+
+The workers, on the other hand, communicate with each other asynchronously for scalability reasons.
+
+## Swarm nodes
+
+A swarm is a collection of nodes. We can classify a **node** as a physical computer or virtual machine (VM).
+
 
 
 
