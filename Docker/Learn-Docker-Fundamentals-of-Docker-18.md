@@ -1184,6 +1184,25 @@ In a cluster managed by an orchestrator, we typically have two types of nodes:
 * **manager** - usually exclusively used by the orchestrator to manage the cluster and does not run any other workload
 * **worker** - used to run the actual applications
 
+So, the orchestrator makes sure that, for a global service, an instance of it is running on every single worker node, no matter how many there are. We do not need to care about the number of instances, but only that on each node it is guaranteed to run a single instance of the service.
+
+### Service discovery
+
+When we describe an application service in a declarative way, we are never supposed to tell the orchestrator on which cluster nodes the different instances of the service have to run.
+
+**It is, of course, technically possible to instruct the orchestrator to use very deterministic placement rules, but this would be an anti-pattern and is not recommended at all.**
+
+OK, you might say, but what about if I have two services, **A and B, and Service A relies on Service B; shouldn't any given instance of Service A know where it can find an instance of Service B?**
+
+There I have to say loudly and clearly - **no, it shouldn't.** This kind of knowledge is not desirable in a highly distributed and scalable application. Rather, we should rely on the orchestrator to provide us the information we need to reach other service instances we depend on.
+
+### Routing
+
+Routing - process of funneling the data packets from a source to a destination.
+
+The source and target containers can be located on the same cluster node, which corresponds to the situation where both employees work in the same building. The target container can be running on a different cluster node, which corresponds to the situation where the two employees work in different buildings of the same block. Finally, the third situation is when a data packet comes from outside of the cluster and has to be routed to the target container running inside the cluster. 
+
+### Load balancing
 
 
 
