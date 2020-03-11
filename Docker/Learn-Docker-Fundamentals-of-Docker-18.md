@@ -1261,7 +1261,7 @@ Docker Swarm from a 30,000-foot view consists of two main parts:
 * **Raft consensus group of an odd number of manager nodes**
 * **Group of worker nodes** that communicate with each other over a gossip network, also called the **control plane**.
 
-
+![High-level architecture of a Docker Swarm](pictures/High-level-architecture-of-a-Docker-Swarm.jpeg)
 
 
 
