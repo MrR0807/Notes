@@ -1334,9 +1334,21 @@ Typically, we describe a stack declaratively in a text file that is formatted us
 
 ![Relationship-between-stack-service-tasks.jfif](pictures/Relationship-between-stack-service-tasks.jfif)
 
+## Multi-host networking
 
+Containers that are located on different nodes need to be able to communicate with each other. There are many techniques that can help one achieve this goal. Docker has chosen to implement an overlay network driver for Docker Swarm. This overlay network allows containers attached to the same overlay network to discover each other and freely communicate with each other.
 
+![Docker-swarm-overlay-network.jfif](pictures/Docker-swarm-overlay-network.jfif)
 
+We have two nodes or Docker hosts with the IP addresses 172.10.0.15 and 172.10.0.16. The values we have chosen for the IP addresses are not important; what is important is that both hosts have a distinct IP address and are connected by a physical network (a network cable), which is called the underlay network.
+
+On the node on the left-hand side we have a container running with the IP address 10.3.0.2 and on the node on the right-hand side another container with the IP address 10.3.0.5. Now, the former container wants to communicate with the latter. How can this happen? In Chapter 7, Single-Host Networking, we saw how this works when both containers are located on the same node; by using a Linux bridge. But Linux bridges only operate locally and cannot span across nodes. So, we need another mechanism. **Linux VXLAN** comes to the rescue. **VXLAN has been available on Linux since way before containers were a thing.**
+
+When the left-hand container sends a data packet, the bridge realises that the target of the packet is not on this host. Now, each node participating in an overlay network gets a so-called **VXLAN Tunnel Endpoint (VTEP)** object, which intercepts the packet (the packet at that moment is an OSI layer 2 data packet), wraps it with a header containing the target IP address of the host that runs the target container (this makes it now an OSI layer 3 data packet), and sends it over the VXLAN tunnel. The VTEP on the other side of the tunnel unpacks the data packet and forwards it to the local bridge, which in turn forwards it to the target container.
+
+## Deploying a first application
+
+### Creating a service
 
 
 
