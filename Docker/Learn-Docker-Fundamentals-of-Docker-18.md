@@ -1269,14 +1269,70 @@ The workers, on the other hand, communicate with each other asynchronously for s
 
 ## Swarm nodes
 
-A swarm is a collection of nodes. We can classify a **node** as a physical computer or virtual machine (VM).
+A swarm is a collection of nodes. We can classify a **node** as a physical computer or virtual machine (VM). People say we're running on **bare metal** to distinguish from running on a VM.
 
+When we install Docker on such a node, we call this node a **Docker host.**
 
+To become a member of a Docker Swarm, a **node must also be a Docker host.** A node in a Docker Swarm can have one of two roles:
+* Manager - they manage the swarm;
+* Worker. - the worker nodes in turn execute application workload.
 
+**Technically, a manager node can also be a worker node and thus run application workload, although that is not recommended**.
 
+### Swarm managers
 
+Each Docker Swarm needs to have at least one manager node. For high availability reasons we should have more than one manager node in a swarm. If we have more than one manager node then these nodes work together using the **Raft consensus protocol.** The Raft consensus protocol is a standard protocol that is often used when multiple entities need to work together and always need to agree with each other as to which activity to execute next.
 
+To work well, the **Raft consensus protocol asks for an odd number of members** in what is called the consensus group. Thus we should always have 1, 3, 5, 7, and so on manager nodes. In such a consensus group there is always a **leader.** In the case of Docker Swarm, the first node that starts the swarm initially becomes the leader. If the leader goes away then the remaining manager nodes elect a new leader. The other nodes in the consensus group are called **followers.**
 
+Now let's assume that we shut down the current leader node for maintenance reasons. The remaining manager nodes will elect a new leader. **When the previous leader node comes back online he will now become a follower. The new leader remains the leader.**
+
+All the members of the consensus group **communicate in a synchronous way with each other.** Whenever the consensus group needs to make a decision, the leader asks all followers for agreement. If a majority of the manager nodes give a positive answer then the leader executes the task.
+
+Since all manager follower nodes have to communicate synchronously with the leader node to make a decision in the cluster, **the decision-making process gets slower and slower the more manager nodes we have forming the consensus group.**
+
+**Use three manager nodes in small to medium size swarms, and use five managers in large to extra large swarms. To use more than five managers in a swarm is hardly ever justified.**
+
+Manager nodes are not only responsible for managing the swarm but also for **maintaining the state of the swarm.** When we talk about the state of the swarm we mean all the information about it - for example, **how many nodes are in the swarm, what are the properties of each node, such as name or IP address. We also mean what containers are running on which node in the swarm and more.** What, on the other hand, is not included in the state of the swarm is data produced by the application services running in containers on the swarm.
+
+**All the swarm state is stored in a high performance key-value store (kv-store) on each manager node.** That's right, each manager node stores a complete replica of the whole swarm state.
+
+### Swarm workers 
+
+As we mentioned earlier, a swarm worker node is meant to host and run containers that contain the actual application services we're interested in running on our cluster. They are the workhorses of the swarm.
+
+Worker nodes communicate with each other over the so-called **control plane.** They use the **gossip protocol** for their communication. This communication is asynchronous, which means that at any given time not all worker nodes must be in perfect sync.
+
+What information do worker nodes exchange? **It is mostly information that is needed for service discovery and routing**, that is, information about which containers are running on with nodes and more.
+
+To make sure the gossiping scales well in a large swarm, each worker node only synchronizes its own state with three random neighbors.
+
+## Stacks, services, and tasks
+
+When using a Docker Swarm versus a single Docker host, there is a paradigm change. Instead of talking of individual containers that run processes, we are abstracting away to services that represent a set of replicas of each process. We also do not speak anymore of individual Docker hosts with well known names and IP addresses to which we deploy containers; we'll now be referring to clusters of hosts to which we deploy services. We don't care about an individual host or node anymore. We don't give it a meaningful name; each node rather becomes a number to us. We also don't care about individual containers and where they are deployed anymore—we just care about having a **desired state defined through a service.**
+
+A service **web** and a service **inventory** are both deployed to a swarm that consists of many nodes. Each of the services has a certain number of replicas; six for web and five for inventory. **We don't really care on which node the replicas will run, we only care that the requested number of replicas is always running on whatever nodes the swarm scheduler decides to put them on.**
+
+### Services
+
+A swarm service is an abstract thing. It is a description of the desired state of an application or application service that we want to run in a swarm. The swarm service is like a manifest describing such things as the:
+* Name of the service
+* Image from which to create the containers
+* Number of replicas to run
+* Network(s) that the containers of the service are attached to
+* Ports that should be mapped
+
+### Task
+
+We have learned that a service corresponds to a description of the desired state in which an application service should be at all times. Part of that description was the number of replicas the service should be running. Each replica is represented by a task. In this regard, a swarm service contains a collection of tasks. On Docker Swarm, a task is the atomic unit of deployment. Each task of a service is deployed by the swarm scheduler to a worker node.
+
+### Stack
+
+Now that we have a good idea about what a swarm service is and what tasks are, we can introduce the stack. A stack is used to describe a collection of swarm services that are related, most probably because they are part of the same application.
+
+Typically, we describe a stack declaratively in a text file that is formatted using YAML and that uses the same syntax as the already-known Docker compose file. This leads to the situation where people sometimes say that a stack is described by a docker-compose file.
+
+![Relationship-between-stack-service-tasks.jfif](pictures/Relationship-between-stack-service-tasks.jfif)
 
 
 
