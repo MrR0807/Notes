@@ -1346,28 +1346,92 @@ On the node on the left-hand side we have a container running with the IP addres
 
 When the left-hand container sends a data packet, the bridge realises that the target of the packet is not on this host. Now, each node participating in an overlay network gets a so-called **VXLAN Tunnel Endpoint (VTEP)** object, which intercepts the packet (the packet at that moment is an OSI layer 2 data packet), wraps it with a header containing the target IP address of the host that runs the target container (this makes it now an OSI layer 3 data packet), and sends it over the VXLAN tunnel. The VTEP on the other side of the tunnel unpacks the data packet and forwards it to the local bridge, which in turn forwards it to the target container.
 
-## Deploying a first application
+# Chapter 11. Zero Downtime Deployments and Secrets
 
-### Creating a service
+## Zero downtime deployment
 
+### Popular deployment strategies
 
+There are three popular deployment strategies:
+* Rolling updates
+* Blue-green deployments
+* Canary releases
 
+### Rolling updates
 
+In a mission-critical application, each application service has to run in multiple replicas. Depending on the load, that can be as few as two to three instances and as many as dozens, hundreds, or thousands of instances. At any given time, we want to have a clear majority of all service instances running. So, if we have three replicas, we want to have at least two of them up and running all the time. If we have 100 replicas, we can content ourselves with a minimum of, say 90 replicas, that need to be available. We can then define a batch size of replicas that we may take down to upgrade. In the first case, the batch size would be 1 and in the second case, it would be 10.
 
+When we take replicas down, Docker Swarm will automatically take those instances out of the load balancing pool and all traffic will be load balanced across the remaining active instances. **Those remaining instances will thus experience a slight increase in traffic.** 
 
+The stopped instances are then replaced by an equivalent number of new instances of the new version of the application service. Once the new instances are up and running, we can have the swarm observe them for a given period of time and make sure they’re healthy. If all is good, then we can continue by taking down the next batch of instances and replacing them with instances of the new version. This process is repeated until all instances of the application service are replaced.
 
+### Health checks
 
+To make informed decisions, for example, during a rolling update of a swarm service whether or not the just-installed batch of new service instances is running OK or if a rollback is needed, the SwarmKit needs a way to know about the overall health of the system. On its own, SwarmKit (and Docker) can collect quite a bit of information. **But there is a limit.** Imagine a container containing an application. The container, as seen from outside, can look absolutely healthy and chuckle away just fine. But that doesn't necessarily mean that the application running inside the container is also doing well. The application could, for example, be in an infinite loop or be in a corrupt state, yet still running. But, as long as the application runs, the container runs and from outside, everything looks perfect.
 
+Thus, SwarmKit provides a seam where we can provide it with some help. **We, the authors of the application services running inside the containers in the swarm, know best whether or not our service is in a healthy state.**
 
+## Secrets
 
+### Creating secrets
 
+First let's see how we can actually create a secret:
+```
+$ echo "sample secret value" | docker secret create sample-secret -
+```
 
+This command creates a secret called ``sample-secret`` with the value sample secret value. Please note the hyphen at the end of the ``docker secret create`` command. This means that Docker expects the value of the secret from standard input. This is exactly what we're doing by piping the value, ``sample secret value`` into the ``create`` command.
 
+Alternatively, we can use a file as the source for the secret value:
+```
+$ docker secret create other-secret ~/my-secrets/secret-value.txt
+```
 
+Here, the value of the secret with the name other-secret is read from a file, ~/my-secrets/secret-value.txt. Once a secret has been created, there is no way to access the value of it.
 
+### Using a secret
 
+Secrets are used by services that run in the swarm. Usually, secrets are assigned to a service at creation time. Thus, if we want to run a service called web and assign it a secret, api-secret-key, the syntax would look like the following command:
+```
+$ docker service create --name web \
+    --secret api-secret-key \
+    --publish 8000:8000 \
+    fundamentalsofdocker/whoami:latest
+```
 
+## Simulating secrets in a development environment
 
+When working in development, we usually don't have a local swarm on our machine. But secrets only work in a swarm. So, what can we do? Well, luckily it is really simple. Due to the fact that secrets are treated as files, we can easily mount a volume that contains the secrets into the container to the expected location, which by default is at /run/secrets.
+
+Assume that we have a folder ./dev-secrets on our local workstation. For each secret, we have a file called the same way as the secret name and with the un-encrypted value of the secret as content of the file. For example, we can simulate a secret called demo-secret with a secret value demo secret value by executing the following command on our workstation:
+
+```
+$ echo "demo secret value" > ./dev-secrets/sample-secret
+```
+
+We can then create a container that mounts this folder like this:
+
+```
+$ docker container run -d --name whoami \
+    -p 8000:8000 \
+    -v $(pwd)/dev-secrets:/run/secrets \
+    fundamentalsofdocker/whoami:latest
+And the process running inside the container will not be able to distinguish these mounted files from ones originating from a secret. So, for example, the demo-secret is available as file /run/secrets/demo-secret inside the container and has the expected value demo secret value.
+```
+
+To test this, we can exec a shell inside the preceding container:
+
+```
+$ docker container exec -it whoami /bin/bash
+```
+
+And then navigate to the folder, /run/secrets and display the content of the file demo-secret:
+
+```
+/# cd /run/secrets
+/# cat demo-secret
+demo secret value
+```
 
 
 
