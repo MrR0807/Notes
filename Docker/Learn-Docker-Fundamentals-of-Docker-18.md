@@ -1433,6 +1433,153 @@ And then navigate to the folder, /run/secrets and display the content of the fil
 demo secret value
 ```
 
+# Chapter 12. Introduction to Kubernetes
+
+## Architecture
+
+A Kubernetes cluster consists of a set of **servers.** These **servers** can be **VMs** or **physical servers**. The latter are also called **bare metal**. Each member of the cluster can have one of two roles:
+* master;
+* (worker) node.
+
+In a cluster, you have a **small and odd number of masters** and as many worker nodes as needed. Small clusters might only have a few worker nodes while more realistic clusters might have dozens or even hundreds of worker nodes. Technically, there is no limit on how many worker nodes a cluster can have; **in reality, you might experience a significant slowdown in some management operations when dealing with thousands of nodes**, though. All **members of the cluster need to be connected by a physical network, the so-called *underlay network.***
+
+Kubernetes defines **one flat network for the whole cluster.** Kubernetes does not provide any networking implementation out of the box, but relies on plugins from third parties. Kubernetes only defines the **Container Network Interface (CNI)** and leaves the implementation to others. The **CNI** basically states that **each pod running in the cluster must be able to reach any other pod also running in the cluster without any Network Address Translation (NAT) happening in-between.**
+
+![High-level-architecture-of-kubernetes.jpg](pictures/High-level-architecture-of-kubernetes.jpg)
+
+On the top, in the middle we have a cluster of **etcd nodes**. **etcd is a distributed key-value store that, in a Kubernetes cluster, is used to store all the state of the cluster.** The number of etcd nodes has to be odd as mandated by the Raft consensus protocol which they use to coordinate among themselves. Cluster state - information on the topology of the cluster, what services are running, network settings, secrets used, and more.
+
+We then have a cluster of Kubernetes **master nodes** that also form a **consensus group** among themselves, similar to the **etcd nodes**. The **number of master nodes also has to be an odd number.** We can run the cluster with a single master but we should never do that in a production or mission-critical system. There, we always should have at least three master nodes. Since the master nodes are used to manage the whole cluster, we are also talking about the **management plane.** The master nodes use the **etcd cluster as their backing store.** It is a good practice to put a **Load Balancer(LB)** in front of the master nodes with a well-known **Fully Qualified Domain Name(FQDN)**, such as https://admin.example.com. All tools that are used to manage the Kubernetes cluster should access it through this LB rather than using the public IP address of one of the master nodes.
+
+Kubernetes master and worker nodes communicate with each other. It is a bidirectional form of communication which is different to the one we know from Docker Swarm. All ingress traffic accessing the applications running in the cluster should be going through another load balancer. 
+
+## Kubernetes master nodes
+
+Kubernetes master nodes are used to manage a Kubernetes cluster. The following is a high-level diagram of such a master:
+
+![kubernetes-master.png](pictures/kubernetes-master.png)
+
+At the bottom of the preceding diagram, we have the Infrastructure, which can be a VM on-premise or in the cloud or a server (often called bare metal). On this Linux machine, we then have at least the following four Kubernetes services running:
+* **API server:** This is the gateway to Kubernetes. All requests to list, create, modify, or delete any resources in the cluster must go through this service. It exposes a REST interface that tools such as ``kubectl`` use to manage the cluster and applications in the cluster.
+* **Controller:** The controller, or more precisely the controller manager, is a **control loop that observes the state of the cluster through the API server and makes changes, attempting to move the current or effective state towards the desired state.** 
+* **Scheduler:** The scheduler is a service that tries its best to schedule pods on worker nodes considering various boundary conditions, such as resource requirements, policies, quality of service requirements, and more.
+* **Cluster store:** This is an **instance of etcd** which is used to store all information about the state of the cluster.
+
+To be more precise, etcd, which is used as a cluster store, **does not necessarily have to be installed on the same node as the other Kubernetes services.** Sometimes, Kubernetes clusters are configured that use standalone clusters of etcd servers, as shown in the architecture diagram in the previous section.
+
+Kubernetes masters build a **Raft consensus group.** The **Raft protocol** is a standard protocol used in situations where a group of members need to make decisions.
+
+## Cluster nodes
+
+Cluster nodes are the nodes onto which Kubernetes schedules application workload. 
+
+![worker-node.png](pictures/worker-node.png)
+
+On each node, we have three services that need to run, which are described as follows:
+* **Kubelet:** This is the first and foremost service. Kubelet is what's called the **primary node agent.** The kubelet service uses pod specifications to make sure all of the containers of the corresponding pods are running and healthy. Pod specifications are files written in YAML or JSON format and they declaratively describe a pod.
+* **Container runtime:** The second service that needs to be present on each worker node is a container runtime. The container runtime is responsible for managing and running the individual containers of a pod.
+* **kube-proxy:** Finally, there is the kube-proxy. It runs as a daemon and is a simple network proxy and load balancer for all application services running on that particular node.
+
+## Introduction to Minikube
+
+Minikube is a tool that creates a single node Kubernetes cluster in VirtualBox or Hyper-V. Minikube is a single node Kubernetes cluster and thus the node is, at the same time, a Kubernetes master as well as a worker node.
+
+## Kubernetes support in Docker for Desktop
+
+## Pods
+
+Contrary to what is possible in a Docker Swarm, you cannot run containers directly in a Kubernetes cluster. In a Kubernetes cluster, you can only run pods. **Pods are the atomic unit of deployment in Kubernetes.** **A pod is an abstraction of one or many co-located containers that share the same Kernel namespaces, such as the network namespace.**
+
+![kuberentes-pods-vs-swarm-services.png](pictures/kuberentes-pods-vs-swarm-services.png)
+
+In the preceding diagram, we have two pods, **Pod 1** and **Pod 2**. The first pod contains two containers, while the second one only contains a single container. Each pod gets an IP address assigned by Kubernetes that is unique in the whole Kubernetes cluster. In our case, these are the IP addresses 10.0.12.3 and 10.0.12.5. Both are part of a private subnet managed by the Kubernetes network driver.
+
+A pod can contain one to many containers. **All those containers share the same kernel namespaces, and in particular they share the network namespace.** This is marked by the dashed rectangle surrounding the containers. Since all containers running in the same pod share the network namespace, each container needs to make sure to use their own port since duplicate ports are not allowed in a single network namespace.
+
+**Requests from other pods or nodes can use the pod's IP address combined with the corresponding port number to access the individual containers.**
+
+**When two containers use the same Linux kernel network namespace, they can communicate with each other through localhost**, similar to when two processes are running on the same host they can communicate with each other through localhost too.
+
+### Pod life cycle
+
+Due to the fact that a pod can contain more than one container, this life cycle is slightly more complicated than the one of a single container. When a pod is created on a cluster node, it first enters into **pending** status. Once all containers of the pod are up and running, the pod enters into **running** status. The pod only enters into this state if all its containers run successfully. If the pod is asked to terminate, it will request all its containers to terminate. If all containers terminate with exit code zero, then the pod enters into **succeeded** status. This is the happy path.
+
+Now, let's look at some scenarios that lead to the pod being in failed state. There are three possible scenarios:
+* If, during the startup of the pod, at least one container is not able to run and fails (that is it exits with a nonzero exit code), the pod enters from the **pending** state into the **failed** state
+* If the pod is in running status and one of the containers suddenly crashes or exits with a nonzero exit code then the pod transitions from the **running** state into the **failed** state
+* If the pod is asked to terminate and during the shutdown at least one of the containers exits with a nonzero exit code, then the pod also enters into the **failed** state
+
+### Pod specification
+
+When creating a pod in a Kubernetes cluster, we can use either an **imperative or a declarative approach.** Manifests or specifications for a pod can be written using either YAML or JSON format. In this chapter, we will concentrate on YAML since it is easier to read for us humans. Let's look at a sample specification. Here is the content of the ``pod.yaml`` file:
+```
+apiVersion: v1
+kind: Pod
+metadata:
+  name: web-pod
+spec:
+  containers:
+  - name: web
+    image: nginx:alpine
+    ports:
+    - containerPort: 80
+```
+
+**Each specification in Kubernetes starts with the version information.** Pods have been around for quite some time and thus the API version is v1. 
+The second line specifies the type of Kubernetes object or resource we want to define. Obviously, in this case, we want to specify a pod. 
+Next follows a block with **metadata**. **At a bare minimum, we need to give the pod a name.** Here, we call it ``web-pod``. 
+The next block that follows is the **spec** block, which contains the specification of the pod. The most important part (and the only one in this simple sample) is the list of all containers that are part of this pod. **We only have one container here, but multiple containers are possible.** The name we choose for our container is ``web`` and the container image is ``nginx:alpine``. Finally, we define the list of ports the container is exposing.
+
+Once we have authored such a specification, we can apply it to the cluster using the Kubernetes CLI ``kubectl``:
+```
+$ kubectl create -f pod.yaml
+```
+
+Which will respond with pod "web-pod" created. We can then list all pods in the cluster with kubectl get pods:
+```
+$ kubectl get pods
+NAME      READY   STATUS    RESTARTS   AGE
+web-pod   1/1     Running   0          2m
+```
+
+### Pods and volumes
+
+In the chapter about containers, we have learned about volumes and their purpose to access and store persistent data. As containers can mount volumes, pods can do so as well. In reality, it is really the **containers inside the pod that mount the volumes**, but that is just a semantic detail.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
