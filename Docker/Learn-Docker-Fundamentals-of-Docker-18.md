@@ -1546,43 +1546,514 @@ web-pod   1/1     Running   0          2m
 
 In the chapter about containers, we have learned about volumes and their purpose to access and store persistent data. As containers can mount volumes, pods can do so as well. In reality, it is really the **containers inside the pod that mount the volumes**, but that is just a semantic detail.
 
+Kubernetes supports a plethora of volume types and we're not diving into too much detail about this. Let's just create a local volume implicitly by defining a ``PersistentVolumeClaim`` called ``my-data-claim``:
+```
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: my-data-claim
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Gi
+```
 
+We have defined a claim that requests 2 GB of data. Let's create this claim:
+```
+$ kubectl create -f volume-claim.yaml
+```
 
+We can list the claim using ``kubectl`` (``pvc`` is the shortcut for ``PersistentVolumeClaim``):
+```
+$ kubectl get pvc
+```
 
+In the output, we can see that the claim has implicitly created a volume called ``pvc-<ID>``. We are now ready to use the volume created by the claim in a pod:
+```
+apiVersion: v1
+kind: Pod
+metadata:
+  name: web-pod
+spec:
+  containers:
+  - name: web
+    image: nginx:alpine
+    ports:
+    - containerPort: 80
+    volumeMounts:
+    - name: my-data
+      mountPath: /data
+  volumes:
+  - name: my-data
+    persistentVolumeClaim:
+      claimName: my-data-claim
+```
 
+In the last four lines, in the block volumes, we define the list of volumes we want to use for this pod. The volumes that we list here can be **used by any of the containers of the pod.** In our particular case, we only have one volume. We define that we have a volume ``my-data`` that is a persistent volume claim whose claim name is the one we just created before. 
+Then in the container specification, we have the ``volumeMounts`` block where we define the volume we want to use and the (absolute) path inside the container where the volume will be mounted. In our case, we mount the volume to the ``/data`` folder of the container filesystem.
 
+Then, we can exec into the container to double-check that the volume has mounted by navigating to the /data folder, create a file there, and exit the container:
+```
+$ kubectl exec -it web-pod -- /bin/sh
+/ # cd /data
+/data # echo "Hello world!" > sample.txt
+/data # exit
+```
 
+If we are right, then the data in this container must persist beyond the life cycle of the pod. Thus, let's delete the pod and then recreate it and exec into it to make sure the data is still there.
+```
+$ kubectl delete po/web-pod
+pod "web-pod" deleted
+$ kubectl create -f pod-with-vol.yml
+pod "web-pod" created
+$ kubectl exec -it web-pod -- /bin/sh
+/ # cat /data/sample.txt
+Hello World!
+```
 
+## Kubernetes ReplicaSet
 
+In Kubernetes, the **ReplicaSet** is used to define and manage a **collection of identical pods that are running on different cluster nodes.** The ReplicaSet is responsible for making sure that at any given time there are always the desired number of pods running. If one of the pods crashes for whatever reason, the ReplicaSet schedules a new pod on a node with free resources instead.
 
+### ReplicaSet specification
 
+Similar to what we have learned about pods, Kubernetes also allows us to either imperatively or declaratively define and create a ``ReplicaSet``:
 
+```
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+  name: rs-web
+spec:
+  selector:
+    matchLabels:
+      app: web
+  replicas: 3
+  template: 
+    metadata:
+      labels:
+        app: web
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:alpine
+        ports:
+        - containerPort: 80
+```
 
+This looks an awful lot like the pod specification we introduced earlier. Let's concentrate on the differences, then. First, on line 2, we have the kind which was ``Pod`` and is now ``ReplicaSet``. Then, on lines 6–8, we have a ``selector`` which determines the pods that will be part of the ReplicaSet. In this case, it is all pods that have a **label app with the value web**. Then, on line 9, we define how many replicas of the pod we want to run; three, in this case. Finally, we have the ``template`` section which first defines the ``metadata`` and then the ``spec`` which defines the containers that run inside the pod. In our case, we have a single container using the nginx:alpine image and exporting port 80.
 
+If we list all the ReplicaSets in the cluster, we get this (rs is a shortcut for replicaset):
+```
+$ kubectl get rs
+NAME     DESIRED   CURRENT   READY   AGE
+rs-web   3         3         3       51s
+```
 
+In the preceding output, we can see that we have a single ReplicaSet called rs-web whose desired state is three (pods). The current state also shows three pods and all three pods are ready. We can also list all pods in the system and we get this:
+```
+$ kubectl get pods
+NAME           READY   STATUS    RESTARTS   AGE
+rs-web-6qzld   1/1     Running   0          4m
+rs-web-frj2m   1/1     Running   0          4m
+rs-web-zd2kt   1/1     Running   0          4m
+```
 
+Here, we see our three expected pods. The names of the pods are using the name of the ReplicaSet with a unique ID appended for each pod.
 
+### Self-healing
 
+Now let's test the magic powers of the self-healing of the ReplicaSet by randomly killing one of its pods and observing what's going to happen. Let's delete the first pod from the previous list:
+```
+$ kubectl delete po/rs-web-6qzld
+pod "rs-web-6qzld" deleted
+```
 
+And then, let's list all pods again. We expect to see only two pods, right. Wrong.
 
+## Kubernetes deployment
 
+The **ReplicaSet**, as we have learned, is responsible for achieving and reconciling the desired state of an application service. This means that the **ReplicaSet** manages a set of pods.
 
+The **Deployment** augments a **ReplicaSet** by providing rolling update and rollback functionality on top of it.
 
+![kubernetes-deployment.png](pictures/kubernetes-deployment.png)
 
+In the preceding diagram, the ReplicaSet is defining and governing a set of identical pods. The main characteristics of the ReplicaSet are that it is self-healing, scalable, and always does its best to reconcile the desired state. **The Kubernetes deployment in turn adds rolling update and rollback functionality to the plate.** In this regard, a deployment is really a wrapper object to a ReplicaSet.
 
+## Kubernetes service
 
+The moment we start to work with applications consisting of more than one application service, we have a need for service discovery. In the following diagram, we illustrate this problem:
 
+![service-discovery.png](pictures/service-discovery.png)
 
+In this diagram, we have a Web API service that needs access to three other services—payments, shipping, and ordering. The Web API should at no time have to care how and where to find those three services. In the API code, we just want to use the name of the service we want to reach and its port number. A sample would be the URL http://payments:3000 that is used to access an instance of the payments service. 
 
+In Kubernetes, the payments application service is represented by a **ReplicaSet** of pods. **Due to the nature of highly distributed systems, we cannot assume that pods have stable endpoints.** A pod can come and go in a wimp. But that's a problem if we need to access the corresponding application service from an internal or external client. If we cannot rely on pod endpoints being stable, what else can we do?
 
+**This is where Kubernetes services come into play. They are meant to provide stable endpoints to ReplicaSets or Deployments, as shown here:**
 
+![kubernetes-providing-stable-service-endpoints.png](pictures/kubernetes-providing-stable-service-endpoints.png)
 
+In the preceding diagram, in the center, we see such a Kubernetes service. **It provides a reliable cluster-wide IP address also called a virtual IP (VIP), as well as a reliable port that's unique in the whole cluster.** The pods that the Kubernetes **service is proxying are determined by the selector defined in the service specification.** Selectors are always **based on labels**. Every Kubernetes object can have zero to many labels assigned. In our case, the selector is app=web, that is, all pods that have a label called app with a value of web are proxied.
 
+## Context-based routing
 
+Often, we want to configure **context-based routing for our Kubernetes cluster.** Kubernetes offers us various ways to do so. The **preferred and most scalable way** at this time is to use an **IngressController** for this job. The following diagram tries to illustrate how this ingress controller works:
 
+![context-based-routing.png](pictures/context-based-routing.png)
 
+In this diagram, we can see how context-based (or layer 7) routing works when using an **ingress controller**, such as Nginx. Here, we have a deployment of an application service called **web**. All the pods of this application service have a label **app=web**. We then have a Kubernetes service called web that provides a stable endpoint to those pods. The service has a **(virtual) IP** of 52.14.0.13 and exposes port 30044. That is, if a request comes to any node of the Kubernetes cluster for the name web and port 30044, then it is forwarded to this service. The service then load balances the request to one of the pods. 
 
+# Chapter 13. Deploying, Updating, and Securing an Application with Kubernetes
 
+## Deploying a first application
+
+### Deploying the web component
+
+Just as a reminder, our application consists of two application services, the Node.js-based web component and the backing PostgreSQL database. Let's do this first for the web component:
+
+![kubernetes-web-component-definition.png](pictures/kubernetes-web-component-definition.png)
+
+On line 4: We define the name for our Deployment object as web
+On line 6: We declare that we want to have one instance of the web component running
+From line 8 to 10: We define which pods will be part of our deployment, namely those which have the labels app and service with values, pets and web respectively
+On line 11: In the template for the pods starting at line 11, we define that each pod will have the two labels app and service applied
+From line 17: We define the single container that will be running in the pod. The image for the container is our well-known fundamentalsofdocker/ch08-web:1.0 image and the name of the container will be web
+Ports: Finally, we declare that the container exposes port 3000 for TCP-type traffic
+
+We can deploy this Deployment object using kubectl:
+```
+$ kubectl create -f web-deployment.yaml
+```
+
+In the preceding output, we see that Kubernetes created three objects—the deployment, a pertaining ReplicaSet, and a single pod (remember we specified that we want one replica only). The current state corresponds to the desired state for all three objects, thus we are fine so far.
+
+Now, the web service needs to be exposed to the public. For this, we need to define a Kubernetes Service object of type NodePort:
+
+![definition-of-the-service-object-for-web-component.png](pictures/definition-of-the-service-object-for-web-component.png)
+
+On line 4: We set the name of this Service object to web.
+On line 6: We define the type of Service object we're using. Since the web component has to be accessible from outside of the cluster, this cannot be a Service object of type ClusterIP but must be either of type NodePort or LoadBalancer. We have discussed the various types of Kubernetes services in the previous chapter and so will not go into further detail about this. In our sample, we're using a NodePort type of service.
+On lines 8 and 9: We specify that we want to expose port 3000 for access through the TCP protocol. Kubernetes will map container port 3000 automatically to a free host port in the range of 30,000 to 32,768. Which port Kubernetes effectively chooses can be determined using the kubectl get service or kubectl describe command for the service after it has been created. 
+From line 10 to 12: We define the filter criteria for the pods for which this service will be a stable endpoint. In this case, it is all pods that have the labels app and service with values pets and web respectively.
+
+Having this specification for a Service object, we can create it using kubectl:
+```
+$ kubectl create -f web-service.yaml
+```
+
+### Deploying the database
+
+A database is a stateful component and has to be treated differently to stateless components, such as our web component. Kubernetes has defined a special type of ``ReplicaSet`` object for stateful components. The object is called a ``StatefulSet``:
+
+![statefulset-for-db-component.png](pictures/statefulset-for-db-component.png)
+
+The volume claim definition is on lines 25 to 33. We want to create a volume with the name pets-data and of a maximum size equal to 100 MB. On lines 22 to 24, we use this volume and mount it into the container at /var/lib/postgresql/data where PostgreSQL expects it. On line 21, we also declare that PostgreSQL is listening at port 5432.
+
+As always, we use kubectl to deploy the StatefulSet:
+```
+$ kubectl create -f db-stateful-set.yaml
+```
+
+**But that doesn't mean that the web component can access the database at this time.** Service discovery would not work so far. Remember that the web component wants to access the db service under the name ``db``.
+
+To make service discovery work inside the cluster, we have to **define a Kubernetes Service object for the database component too.** **Since the database should only ever be accessible from within the cluster, the type of Service object we need is ClusterIP.** Here is the specification, which can be found in the labs/ch13/db-service.yaml file:
+
+![definition-of-the-kubernetes-service-object-for-the-database.png](pictures/definition-of-the-kubernetes-service-object-for-the-database.png)
+
+The database component will be represented by this Service object and it will be reachable by the name ``db``, which is the name of the service, as defined on line 4.
+
+### Streamlining the deployment
+
+If we have an application consisting of many Kubernetes objects such as Deployment and Service objects, then **we can keep them all in one single file and separate the individual object definitions by three dashes.** For example, if we wanted to have the deployment and the service definition for the web component in a single file, this would look as follows:
+```
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: web
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pets
+      service: web
+  template:
+    metadata:
+      labels:
+        app: pets
+        service: web
+    spec:
+      containers:
+      - image: fundamentalsofdocker/ch08-web:1.0
+        name: web
+        ports:
+        - containerPort: 3000
+          protocol: TCP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: web
+spec:
+  type: NodePort
+  ports:
+  - port: 3000
+    protocol: TCP
+  selector:
+    app: pets
+    service: web
+```
+
+## Zero downtime deployments
+
+### Rolling updates
+
+``web`` component:
+```
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: web
+spec:
+  replicas: 5
+  selector:
+    matchLabels:
+      app: pets
+      service: web
+  template:
+    metadata:
+      labels:
+        app: pets
+        service: web
+    spec:
+      containers:
+      - image: fundamentalsofdocker/ch08-web:1.0
+        name: web
+        ports:
+        - containerPort: 3000
+          protocol: TCP
+```
+
+We can now create this deployment as usual and also, at the same time, the service that makes our component accessible:
+```
+$ kubectl create -f web-deploy-rolling-v1.yaml
+$ kubectl create -f web-service.yaml
+```
+
+Once we have deployed the pods and the service, we can test our web component with the following command:
+```
+$ PORT=$(kubectl get svc/web -o yaml | grep nodePort | cut -d' ' -f5)
+$ IP=$(minikube ip)
+$ curl -4 ${IP}:${PORT}/
+Pets Demo Application
+```
+
+As we can see, the application is up and running and returns us the expected message, Pets Demo Application.
+
+New version was released. The developers have built the new image as follows:
+```
+$ docker image build -t fundamentalsofdocker/ch13-web:2.0 web
+```
+And, subsequently, they pushed the image to Docker Hub:
+```
+$ docker image push fundamentalsofdocker/ch13-web:2.0
+```
+We now want to update the image used by our pods that are part of the webDeployment object. We can do this by using the set image command of kubectl:
+```
+$ kubectl set image deployment/web \
+    web=fundamentalsofdocker/ch13-web:2.0
+```
+If we then test the application again, we get the confirmation that the update has indeed happened:
+```
+curl -4 ${IP}:${PORT}/
+Pets Demo Application v2
+```
+
+First, we can get a confirmation from Kubernetes that the deployment has indeed happened and was successful by using the rollout status command:
+```
+$ kubectl rollout status deploy/web
+deployment "web" successfully rolled out
+```
+
+If we describe the deployment web with kubectl describe deploy/web, we get the following list of events at the end of the output:
+
+![list-of-events-found-in-the-output-of-the-rollout.png](pictures/list-of-events-found-in-the-output-of-the-rollout.png)
+
+The first event tells us that when we created the deployment, a ``ReplicaSet`` ``web-769b88f67`` with five replicas was created. Then we executed the update command and the second event in the list tells us that this meant creating a new ``ReplicaSet`` called ``web-55cdf67cd`` with, initially, one replica only. Thus, at that particular moment there existed six pods on the system, the five initial pods, and one pod with the new version. But since the desired state of the Deployment object states that we want five replicas only, Kubernetes now scales down the old ``ReplicaSet`` to four instances, which we see in the third event. Then, again, the new ``ReplicaSet`` is scaled up to two instances and, subsequently, the old ``ReplicaSet`` scaled down to three instances, and so on, until we have five new instances and all the old instances have been decommissioned.
+
+We can also list the Recordset objects in the cluster and will get the confirmation of what I said in the preceding section:
+
+![record-set-of-objects.png](pictures/record-set-of-objects.png)
+
+We see that the new recordset has five instances running and the old one has been scaled down to zero instances. **The reason why the old ``Recordset`` object is still lingering around is that Kubernetes provides us with the possibility of rolling back the update and, in that case, will reuse the ``Recordset``.**
+
+To roll back the update of the image in case some undetected bug sneaked in to the new code, we can use the rollout undo command:
+```
+$ kubectl rollout undo deploy/web
+deployment "web"
+$ curl -4 ${IP}:${PORT}/
+Pets Demo Application
+```
+
+**Sometimes though we cannot, or do not want to, tolerate the mixed state of an old version coexisting with new version. We want an all-or-nothing strategy. This is where blue-green deployments come into play, which we will discuss next.**
+
+### Blue–green deployment
+
+If we want to do a blue–green style deployment for our component web of the pets application, then we can do so by using labels creatively.  Let's first remind ourselves how blue–green deployments work. Here is a rough step-by-step instruction:
+
+* Deploy a first version of the component web as blue. We will label the pods with a label color: blue to do so.
+* Deploy the Kubernetes service for these pods with the label, color: blue in the selector section.
+* Now we can deploy version 2 of the web component, but this time the pods have a label, color: green.
+* We can test the green version of the service that it works as expected.
+* Now we flip traffic from blue to green by updating the Kubernetes service for the web component. We modify the selector to use the label color: green.
+```
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: web-blue
+spec:
+  replicas: 1
+  selector: 
+    matchLabels:
+      app: pets
+      service: web
+      color: blue
+    template:
+      metadata:
+        labels:
+          app: pets
+          service: web
+          color: blue
+      spec:
+        containers:
+        - image: image:1.0
+          name: web
+          ports:
+          - containerPort: 3000
+            protocol: TCP
+```
+
+Please note line 4 where we define the name of the deployment as web-blue to distinguish it from the upcoming deployment web-green. Also note that we have added the label color: blue on lines 11 and 17. Everything else remains the same as before. ``Service``:
+```
+apiVersion: v1
+kind: Service
+metadata:
+  name: web
+spec:
+  type: NodePort
+  ports:
+  - port: 3000
+    protocol: TCP
+  selector:
+    app: pets
+    service: web
+    color: blue
+```
+
+The only difference to the definition of the service we used earlier in this chapter is line 13, which adds the label color: blue to the selector.
+
+We can then deploy the blue version of the web component with the following command:
+```
+$ kubectl create -f web-deploy-blue.yaml
+$ kubectl create -f web-svc-blue-green.yaml
+```
+
+Now we can deploy the green version of the web component:
+```
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: web-green
+spec:
+  replicas: 1
+  selector: 
+    matchLabels:
+      app: pets
+      service: web
+      color: green
+    template:
+      metadata:
+        labels:
+          app: pets
+          service: web
+          color: green
+      spec:
+        containers:
+        - image: image:2.0
+          name: web
+          ports:
+          - containerPort: 3000
+            protocol: TCP
+
+```
+
+Line 4: With the name web-green to distinguish from web-blue and allow for parallel install
+Lines 11 and 17: Having the color green
+Line 20: Now using version 2.0 of the image
+
+Now we're ready to deploy this green version of the service, and it should run separate from the blue service:
+```
+$ kubectl create -f web-deploy-green.yaml
+```
+
+Now comes the interesting part. We can flip traffic from blue to green by editing the existing service for the web component. So, execute the following command:
+```
+$ kubectl edit svc/web
+```
+Change the value of the label color from blue to green. Then save and quit the editor. The Kubernetes CLI will automatically update the service. When we now query the web service again, we get this:
+```
+$ curl -4 ${IP}:${PORT}/
+Pets Demo Application v2
+```
+
+This confirms that the traffic has indeed switched to the green version of the web component (note the v2 at the end of the response to the curl command).
+
+If we realize that something went wrong with our green deployment and the new version has a defect, we can easily switch back to the blue version by editing the service web again and replacing the value of the label color from green back to blue. 
+
+## Kubernetes secrets
+
+A secret is a key-value pair where the key is the unique name of the secret and the value is the actual sensitive data. **Secrets are stored in etcd.**
+
+### Manually defining secrets
+
+We can create a secret declaratively the same way we created any other object in Kubernetes. Here is the YAML for such a secret:
+```
+apiVersion: v1
+kind: Secret
+metadata:
+  name: pets-secret
+type: Opaque
+data:
+  username: am9obi5kb2UK
+  password: c0VjcmV0LXBhc1N3MHJECg==
+```
+
+And they are also not really encrypted values but just base64 encoded values.
+
+![kubernetes-creating-and-describing-secret.png](pictures/kubernetes-creating-and-describing-secret.png)
+
+### Creating secrets with kubectl
+
+A much safer way to define secrets is to use ``kubectl``. First, we create files containing the base64-encoded secret values similar to what we did in the preceding section, but this time we store the values in temporary files:
+```
+$ echo "sue-hunter" | base64 > username.txt
+$ echo "123abc456def" | base64 > password.txt
+```
+
+Now we can use ``kubectl`` to create a secret from those files as follows:
+```
+$ kubectl create secret generic pets-secret-prod \
+    --from-file=./username.txt \
+    --from-file=./password.txt
+secret "pets-secret-prod" created
+```
+
+The secret can then be used the same way as the manually-created secret.
+
+### Using secrets in a pod
 
 
 
