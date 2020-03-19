@@ -2055,47 +2055,19 @@ The secret can then be used the same way as the manually-created secret.
 
 ### Using secrets in a pod
 
+Let's say we want to create a Deployment object where the web component uses our secret called pets-secret  that we introduced in the preceding section. We use the following command to create the secret in the cluster:
+```
+$ kubectl create -f pets-secret.yaml
+```
 
+![Deployment-object-for-web-component-with-a-secret.png](pictures/Deployment-object-for-web-component-with-a-secret.png)
 
+On lines 27 through 30 we define a volume called secrets from our secret pets-secret. We then use this volume in the container, as described on lines 23 through 26. We mount the secrets in the container filesystem at /etc/secrets and we mount the volume in read-only mode. Thus, the secret values will be available to the container as files in said folder.
 
+### Secret values in environment variables
 
+Let's say our web component expects the username in the environment variable, PETS_USERNAME and the password in PETS_PASSWORD, then we can modify our deployment YAML to look as follows:
 
+![deployment-mapping-secret-values-to-environment-variables.png](pictures/deployment-mapping-secret-values-to-environment-variables.png)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+On lines 23 through 33, we define the two environment variables, PETS_USERNAME and PETS_PASSWORD, and map the corresponding key-value pair of the pets-secret to them. On lines 23 through 33, we define the two environment variables, PETS_USERNAME and PETS_PASSWORD, and map the corresponding key-value pair of the pets-secret to them.
