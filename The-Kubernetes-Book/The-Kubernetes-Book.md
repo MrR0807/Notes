@@ -14,6 +14,21 @@
 ![Kubernetes-Node.PNG](pictures/Kubernetes-Node.PNG)
 
 * **Kubelet** - It’s the main Kubernetes agent, and it runs on every node in the cluster. When you join a new node to a cluster, the process installs kubelet onto the node. One of the main jobs of the kubelet is to watch the API server for new work assignments.
-* **Container runtime** - The Kubelet needs a **container runtime** to perform container-related tasks – things like pulling images and
-starting and stopping containers.
+* **Container runtime** - The Kubelet needs a **container runtime** to perform container-related tasks – things like pulling images and starting and stopping containers.
 * **Kube-proxy** - Runs on every node in the cluster and is responsible for local cluster networking. For example, it makes sure each node gets its own unique IP address, and implements local IPTABLES or IPVS rules to handle routing and load-balancing of traffic on the Pod network.
+
+## Kubernetes DNS
+
+Every Kubernetes cluster has an internal DNS service that is vital to operations. The cluster’s DNS service has a static IP address that is **hard-coded into every Pod on the cluster**, meaning all containers and Pods know how to find it. Every new service is automatically registered with the cluster’s DNS.
+
+
+
+
+
+
+
+
+
+
+
+
