@@ -29,7 +29,7 @@ Term **Pod** comes from a *pod of whales*. As the Docker logo is a whale, it mak
 
 # 4: Working with Pods
 
-
+Pod is a **paused container**. 
 
 
 
