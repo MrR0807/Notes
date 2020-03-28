@@ -83,11 +83,19 @@ You can add the ``--watch`` flag to the ``kubectl get pods`` command so that you
 
 ``kubectl get`` command offers a couple flags that give you more information:
 * ``-o wide`` flag gives a couple more columns but is still a single line of output.
-* ``-o yaml`` flag takes things to the next level. This returns a full copy of the Pod manifest from the cluster store. The output is broadly divided into two parts - desired state (``.spec``) and current obesrved state (``.status``).
+* ``-o yaml`` returns a full copy of the Pod manifest from the cluster store. The output is broadly divided into two parts - desired state (``.spec``) and current obesrved state (``.status``).
 
+Example:
+```
+$ kubectl get pods hello-pod -o yaml
+```
 
+## kubectl describe
 
-
+``kubectl describe`` provides a nicely formatted multiline overview of an object. Example:
+```
+$ kubectl describe pods hello-pod
+```
 
 
 
