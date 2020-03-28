@@ -97,11 +97,33 @@ $ kubectl get pods hello-pod -o yaml
 $ kubectl describe pods hello-pod
 ```
 
+If you're running multiple containers in Pod, you can see the ordering and names of containers in a Pod with the ``kubectl describe pods <pod>`` command.
 
+## kubectl exec: running commands in Pods
 
+``kubectl exec`` command allows to log into Pod or execute commands in it.
 
+Get a shell to the running Container:
+```
+kubectl exec -it shell-demo -- /bin/bash
+```
 
+The ``-it`` flags make the exec session interactive and connects STDIN and STDOUT on your terminal to STDIN and STDOUT inside the first container in the Pod.
 
+Other examples:
+```
+kubectl exec shell-demo ps aux
+kubectl exec shell-demo ls /
+```
+
+If you are running multi-container Pods, you need to pass ``kubectl exec command the --container`` flag and give it the name of the container that you want to create the exec session with. If you do not specify this flag, the command will execute against the first container in the Pod.
+
+## kubectl logs
+
+``kubectl logs`` command. If you don’t use ``--container`` to specify a container by name, it will execute against the first container
+in the Pod.
+
+# 5: Kubernetes Deployments
 
 
 
