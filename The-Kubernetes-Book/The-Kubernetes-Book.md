@@ -125,6 +125,38 @@ in the Pod.
 
 # 5: Kubernetes Deployments
 
+## Deployment theory
+
+It’s important to know that a single Deployment object can only manage a single Pod template. Deployment can manage multiple
+replicas of the same Pod. Deployments are fully-fledged objects in the Kubernetes API. Deployments leverage another object called a ReplicaSet.
+
+ReplicaSet provides ***self-healing*** and ***scaling***.
+Deployments provide ***rolling-updates***.
+
+![Deployment-ReplicaSet.PNG](pictures/Deployment-ReplicaSet.PNG)
+
+## Rolling updates with Deployments
+
+As well as self-healing and scaling, Deployments give us zero-downtime rolling-updates. When you rollout update, Kubernetes creates a new ReplicaSet for the Pods with the new image. You now have two ReplicaSets – the original one for the Pods with the old version of the image, and a new one for the Pods with the updated version. Each time Kubernetes increases the number of Pods in the new ReplicaSet (with the new version of the image) it decreases the number of Pods in the old ReplicaSet (with the old version of the image).
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
