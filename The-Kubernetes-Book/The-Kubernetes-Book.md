@@ -139,12 +139,110 @@ Deployments provide ***rolling-updates***.
 
 As well as self-healing and scaling, Deployments give us zero-downtime rolling-updates. When you rollout update, Kubernetes creates a new ReplicaSet for the Pods with the new image. You now have two ReplicaSets – the original one for the Pods with the old version of the image, and a new one for the Pods with the updated version. Each time Kubernetes increases the number of Pods in the new ReplicaSet (with the new version of the image) it decreases the number of Pods in the old ReplicaSet (with the old version of the image).
 
+## Rollbacks
 
+Older ReplicaSets are wound down and no longer manage any Pods. However, they still exist with their full configuration.
 
+## How to create a Deployment
 
+```
+apiVersion: apps/v1 #Older versions of k8s use apps/v1beta1
+kind: Deployment
+metadata:
+  name: hello-deploy
+spec:
+  replicas: 10
+  selector:
+    matchLabels:
+      app: hello-world
+  minReadySeconds: 10
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
+  template:
+     metadata:
+       labels:
+         app: hello-world
+     spec:
+       containers:
+         - name: hello-pod
+           image: nigelpoulton/k8sbook:latest
+           ports:
+           - containerPort: 8080
+```
 
+* **.kind** field tells Kubernetes you’re defining a Deployment object.
+* **.metadata** section is where we give the Deployment a name and labels.
+* **.spec** Anything directly below ``.spec`` relates to the Pod. Anything nested below ``.spec.template`` relates to the Pod template that the Deployment will manage.
+* **spec.selector** is a list of labels that Pods must have in order for the Deployment to manage them.
+* **spec.minReadySeconds** tells Kubernetes to wait 10 seconds between each Pod being updated. This is useful for throttling the rate at which updates occur.
+* **spec.strategy** tells Kubernetes you want this Deployment to: Update using the RollingUpdate strategy; Never have more than one Pod below desired state (maxUnavailable: 1); Never have more than one Pod above desired state (maxSurge: 1).
+  * **maxSurge** means you will never have more than 11 Pods during the update process.
+  * **maxUnavailable** means you’ll never have less than 9.
 
+## Inspecting Deployments
 
+Use ``kubectl get`` and ``kubectl describe``. Example:
+```
+$ kubectl get deploy hello-deploy
+```
+
+## Accessing the app
+
+Service object provide a stable DNS name and IP address for a set of Pods. Service:
+```
+apiVersion: v1
+kind: Service
+metadata:
+  name: hello-svc
+  labels:
+    app: hello-world
+spec:
+  type: NodePort
+  ports:
+  - port: 8080
+    nodePort: 30001
+    protocol: TCP
+  selector:
+    app: hello-world
+```
+
+Now that the Service is deployed, you can access the app from either of the following:
+* From inside the cluster using the DNS name hello-svc on port 8080
+* From outside the cluster by hitting any of the cluster nodes on port 30001
+
+## Performing a rolling update
+
+Create a new Deployment file:
+```
+apiVersion: apps/v1 #Older versions of k8s use apps/v1beta1
+kind: Deployment
+metadata:
+  name: hello-deploy
+spec:
+  replicas: 10
+  selector:
+    matchLabels:
+      app: hello-world
+  minReadySeconds: 10
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
+  template:
+     metadata:
+       labels:
+         app: hello-world
+     spec:
+       containers:
+         - name: hello-pod
+           image: nigelpoulton/k8sbook:edge # This line changed
+           ports:
+           - containerPort: 8080
+```
 
 
 
