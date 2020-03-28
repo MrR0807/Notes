@@ -62,10 +62,29 @@ spec:
 ```
 
 Let’s step through what the YAML file is describing:
-* apiVersion - tells you two things – the **API group** and the **API version**. The usual format for apiVersion ``<api-group>/<version>``. However, Pods are defined in a special API group called the **core group** which omits the api-group part. For example, StorageClass objects are defined in v1 of the storage.k8s.io API group and are described in YAML files as ``storage.k8s.io/v1``.
-* kind - tells Kubernetes the type of object is being deployed.
-* metadata - section where you attach a name and labels. As the .metadata section does not specify a Namespace, the Pod will be deployed to the ``default`` Namespace.
-* spec - section where you define the containers that will run in the Pod.
+* **apiVersion** - tells you two things – the **API group** and the **API version**. The usual format for apiVersion ``<api-group>/<version>``. However, Pods are defined in a special API group called the **core group** which omits the api-group part. For example, StorageClass objects are defined in v1 of the storage.k8s.io API group and are described in YAML files as ``storage.k8s.io/v1``.
+* **kind** - tells Kubernetes the type of object is being deployed.
+* **metadata** - section where you attach a name and labels. As the .metadata section does not specify a Namespace, the Pod will be deployed to the ``default`` Namespace.
+* **spec** - section where you define the containers that will run in the Pod.
+
+## Deploying Pods from a manifest file
+
+``kubectl`` command to POST the manifest to the API server:
+```
+$ kubectl apply -f pod.yml
+pod/hello-pod created
+```
+
+``kubectl get pods`` command to check the status.
+
+You can add the ``--watch`` flag to the ``kubectl get pods`` command so that you can monitor it and see when the status changes to Running.
+
+## Introspecting running Pods
+
+``kubectl get`` command offers a couple flags that give you more information:
+* ``-o wide`` flag gives a couple more columns but is still a single line of output.
+* ``-o yaml`` flag takes things to the next level. This returns a full copy of the Pod manifest from the cluster store. The output is broadly divided into two parts - desired state (``.spec``) and current obesrved state (``.status``).
+
 
 
 
