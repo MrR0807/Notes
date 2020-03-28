@@ -244,7 +244,47 @@ spec:
            - containerPort: 8080
 ```
 
+Initiate the update by re-POSTing the updated YAML file to the API server.
+```
+$ kubectl apply -f deploy.yml --record
+deployment.apps/hello-deploy configured
+```
 
+``--record`` flag so that Kubernetes would maintain a documented revision history of the Deployment.
+
+
+``kubectl rollout status`` monitor the progress of the update:
+```
+$ kubectl rollout status deployment hello-deploy
+Waiting for rollout to finish: 4 out of 10 new replicas...
+Waiting for rollout to finish: 4 out of 10 new replicas...
+Waiting for rollout to finish: 5 out of 10 new replicas...
+```
+
+Check the deployment history by:
+```
+kubectl rollout history deployment hello-deploy
+
+deployment.apps/hello-deploy
+REVISION CHANGE-CAUSE
+1 <none>
+2 kubectl apply --filename-deploy.yml --record=true
+```
+
+**This is only there because you used the --record flag as part of the command to invoke the update.**
+
+Updating a Deployment creates a new ReplicaSet, and that any previous ReplicaSets are not deleted. You can verify this with a ``kubectl get rs``.
+
+## How to perform a rollback
+
+```
+$ kubectl rollout undo deployment hello-deploy --to-revision=1
+deployment.apps "hello-deploy" rolled back
+```
+
+Rollbacks follow the same rules set out in the rolling update sections of the Deployment manifest – minReadySeconds: 10, maxUnavailable: 1, and maxSurge: 1.
+
+# 6: Kubernetes Services
 
 
 
