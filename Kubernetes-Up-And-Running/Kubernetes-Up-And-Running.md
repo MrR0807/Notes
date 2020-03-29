@@ -90,8 +90,32 @@ $ docker run -d --name kuard \
   gcr.io/kuar-demo/kuard-amd64:blue
 ```
 
+#### LIMITING CPU RESOURCES
 
+Another critical resource on a machine is the CPU. Restrict CPU utilization using the --cpu-shares flag with the docker run command:
+```
+$ docker run -d --name kuard \
+  --publish 8080:8080 \
+  --memory 200m \
+  --memory-swap 1G \
+  --cpu-shares 1024 \
+  gcr.io/kuar-demo/kuard-amd64:blue
+```
 
+## Cleanup
+
+Once you are done building an image, you can delete it with the docker rmi command:
+```
+docker rmi <tag-name>
+```
+or
+```
+docker rmi <image-id>
+```
+
+Images can either be deleted via their tag name (e.g., gcr.io/kuar-demo/kuard-amd64:blue) or via their image ID.
+
+# Chapter 3. Deploying a Kubernetes Cluster
 
 
 
