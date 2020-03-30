@@ -286,6 +286,69 @@ Rollbacks follow the same rules set out in the rolling update sections of the De
 
 # 6: Kubernetes Services
 
+## Setting the scene
+
+Service gets its own **stable IP address**, its own **stable DNS name**, and its own **stable port**. 
+
+## Theory
+
+![Kubernetes-Service.PNG](pictures/Kubernetes-Service.PNG)
+
+## Labels and loose coupling
+
+Services are loosely coupled with Pods via **labels** and **label selectors.**
+
+For a Service to match a set of Pods, and therefore send traffic to them, the **Pods must possess every label in the Services label selector.** However, the Pod can have additional labels that are not listed in the Service’s label selector.
+
+Service example:
+```
+apiVersion: v1
+kind: Service
+metadata:
+  name: hello-svc
+spec:
+  ports:
+  - port: 8080
+  selector:
+    app: hello-world # Label selector. Service is looking for Pods with the label `app=hello-world`
+```
+
+Deployment example:
+```
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hello-deploy
+spec:
+  replicas: 10
+  selector:
+    matchLabels:
+      app: hello-world
+  template:
+    metadata:
+      labels:
+        app: hello-world # Pod labels. The label matches the Service's label selector
+  spec:
+    containers:
+    - name: hello-ctr
+      image: nigelpoulton/k8sbook:latest
+      ports:
+      - containerPort: 8080
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
