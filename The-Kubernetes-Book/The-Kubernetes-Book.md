@@ -336,7 +336,15 @@ spec:
       - containerPort: 8080
 ```
 
+## Services and Endpoint objects
 
+As Pods come-and-go (scaling up and down, failures, rolling updates etc.), the Service dynamically updates its list of healthy matching Pods. It does this through a combination of the label selector and a construct called an **Endpoints object**.
+
+**Each Service that is created, automatically gets an associated Endpoints object.** All this Endpoints object is, is a dynamic list of all of the healthy Pods on the cluster that match the Service’s label selector.
+
+Kubernetes is constantly evaluating the Service’s label selector against the current list of healthy Pods on the cluster. Any new Pods that match the selector get added to the Endpoints object, and any Pods that disappear get removed. This means the Endpoints object is always up to date. Then, when a Service is sending traffic to Pods, it queries its Endpoints object for the latest list of healthy matching Pods.
+
+When sending traffic to Pods, via a Service, an application will normally query the cluster’s internal DNS for the IP address of a Service. It then sends the traffic to this stable IP address and the Service sends it on to a Pod. However, a Kubernetes-native application (that’s a fancy way of saying an application that understands Kubernetes and can query the Kubernetes API) can query the Endpoints API directly, bypassing the DNS lookup and use of the Service’s IP.
 
 
 
