@@ -342,12 +342,208 @@ As Pods come-and-go (scaling up and down, failures, rolling updates etc.), the S
 
 **Each Service that is created, automatically gets an associated Endpoints object.** All this Endpoints object is, is a dynamic list of all of the healthy Pods on the cluster that match the Service’s label selector.
 
-Kubernetes is constantly evaluating the Service’s label selector against the current list of healthy Pods on the cluster. Any new Pods that match the selector get added to the Endpoints object, and any Pods that disappear get removed. This means the Endpoints object is always up to date. Then, when a Service is sending traffic to Pods, it queries its Endpoints object for the latest list of healthy matching Pods.
+Kubernetes is constantly evaluating the Service’s label selector against the current list of healthy Pods on the cluster. Any new Pods that match the selector get added to the Endpoints object, and any Pods that disappear get removed. This means the Endpoints object is always up to date. Then, **when a Service is sending traffic to Pods, it queries its Endpoints object for the latest list of healthy matching Pods.**
 
 When sending traffic to Pods, via a Service, an application will normally query the cluster’s internal DNS for the IP address of a Service. It then sends the traffic to this stable IP address and the Service sends it on to a Pod. However, a Kubernetes-native application (that’s a fancy way of saying an application that understands Kubernetes and can query the Kubernetes API) can query the Endpoints API directly, bypassing the DNS lookup and use of the Service’s IP.
 
+## Accessing Services from inside the cluster
 
+Kubernetes supports several types of Service. The default type is **ClusterIP**. A ClusterIP Service has a **stable IP address and port that is only accessible from inside the cluster.**
 
+## Accessing Services from outside the cluster
+
+Kubernetes has another type of Service called a **NodePort Service.** This builds on top of ClusterIP and enables access from outside of the cluster.
+
+The following example represents a NodePort Service:
+* Name: magic-sandbox
+* ClusterIP: 172.12.5.17
+* port: 8080
+* NodePort: 30050
+
+It can be accessed from outside of the cluster by sending a request to the IP address of any cluster node on port 30050.
+
+## Service discovery
+
+Kubernetes implements Service discovery in a couple of ways:
+* DNS (preferred)
+* Environment variables (definitely not preferred)
+
+Kubernetes DNS is setup by:
+* Control plane Pods running a DNS service
+* A Service object called ``kube-dns`` that sits in front of the Pods
+* Kubelets program every container with the knowledge of the DNS (via /etc/resolv.conf)
+
+## Hands-on with Services
+
+### The imperative way
+
+deploy.yml:
+```
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web-deploy
+spec:
+  replicas: 10
+  selector:
+    matchLabels:
+      app: hello-world
+  template:
+    metadata:
+      labels:
+        app: hello-world
+    spec:
+      containers:
+      - name: hello-ctr
+        image: nigelpoulton/k8sbook:latest
+        ports:
+        - containerPort: 8080
+```
+
+```
+$ kubectl apply -f deploy.yml
+deployment.apps/hello-deploy created
+```
+
+The command to imperatively create a Kubernetes Service is ``kubectl expose``:
+```
+$ kubectl expose deployment web-deploy \
+--name=hello-svc \
+--target-port=8080 \
+--type=NodePort
+service/hello-svc exposed
+```
+
+Once the Service is created, inspect it with the ``kubectl describe svc hello-svc`` command:
+```
+$ kubectl describe svc hello-svc
+Name: hello-svc
+Namespace: default
+Labels: <none>
+Annotations: <none>
+Selector: app=hello-world
+Type: NodePort
+IP: 192.168.201.116
+Port: <unset> 8080/TCP
+TargetPort: 8080/TCP
+NodePort: <unset> 30175/TCP
+Endpoints: 192.168.128.13:8080,192.168.128.249:8080, + more...
+Session Affinity: None
+External Traffic Policy: Cluster
+Events: <none>
+```
+
+Some values expained:
+* Selector is the list of labels that Pods must have in order for the Service to send traffic to them
+* IP is the permanent internal ClusterIP (VIP) of the Service
+* Port is the port that the Service listens on inside the cluster
+* TargetPort is the port that the application is listening on
+* NodePort is the cluster-wide port that can be used to access it from outside the cluster
+* Endpoints is the dynamic list of healthy Pod IPs currently match the Service’s label selector.
+
+You can access exposed Service via node IP address and NodePort.
+
+### The declarative way
+
+A Service manifest file:
+```
+apiVersion: v1
+kind: Service
+metadata:
+  name: hello-svc
+spec:
+  type: NodePort
+  ports:
+  - port: 8080
+    nodePort: 30001
+    targetPort: 8080
+    protocol: TCP
+  selector:
+    app: hello-world
+```
+
+## Common Service types
+
+Common ServiceTypes:
+* **ClusterIP** - default option and gives the Service a stable IP address internally within the cluster. It will not make the Service available outside of the cluster.
+* **NodePort** - builds on top of ClusterIP and adds a cluster-wide TCP or UDP port. It makes the Service available outside of the cluster on a stable port.
+* **LoadBalancer** - builds on top of NodePort and integrates with cloud-based load-balancers.
+* **ExternalName** - direct traffic to services that exist outside of the Kubernetes cluster.
+
+## Endpoints objects
+
+Every Service gets its own Endpoints object with the **same name as the Service.**
+```
+$ kubectl get ep hello-svc
+NAME ENDPOINTS AGE
+hello-svc 100.96.1.10:8080, 100.96.1.11:8080 + 8 more... 1m
+```
+
+# 7: Service discovery
+
+There are two major components to service discovery:
+* Service registration
+* Service discovery
+
+## Service registration
+
+![Service-Discovery.PNG](pictures/Service-Discovery.PNG)
+
+Kubernetes provides a well-known internal DNS service that we usually call the "cluster DNS". The term *well known* means that it operates at an address known to every Pod and container in the cluster. It’s implemented in the ``kube-system`` Namespace as a set of Pods managed by a Deployment called ``coredns``. These Pods are fronted by a Service called ``kube-dns``.
+
+Every Kubernetes Service is automatically registered with the cluster DNS when it’s created. The registration process:
+* POST a new Service manifest to the API Server
+* The request is authenticated, authorized, and subjected to admission policies
+* The Service is allocated a virtual IP address called a ClusterIP
+* An Endpoints object (or Endpoint slices) is created to hold a list of Pods the Service will load-balance traffic to
+* The Pod network is configured to handle traffic sent to the ClusterIP (more on this later)
+* The Service’s name and IP are registered with the cluster DNS
+
+## Summarising service registration
+
+![Summarising-service-registration.PNG](pictures/Summarising-service-registration.PNG)
+
+Every node is running a kube-proxy that sees the new Service and Endpoints objects and creates IPVS rules on every node so that traffic to the Service’s ClusterIP is redirected to one of the Pods that match its label selector.
+
+## Service discovery
+
+Let’s assume there are two microservices applications on a single Kubernetes cluster – enterprise and voyager. The Pods for the enterprise app sit behind a Kubernetes Service called ent and the Pods for the voyager app sit behind another Kubernetes Service called voy. Both are registered with DNS as follows:
+* ent: 192.168.201.240
+* voy: 192.168.200.217
+
+## Converting names to IP addresses using the cluster DNS
+
+Kubernetes automatically configures every container so that it can find and use the cluster DNS to convert Service names to IPs. It does this by populating every container’s ``/etc/resolv.conf`` file with the IP address of cluster DNS Service as well as any search domains that should be appended to unqualified names.
+
+Note: An “unqualified name” is a short name such as ent. Appending a search domain converts an unqualified name into a fully qualified domain name (FQDN) such as ent.default.svc.cluster.local.
+
+The following snippet shows a container that is configured to send DNS queries to the cluster DNS at 192.168.200.10. It also lists the search domains to append to unqualified names. 
+```
+$ cat /etc/resolv.conf
+search svc.cluster.local cluster.local default.svc.cluster.local
+nameserver 192.168.200.10
+options ndots:5
+```
+
+The following snippet shows that nameserver in /etc/resolv.conf matches the IP address of the cluster DNS (the kube-dns Service).
+```
+$ kubectl get svc -n kube-system -l k8s-app=kube-dns
+NAME TYPE CLUSTER-IP PORT(S) AGE
+kube-dns ClusterIP 192.168.200.10 53/UDP,53/TCP,9153/TCP 3h53m
+```
+
+If Pods in the enterprise app need to connect to Pods in the voyager app, they send a request to the cluster DNS asking it to resolve the name voy to an IP address. The cluster DNS will return the value of the ClusterIP (192.168.200.217).
+
+## Summarising service discovery
+
+![Summarising-service-discovery.PNG](pictures/Summarising-service-discovery.PNG)
+
+* An instance of the "enterprise" microservice sends a query to the cluster DNS (defined in the ``/etc/resolv.conf`` file of every container) asking it to resolve the name of the "voy" Service to an IP address. 
+* The cluster DNS replies with the ClusterIP (virtual IP) 
+* The instance of the "enterprise" microservice sends requests to this ClusterIP.
+* However, there are no routes to the service network that the ClusterIP is on. This means the requests are sent to the container’s default gateway and eventually sent to the Node the container is running on. 
+* The Node has no route to the service network so it sends the traffic to its own default gateway. 
+* En-route, the request is processed by the Node’s kernel. A trap is triggered and the request is redirected to the IP address of a Pod that matches the Services label selector.
 
 
 
