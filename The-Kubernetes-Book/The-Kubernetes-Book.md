@@ -670,6 +670,50 @@ spec:
     stdin: true
 ```
 
+Deploy the configuration to your cluster.
+```
+$ kubectl apply -f dns-namespaces.yml
+```
+
+Check the configuration was correctly applied:
+```
+$ kubectl get all -n dev
+$ kubectl get all -n prod
+```
+
+The next steps will:
+* Log on to the main container of jump Pod in the dev Namespace
+* Check the container’s /etc/resolv.conf file
+* Connect to the ent app in the dev Namespace using the Service’s shortname
+* Connect to the ent app in the prod Namespace using the Service’s FQDN
+
+```
+$ kubectl exec -it jump bash -n dev
+root@jump:/#
+
+$ cat /etc/resolv.conf
+search dev.svc.cluster.local svc.cluster.local cluster.local default.svc.cluster.local
+nameserver 192.168.200.10
+options ndots:5
+
+$ apt-get update && apt-get install curl -y
+
+$ curl ent:8080
+Hello from the DEV Namespace!
+Hostname: enterprise-7d49557d8d-k4jjz
+
+$ curl ent.prod.svc.cluster.local:8080
+Hello from the PROD Namespace!
+Hostname: enterprise-5464d8c4f9-v7xsk
+
+```
+
+# 8: Kubernetes storage
+
+
+
+
+
 
 
 
