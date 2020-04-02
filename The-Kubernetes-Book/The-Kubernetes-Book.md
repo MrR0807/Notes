@@ -555,9 +555,120 @@ Every cluster has an address space based on a DNS domain that we usually call th
 
 The format of the FQDN is **\<object-name\>.\<namespace\>.svc.cluster.local.**
 
+For example, creating a couple of Namespaces called prod and dev will give you two address spaces that you can place Services and other objects in:
+* dev: <object-name>.dev.svc.cluster.local
+* prod: <object-name>.prod.svc.cluster.local
+  
+**Object names must be unique within Namespaces but not across Namespaces.** This means that you cannot have two Service objects called “ent” in the same Namespace, but you can if they are in different Namespaces.
 
+![Namespaces-SVC.PNG](pictures/Namespaces-SVC.PNG)
 
+To connect to objects in a remote Namespace requires FQDNs such as ent.dev.svc.cluster.local and voy.dev.svc.cluster.local.
 
+## Service discovery example
+
+![Service-Discovery-Example.PNG](pictures/Service-Discovery-Example.PNG)
+
+```
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: dev
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: prod
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: enterprise
+  labels:
+    app: enterprise
+  namespace: dev
+spec:
+  selector:
+    matchLabels:
+      app: enterprise
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: enterprise
+    spec:
+      terminationGracePeriodSeconds: 1
+      containers:
+      - image: nigelpoulton/k8sbook:text-dev
+        name: enterprise-ctr
+        ports:
+        - containerPort: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: enterprise
+  labels:
+    app: enterprise
+  namespace: prod
+spec:
+  selector:
+    matchLabels:
+      app: enterprise
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: enterprise
+      spec:
+        terminationGracePeriodSeconds: 1
+        containers:
+        - image: nigelpoulton/k8sbook:text-prod
+          name: enterprise-ctr
+          ports:
+          - containerPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ent
+  namespace: dev
+spec:
+  selector:
+    app: enterprise
+  ports:
+  - port: 8080
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ent
+  namespace: prod
+spec:
+  selector:
+    app: enterprise
+  ports:
+  - port: 8080
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: jump
+  namespace: dev
+spec:
+  terminationGracePeriodSeconds: 5
+  containers:
+  - name: jump
+    image: ubuntu
+    tty: true
+    stdin: true
+```
 
 
 
