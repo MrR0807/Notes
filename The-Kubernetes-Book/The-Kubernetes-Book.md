@@ -817,9 +817,40 @@ spec:
 
 The most important thing to note about a PVC object is that the values in the **``.spec`` section must match with the PV you are binding it with. In this example, *access modes*, *storage class*, and *capacity* must match with the PV.**
 
+Note: It’s possible for a PV to have more capacity than a PVC. For example, a 10GB PVC can be bound to a 15GB PV (obviously this will waste 5GB of the PV). However, a 15GB PVC cannot be bound to a 10GB PV.
 
+![PVC-PV-Match.PNG](pictures/PVC-PV-Match.PNG)
 
+Deploy the PVC with the following command:
+```
+$ kubectl apply -f gke-pvc.yml
+persistentvolumeclaim/pvc1 created
+```
 
+Pod:
+```
+apiVersion: v1
+kind: Pod
+  metadata:
+    name: volpod
+spec:
+  volumes:
+  - name: data
+    persistentVolumeClaim:
+      claimName: pvc1
+    containers:
+    - name: ubuntu-ctr
+      image: ubuntu:latest
+      command:
+      - /bin/bash
+      - "-c"
+      - "sleep 60m"
+      volumeMounts:
+      - mountPath: /data
+        name: data
+```
+
+102 (109)
 
 
 
