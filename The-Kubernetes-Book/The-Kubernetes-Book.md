@@ -710,6 +710,132 @@ Hostname: enterprise-5464d8c4f9-v7xsk
 
 # 8: Kubernetes storage
 
+## The big picture
+
+**Volume** - when storage is exposed to Kubernetes.
+
+![Kubernetes-Storage.PNG](pictures/Kubernetes-Storage.PNG)
+
+![Storage-Objects.PNG](pictures/Storage-Objects.PNG)
+
+This is a set of API objects that allow applications to consume storage. At a high-level, Persistent Volumes (PV) are how you map external storage onto the cluster, and Persistent Volume Claims (PVC) are like tickets that authorize applications (Pods) to use a PV.
+
+## The Container Storage Interface (CSI)
+
+CSI is an open-source project that defines a standards-based interface so that storage can be leveraged in a uniform way across multiple container orchestrators. Storage vendor should be able to write a single CSI plugin that works across multiple orchestrators like Kubernetes and Docker Swarm.
+
+## The Kubernetes persistent volume subsystem
+
+The three main resources in the persistent volume subsystem are:
+* Persistent Volumes (PV) - how you represent storage in Kubernetes.
+* Persistent Volume Claims (PVC) - tickets that grant a Pod access to a PV.
+* Storage Classes (SC) - make it all dynamic.
+
+Assume you have a Kubernetes cluster and an external storage system. The storage vendor provides a CSI plugin so that you can leverage its storage assets inside of your Kubernetes cluster. You provision 3 x 10GB volumes on the storage system and create 3 Kubernetes PV objects to make them available on your cluster. Each PV references one of the volumes on the storage array via the CSI plugin. At this point, the three volumes are visible and available for use on the Kubernetes cluster.
+
+Now assume you’re about to deploy an application that requires 10GB of storage. That’s great, you already have three 10GB PVs. In order for the app to use one of them, it needs a PVC. Once the app has the PVC, it can mount the respective PV into its Pod as a volume.
+
+Example.
+
+The example assumes 10GB SSD volume called “uber-disk” has been pre-created in the same Google Cloud Region or Zone as the cluster. The Kubernetes steps will be:
+* Create the PV
+* Create the PVC
+* Define the volume into a PodSpec
+* Mount it into a container
+
+PV:
+```
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv1
+spec:
+  accessModes:
+  - ReadWriteOnce
+  storageClassName: test
+  capacity:
+    storage: 10Gi
+  persistentVolumeReclaimPolicy: Retain
+  gcePersistentDisk:
+    pdName: uber-disk
+```
+
+The operation will fail if you have not pre-created “uber-disk” on the back-end storage system.
+```
+$ kubectl apply -f gke-pv.yml
+persistentvolume/pv1 created
+```
+Check the PV exists.
+```
+$ kubectl get pv pv1
+NAME CAPACITY MODES RECLAIM POLICY STATUS STORAGECLASS ...
+pv1 10Gi RWO Retain Available test
+```
+
+``.spec.accessModes`` defines how the PV can be mounted. Three options exist:
+* ReadWriteOnce (RWO) - defines a PV that can only be mounted/bound as R/W by a single PVC. Attempts from multiple PVCs to bind (claim) it will fail.
+* ReadWriteMany (RWM) - ReadWriteMany defines a PV that can be bound as R/W by multiple PVCs. This mode is usually only supported by file and object storage such as NFS. Block storage usually only supports RWO.
+* ReadOnlyMany (ROM) - ReadOnlyMany defines a PV that can be bound by multiple PVCs as R/O.
+
+**PV can only be opened in one mode – it is not possible for a single PV to have a PVC bound to it in ROM mode and another PVC bound to it in RWM mode.**
+
+``spec.persistentVolumeReclaimPolicy`` tells Kubernetes what to do with a PV when its PVC has been released. Two policies currently exist:
+* Delete
+* Retain
+
+*Delete* is the most dangerous, and is the **default for PVs that are created dynamically via storage classes.**
+
+*Retain* will keep the associated PV object on the cluster as well as any data stored on the associated external asset. However, it will prevent another PVC from using the PV in future. If you want to re-use a retained PV, you need to perform the following three steps:
+
+1. Manually delete the PV on Kubernetes
+2. Re-format the associated storage asset on the external storage system to wipe any data
+3. Recreate the PV
+
+``.spec.capacity`` tells Kubernetes how big the PV should be. This value can be less than the actual physical storage asset but **cannot be more.**
+
+```
+gcePersistentDisk:
+  pdName: uber-disk
+```
+
+Links the PV to the name of the pre-created device on the back-end. You can also specify vendor-specific attributes using the ``.parameters`` section of a PV YAML.
+
+PVC:
+```
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pvc1
+spec:
+  accessModes:
+  - ReadWriteOnce
+  storageClassName: test
+  resources:
+    requests:
+      storage: 10Gi
+```
+
+The most important thing to note about a PVC object is that the values in the **``.spec`` section must match with the PV you are binding it with. In this example, *access modes*, *storage class*, and *capacity* must match with the PV.**
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
