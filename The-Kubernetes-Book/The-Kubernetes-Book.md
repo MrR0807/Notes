@@ -545,8 +545,15 @@ If Pods in the enterprise app need to connect to Pods in the voyager app, they s
 * The Node has no route to the service network so it sends the traffic to its own default gateway. 
 * En-route, the request is processed by the Node’s kernel. A trap is triggered and the request is redirected to the IP address of a Pod that matches the Services label selector.
 
+## Service discovery and Namespaces
 
+Two things are important if you want to understand how service discovery works within and across Namespaces:
+* Every cluster has an address space
+* Namespaces partition the cluster address space
 
+Every cluster has an address space based on a DNS domain that we usually call the cluster domain. By default, it’s called **cluster.local**, and Service objects are placed within that address space. For example, a Service called ent will have a **fully qualified domain name (FQDN) of ent.default.svc.cluster.local.**
+
+The format of the FQDN is **\<object-name\>.\<namespace\>.svc.cluster.local.**
 
 
 
