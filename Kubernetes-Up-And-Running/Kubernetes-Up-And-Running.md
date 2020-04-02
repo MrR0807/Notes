@@ -142,6 +142,8 @@ node-2       Ready          45d       v1.12.1
 node-3       Ready          45d       v1.12.1
 ```
 
+# Chapter 4. Common kubectl Commands
+
 
 
 
