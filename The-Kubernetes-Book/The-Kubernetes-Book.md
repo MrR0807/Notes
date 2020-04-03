@@ -850,7 +850,30 @@ spec:
         name: data
 ```
 
-102 (109)
+You can see that the first reference to storage is .spec.volumes. This defines a volume called “data” that leverages the previously created PVC called “pvc1”.
+
+## Storage Classes and Dynamic Provisioning
+
+Storage classes allow to define different classes, or tiers, of storage. For example, you might define a *fast class*, a *slow class*, and an *encrypted class*.
+
+You can use the ``sc`` shortname to refer to StorageClass objects when using kubectl.
+
+### A StorageClass YAML
+
+The following is a simple example of a StorageClass YAML file. It defines a class of storage called “fast”, that is based on AWS solid state drives (io1) in the Ireland Region (eu-west-1a).
+
+```
+kind: StorageClass
+apiVersion: storage.k8s.io/v1
+metadata:
+  name: fast
+provisioner: kubernetes.io/aws-ebs
+parameters:
+  type: io1
+  zones: eu-west-1a
+  iopsPerGB: "10"
+```
+
 
 
 
