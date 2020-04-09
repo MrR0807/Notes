@@ -1189,6 +1189,17 @@ data:
 * Key: test.conf
 * Value: env = plex-test endpoint = 0.0.0.0:31001 char = utf8 vault = PLEX/test log-size = 512M
 
+### ConfigMaps and environment variables
+
+When the container is started, the environment variables appear in the container as standard Linux or Windows environment variables.
+
+![Config-Map-Env-variables.PNG](pictures/Config-Map-Env-variables.PNG)
+
+When the Pod is scheduled and the container started, FIRSTNAME and LASTNAME will be created as standard Linux **environment variables inside the container.** These can then be used by applications running in the container.
+
+A drawback to using ConfigMaps with environment variables is that environment variables are static. This means that any updates you make to the values in the ConfigMap will not be reflected in running containers.
+
+### ConfigMaps and container startup commands
 
 
 
