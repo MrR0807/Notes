@@ -157,6 +157,30 @@ If you want to change the default namespace more permanently, you can use a cont
 $ kubectl config set-context my-context --namespace=mystuff
 ```
 
+This creates a new context, but it doesn’t actually start using it yet. To use this newly created context, you can run:
+```
+$ kubectl config use-context my-context
+```
+
+## Viewing Kubernetes API Objects
+
+``kubectl get <resource-name>`` get a list of all resources in the current namespace.
+``kubectl get <resource-name> <obj-name>`` get a specific resource.
+
+``-o wide`` flag gives more details on a longer line.
+``-o json`` or ``-o yaml`` flag gives view of complete object.
+
+``kubectl get pods my-pod -o jsonpath --template={.status.podIP}`` uses JSONPath to extract specific fields.
+
+If you are interested in more detailed information about a particular object, use the describe command:
+```
+$ kubectl describe <resource-name> <obj-name>
+```
+
+## Creating, Updating, and Destroying Kubernetes Objects
+
+
+
 
 
 
