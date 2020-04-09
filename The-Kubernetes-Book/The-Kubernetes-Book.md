@@ -1124,6 +1124,96 @@ Magic Sandbox, hands-on learning that blurs the lines between training and the r
 Events: <none>
 ```
 
+### Inspecting ConfigMaps
+
+Run a kubectl get to list all ConfigMaps in your current Namespace:
+```
+$ kubectl get cm
+AME DATA AGE
+testmap1 2 11m
+testmap2 1 2m23s
+```
+
+The following kubectl get with the -o yaml flag shows the entire configuration of the object:
+```
+$ kubectl get cm testmap1 -o yaml
+apiVersion: v1
+data:
+longname: magic-sandbox
+shortname: msb
+kind: ConfigMap
+metadata:
+creationTimestamp: "2019-10-27T11:42:23Z"
+name: testmap1
+namespace: default
+resourceVersion: "39223"
+selfLink: /api/v1/namespaces/default/configmaps/testmap1
+uid: 0b2f5daa-5905-419c-a1bc-0289e32fdead
+```
+
+### Creating ConfigMaps declaratively
+
+```
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: multimap
+data:
+  given: Nigel
+  family: Poulton
+```
+
+ConfigMap do not have a spec section. Instead, they have a data section that defines the map of key/values.
+
+```
+$ kubectl apply -f multimap.yml
+configmap/multimap created
+```
+
+Next ConfigMap is with just a single map entry in the data block. It looks more complicated because the value portion of the map entry is a full configuration file:
+```
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: test-conf
+data:
+  test.conf: |
+    env = plex-test
+    endpoint = 0.0.0.0:31001
+    char = utf8
+    vault = PLEX/test
+    log-size = 512M
+```
+
+**The previous YAML file inserts a pipe character (|) after the name of the entry’s key property. This tells Kubernetes that everything following the pipe is to be treated as a single literal value.** Therefore, the ConfigMap object is called test-config and it contains a single map entry as follows:
+* Key: test.conf
+* Value: env = plex-test endpoint = 0.0.0.0:31001 char = utf8 vault = PLEX/test log-size = 512M
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
