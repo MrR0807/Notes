@@ -1201,49 +1201,55 @@ A drawback to using ConfigMaps with environment variables is that environment va
 
 ### ConfigMaps and container startup commands
 
+```
+spec:
+containers:
+  - name: args1
+    image: busybox
+    command: [ "/bin/sh", "-c", "echo First name $(FIRSTNAME) last name $(LASTNAME)" ]
+    env:
+    - name: FIRSTNAME
+      valueFrom:
+        configMapKeyRef:
+          name: multimap
+          key: given
+   - name: LASTNAME
+     valueFrom:
+       configMapKeyRef:
+         name: multimap
+         key: family
+```
 
+Running a Pod based on the previous YAML will print “First name Nigel last name Poulton” to the container’s log file.
 
+### ConfigMaps and volumes
 
+Using ConfigMaps with volumes is the most flexible option. You can reference entire configuration files as well as make updates to the ConfigMap and have them reflected in running containers.
 
+The high-level process for exposing ConfigMap data via a volume looks like this.
+* Create the ConfigMap
+* Create a ConfigMap volume in the Pod template
+* Mount the ConfigMap volume into the container
+* Entries in the ConfigMap will appear in the container as individual files
 
+```
+apiVersion: v1
+kind: Pod
+metadata:
+  name: cmvol
+spec:
+  volumes:
+  - name: volmap
+    configMap:
+      name: multimap
+  containers:
+  - name: ctr
+    image: nginx
+    volumeMounts:
+    - name: volmap
+      mountPath: /etc/name
+```
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+The ``spec.volumes`` block creates a special type of volume called a ConfigMap volume. The volume is called volmap and based on the multimap ConfigMap. This means that the volume will be populated with the entries stored in the data block of the ConfigMap. In this example, the volume will have two files; given and family. The given file will have the contents Nigel, and the family file will have the contents Poulton. The spec.containers block mounts the volmap volume into the container at /etc/name. This means that two files will appear in the container as:
+* /etc/name/given
+* /etc/name/family
