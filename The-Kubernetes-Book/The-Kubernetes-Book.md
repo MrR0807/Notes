@@ -1087,10 +1087,42 @@ Name: testmap1
 Namespace: default
 Labels: <none>
 Annotations: <none>
+
+Data
+====
+shortname:
+----
+msb.com
+longname:
+----
+magicsandbox.com
+Events: <none>
 ```
 
+The next command will create a ConfigMap from a file called cmfile.txt. The command assumes you have a local file called cmfile.txt in your working directory. The file contains the following single line of text:
+```
+Magic Sandbox, hands-on learning that blurs the lines between training and the real world.
+```
 
+```
+$ kubectl create cm testmap2 --from-file cmfile.txt
+configmap/testmap2 created
+```
 
+**The name of the entry’s key is the name of the file (cmfile.txt).**
+```
+$ kubectl describe cm testmap2
+Name: testmap2
+Namespace: default
+Labels: <none>
+Annotations: <none>
+Data
+====
+cmfile.txt:
+----
+Magic Sandbox, hands-on learning that blurs the lines between training and the real world.
+Events: <none>
+```
 
 
 
