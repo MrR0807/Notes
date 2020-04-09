@@ -874,22 +874,220 @@ parameters:
   iopsPerGB: "10"
 ```
 
+StorageClass objects are immutable – this means you cannot modify them once deployed.
+
+### Implementing StorageClasses
 
 
+The basic workflow for deploying and using a StorageClass on your cluster is as follows:
+* Create your Kubernetes cluster with a storage back-end
+* Ensure the plugin for the storage back-end is available
+* Create a StorageClass object
+* Create a PVC object that references the StorageClass by name
+* Deploy a Pod that uses volume based on the PVC
 
+**Notice that the workflow does not include creating a PV. This is because storage classes create PVs dynamically.**
 
+```
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: fast # Referenced by the PVC
+provisioner: kubernetes.io.gce-pd
+parameters:
+  type: pd-ssd
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mypvc # Referenced by the PodSpec
+  namespace: mynamespace
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 50Gi
+  storageClassName: fast # Matches name of the SC
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: mypod
+spec:
+  volumes:
+  - name: data
+    persistentVolumeClaim:
+      claimName: mypvc # Matches PVC name
+  containers: ...
+```
 
+StorageClasses make it so that you don’t have to create PVs manually. You create the StorageClass object and use a plugin to tie it to a particular type of storage on a particular storage back-end. Once deployed, the StorageClass watches the API server for new PVC objects that reference its name. When matching PVCs appear, the StorageClass dynamically creates the required volume on the back-end storage system as well as the PV on Kubernetes.
 
+## Demo
 
+### Create a StorageClass
 
+We’ll use the following YAML to create a StorageClass called “slow” based on Google GCE standard persistent disks. It uses an annotation to attempt to set this as the default storage class on the cluster.
 
+google-sc.yml:
+```
+kind: StorageClass
+apiVersion: storage.k8s.io/v1
+metadata:
+  name: slow
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "true"
+provisioner: kubernetes.io/gce-pd
+parameters:
+  type: pd-standard
+reclaimPolicy: Retain
+```
 
+Deploy the SC with the following command:
+```
+$ kubectl apply -f google-sc.yml
+storageclass.storage.k8s.io/slow created
+```
 
+You can check and inspect it with ``kubectl get sc slow`` and ``kubectl describe sc slow``. For example:
+```
+$ kubectl get sc slow
+NAME PROVISIONER AGE
+slow (default) kubernetes.io/gce-pd 32s
+```
 
+### Create a PVC
 
+google-pvc.yml:
+```
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pv-ticket
+spec:
+  accessModes:
+  - ReadWriteOnce
+  storageClassName: slow
+  resources:
+    requests:
+      storage: 25Gi
+```
 
+```
+$ kubectl apply -f google-pvc.yml
+persistentvolumeclaim/pv-ticket created
+```
 
+```
+$ kubectl get pvc pv-ticket
+NAME STATUS VOLUME CAPACITY ACCESS MODES STORAGECLASS
+pv-ticket Bound pvc-881a23... 25Gi RWO slow
+```
 
+Notice that the PVC is already bound to the pvc-881a23... volume – you didn’t have to manually create a PV.
+
+Use the following command to verify the presence of the automatically created PV on the cluster.
+
+```
+$ kubectl get pv
+NAME CAPACITY Mode STATUS CLAIM STORAGECLASS
+pvc-881... 25Gi RWO Bound pv-ticket slow
+```
+
+google-pod.yml:
+
+```
+apiVersion: v1
+kind: Pod
+metadata:
+  name: class-pod
+spec:
+  volumes:
+  - name: data
+    persistentVolumeClaim:
+      claimName: pv-ticket
+  containers:
+  - name: ubuntu-ctr
+    image: ubuntu:latest
+    command:
+    - /bin/bash
+    - "-c"
+    - "sleep 60m"
+    volumeMounts:
+    - mountPath: /data
+      name: data
+```
+
+### Clean-up
+
+```
+$ kubectl delete pod class-pod
+pod "class-pod" deleted
+
+$ kubectl delete pvc pv-ticket
+persistentvolumeclaim "pv-ticket" deleted
+
+$ kubectl delete sc slow
+storageclass.storage.k8s.io "slow" deleted
+```
+
+# 9: ConfigMaps
+
+## How do ConfigMaps work
+
+At a high-level, a ConfigMap is a place to store configuration data that can be seamlessly injected into containers at runtime. Behind the scenes, ConfigMaps are a map of key/value pairs. Example:
+* db-port:13306
+* hostname:msb-prd-db1
+
+More complex examples can store entire configuration files like this one:
+```
+key: conf value:
+
+directive in;
+main block;
+http {
+  server {
+    listen 80 default_server;
+    server_name *.msb.com;
+    root /var/www/msb.com;
+    index index.html
+
+    location / {
+      root /usr/share/nginx/html;
+      index index.html;
+    }
+  }
+}
+```
+
+Once data is stored in a ConfigMap, it can be injected into containers at run-time via any of the following methods:
+* environment variables
+* arguments to the container’s startup command
+* files in a volume
+
+## Hands-on with ConfigMaps
+
+### Creating ConfigMaps imperatively
+
+The command to imperatively create a ConfigMap is ``kubectl create configmap``, but you can shorten ``configmap`` to ``cm``. The command accepts two sources of data:
+* literal values on the command line (``--from-literal``)
+* files referenced on the command line (``--from-file``)
+
+```
+$ kubectl create configmap testmap1 \
+--from-literal shortname=msb.com \
+--from-literal longname=magicsandbox.com
+```
+
+The following describe command shows how the two entries are stored in the map:
+```
+$ kubectl describe cm testmap1
+Name: testmap1
+Namespace: default
+Labels: <none>
+Annotations: <none>
+```
 
 
 
