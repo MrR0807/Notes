@@ -144,6 +144,20 @@ node-3       Ready          45d       v1.12.1
 
 # Chapter 4. Common kubectl Commands
 
+## Namespaces
+
+Kubernetes uses namespaces to organize objects in the cluster. You can think of each namespace as a folder that holds a set of objects. **By default, the kubectl commandline tool interacts with the default namespace.**
+If you want to use a different namespace, you can pass ``kubectl`` the ``--namespace`` flag. For example, ``kubectl --namespace=mystuff`` references objects in the mystuff namespace. 
+If you want to interact with all namespaces - for example, to list all Pods in your cluster you can pass the ``--all-namespaces`` flag.
+
+## Contexts
+
+If you want to change the default namespace more permanently, you can use a context. This gets recorded in a kubectl configuration file, usually located at ``$HOME/.kube/config``. For example, you can create a context with a different default namespace for your kubectl commands using:
+```
+$ kubectl config set-context my-context --namespace=mystuff
+```
+
+
 
 
 
