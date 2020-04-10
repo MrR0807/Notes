@@ -207,13 +207,60 @@ If you want to remove a label, you can use the ``<label-name>-`` syntax:
 $ kubectl label pods bar color-
 ```
 
+## Debugging Commands
 
+You can use the following to see the **logs** for a running container:
+```
+$ kubectl logs <pod-name>
+```
 
+If you have multiple containers in your Pod, you can choose the container to view using the ``-c`` flag. 
 
+By default, kubectl logs lists the current logs and exits. If you instead want to continuously stream the logs back to the terminal without exiting, you can add the ``-f (follow)`` command-line flag.
 
+You can also use the **exec** command to execute a command in a running container:
+```
+$ kubectl exec -it <pod-name> -- bash
+```
+This will provide you with an interactive shell inside the running container so that you can perform more debugging.
 
+If you don’t have bash or some other terminal available within your container, you can always **attach** to the running process:
+```
+$ kubectl attach -it <pod-name>
+```
 
+**Difference**
 
+exec: any one you want to create, for example bash
+attach: the one currently running (no choice)
+
+You can also **copy** files to and from a container using the cp command:
+```
+$ kubectl cp <pod-name>:</path/to/remote/file> </path/to/local/file>
+```
+
+If you want to access your Pod via the network, you can use the ``port-forward`` command to forward network traffic from the local machine to the Pod. For example, the following command:
+```
+$ kubectl port-forward <pod-name> 8080:80
+```
+
+opens up a connection that forwards traffic from the local machine on port 8080 to the remote container on port 80.
+
+you can use the ``top`` command to see the list of resources in use by either nodes or Pods. This command:
+```
+$ kubectl top nodes
+$ kubectl top pods
+```
+
+**Help** command:
+```
+$ kubectl help
+$ kubectl help <command-name>
+```
+
+# Chapter 5. Pods
+
+**Sidecars** - containers that co-exists with "main" containers in pods. For example, web application in pod could be a "main" container, while Git synchronizer might be a sidecar.
 
 
 
