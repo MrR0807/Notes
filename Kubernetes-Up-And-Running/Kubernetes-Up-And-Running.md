@@ -190,6 +190,23 @@ $ kubectl apply -f obj.yaml
 
 If you want to see what the ``apply`` command will do without actually making the changes, you can use the **``--dry-run`` flag to print the objects to the terminal without actually sending them to the server.**
 
+When you want to delete an object, you can simply run:
+```
+$ kubectl delete -f obj.yaml
+```
+
+## Labeling and Annotating Objects
+
+Labels and annotations are tags for your objects. To add the color=red label to a Pod named bar, you can run:
+```
+$ kubectl label pods bar color=red
+```
+
+If you want to remove a label, you can use the ``<label-name>-`` syntax:
+```
+$ kubectl label pods bar color-
+```
+
 
 
 
