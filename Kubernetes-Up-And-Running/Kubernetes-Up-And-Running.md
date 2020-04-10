@@ -179,7 +179,16 @@ $ kubectl describe <resource-name> <obj-name>
 
 ## Creating, Updating, and Destroying Kubernetes Objects
 
+Let’s assume that you have a simple object stored in obj.yaml. You can use kubectl to create this object in Kubernetes by running:
+```
+$ kubectl apply -f obj.yaml
+```
+Similarly, after you make changes to the object, **you can use the apply command again to update the object**:
+```
+$ kubectl apply -f obj.yaml
+```
 
+If you want to see what the ``apply`` command will do without actually making the changes, you can use the **``--dry-run`` flag to print the objects to the terminal without actually sending them to the server.**
 
 
 
