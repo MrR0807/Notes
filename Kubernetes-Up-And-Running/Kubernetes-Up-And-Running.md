@@ -262,12 +262,88 @@ $ kubectl help <command-name>
 
 **Sidecars** - containers that co-exists with "main" containers in pods. For example, web application in pod could be a "main" container, while Git synchronizer might be a sidecar.
 
+### Creating a Pod
 
+```
+$ kubectl run kuard --generator=run-pod/v1 --image=gcr.io/kuar-demo/kuard-amd64:blue
+```
 
+You can see the status of this Pod by running:
+```
+$ kubectl get pods
+```
 
+```
+$ kubectl delete pods/kuard
+```
 
+## Running Pods
 
+Use the kubectl apply command to launch a single instance of kuard:
+```
+$ kubectl apply -f kuard-pod.yaml
+```
 
+### Pod Details
+
+To find out more information about a Pod:
+```
+$ kubectl describe pods kuard
+```
+
+### Deleting a Pod
+
+When it is time to delete a Pod, you can delete it either by name:
+```
+$ kubectl delete pods/kuard
+```
+or using the same file that you used to create it:
+```
+$ kubectl delete -f kuard-pod.yaml
+```
+
+## Accessing Your Pod
+
+### Using Port Forwarding
+
+To access Pod, you can use the port-forwarding support built into the Kubernetes API and command-line tools. When you run:
+```
+$ kubectl port-forward kuard 8080:8080
+```
+a secure tunnel is created from your local machine, through the Kubernetes master, to the instance of the Pod running on one of the worker nodes. As long as the port-forward command is still running, you can access the Pod (in this case the kuard web interface) at http://localhost:8080.
+
+### Getting More Info with Logs
+
+The kubectl logs command downloads the current logs from the running instance:
+```
+$ kubectl logs kuard
+```
+
+Adding the ``-f`` flag will cause you to continuously stream logs.
+
+The kubectl logs command always tries to get logs from the **currently running container.** Adding the ``--previous`` flag will get logs **from a previous instance of the container.** This is useful, for example, if your containers are continuously restarting due to a problem at container startup.
+
+### Running Commands in Your Container with exec
+
+Get an interactive shell.
+
+```
+$ kubectl exec kuard -it bash
+```
+
+### Copying Files to and from Containers
+
+Suppose you had a file called /captures/capture3.txt inside a container in your Pod. You could securely copy that file to your local machine by running:
+```
+$ kubectl cp <pod-name>:/captures/capture3.txt ./capture3.txt
+```
+Other times you may need to copy files from your local machine into a container. Let’s say you want to copy $HOME/config.txt to a remote container. In this case, you can run:
+```
+$ kubectl cp $HOME/config.txt <pod-name>:/config.txt
+```
+Generally speaking, copying files into a container is an anti-pattern.
+
+## Health Checks
 
 
 
