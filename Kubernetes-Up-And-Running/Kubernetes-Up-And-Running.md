@@ -449,12 +449,87 @@ spec:
 
 ## Persisting Data with Volumes
 
+### Using Volumes with Pods
 
+To add a volume to a Pod manifest, there are two new stanzas to add to our configuration. The first is a new ``spec.volumes`` section. This array defines all of the volumes that may be accessed by containers in the Pod manifest. It’s important to note that not all containers are required to mount all volumes defined in the Pod. The second addition is the ``volumeMounts`` array in the container definition. This array defines the volumes that are mounted into a particular container, and the path where each volume should be mounted. **Note that two different containers in a Pod can mount the same volume at different mount paths.**
 
+```
+apiVersion: v1
+kind: Pod
+metadata:
+  name: kuard
+spec:
+  volumes:
+  - name: "kuard-data"
+    hostPath:
+      path: "/var/lib/kuard"
+  containers:
+  - image: gcr.io/kuar-demo/kuard-amd64:blue
+    name: kuard
+    volumeMounts:
+    - mountPath: "/data"
+      name: "kuard-data"
+    ports:
+    - containerPort: 8080
+      name: http
+      protocol: TCP
+```
 
+### Different Ways of Using Volumes with Pods
 
+* **Communication/Synchronization**. In the first example of a Pod, we saw how two containers used a shared volume to serve a site while keeping it synchronized to a remote Git location.
+* **Cache**. An application may use a volume that is valuable for performance, but not required for correct operation of the application. For example, perhaps the application keeps prerendered thumbnails of larger images. Of course, they can be reconstructed from the original images, but that makes serving the thumbnails more expensive.
+* **Persistent Data**. Kubernetes supports a wide variety of remote network storage volumes, including widely supported protocols like NFS and iSCSI as well as cloud provider network storage like Amazon’s Elastic Block Store, Azure’s Files and Disk Storage, as well as Google’s Persistent Disk.
 
+## Putting It All Together
 
+```
+apiVersion: v1
+kind: Pod
+metadata:
+name: kuard
+spec:
+  volumes:
+  - name: "kuard-data"
+    nfs:
+      server: my.nfs.server.local
+      path: "/exports"
+  containers:
+  - image: gcr.io/kuar-demo/kuard-amd64:blue
+    name: kuard
+    ports:
+    - containerPort: 8080
+      name: http
+      protocol: TCP
+    resources:
+      requests:
+        cpu: "500m"
+        memory: "128Mi"
+      limits:
+        cpu: "1000m"
+        memory: "256Mi"
+    volumeMounts:
+    - mountPath: "/data"
+      name: "kuard-data"
+    livenessProbe:
+      httpGet:
+        path: /healthy
+        port: 8080
+      initialDelaySeconds: 5
+      timeoutSeconds: 1
+      periodSeconds: 10
+      failureThreshold: 3
+    readinessProbe:
+      httpGet:
+        path: /ready
+        port: 8080
+    initialDelaySeconds: 30
+    timeoutSeconds: 1
+    periodSeconds: 10
+    failureThreshold: 3
+```
+
+# Chapter 6. Labels and Annotations
 
 
 
