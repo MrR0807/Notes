@@ -345,10 +345,109 @@ Generally speaking, copying files into a container is an anti-pattern.
 
 ## Health Checks
 
+### Liveness Probe
+
+Liveness health checks run application-specific logic (e.g., loading a web page) to verify that the application is not just still running, but is functioning properly. Since these liveness health checks are application-specific, you have to define them in your Pod manifest.
+
+**Liveness probes are defined per container, which means each container inside a Pod is health-checked separately.**
+
+```
+apiVersion: v1
+kind: Pod
+metadata:
+  name: kuard
+spec:
+  containers:
+  - image: gcr.io/kuar-demo/kuard-amd64:blue
+    name: kuard
+    livenessProbe:
+      httpGet:
+        path: /healthy
+        port: 8080
+      initialDelaySeconds: 5
+      timeoutSeconds: 1
+      periodSeconds: 10
+      failureThreshold: 3
+    ports:
+    - containerPort: 8080
+      name: http
+      protocol: TCP
+```
 
 
+The preceding Pod manifest uses an httpGet probe to perform an HTTP GET request against the /healthy endpoint on port 8080 of the kuard container. The probe sets an initialDelaySeconds of 5, and thus will not be called until 5 seconds after all the containers in the Pod are created. The probe must respond within the 1-second timeout, and the **HTTP status code must be equal to or greater than 200 and less than 400 to be considered successful.** Kubernetes will call the probe every 10 seconds. If more than three consecutive probes fail, the container will fail and restart.
 
+### Restart Policy
 
+A PodSpec has a restartPolicy field with possible values Always, OnFailure, and Never. The default value is Always. restartPolicy applies to all Containers in the Pod.
+
+### Readiness Probe
+
+Liveness determines if an application is running properly. Containers that fail liveness checks are restarted. Readiness describes when a container is ready to serve user requests. **Containers that fail readiness checks are removed from service load balancers.**
+
+### Types of Health Checks
+
+Kubernetes also supports tcpSocket health checks that open a TCP socket; if the connection is successful, the probe succeeds. This style of probe is useful for non-HTTP applications; for example, databases or other non–HTTP-based APIs.
+
+## Resource Management
+
+Kubernetes allows users to specify two different resource metrics:
+* **Requests** - specify the minimum amount of a resource required to run the application. 
+* **Limits** - specify the maximum amount of a resource that an application can consume.
+
+### Resource Requests: Minimum Required Resources
+
+**The most commonly requested resources are CPU and memory**, but Kubernetes has support for other resource types as well, such as GPUs and more.
+
+```
+apiVersion: v1
+kind: Pod
+metadata:
+  name: kuard
+spec:
+  containers:
+  - image: gcr.io/kuar-demo/kuard-amd64:blue
+    name: kuard
+    resources:
+      requests:
+        cpu: "500m"
+        memory: "128Mi"
+    ports:
+    - containerPort: 8080
+      name: http
+      protocol: TCP
+```
+
+**Resources are requested per container, not per Pod. The total resources requested by the Pod is the sum of all resources requested by all containers in the Pod.**
+
+### Capping Resource Usage with Limits
+
+In addition to setting the resources required by a Pod, which establishes the minimum resources available to the Pod, you can also set a maximum on a Pod’s resource usage via resource limits.
+
+```
+apiVersion: v1
+kind: Pod
+  metadata:
+    name: kuard
+spec:
+  containers:
+  - image: gcr.io/kuar-demo/kuard-amd64:blue
+    name: kuard
+    resources:
+      requests:
+        cpu: "500m"
+        memory: "128Mi"
+      limits:
+        cpu: "1000m"
+        memory: "256Mi"
+    ports:
+    - containerPort: 8080
+      name: http
+      protocol: TCP
+
+```
+
+## Persisting Data with Volumes
 
 
 
