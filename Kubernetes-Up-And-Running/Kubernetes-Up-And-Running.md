@@ -714,7 +714,13 @@ While the dynamic nature of Kubernetes makes it easy to run a lot of things, it 
 
 ## What Is Service Discovery?
 
+Service-discovery tools help solve the problem of finding which processes are listening at which addresses for which services.
 
+The Domain Name System (DNS) is the traditional system of service discovery on the internet. It is a great system for the internet but falls short in the dynamic world of Kubernetes. 
+
+Unfortunately, many systems (for example, Java, by default) look up a name in DNS directly and never re-resolve. This can lead to clients caching stale mappings and talking to the wrong IP. Even with short TTLs and well-behaved clients, there is a natural delay between when a name resolution changes and when the client notices.
+
+## The Service Object
 
 
 
