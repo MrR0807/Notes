@@ -594,7 +594,61 @@ You can remove a label by applying a dash suffix:
 $ kubectl label deployments alpaca-test "canary-"
 ```
 
+### Label Selectors
 
+Label selectors are used to filter Kubernetes objects based on a set of labels.
+
+```
+$ kubectl get pods --show-labels
+
+NAME ... LABELS
+alpaca-prod-3408831585-4nzfb ... app=alpaca,env=prod,ver=1,...
+alpaca-prod-3408831585-kga0a ... app=alpaca,env=prod,ver=1,...
+alpaca-test-1004512375-3r1m5 ... app=alpaca,env=test,ver=2,...
+bandicoot-prod-373860099-0t1gp ... app=bandicoot,env=prod,ver=2,...
+bandicoot-prod-373860099-k2wcf ... app=bandicoot,env=prod,ver=2,...
+bandicoot-staging-1839769971-3ndv ... app=bandicoot,env=staging,ver=2,...
+```
+
+You may see a new label that we haven’t seen yet: ``pod-template-hash``. This label is applied by the deployment so it can keep track of which Pods were generated from which template versions.
+
+If we only wanted to list Pods that had the ver label set to 2, we could use the ``--selector`` flag:
+```
+$ kubectl get pods --selector="ver=2"
+```
+
+If we specify two selectors separated by a comma, only the objects that satisfy both will be returned. This is a logical AND operation:
+```
+$ kubectl get pods --selector="app=bandicoot,ver=2"
+```
+
+We can also ask if a label is one of a set of values. Here we ask for all Pods where the app label is set to alpaca or bandicoot (which will be all six Pods):
+```
+$ kubectl get pods --selector="app in (alpaca,bandicoot)"
+```
+
+Finally, we can ask if a label is set at all. Here we are asking for all of the deployments with the canary label set to anything:
+```
+$ kubectl get deployments --selector="canary"
+```
+
+For example, asking if a key, in this case canary, is not set can look like:
+```
+$ kubectl get deployments --selector='!canary'
+```
+Similarly, you can combine positive and negative selectors together as follows:
+```
+$ kubectl get pods -l 'ver=2,!canary'
+```
+
+| Operator  | Description |
+| ------------- | ------------- |
+| key=value | key is set to value |
+| key!=value | key is not set to value |
+| key in (value1, value2) | key is one of value1 or value2 |
+| key notin (value1, value2) | key is not one of value1 or value2 |
+| key | key is set |
+| !key | key is not set |
 
 
 
