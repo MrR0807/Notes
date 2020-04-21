@@ -678,11 +678,37 @@ In addition to enabling users to organize their infrastructure, labels play a cr
 
 ## Annotations
 
+**Annotations provide a place to store additional metadata for Kubernetes objects with the sole purpose of assisting tools and libraries.**
 
+While labels are used to identify and group objects, annotations are used to provide extra information about where an object came from, how to use it, or policy around that object.
 
+There is overlap, and it is a matter of taste as to when to use an annotation or a label. When in doubt, add information to an object as an annotation and promote it to a label if you find yourself wanting to use it in a selector.
 
+Annotations are used to:
+* Keep track of a "reason" for the latest update to an object.
+* Communicate a specialized scheduling policy to a specialized scheduler.
+* Extend data about the last tool to update the resource and how it was updated (used for detecting changes by other tools and doing a smart merge).
+* Attach build, release, or image information that isn’t appropriate for labels (may include a Git hash, timestamp, PR number, etc.).
+* Enable the Deployment object to keep track of ReplicaSets that it is managing for rollouts.
+* Provide extra data to enhance the visual quality or usability of a UI. For example, objects could include a link to an icon (or a base64-encoded version of an icon).
+* Prototype alpha functionality in Kubernetes (instead of creating a first-class API field, the parameters for that functionality are encoded in an annotation).
 
+Annotations are used in various places in Kubernetes, with the primary use case being rolling deployments. During rolling deployments, annotations are used to track rollout status and provide the necessary information required to roll back a deployment to a previous state.
 
+### Defining Annotations
+
+Annotation keys use the same format as label keys. However, because they are often used to communicate information between tools, the "namespace" part of the key is more important. Example keys include ``deployment.kubernetes.io/revision`` or ``kubernetes.io/changecause``.
+
+Annotations are defined in the common metadata section in every Kubernetes object:
+```
+...
+metadata:
+  annotations:
+    example.com/icon-url: "https://example.com/icon.png"
+...
+```
+
+# Chapter 7. Service Discovery
 
 
 
