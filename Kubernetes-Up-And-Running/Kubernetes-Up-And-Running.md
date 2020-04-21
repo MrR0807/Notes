@@ -537,7 +537,89 @@ spec:
 
 ## Labels
 
-Label keys can be broken down into two parts: an optional prefix and a name, separated by a slash. The prefix, if specified, must be a DNS subdomain with a 253-character limit. The key name is required and must be shorter than 63 characters. **Names must also start and end with an alphanumeric character and permit the use of dashes (-), underscores (\_), and dots (.) between characters.**
+Label keys can be broken down into two parts: an optional prefix and a name, separated by a slash. The prefix, if specified, must be a DNS subdomain with a 253-character limit. **The key name is required and must be shorter than 63 characters. Names must also start and end with an alphanumeric character and permit the use of dashes (-), underscores (\_), and dots (.) between characters.**
+
+**Label values are strings with a maximum length of 63 characters.** The contents of the label values follow the same rules as for label keys.
+
+### Applying Labels
+
+We’ll take two apps (called alpaca and bandicoot) and have two environments for each. We will also have two different versions.
+
+
+First, create the alpaca-prod deployment and set the ver, app, and env labels:
+```
+$ kubectl run alpaca-prod \
+--image=gcr.io/kuar-demo/kuard-amd64:blue \
+--replicas=2 \
+--labels="ver=1,app=alpaca,env=prod"
+```
+
+Next, create the alpaca-test deployment and set the ver, app, and env labels with the appropriate values:
+
+```
+$ kubectl run alpaca-test \
+--image=gcr.io/kuar-demo/kuard-amd64:green \
+--replicas=1 \
+--labels="ver=2,app=alpaca,env=test"
+```
+Finally, create two deployments for bandicoot. Here we name the environments prod and staging:
+```
+$ kubectl run bandicoot-prod \
+--image=gcr.io/kuar-demo/kuard-amd64:green \
+--replicas=2 \
+--labels="ver=2,app=bandicoot,env=prod"
+
+$ kubectl run bandicoot-staging \
+--image=gcr.io/kuar-demo/kuard-amd64:green \
+--replicas=1 \
+--labels="ver=2,app=bandicoot,env=staging"
+```
+
+At this point you should have four deployments—alpaca-prod, alpaca-test, bandicoot-prod, and bandicoot-staging:
+
+### Modifying Labels
+
+Labels can also be applied (or updated) on objects after they are created:
+```
+$ kubectl label deployments alpaca-test "canary=true"
+```
+
+You can also use the -L option to kubectl get to show a label value as a column:
+```
+$ kubectl get deployments -L canary
+```
+
+You can remove a label by applying a dash suffix:
+```
+$ kubectl label deployments alpaca-test "canary-"
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
