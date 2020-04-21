@@ -710,6 +710,10 @@ metadata:
 
 # Chapter 7. Service Discovery
 
+While the dynamic nature of Kubernetes makes it easy to run a lot of things, it creates problems when it comes to **finding** those things.
+
+## What Is Service Discovery?
+
 
 
 
