@@ -650,9 +650,33 @@ $ kubectl get pods -l 'ver=2,!canary'
 | key | key is set |
 | !key | key is not set |
 
+### Label Selectors in API Objects
 
+When a Kubernetes object refers to a set of other Kubernetes objects, a label selector is used.
 
+There are two forms.
 
+Older form of specifying selectors (used in ReplicationControllers and services) only supports the = operator. This is a simple set of key/value pairs that must all match a target object to be selected. The selector app=alpaca,ver=1 would be represented like this:
+```
+selector:
+  app: alpaca
+  ver: 1
+```
+
+Newer form of specifying a selector of ``app=alpaca,ver in (1, 2)`` would be converted to this:
+```
+selector:
+  matchLabels:
+    app: alpaca
+  matchExpressions:
+  - {key: ver, operator: In, values: [1, 2]}
+```
+
+### Labels in the Kubernetes Architecture
+
+In addition to enabling users to organize their infrastructure, labels play a critical role in linking various related Kubernetes objects. In many cases objects need to relate to one another, and these relationships are defined by labels and label selectors.
+
+## Annotations
 
 
 
