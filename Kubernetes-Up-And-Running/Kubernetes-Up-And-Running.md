@@ -887,10 +887,173 @@ The typical software base implementation looks something like what is depicted i
 
 ![Ingress-controller.PNG](pictures/Ingress-controller.PNG)
 
+## Ingress Spec Versus Ingress Controllers
 
+Ingress is split into a common resource specification and a controller implementation. **There is no "standard" Ingress controller that is built into Kubernetes, so the user must install one of many optional implementations.**
 
+There are multiple reasons that Ingress ended up like this. First of all, there is no one single HTTP load balancer that can universally be used. In addition to many software load balancers (both open source and proprietary), there are also load-balancing capabilities provided by cloud providers (e.g., ELB on AWS), and hardware-based load balancers.
 
+## Installing Contour
 
+While there are many available Ingress controllers, for the examples here we use an Ingress controller called Contour.
+You can install Contour with a simple one-line invocation:
+```
+$ kubectl apply -f https://j.hept.io/contour-deployment-rbac
+```
+Note that this requires execution by a user who has cluster-admin permissions.
+
+This one line works for most configurations. It creates a namespace called *heptio-contour*. Inside of that namespace it creates a deployment (with two replicas) and an external-facing service of ``type: LoadBalancer``.
+
+Because it is a global install, you need to ensure that you have wide admin permissions on the cluster you are installing into. After you install it, you can fetch the external address of Contour via:
+```
+$ kubectl get -n heptio-contour service contour -o wide
+NAME CLUSTER-IP EXTERNAL-IP PORT(S) ...
+contour 10.106.53.14 a477...amazonaws.com 80:30274/TCP ...
+```
+Look at the EXTERNAL-IP column. This can be either an IP address (for GCP and Azure) or a hostname (for AWS).
+
+If you are using minikube, you probably won’t have anything listed for EXTERNALIP. To fix this, you need to open a separate terminal window and run minikube tunnel.
+
+### Configuring DNS
+
+To make Ingress work well, you need to configure DNS entries to the external address for your load balancer. You can map multiple hostnames to a single external endpoint and the Ingress controller will play traffic cop and direct incoming requests to the appropriate upstream service based on that hostname.
+For this chapter, we assume that you have a domain called example.com. You need to configure two DNS entries: ``alpaca.example.com`` and ``bandicoot.example.com``.
+
+### Configuring a Local hosts File
+
+If you don’t have a domain or if you are using a local solution such as minikube, you can set up a local configuration by editing your ``/etc/hosts`` file to add an IP address. You need admin/root privileges on your workstation. The location of the file may differ on your platform, and making it take effect may require extra steps. For example, on Windows the file is usually at ``C:\Windows\System32\drivers\etc\hosts``, and for recent versions of macOS you need to run ``sudo killall -HUP mDNSResponder`` after changing the file.
+Edit the file to add a line like the following:
+```
+<ip-address> alpaca.example.com bandicoot.example.com
+```
+For ``<ip-address>``, fill in the external IP address for Contour. If all you have is a hostname (like from AWS), you can get an IP address (that may change in the future) by executing host -t a ``<address>``.
+
+Don’t forget to undo these changes when you are done!
+
+## Using Ingress
+
+Now that we have an Ingress controller configured, let’s put it through its paces. First we’ll create a few upstream (also sometimes referred to as “backend”) services to play with by executing the following commands:
+```
+$ kubectl run be-default \
+--image=gcr.io/kuar-demo/kuard-amd64:blue \
+--replicas=3 \
+--port=8080
+$ kubectl expose deployment be-default
+$ kubectl run alpaca \
+--image=gcr.io/kuar-demo/kuard-amd64:green \
+--replicas=3 \
+--port=8080
+$ kubectl expose deployment alpaca
+$ kubectl run bandicoot \
+--image=gcr.io/kuar-demo/kuard-amd64:purple \
+--replicas=3 \
+--port=8080
+$ kubectl expose deployment bandicoot
+$ kubectl get services -o wide
+NAME CLUSTER-IP ... PORT(S) ... SELECTOR
+alpaca-prod 10.115.245.13 ... 8080/TCP ... run=alpaca
+bandicoot-prod 10.115.242.3 ... 8080/TCP ... run=bandicoot
+be-default 10.115.246.6 ... 8080/TCP ... run=be-default
+kubernetes 10.115.240.1 ... 443/TCP ... <none>
+```
+
+### Simplest Usage
+
+The simplest way to use Ingress is to have it just blindly pass everything that it sees through to an upstream service.
+
+simple-ingress.yaml
+```
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: simple-ingress
+spec:
+  backend:
+    serviceName: alpaca
+    servicePort: 8080
+```
+Create this Ingress with kubectl apply:
+```
+$ kubectl apply -f simple-ingress.yaml
+ingress.extensions/simple-ingress created
+```
+You can verify that it was set up correctly using ``kubectl get`` and ``kubectl describe``:
+```
+$ kubectl get ingress
+NAME HOSTS ADDRESS PORTS AGE
+simple-ingress * 80 13m
+$ kubectl describe ingress simple-ingress
+Name: simple-ingress
+Namespace: default
+Address:
+Default backend: be-default:8080
+(172.17.0.6:8080,172.17.0.7:8080,172.17.0.8:8080)
+Rules:
+Host Path Backends
+---- ---- --------
+* * be-default:8080
+(172.17.0.6:8080,172.17.0.7:8080,172.17.0.8:8080)
+Annotations:
+...
+Events: <none>
+```
+
+This sets things up so that **any** HTTP request that hits the Ingress controller is forwarded on to the alpaca service.
+
+### Using Hostnames
+
+The most common example of this is to have the Ingress system look at the HTTP host header (which is set to the DNS domain in the original URL) and direct traffic based on that header. Let’s add another Ingress object for directing traffic to the alpaca service for any traffic directed to ``alpaca.example.com``.
+
+host-ingress.yaml
+```
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: host-ingress
+spec:
+  rules:
+  - host: alpaca.example.com
+    http:
+      paths:
+      - backend:
+          serviceName: alpaca
+          servicePort: 8080
+```
+Create this Ingress with kubectl apply:
+```
+$ kubectl apply -f host-ingress.yaml
+ingress.extensions/host-ingress created
+```
+We can verify that things are set up correctly as follows:
+```
+$ kubectl get ingress
+NAME HOSTS ADDRESS PORTS AGE
+host-ingress alpaca.example.com 80 54s
+simple-ingress * 80 13m
+$ kubectl describe ingress host-ingress
+Name: host-ingress
+Namespace: default
+Address:
+Default backend: default-http-backend:80 (<none>)
+Rules:
+Host Path Backends
+---- ---- --------
+alpaca.example.com
+/ alpaca:8080 (<none>)
+Annotations:
+...
+Events: <none>
+```
+
+There are a couple of things that are a bit confusing here. First, there is a reference to the default-http-backend. This is a convention that only some Ingress controllers use to handle requests that aren’t handled in any other way. These controllers send those requests to a service called default-http-backend in the kube-system namespace.
+
+Next, there are no endpoints listed for the alpaca backend service. This is a bug in kubectl that is fixed in Kubernetes v1.14.
+
+Regardless, you should now be able to address the alpaca service via http://alpaca.example.com.
+
+### Using Paths
+
+The next interesting scenario is to direct traffic based on not just the hostname, but also the path in the HTTP request.
 
 
 
