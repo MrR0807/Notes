@@ -722,6 +722,82 @@ Unfortunately, many systems (for example, Java, by default) look up a name in DN
 
 ## The Service Object
 
+Let’s create some deployments and services so we can see how they work:
+```
+$ kubectl run alpaca-prod \
+--image=gcr.io/kuar-demo/kuard-amd64:blue \
+--replicas=3 \
+--port=8080 \
+--labels="ver=1,app=alpaca,env=prod"
+$ kubectl expose deployment alpaca-prod
+$ kubectl run bandicoot-prod \
+--image=gcr.io/kuar-demo/kuard-amd64:green \
+--replicas=2 \
+--port=8080 \
+--labels="ver=2,app=bandicoot,env=prod"
+$ kubectl expose deployment bandicoot-prod
+```
+```
+$ kubectl get services -o wide
+NAME CLUSTER-IP ... PORT(S) ... SELECTOR
+alpaca-prod 10.115.245.13 ... 8080/TCP ... app=alpaca,env=prod,ver=1
+bandicoot-prod 10.115.242.3 ... 8080/TCP ...
+app=bandicoot,env=prod,ver=2
+kubernetes 10.115.240.1 ... 443/TCP ... <none>
+```
+
+The kubernetes service is automatically created for you so that you can find and talk to the Kubernetes API from within the app.
+
+Service is assigned a new type of **virtual IP** called a **cluster IP**.
+
+To interact with services, we are going to port forward to one of the alpaca Pods. Start and leave this command running in a terminal window. You can see the port forward working by accessing the alpaca Pod at http://localhost:48858:
+```
+$ ALPACA_POD=$(kubectl get pods -l app=alpaca \
+-o jsonpath='{.items[0].metadata.name}')
+$ kubectl port-forward $ALPACA_POD 48858:8080
+```
+
+### Service DNS
+
+Kubernetes DNS service provides DNS names for cluster IPs.
+
+### Readiness Checks
+
+Often, when an application first starts up it isn’t ready to handle requests. There is usually some amount of initialization that can take anywhere from under a second to several minutes. One nice thing the Service object does is track which of your Pods are ready via a readiness check.
+
+## Cloud Integration
+
+If you have support from the cloud that you are running on (and your cluster is configured to take advantage of it), you can use the **LoadBalancer type.** This builds on the NodePort type by additionally configuring the cloud to create a new load balancer and direct it at nodes in your cluster.
+
+If you do a kubectl get services right away you’ll see that the EXTERNALIP column for alpaca-prod now says <pending>. Wait a bit and you should see a public address assigned by your cloud.
+```
+$ kubectl describe service alpaca-prod
+Name: alpaca-prod
+Namespace: default
+Labels: app=alpaca
+env=prod
+ver=1
+Selector: app=alpaca,env=prod,ver=1
+Type: LoadBalancer
+IP: 10.115.245.13
+LoadBalancer Ingress: 104.196.248.204
+Port: <unset> 8080/TCP
+NodePort: <unset> 32711/TCP
+Endpoints:
+10.112.1.66:8080,10.112.2.104:8080,10.112.2.105:8080
+Session Affinity: None
+Events:
+FirstSeen ... Reason Message
+--------- ... ------ -------
+3m ... Type NodePort -> LoadBalancer
+3m ... CreatingLoadBalancer Creating load balancer
+2m ... CreatedLoadBalancer Created load balancer
+```
+
+Here we see that we have an address of 104.196.248.204 now assigned to the alpaca-prod service. Open up your browser and try!
+
+## Advanced Details
+
 
 
 
