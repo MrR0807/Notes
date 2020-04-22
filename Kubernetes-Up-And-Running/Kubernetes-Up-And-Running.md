@@ -877,9 +877,15 @@ At this point you have the basics of service discovery!
 
 # Chapter 8. HTTP Load Balancing with Ingress
 
+A critical part of any application is getting network traffic to and from that application.
 
+When solving a similar problem in non-Kubernetes situations, users often turn to the idea of "virtual hosting". This is a mechanism to host many HTTP sites on a single IP address. Typically, the user uses a load balancer or reverse proxy to accept incoming connections on HTTP (80) and HTTPS (443) ports. That program then parses the HTTP connection and, based on the Host header and the URL path that is requested, proxies the HTTP call to some other program. In this way, that load balancer or reverse proxy plays "traffic cop" for decoding and directing incoming connections to the right "upstream" server.
 
+Kubernetes calls its HTTP-based load-balancing system Ingress. Ingress is a Kubernetes-native way to implement the “virtual hosting” pattern we just discussed.
 
+The typical software base implementation looks something like what is depicted in Figure 8-1.
+
+![Ingress-controller.PNG](pictures/Ingress-controller.PNG)
 
 
 
