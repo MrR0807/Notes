@@ -875,7 +875,9 @@ At this point you have the basics of service discovery!
 
 **kube-proxy** watches for new services in the cluster via the API server. It then programs a set of iptables rules in the kernel of that host to rewrite the destinations of packets so they are directed at one of the endpoints for that service. If the set of endpoints for a service changes (due to Pods coming and going or due to a failed readiness check), the set of iptables rules is rewritten.
 
-## Connecting with Other Environments
+# Chapter 8. HTTP Load Balancing with Ingress
+
+
 
 
 
