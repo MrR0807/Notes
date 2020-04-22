@@ -849,6 +849,34 @@ alpaca-prod 10.112.0.28:8080,10.112.1.57:8080,10.112.2.90:8080 1m
 
 ### Manual Service Discovery
 
+With kubectl (and via the API) we can easily see what IPs are assigned to each Pod in our example deployments:
+```
+$ kubectl get pods -o wide --show-labels
+NAME ... IP ... LABELS
+alpaca-prod-12334-87f8h ... 10.112.1.54 ... app=alpaca,env=prod,ver=1
+alpaca-prod-12334-jssmh ... 10.112.2.84 ... app=alpaca,env=prod,ver=1
+alpaca-prod-12334-tjp56 ... 10.112.2.85 ... app=alpaca,env=prod,ver=1
+bandicoot-prod-5678-sbxzl ... 10.112.1.55 ...
+app=bandicoot,env=prod,ver=2
+bandicoot-prod-5678-x0dh8 ... 10.112.2.86 ...
+app=bandicoot,env=prod,ver=2
+```
+This is great, but what if you have a ton of Pods? You’ll probably want to filter this based on the labels applied as part of the deployment. Let’s do that for just the alpaca app:
+```
+$ kubectl get pods -o wide --selector=app=alpaca,env=prod
+NAME ... IP ...
+alpaca-prod-3408831585-bpzdz ... 10.112.1.54 ...
+alpaca-prod-3408831585-kncwt ... 10.112.2.84 ...
+alpaca-prod-3408831585-l9fsq ... 10.112.2.85 ...
+```
+At this point you have the basics of service discovery!
+
+### kube-proxy and Cluster IPs
+
+**kube-proxy** watches for new services in the cluster via the API server. It then programs a set of iptables rules in the kernel of that host to rewrite the destinations of packets so they are directed at one of the endpoints for that service. If the set of endpoints for a service changes (due to Pods coming and going or due to a failed readiness check), the set of iptables rules is rewritten.
+
+## Connecting with Other Environments
+
 
 
 
