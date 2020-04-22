@@ -1053,7 +1053,59 @@ Regardless, you should now be able to address the alpaca service via http://alpa
 
 ### Using Paths
 
-The next interesting scenario is to direct traffic based on not just the hostname, but also the path in the HTTP request.
+The next interesting scenario is to direct traffic based on not just the hostname, but also the path in the HTTP request. In this example we direct everything coming into http://bandicoot.example.com to the bandicoot service, but we also send http://bandicoot.example.com/a to the alpaca service.
+
+path-ingress.yaml
+```
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: path-ingress
+spec:
+  rules:
+  - host: bandicoot.example.com
+    http:
+      paths:
+      - path: "/"
+        backend:
+          serviceName: bandicoot
+          servicePort: 8080
+      - path: "/a/"
+        backend:
+          serviceName: alpaca
+          servicePort: 8080
+```
+
+
+When there are multiple paths on the same host listed in the Ingress system, the longest prefix matches. So, in this example, traffic starting with /a/ is forwarded to the alpaca service, while all other traffic (starting with /) is directed to the bandicoot service.
+
+## Advanced Ingress Topics and Gotchas
+
+There are some other fancy features that are supported by Ingress. Many of the extended features are exposed via annotations on the Ingress object.
+
+### Running Multiple Ingress Controllers
+
+Oftentimes, you may want to run multiple Ingress controllers on a single cluster. In that case, you specify which Ingress object is meant for which Ingress controller using the kubernetes.io/ingress.class annotation. The value should be a string that specifies which Ingress controller should look at this object. The Ingress controllers themselves, then, should be configured with that same string and should only respect those Ingress objects with the correct annotation.
+If the kubernetes.io/ingress.class annotation is missing, behavior is undefined. It is likely that multiple controllers will fight to satisfy the Ingress and write the status field of the Ingress objects.
+
+### Multiple Ingress Objects
+
+If you specify multiple Ingress objects, the Ingress controllers should read them all and try to merge them into a coherent configuration. However, if you specify duplicate and conflicting configurations, the behavior is undefined. It is likely that different Ingress controllers will behave differently. Even a single implementation may do different things depending on nonobvious factors.
+
+### Ingress and Namespaces
+
+Ingress interacts with namespaces in some nonobvious ways. First, due to an abundance of security caution, **an Ingress object can only refer to an upstream service in the same namespace.**
+
+### Path Rewriting
+
+Some Ingress controller implementations support, optionally, doing path rewriting. This can be used to modify the path in the HTTP request as it gets proxied. Path rewriting isn’t a silver bullet, though, and can often lead to bugs.
+
+# Chapter 9. ReplicaSets
+
+
+
+
+
 
 
 
