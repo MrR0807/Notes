@@ -798,8 +798,56 @@ Here we see that we have an address of 104.196.248.204 now assigned to the alpac
 
 ## Advanced Details
 
+### Endpoints
 
+Some applications (and the system itself) want to be able to use services without using a cluster IP. This is done with another type of object called an Endpoints object. For every Service object, Kubernetes creates a buddy Endpoints object that contains the IP addresses for that service:
+```
+$ kubectl describe endpoints alpaca-prod
+Name: alpaca-prod
+Namespace: default
+Labels: app=alpaca
+env=prod
+ver=1
+Subsets:
+Addresses: 10.112.1.54,10.112.2.84,10.112.2.85
+NotReadyAddresses: <none>
+Ports:
+Name Port Protocol
+---- ---- --------
+<unset> 8080 TCP
+```
 
+In a terminal window, start the following command and leave it running:
+```
+$ kubectl get endpoints alpaca-prod --watch
+```
+It will output the current state of the endpoint and then "hang":
+```
+NAME ENDPOINTS AGE
+alpaca-prod 10.112.1.54:8080,10.112.2.84:8080,10.112.2.85:8080 1m
+```
+Now open up another terminal window and delete and recreate the deployment backing alpaca-prod:
+```
+$ kubectl delete deployment alpaca-prod
+$ kubectl run alpaca-prod \
+--image=gcr.io/kuar-demo/kuard-amd64:blue \
+--replicas=3 \
+--port=8080 \
+--labels="ver=1,app=alpaca,env=prod"
+```
+
+Your output will look something like this:
+```
+NAME ENDPOINTS AGE
+alpaca-prod 10.112.1.54:8080,10.112.2.84:8080,10.112.2.85:8080 1m
+alpaca-prod 10.112.1.54:8080,10.112.2.84:8080 1m
+alpaca-prod <none> 1m
+alpaca-prod 10.112.2.90:8080 1m
+alpaca-prod 10.112.1.57:8080,10.112.2.90:8080 1m
+alpaca-prod 10.112.0.28:8080,10.112.1.57:8080,10.112.2.90:8080 1m
+```
+
+### Manual Service Discovery
 
 
 
