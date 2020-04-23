@@ -1102,8 +1102,49 @@ Some Ingress controller implementations support, optionally, doing path rewritin
 
 # Chapter 9. ReplicaSets
 
+A ReplicaSet acts as a cluster-wide Pod manager, ensuring that the right types and number of Pods are running t all times.
 
+## Reconciliation Loops
 
+The reconciliation loop is constantly running, observing the current state of the world and taking action to try to make the observed state match the desired state.
+
+## Relating Pods and ReplicaSets
+
+ReplicaSets use label queries to identify the set of Pods they should be managing.
+
+### Adopting Existing Containers
+
+You can create a ReplicaSet that will “adopt” the existing Pod, and scale out additional copies of those containers.
+
+### Quarantining Containers
+
+Oftentimes, when a server misbehaves, Pod-level health checks will automatically restart that Pod. But if your health checks are incomplete, a Pod can be misbehaving but still be part of the replicated set. In these situations, while it would work to simply kill the Pod, that would leave your developers with only logs to debug the problem. Instead, you can modify the set of labels on the sick Pod. Doing so will disassociate it from the ReplicaSet (and service) so that you can debug the Pod.
+
+## ReplicaSet Spec
+
+kuard-rs.yaml
+```
+apiVersion: extensions/v1beta1
+kind: ReplicaSet
+metadata:
+  name: kuard
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: kuard
+        version: "2"
+    spec:
+      containers:
+      - name: kuard
+        image: "gcr.io/kuar-demo/kuard-amd64:green"
+```
+
+YAML explained:
+* **metadata.name** - all ReplicaSets must have a unique name
+* **spec.replicas** - describes the number of Pods (replicas) that should be running cluster-wide at any given time
+* 
 
 
 
