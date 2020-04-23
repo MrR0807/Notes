@@ -231,8 +231,7 @@ $ kubectl attach -it <pod-name>
 
 **Difference**
 
-exec: any one you want to create, for example bash
-attach: the one currently running (no choice)
+``attach`` can attach to the main process run by the container (no choice), which is not always bash. As opposed to ``exec``, which allows you to execute any process within the container (often: bash).
 
 You can also **copy** files to and from a container using the cp command:
 ```
