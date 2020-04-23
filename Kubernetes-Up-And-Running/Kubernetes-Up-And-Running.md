@@ -1130,6 +1130,10 @@ metadata:
   name: kuard
 spec:
   replicas: 1
+  selector:
+    matchLabels:
+      app: kuard
+      version: "2"
   template:
     metadata:
       labels:
@@ -1144,14 +1148,99 @@ spec:
 YAML explained:
 * **metadata.name** - all ReplicaSets must have a unique name
 * **spec.replicas** - describes the number of Pods (replicas) that should be running cluster-wide at any given time
-* 
+* **spec.selector** - selector is a label query over pods that should match the replica count. Label keys and values that must match in order to be controlled by this replica set. It must match the pod template's labels.
+* **spec.template** - contains information about Pods
 
+## Creating a ReplicaSet
 
+Use the kubectl apply command to submit the kuard ReplicaSet to the Kubernetes API:
+```
+$ kubectl apply -f kuard-rs.yaml
+replicaset "kuard" created
+```
 
+## Inspecting a ReplicaSet
+```
+$ kubectl describe rs kuard
+Name: kuard
+Namespace: default
+Image(s): kuard:1.9.15
+Selector: app=kuard,version=2
+Labels: app=kuard,version=2
+Replicas: 1 current / 1 desired
+Pods Status: 1 Running / 0 Waiting / 0 Succeeded / 0 Failed
+No volumes.
+```
 
+### Finding a ReplicaSet from a Pod
 
+Sometimes you may wonder if a Pod is being managed by a ReplicaSet, and if it is, which ReplicaSet.
 
+To enable this kind of discovery, the ReplicaSet controller adds an annotation to every Pod that it creates. The key for the annotation is ``kubernetes.io/created-by``. If you run the following, look for the ``kubernetes.io/created-by`` entry in the annotations section:
+```
+$ kubectl get pods <pod-name> -o yaml
+```
 
+### Finding a Set of Pods for a ReplicaSet
+
+You can also determine the set of Pods managed by a ReplicaSet. First, you can get the set of labels using the kubectl describe command. In the previous example, the label selector was ``app=kuard,version=2``. To find the Pods that match this selector, use the ``--selector`` flag or the shorthand ``-l``:
+```
+$ kubectl get pods -l app=kuard,version=2
+```
+
+## Scaling ReplicaSets
+
+### Imperative Scaling with kubectl scale
+
+The easiest way to achieve this is using the scale command in kubectl. For example, to scale up to four replicas you could run:
+```
+$ kubectl scale replicasets kuard --replicas=4
+```
+
+### Declaratively Scaling with kubectl apply
+
+To scale the kuard ReplicaSet, edit the kuard-rs.yaml configuration file and set the replicas count to 3:
+```
+...
+spec:
+  replicas: 3
+...
+```
+
+``kubectl`` apply command to submit the updated kuard ReplicaSet to the API server:
+```
+$ kubectl apply -f kuard-rs.yaml
+replicaset "kuard" configured
+```
+
+### Autoscaling a ReplicaSet
+
+While there will be times when you want to have explicit control over the number of replicas in a ReplicaSet, often you simply want to have "enough" replicas. The definition varies depending on the needs of the containers in the ReplicaSet. **For example, with a web server like NGINX, you may want to scale due to CPU usage. For an in-memory cache, you may want to scale with memory consumption. In some cases you may want to scale in response to custom application metrics.** Kubernetes can handle all of these scenarios via **Horizontal Pod Autoscaling (HPA)**.
+
+HPA requires the presence of the **heapster Pod** on your cluster. heapster keeps track of metrics and provides an API for consuming metrics that HPA uses when making scaling decisions. **Most installations of Kubernetes include heapster by default.** You can validate its presence by listing the Pods in the kube-system namespace:
+```
+$ kubectl get pods --namespace=kube-system
+```
+You should see a Pod named heapster somewhere in that list. If you do not see it, autoscaling will not work correctly.
+
+**!!heapster is deprecated!!**
+
+More on autoscalling https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/
+
+## Deleting ReplicaSets
+
+By default, this also deletes the Pods that are managed by the ReplicaSet:
+```
+$ kubectl delete rs kuard
+replicaset "kuard" deleted
+```
+
+If you don’t want to delete the Pods that are being managed by the ReplicaSet, you can set the ``--cascade`` flag to false to ensure only the ReplicaSet object is deleted and not the Pods:
+```
+$ kubectl delete rs kuard --cascade=false
+```
+
+# Chapter 10. Deployments
 
 
 
