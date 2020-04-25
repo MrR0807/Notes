@@ -1360,10 +1360,60 @@ Normal ScalingReplicaSet 113s (x2 over 3m20s) deployment-con...
 ...
 ```
 
-In the output of describe there is a great deal of important information. Two of the most important pieces of information in the output are ``OldReplicaSets`` and ``NewReplicaSet``. These fields point to the ReplicaSet objects this deployment is currently managing. **If a deployment is in the middle of a rollout, both fields will be set to a value. If a rollout is complete, OldReplicaSets will be set to \<none\>.**
+In the output of describe there is a great deal of important information. Two of the most important pieces of information in the output are ``OldReplicaSets`` and ``NewReplicaSet``. These fields point to the ReplicaSet objects this deployment is currently managing. **If a deployment is in the middle of a rollout, both fields will be set to a value. If a rollout is complete, OldReplicaSets will be set to \<none\>**.
 
+## Updating Deployments
 
+Edit your YAML file to increase the number of replicas:
+```
+...
+spec:
+  replicas: 3
+...
+```
 
+Once you have saved and committed this change, you can update the deployment using the kubectl apply command:
+```
+$ kubectl apply -f kuard-deployment.yaml
+```
+
+This will update the desired state of the deployment, causing it to increase the size of the ReplicaSet it manages, and eventually create a new Pod managed by the deployment:
+```
+$ kubectl get deployments kuard
+NAME DESIRED CURRENT UP-TO-DATE AVAILABLE AGE
+kuard 3 3 3 3 4m
+```
+
+After you update the deployment it will trigger a rollout, which you can then monitor via the ``kubectl rollout`` command:
+```
+$ kubectl rollout status deployments kuard
+deployment kuard successfully rolled out
+```
+
+Both the old and new ReplicaSets are kept around in case you want to roll back:
+```
+$ kubectl get replicasets -o wide
+NAME DESIRED CURRENT READY ... IMAGE(S)
+...
+kuard-1128242161 0 0 0 ... gcr.io/kuar-demo/
+...
+kuard-1128635377 3 3 3 ... gcr.io/kuar-demo/
+...
+```
+
+If you are in the middle of a rollout and you want to temporarily pause it for some reason (e.g., if you start seeing weird behavior in your system and you want to investigate), you can use the pause command:
+```
+$ kubectl rollout pause deployments kuard
+deployment "kuard" paused
+```
+
+If, after investigation, you believe the rollout can safely proceed, you can use the resume command to start up where you left off:
+```
+$ kubectl rollout resume deployments kuard
+deployment "kuard" resumed
+```
+
+### Rollout History
 
 
 
