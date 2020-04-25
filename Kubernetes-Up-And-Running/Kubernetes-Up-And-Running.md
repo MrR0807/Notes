@@ -1692,6 +1692,38 @@ $ kubectl delete -f fluentd.yaml
 
 # Chapter 12. Jobs
 
+Jobs are short-lived, one-off tasks. A job creates Pods that run until successful termination (i.e., exit with 0).
+
+## Job Patterns
+
+Jobs are designed to manage batch-like workloads where work items are processed by one or more Pods. By default, each job runs a single Pod once until successful termination. This job pattern is defined by two primary attributes of a job, namely the number of job completions and the number of Pods to run in parallel. In the case of the “run once until completion” pattern, the ``completions`` and ``parallelism`` parameters are set to 1.
+
+| Type  | Use case | Behavior | completions | parallelism |
+| ------------- | ------------- | -------- | ----------- | ----------- | 
+| One shot  | Database migrations | A single Pod running once until successful termination | 1 | 1
+| Parallel fixed completions | Multiple Pods processing a set of work in parallel  | One or more Pods running one or more times until reaching a fixed completion count | 1+ | 1+
+| Work queue: parallel jobs | Multiple Pods processing from a centralized work queue | One or more Pods running once until successful termination | 1 | 2+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
