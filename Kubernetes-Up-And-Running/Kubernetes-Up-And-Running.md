@@ -1415,13 +1415,124 @@ deployment "kuard" resumed
 
 ### Rollout History
 
+Kubernetes deployments maintain a history of rollouts, which can be useful both for understanding the previous state of the deployment and to roll back to a specific version. You can see the deployment history by running:
+```
+$ kubectl rollout history deployment kuard
+deployment.extensions/kuard
+REVISION CHANGE-CAUSE
+1 <none>
+2 Update to green kuard
+```
 
+If you are interested in more details about a particular revision, you can add the ``--revision`` flag to view details about that specific revision:
+```
+$ kubectl rollout history deployment kuard --revision=2
+deployment.extensions/kuard with revision #2
+Pod Template:
+Labels: pod-template-hash=54b74ddcd4
+run=kuard
+Annotations: kubernetes.io/change-cause: Update to green kuard
+Containers:
+kuard:
+Image: gcr.io/kuar-demo/kuard-amd64:green
+Port: <none>
+Host Port: <none>
+Environment: <none>
+Mounts: <none>
+Volumes: <none>
+```
 
+Let’s say there is an issue with the latest release and you want to roll back while you investigate. You can simply undo the last rollout:
+```
+$ kubectl rollout undo deployments kuard
+deployment "kuard" rolled back
+```
 
+The ``undo`` command works regardless of the stage of the rollout. You can undo both partially completed and fully completed rollouts.
 
+**An alternative (and perhaps preferred) way to undo a rollout is to revert your YAML file and kubectl apply the previous version. In this way, your "change tracked configuration" more closely tracks what is really running in your cluster.**
 
+Let’s look at our deployment history again:
+```
+$ kubectl rollout history deployment kuard
+deployment.extensions/kuard
+REVISION CHANGE-CAUSE
+1 <none>
+3 Update to blue kuard
+4 Update to green kuard
+```
+Revision 2 is missing! It turns out that when you roll back to a previous revision, the deployment simply reuses the template and renumbers it so that it is the latest revision. What was revision 2 before is now reordered into revision 4.
 
+Additionally, you can roll back to a specific revision in the history using the ``--to-revision`` flag:
+```
+$ kubectl rollout undo deployments kuard --to-revision=3
+deployment "kuard" rolled back
+$ kubectl rollout history deployment kuard
+deployment.extensions/kuard
+REVISION CHANGE-CAUSE
+1 <none>
+4 Update to green kuard
+5 Update to blue kuard
+```
 
+Again, the undo took revision 3, applied it, and renumbered it as revision 5.
+
+## Deployment Strategies
+
+Kubernetes deployment supports two different rollout strategies:
+* Recreate
+* RollingUpdate
+
+### Recreate Strategy
+
+The Recreate strategy is the simpler of the two rollout strategies. It simply updates the ReplicaSet it manages to use the new image and terminates all of the Pods associated with the deployment.
+
+### RollingUpdate Strategy
+
+While it is slower than Recreate, it is also significantly more sophisticated and robust.
+
+#### CONFIGURING A ROLLING UPDATE
+
+There are two parameters you can use to tune the rolling update behavior: 
+* maxUnavailable - sets the maximum number of Pods that can be unavailable during a rolling update. It can either be set to an absolute number (e.g., 3, meaning a maximum of three Pods can be unavailable) or to a percentage (e.g., 20%, meaning a maximum of 20% of the desired number of replicas can be unavailable).
+* maxSurge - helps tune how quickly a rolling update proceeds. For example, if you set maxUnavailable to 50%, then the rolling update will immediately scale the old ReplicaSet down to 50% of its original size. If you have four replicas, it will scale it down to two replicas.
+
+#### Slowing Rollouts to Ensure Service Health
+
+Sometimes, however, simply noticing that a Pod has become ready doesn’t give you sufficient confidence that the Pod actually is behaving correctly. In most real-world scenarios, you want to wait a period of time to have high confidence that the new version is operating correctly before you move on to updating the next Pod. For deployments, this time to wait is defined by the minReadySeconds parameter:
+```
+...
+spec:
+  minReadySeconds: 60
+...
+```
+
+Setting minReadySeconds to 60 indicates that the deployment must wait for 60 seconds after seeing a Pod become healthy before moving on to updating the next Pod. 
+
+In addition to waiting a period of time for a Pod to become healthy, you also want to set a timeout that limits how long the system will wait. The correct behavior in such a situation is to time out the rollout. This in turn marks the rollout as failed. To set the timeout period, the deployment parameter progressDeadlineSeconds is used:
+```
+...
+spec:
+  progressDeadlineSeconds: 600
+...
+```
+
+This example sets the progress deadline to 10 minutes. If any particular stage in the rollout fails to progress in 10 minutes, then the deployment is marked as failed, and all attempts to move the deployment forward are halted.
+
+**It is important to note that this timeout is given in terms of deployment progress, not the overall length of a deployment.**
+
+## Deleting a Deployment
+
+```
+$ kubectl delete deployments kuard
+```
+
+Or using the declarative YAML file we created earlier:
+```
+$ kubectl delete -f kuard-deployment.yaml
+```
+
+# Chapter 11. DaemonSets
 
 
 
