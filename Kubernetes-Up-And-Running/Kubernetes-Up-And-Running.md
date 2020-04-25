@@ -1700,9 +1700,9 @@ Jobs are designed to manage batch-like workloads where work items are processed 
 
 | Type  | Use case | Behavior | completions | parallelism |
 | ------------- | ------------- | -------- | ----------- | ----------- | 
-| One shot  | Database migrations | A single Pod running once until successful termination | 1 | 1
-| Parallel fixed completions | Multiple Pods processing a set of work in parallel  | One or more Pods running one or more times until reaching a fixed completion count | 1+ | 1+
-| Work queue: parallel jobs | Multiple Pods processing from a centralized work queue | One or more Pods running once until successful termination | 1 | 2+
+| One shot  | Database migrations | A single Pod running once until successful termination | 1 | 1 |
+| Parallel fixed completions | Multiple Pods processing a set of work in parallel  | One or more Pods running one or more times until reaching a fixed completion count | 1+ | 1+ |
+| Work queue: parallel jobs | Multiple Pods processing from a centralized work queue | One or more Pods running once until successful termination | 1 | 2+ |
 
 
 
