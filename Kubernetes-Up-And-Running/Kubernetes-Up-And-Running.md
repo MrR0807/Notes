@@ -1534,24 +1534,163 @@ $ kubectl delete -f kuard-deployment.yaml
 
 # Chapter 11. DaemonSets
 
+A DaemonSet ensures a copy of a Pod is running across a set of nodes in a Kubernetes cluster. **DaemonSets are used to deploy system daemons such as log collectors and monitoring agents, which typically must run on every node.** DaemonSets share similar functionality with ReplicaSets.
 
+ReplicaSets should be used when your application is completely decoupled from the node and you can run multiple copies on a given node without special consideration. **DaemonSets should be used when a single copy of your application must run on all or a subset of the nodes in the cluster.**
 
+## DaemonSet Scheduler
 
+By default a DaemonSet will create a copy of a Pod on every node unless a node selector is used, which will limit eligible nodes to those with a matching set of labels.
 
+## Creating DaemonSets
 
+DaemonSets are created by submitting a DaemonSet configuration to the Kubernetes API server. The DaemonSet in Example 11-1 will create a fluentd logging agent on every node in the target cluster.
 
+Example 11-1. fluentd.yaml
+```
+apiVersion: extensions/v1beta1
+kind: DaemonSet
+metadata:
+  name: fluentd
+  labels:
+    app: fluentd
+spec:
+  template:
+    metadata:
+      labels:
+        app: fluentd
+  spec:
+    containers:
+    - name: fluentd
+      image: fluent/fluentd:v0.14.10
+      resources:
+        limits:
+          memory: 200Mi
+        requests:
+          cpu: 100m
+          memory: 200Mi
+      volumeMounts:
+      - name: varlog
+        mountPath: /var/log
+      - name: varlibdockercontainers
+        mountPath: /var/lib/docker/containers
+        readOnly: true
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - name: varlog
+        hostPath:
+          path: /var/log
+      - name: varlibdockercontainers
+        hostPath:
+          path: /var/lib/docker/containers
+```
 
+**DaemonSets require a unique name across all DaemonSets in a given Kubernetes namespace.**
 
+```
+$ kubectl apply -f fluentd.yaml
+daemonset "fluentd" created
+```
+```
+$ kubectl describe daemonset fluentd
+Name: fluentd
+Image(s): fluent/fluentd:v0.14.10
+Selector: app=fluentd
+Node-Selector: <none>
+Labels: app=fluentd
+Desired Number of Nodes Scheduled: 3
+Current Number of Nodes Scheduled: 3
+Number of Nodes Misscheduled: 0
+Pods Status: 3 Running / 0 Waiting / 0 Succeeded / 0 Failed
+```
+```
+$ kubectl get pods -o wide
+NAME AGE NODE
+fluentd-1q6c6 13m k0-default-pool-35609c18-z7tb
+fluentd-mwi7h 13m k0-default-pool-35609c18-ydae
+fluentd-zr6l7 13m k0-default-pool-35609c18-pol3
+```
 
+With the fluentd DaemonSet in place, adding a new node to the cluster will result in a fluentd Pod being deployed to that node automatically.
 
+## Limiting DaemonSets to Specific Nodes
 
+### Adding Labels to Nodes
 
+The first step in limiting DaemonSets to specific nodes is to add the desired set of labels to a subset of nodes.
 
+The following command adds the ssd=true label to a single node:
+```
+$ kubectl label nodes k0-default-pool-35609c18-z7tb ssd=true
+node "k0-default-pool-35609c18-z7tb" labeled
+```
 
+```
+$ kubectl get nodes --selector ssd=true
+NAME STATUS AGE
+k0-default-pool-35609c18-z7tb Ready 1d
+```
 
+### Node Selectors
 
+Example 11-2 limits NGINX to running only on nodes with the ssd=true label set.
+Example 11-2. nginx-fast-storage.yaml
+```
+apiVersion: extensions/v1beta1
+kind: "DaemonSet"
+metadata:
+  labels:
+    app: nginx
+    ssd: "true"
+name: nginx-fast-storage
+spec:
+  template:
+    metadata:
+      labels:
+        app: nginx
+        ssd: "true"
+  spec:
+    nodeSelector:
+      ssd: "true"
+    containers:
+    - name: nginx
+      image: nginx:1.10.0
+```
 
+Let’s see what happens when we submit the nginx-fast-storage DaemonSet to the Kubernetes API:
+```
+$ kubectl apply -f nginx-fast-storage.yaml
+daemonset "nginx-fast-storage" created
+```
 
+Since there is only one node with the ``ssd=true`` label, the nginx-fast-storage Pod will only run on that node:
+```
+$ kubectl get pods -o wide
+NAME STATUS NODE
+nginx-fast-storage-7b90t Running k0-default-pool-35609c18-z7tb
+```
+Adding the ``ssd=true`` label to additional nodes will cause the nginx-faststorage Pod to be deployed on those nodes.
+
+## Updating a DaemonSet
+
+### Rolling Update of a DaemonSet
+
+DaemonSets can be rolled out using the same RollingUpdate strategy that deployments use. You can configure the update strategy using the ``spec.updateStrategy.type`` field, which should have the value RollingUpdate. When a DaemonSet has an update strategy of RollingUpdate, any change to the spec.template field (or subfields) in the DaemonSet will initiate a rolling update.
+
+There are two parameters that control the rolling update of a DaemonSet:
+
+* **spec.minReadySeconds**, which determines how long a Pod must be "ready" before the rolling update proceeds to upgrade subsequent Pods. You will likely want to set spec.minReadySeconds to a reasonably long value, for example 30–60 seconds, to ensure that your Pod is truly healthy before the rollout proceeds.
+* **spec.updateStrategy.rollingUpdate.maxUnavailable**, which indicates how many Pods may be simultaneously updated by the rolling update. Setting it to 1 is a safe, general-purpose strategy.
+
+``kubectl rollout status daemonSets my-daemon-set`` will show the current rollout status of a DaemonSet named my-daemon-set.
+
+## Deleting a DaemonSet
+
+```
+$ kubectl delete -f fluentd.yaml
+```
+
+# Chapter 12. Jobs
 
 
 
