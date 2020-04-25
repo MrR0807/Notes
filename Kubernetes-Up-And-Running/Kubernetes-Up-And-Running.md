@@ -1241,6 +1241,153 @@ $ kubectl delete rs kuard --cascade=false
 
 # Chapter 10. Deployments
 
+The Deployment object exists to manage the release of new versions. Deployment waits for a userconfigurable amount of time between upgrading individual Pods. It also uses health checks to ensure that the new version of the application is operating correctly, and stops the deployment if too many failures occur.
+
+Using deployments you can simply and reliably roll out new software versions without downtime or errors. The actual mechanics of the software rollout performed by a deployment is controlled by a deployment controller that runs in the Kubernetes cluster itself.
+
+## Your First Deployment
+
+kuard application:
+```
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: kuard
+spec:
+  selector:
+    matchLabels:
+      run: kuard
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        run: kuard
+    spec:
+      containers:
+      - name: kuard
+        image: gcr.io/kuar-demo/kuard-amd64:blue
+```
+
+Save this YAML file as kuard-deployment.yaml, then you can create it using:
+```
+$ kubectl create -f kuard-deployment.yaml
+```
+
+### Deployment Internals
+
+Just as we learned that ReplicaSets manage Pods, deployments manage ReplicaSets. As with all relationships in Kubernetes, this relationship is defined by labels and a label selector.
+
+You can see the label selector by looking at the Deployment object:
+```
+$ kubectl get deployments kuard -o jsonpath --template {.spec.selector.matchLabels}
+map[run:kuard]
+```
+
+From this you can see that the deployment is managing a ReplicaSet with the label ``run=kuard``. We can use this in a label selector query across ReplicaSets to find that specific ReplicaSet:
+```
+$ kubectl get replicasets --selector=run=kuard
+NAME DESIRED CURRENT READY AGE
+kuard-1128242161 1 1 1 13m
+```
+
+Now let’s see the relationship between a deployment and a ReplicaSet in action. We can resize the deployment using the imperative scale command:
+```
+$ kubectl scale deployments kuard --replicas=2
+deployment.extensions/kuard scaled
+```
+
+Now if we list that ReplicaSet again, we should see:
+```
+$ kubectl get replicasets --selector=run=kuard
+NAME DESIRED CURRENT READY AGE
+kuard-1128242161 2 2 2 13m
+```
+
+Scaling the deployment has also scaled the ReplicaSet it controls. Now let’s try the opposite, scaling the ReplicaSet:
+```
+$ kubectl scale replicasets kuard-1128242161 --replicas=1
+replicaset "kuard-1128242161" scaled
+```
+
+Now get that ReplicaSet again:
+```
+$ kubectl get replicasets --selector=run=kuard
+NAME DESIRED CURRENT READY AGE
+kuard-1128242161 2 2 2 13m
+```
+
+That’s odd. Despite our scaling the ReplicaSet to one replica, it still has two replicas as its desired state. What’s going on? Remember, Kubernetes is an online, self-healing system. **The top-level Deployment object is managing this ReplicaSet. When you adjust the number of replicas to one, it no longer matches the desired state of the deployment, which has replicas set to 2.**
+
+## Managing Deployments
+
+```
+$ kubectl describe deployments kuard
+Name: kuard
+Namespace: default
+CreationTimestamp: Tue, 16 Apr 2019 21:43:25 -0700
+Labels: run=kuard
+Annotations: deployment.kubernetes.io/revision: 1
+Selector: run=kuard
+Replicas: 2 desired | 2 updated | 2 total | 2 available | 0
+...
+StrategyType: RollingUpdate
+MinReadySeconds: 0
+RollingUpdateStrategy: 1 max unavailable, 1 max surge
+Pod Template:
+Labels: run=kuard
+Containers:
+kuard:
+Image: gcr.io/kuar-demo/kuard-amd64:blue
+Port: <none>
+Host Port: <none>
+Environment: <none>
+Mounts: <none>
+Volumes: <none>
+Conditions:
+Type Status Reason
+---- ------ ------
+Available True MinimumReplicasAvailable
+OldReplicaSets: <none>
+NewReplicaSet: kuard-6d69d9fc5c (2/2 replicas created)
+Events:
+Type Reason Age From
+Message
+---- ------ ---- ---- --
+-----
+Normal ScalingReplicaSet 4m6s deployment-con...
+...
+Normal ScalingReplicaSet 113s (x2 over 3m20s) deployment-con...
+...
+```
+
+In the output of describe there is a great deal of important information. Two of the most important pieces of information in the output are ``OldReplicaSets`` and ``NewReplicaSet``. These fields point to the ReplicaSet objects this deployment is currently managing. **If a deployment is in the middle of a rollout, both fields will be set to a value. If a rollout is complete, OldReplicaSets will be set to \<none\>.**
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
