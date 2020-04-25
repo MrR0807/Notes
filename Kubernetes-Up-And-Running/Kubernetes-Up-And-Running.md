@@ -1704,17 +1704,57 @@ Jobs are designed to manage batch-like workloads where work items are processed 
 | Parallel fixed completions | Multiple Pods processing a set of work in parallel  | One or more Pods running one or more times until reaching a fixed completion count | 1+ | 1+ |
 | Work queue: parallel jobs | Multiple Pods processing from a centralized work queue | One or more Pods running once until successful termination | 1 | 2+ |
 
+### One Shot
 
+One-shot jobs provide a way to run a single Pod once until successful termination.
 
+There are multiple ways to create a one-shot job in Kubernetes. The easiest is to use the kubectl command-line tool:
+```
+$ kubectl run -i oneshot \
+--image=gcr.io/kuar-demo/kuard-amd64:blue \
+--restart=OnFailure \
+-- --keygen-enable \
+   --keygen-exit-on-complete \
+   --keygen-num-to-gen 10
+```
 
+* The ``-i`` option to kubectl indicates that this is an interactive command. kubectl will wait until the job is running and then show the log output from the first (and in this case only) Pod in the job.
+* ``--restart=OnFailure`` is the option that tells kubectl to create a Job object.
+* All of the options after -- are command-line arguments to the container image. These instruct our test server (kuard) to generate 10 4,096-bit SSH keys and then exit.
 
+After the job has completed, the Job object and related Pod are still around. **Note that this job won’t show up in ``kubectl get``
+jobs unless you pass the ``-a`` flag.**
 
+Example 12-1. job-oneshot.yaml
+```
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: oneshot
+spec:
+  template:
+    spec:
+      containers:
+      - name: kuard
+        image: gcr.io/kuar-demo/kuard-amd64:blue
+        imagePullPolicy: Always
+        args:
+        - "--keygen-enable"
+        - "--keygen-exit-on-complete"
+        - "--keygen-num-to-gen=10"
+      restartPolicy: OnFailure
+```
 
+Submit the job using the kubectl apply command:
+```
+$ kubectl apply -f job-oneshot.yaml
+job "oneshot" created
+```
 
-
-
-
-
+You can view the results of the job by looking at the logs of the Pod that was created:
+```
+$ kubectl logs oneshot-4kfdt
+```
 
 
 
