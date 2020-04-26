@@ -1756,6 +1756,183 @@ You can view the results of the job by looking at the logs of the Pod that was c
 $ kubectl logs oneshot-4kfdt
 ```
 
+Congratulations, your job has run successfully!
+
+### POD FAILURE
+
+job-oneshot-failure1.yaml
+```
+...
+spec:
+  template:
+    spec:
+      containers:
+      ...
+        args:
+        - "--keygen-enable"
+        - "--keygen-exit-on-complete"
+        - "--keygen-exit-code=1"
+        - "--keygen-num-to-gen=3"
+```
+
+Now launch this with kubectl apply -f job-oneshot-failure1.yaml. Let it run for a bit and then look at the Pod status:
+```
+$ kubectl get pod -a -l job-name=oneshot
+NAME READY STATUS RESTARTS AGE
+oneshot-3ddk0 0/1 CrashLoopBackOff 4 3m
+```
+
+Here we see that the same Pod has restarted four times.
+
+Modify the config file again and change the ``restartPolicy`` from ``OnFailure`` to ``Never``. Launch this with ``kubectl apply -f jobs-oneshotfailure2.yaml``.
+
+If we let this run for a bit and then look at related Pods we’ll find something interesting:
+```
+$ kubectl get pod -l job-name=oneshot -a
+NAME READY STATUS RESTARTS AGE
+oneshot-0wm49 0/1 Error 0 1m
+oneshot-6h9s2 0/1 Error 0 39s
+oneshot-hkzw0 1/1 Running 0 6s
+oneshot-k5swz 0/1 Error 0 28s
+oneshot-m1rdw 0/1 Error 0 19s
+oneshot-x157b 0/1 Error 0 57s
+```
+
+If you aren’t careful, this’ll create a lot of "junk" in your cluster. For this reason, we suggest you use ``restartPolicy: OnFailure`` so failed Pods are rerun in place.
+
+### Parallelism
+
+Our goal is to generate 100 keys by having 10 runs of kuard with each run generating 10 keys. But we don’t want to swamp our cluster, so we’ll limit ourselves to only five Pods at a time. This translates to setting completions to 10 and parallelism to 5. The config is shown in Example 12-3.
+
+Example 12-3. job-parallel.yaml
+```
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: parallel
+  labels:
+    chapter: jobs
+spec:
+  parallelism: 5
+  completions: 10
+  template:
+    metadata:
+      labels:
+        chapter: jobs
+  spec:
+    containers:
+    - name: kuard
+      image: gcr.io/kuar-demo/kuard-amd64:blue
+      imagePullPolicy: Always
+      args:
+      - "--keygen-enable"
+      - "--keygen-exit-on-complete"
+      - "--keygen-num-to-gen=10"
+    restartPolicy: OnFailure
+```
+
+Start it up:
+```
+$ kubectl apply -f job-parallel.yaml
+job "parallel" created
+```
+
+## CronJobs
+
+Sometimes you want to schedule a job to be run at a certain interval. To achieve this you can declare a CronJob in Kubernetes, which is responsible for creating a new Job object at a particular interval. The declaration of a CronJob looks like:
+```
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  name: example-cron
+spec:
+# Run every fifth hour
+  schedule: "0 */5 * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: batch-job
+            image: my-batch-image
+          restartPolicy: OnFailure
+```
+
+Note the ``spec.schedule`` field, which contains the interval for the CronJob in standard cron format. You can save this file as cron-job.yaml, and create the CronJob with ``kubectl create -f cron-job.yaml``.
+
+# Chapter 13. ConfigMaps and Secrets
+
+## ConfigMaps
+
+ConfigMap is as a Kubernetes object that defines a small filesystem. Or is as a set of variables that can be used when defining the environment or command line for your containers.
+
+### Creating ConfigMaps
+
+First, suppose we have a file on disk (called my-config.txt) that we want to make available to the Pod in question, as shown in Example 13-1.
+
+Example 13-1. my-config.txt
+```
+\# This is a sample config file that I might use to configure an application
+parameter1 = value1
+parameter2 = value2
+```
+
+Next, let’s create a ConfigMap with that file. We’ll also add a couple of simple key/value pairs here. These are referred to as literal values on the command line:
+```
+$ kubectl create configmap my-config \
+--from-file=my-config.txt \
+--from-literal=extra-param=extra-value \
+--from-literal=another-param=another-value
+```
+
+The equivalent YAML for the ConfigMap object we just created is:
+```
+$ kubectl get configmaps my-config -o yaml
+apiVersion: v1
+data:
+  another-param: another-value
+  extra-param: extra-value
+  my-config.txt: |
+    # This is a sample config file that I might use to configure an application
+    parameter1 = value1
+    parameter2 = value2
+kind: ConfigMap
+metadata:
+  creationTimestamp: ...
+  name: my-config
+  namespace: default
+  resourceVersion: "13556"
+  selfLink: /api/v1/namespaces/default/configmaps/my-config
+  uid: 3641c553-f7de-11e6-98c9-06135271a273
+```
+
+### Using a ConfigMap
+
+There are three main ways to use a ConfigMap:
+* Filesystem. 
+* Environment variable.
+* Command-line argument.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
