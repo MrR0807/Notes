@@ -2027,18 +2027,175 @@ They may begin with a dot followed by a letter or number. Following characters i
 | Key.pem | auth file.json |
 | config_file | \_password.txt |
 
+## Managing ConfigMaps and Secrets
+
+### Listing
+
+You can use the kubectl get secrets command to list all secrets in the current namespace:
+```
+$ kubectl get secrets
+NAME TYPE DATA AGE
+default-token-f5jq2 kubernetes.io/service-account-token 3 1h
+kuard-tls Opaque 2 20m
+```
+
+Similarly, you can list all of the ConfigMaps in a namespace:
+```
+$ kubectl get configmaps
+NAME DATA AGE
+my-config 3 1m
+```
+
+``kubectl describe`` can be used to get more details on a single object:
+```
+$ kubectl describe configmap my-config
+Name: my-config
+Namespace: default
+Labels: <none>
+Annotations: <none>
+Data
+====
+another-param: 13 bytes
+extra-param: 11 bytes
+my-config.txt: 116 bytes
+```
+
+Finally, you can see the raw data (including values in secrets!) with something like ``kubectl get configmap my-config -o yaml`` or ``kubectl get secret kuard-tls -o yaml``.
+
+### Creating
+
+The easiest way to create a secret or a ConfigMap is via kubectl create secret generic or kubectl create configmap. Variations:
+* ``--from-file=<filename>``
+* ``--from-file=<key>=<filename>``
+* ``--from-file=<directory>``
+* ``--from-literal=<key>=<value>``
+
+# Chapter 14. Role-Based Access Control for Kubernetes
+
+TODO
+
+# Chapter 15. Integrating Storage Solutions and Kubernetes
+
+## Importing External Services
+
+In many cases, you have an existing machine running in your network that has some sort of database running on it. In this situation you may not want to immediately move that database into containers and Kubernetes.
+
+Regardless of the reasons for staying put, this legacy server and service are not going to move into Kubernetes—but it’s still worthwhile to represent this server in Kubernetes.
+Additionally, this enables you to configure all your applications so that it looks like the database that is running on a machine somewhere is actually a Kubernetes service. This means that it is trivial to replace it with a database that is a Kubernetes service.
+
+For example, in production, you may rely on your legacy database that is running on a machine, but for continuous testing you may deploy a test database as a transient container. Since it is created and destroyed for each test run, data persistence isn’t important in the continuous testing case. Representing both databases as Kubernetes services enables you to maintain identical configurations in both testing and production.
+
+Imagine that we have test and production namespaces defined. The test service is imported using an object like:
+```
+kind: Service
+metadata:
+  name: my-database
+  # note 'test' namespace here
+  namespace: test
+  ...
+```
+```
+kind: Service
+metadata:
+  name: my-database
+  # note 'prod' namespace here
+  namespace: prod
+  ...
+```
+
+When you deploy a Pod into the test namespace and it looks up the service named my-database, it will receive a pointer to ``mydatabase.test.svc.cluster.internal``, which in turn points to the test database. In contrast, when a Pod deployed in the prod namespace looks up the same name (my-database) it will receive a pointer to ``mydatabase.prod.svc.cluster.internal``, which is the production database. Thus, the same service name, in two different namespaces, resolves to two different services.
+
+### Services Without Selectors
+
+When we first introduced services, we talked at length about label queries and how they were used to identify the dynamic set of Pods that were the backends for a particular service. **With external services, however, there is no such label query.** Instead, you generally have a DNS name that points to the specific server running the database. For our example, let’s assume that this server is named ``database.company.com``. To import this external database service into Kubernetes, we start by creating a service without a Pod selector that references the DNS name of the database server (Example 15-1).
+
+Example 15-1. dns-service.yaml
+```
+kind: Service
+apiVersion: v1
+metadata:
+  name: external-database
+spec:
+  type: ExternalName
+  externalName: database.company.com
+```
+
+When a typical Kubernetes service is created, an IP address is also created and the Kubernetes DNS service is populated with an A record that points to that IP address. When you create a service of type ExternalName, the Kubernetes DNS service is instead populated with a CNAME record that points to the external name you specified (database.company.com in this case). When an application in the cluster does a DNS lookup for the hostname ``external-database.svc.default.cluster``, the DNS protocol aliases that name to ``database.company.com``. This then resolves to the IP address of your external database server. In this way, all containers in Kubernetes believe that they are talking to a service that is backed with other containers, when in fact they are being redirected to the external database.
 
 
+Sometimes, however, you don’t have a DNS address for an external database service, just an IP address.
 
+In such cases, it is still possible to import this service as a Kubernetes service, but the operation is a little different. First, you create a Service without a label selector, but also without the ExternalName type we used before (Example 15-2).
 
+Example 15-2. external-ip-service.yaml
+```
+kind: Service
+apiVersion: v1
+metadata:
+  name: external-ip-database
+```
 
+At this point, Kubernetes will allocate a virtual IP address for this service and populate an A record for it. However, because there is no selector for the service, there will be no endpoints populated for the load balancer to redirect traffic to.
 
+Given that this is an external service, the user is responsible for populating the endpoints manually with an Endpoints resource (Example 15-3).
 
+Example 15-3. external-ip-endpoints.yaml
+```
+kind: Endpoints
+apiVersion: v1
+metadata:
+  name: external-ip-database
+subsets:
+  - addresses:
+    - ip: 192.168.0.1
+    ports:
+    - port: 3306
+```
 
+If you have more than one IP address for redundancy, you can repeat them in the addresses array.
 
+**External services in Kubernetes have one significant restriction: they do not perform any health checking.**
 
+## Running Reliable Singletons
 
+The challenge of running storage solutions in Kubernetes is often that primitives like ReplicaSet expect that every container is identical and replaceable, but for most storage solutions this isn’t the case. One option to address this is to use Kubernetes primitives, but not attempt to replicate the storage. Instead, simply run a single Pod that runs the database or other storage solution.
 
+In reality, if you structure the system properly the only thing you are sacrificing is potential downtime for upgrades or in case of machine failure. While for large-scale or mission-critical systems this may not be acceptable, for many smaller-scale applications this kind of limited downtime is a reasonable trade-off for the reduced complexity.
+
+### Running a MySQL Singleton
+
+In this section, we’ll describe how to run a reliable singleton instance of the MySQL database as a Pod in Kubernetes, and how to expose that singleton to other applications in the cluster.
+
+To do this, we are going to create three basic objects: 
+* A **persistent volume** to manage the lifespan of the on-disk storage independently from the lifespan of the running MySQL application.
+* A **MySQL Pod** that will run the MySQL application.
+* A **service** that will expose this Pod to other containers in the cluster.
+
+To begin, we’ll create a persistent volume for our MySQL database to use. This example uses NFS for maximum portability, but Kubernetes supports many different persistent volume drive types.
+
+PersistentVolume object.
+Example 15-4. nfs-volume.yaml
+```
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: database
+  labels:
+    volume: my-volume
+spec:
+  accessModes:
+  - ReadWriteMany
+  capacity:
+    storage: 1Gi
+  nfs:
+    server: 192.168.0.1
+    path: "/exports"
+```
+
+This defines an NFS PersistentVolume object with 1 GB of storage space. We can create this persistent volume as usual with:
+```
+$ kubectl apply -f nfs-volume.yaml
+```
 
 
 
