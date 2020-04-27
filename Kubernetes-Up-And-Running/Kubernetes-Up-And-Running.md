@@ -1952,19 +1952,80 @@ spec:
 
 ## Secrets
 
+Secrets enable container images to be created without bundling sensitive data. This allows containers to remain portable across environments.
 
+**By default, Kubernetes secrets are stored in plain text in the etcd storage for the cluster.** Depending on your requirements, this may not be sufficient security for you. In particular, anyone who has cluster administration rights in your cluster will be able to read all of the secrets in the cluster. In recent versions of Kubernetes, support has been added for encrypting the secrets with a user-supplied key, generally integrated into a cloud key store.
 
+### Creating Secrets
 
+With the kuard.crt and kuard.key files stored locally, we are ready to create a secret. Create a secret named kuard-tls using the create secret command:
+```
+$ kubectl create secret generic kuard-tls \
+--from-file=kuard.crt \
+--from-file=kuard.key
+```
 
+The kuard-tls secret has been created with two data elements. Run the following command to get details:
+```
+$ kubectl describe secrets kuard-tls
+Name: kuard-tls
+Namespace: default
+Labels: <none>
+Annotations: <none>
+Type: Opaque
+Data
+====
+kuard.crt: 1050 bytes
+kuard.key: 1679 bytes
+```
 
+### Consuming Secrets
 
+#### SECRETS VOLUMES
 
+Secret data can be exposed to Pods using the secrets volume type.
 
+Each data element of a secret is stored in a separate file under the target mount point specified in the volume mount. The kuard-tls secret contains two data elements: ``kuard.crt`` and ``kuard.key``. Mounting the kuard-tls secrets volume to /tls results in the following files:
+```
+/tls/kuard.crt
+/tls/kuard.key
+```
 
+kuard-secret.yaml
+```
+apiVersion: v1
+kind: Pod
+metadata:
+  name: kuard-tls
+spec:
+  containers:
+  - name: kuard-tls
+    image: gcr.io/kuar-demo/kuard-amd64:blue
+    imagePullPolicy: Always
+    volumeMounts:
+    - name: tls-certs
+      mountPath: "/tls"
+      readOnly: true
+  volumes:
+  - name: tls-certs
+    secret:
+      secretName: kuard-tls
+```
 
+Create the kuard-tls Pod using kubectl and observe the log output from the running Pod:
+```
+$ kubectl apply -f kuard-secret.yaml
+```
 
+## Naming Constraints
 
+They may begin with a dot followed by a letter or number. Following characters include dots, dashes, and underscores. Dots cannot be repeated and dots and underscores or dashes cannot be adjacent to each other.
 
+| Valid key name  | Invalid key name |
+| ------------- | ------------- |
+| .auth_token | Token..properties |
+| Key.pem | auth file.json |
+| config_file | \_password.txt |
 
 
 
