@@ -1913,6 +1913,44 @@ There are three main ways to use a ConfigMap:
 * Environment variable.
 * Command-line argument.
 
+Environment variables are specified with a special ``valueFrom`` member. Command-line arguments build on environment variables.
+
+kuard-config.yaml
+```
+apiVersion: v1
+kind: Pod
+metadata:
+  name: kuard-config
+spec:
+  containers:
+  - name: test-container
+    image: gcr.io/kuar-demo/kuard-amd64:blue
+    imagePullPolicy: Always
+    command:
+    - "/kuard"
+    - "$(EXTRA_PARAM)"
+    env:
+    - name: ANOTHER_PARAM
+      valueFrom:
+        configMapKeyRef:
+          name: my-config
+          key: another-param
+    - name: EXTRA_PARAM
+      valueFrom:
+        configMapKeyRef:
+          name: my-config
+          key: extra-param
+    volumeMounts:
+    - name: config-volume
+      mountPath: /config
+  volumes:
+  - name: config-volume
+    configMap:
+      name: my-config
+  restartPolicy: Never
+```
+
+## Secrets
 
 
 
