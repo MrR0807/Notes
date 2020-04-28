@@ -2418,6 +2418,135 @@ Once you have initiated the Mongo ReplicaSet, you can add the remaining replicas
 
 As you can see, we are using the replica-specific DNS names to add them as replicas in our Mongo cluster.
 
+### Automating MongoDB Cluster Creation
+
+To automate the deployment of our StatefulSet-based MongoDB cluster, we’re going to add an additional container to our Pods to perform the initialization.
+
+To configure this Pod without having to build a new Docker image, we’re going to use a ConfigMap to add a script into the existing MongoDB image. Here’s the container we’re adding:
+```
+...
+- name: init-mongo
+  image: mongo:3.4.1
+  command:
+  - bash
+  - /config/init.sh
+  volumeMounts:
+  - name: config
+    mountPath: /config
+volumes:
+- name: config
+  configMap:
+    name: "mongo-init"
+```
+
+Note that it is mounting a ConfigMap volume whose name is mongo-init. This ConfigMap holds a script that performs our initialization. First, the script determines whether it is running on mongo-0 or not. If it is on mongo-0, it creates the ReplicaSet using the same command we ran imperatively previously. If it is on a different Mongo replica, it waits until the ReplicaSet exists, and then it registers itself as a member of that ReplicaSet.
+
+Putting it all together:
+```
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mongo
+spec:
+  serviceName: "mongo"
+  replicas: 3
+  template:
+    metadata:
+      labels:
+        app: mongo
+    spec:
+      containers:
+      - name: mongodb
+        image: mongo:3.4.1
+        command:
+        - mongod
+        - --replSet
+        - rs0
+        ports:
+        - containerPort: 27017
+          name: web
+        # This container initializes the mongodb server, then sleeps.
+      - name: init-mongo
+        image: mongo:3.4.1
+        command:
+        - bash
+        - /config/init.sh
+        volumeMounts:
+        - name: config
+          mountPath: /config
+      volumes:
+      - name: config
+        configMap:
+          name: "mongo-init"
+```
+Given all of these files, you can create a Mongo cluster with:
+```
+$ kubectl apply -f mongo-config-map.yaml
+$ kubectl apply -f mongo-service.yaml
+$ kubectl apply -f mongo.yaml
+```
+
+### Persistent Volumes and StatefulSets
+
+For persistent storage, you need to mount a persistent volume into the /data/db directory. In the Pod template, you need to update it to mount a persistent volume claim to that directory:
+```
+...
+volumeMounts:
+- name: database
+  mountPath: /data/db
+```
+
+StatefulSet replicates more than one Pod you cannot simply reference a persistent volume claim. Instead, you need to add a **persistent volume claim template**. You can think of the claim template as being identical to the Pod template, but instead of creating Pods, it creates volume claims. You need to add the following onto the bottom of your StatefulSet definition:
+```
+volumeClaimTemplates:
+- metadata:
+  name: database
+  annotations:
+    volume.alpha.kubernetes.io/storage-class: anything
+  spec:
+    accessModes: [ "ReadWriteOnce" ]
+    resources:
+      requests:
+        storage: 100Gi
+```
+
+When you add a volume claim template to a StatefulSet definition, **each time the StatefulSet controller creates a Pod that is part of the StatefulSet it will create a persistent volume claim** based on this template as part of that Pod.
+
+### One Final Thing: Readiness Probes
+
+For the liveness checks, we can use the mongo tool itself by adding the following to the Pod template in the StatefulSet object:
+```
+...
+livenessProbe:
+  exec:
+    command:
+    - /usr/bin/mongo
+    - --eval
+    - db.serverStatus()
+  initialDelaySeconds: 10
+  timeoutSeconds: 10
+...
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
