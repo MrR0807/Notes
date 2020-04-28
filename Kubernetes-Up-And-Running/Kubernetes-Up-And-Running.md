@@ -2197,6 +2197,156 @@ This defines an NFS PersistentVolume object with 1 GB of storage space. We can c
 $ kubectl apply -f nfs-volume.yaml
 ```
 
+Now that we have a persistent volume created, we need to claim that persistent volume for our Pod. We do this with a PersistentVolumeClaim object (Example 15-5).
+
+Example 15-5. nfs-volume-claim.yaml
+```
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: database
+spec:
+  accessModes:
+  - ReadWriteMany
+  resources:
+    requests:
+      storage: 1Gi
+  selector:
+    matchLabels:
+      volume: my-volume
+```
+
+**The selector field uses labels to find the matching volume we defined previously.**
+
+Now that we’ve claimed our volume, we can use a ReplicaSet to construct our singleton Pod. It might seem odd that we are using a ReplicaSet to manage a single Pod, but it is necessary for reliability.
+
+mysql-replicaset.yaml
+```
+apiVersion: extensions/v1
+kind: ReplicaSet
+metadata:
+  name: mysql
+  # labels so that we can bind a Service to this Pod
+  labels:
+    app: mysql
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mysql
+  template:
+    metadata:
+      labels:
+        app: mysql
+    spec:
+      containers:
+      - name: database
+        image: mysql
+        resources:
+          requests:
+            cpu: 1
+            memory: 2Gi
+        env:
+        # Environment variables are not a best practice for security,
+        # but we're using them here for brevity in the example.
+        # See Chapter 11 for better options.
+        - name: MYSQL_ROOT_PASSWORD
+          value: some-password-here
+        livenessProbe:
+          tcpSocket:
+            port: 3306
+        ports:
+        - containerPort: 3306
+        volumeMounts:
+        - name: database
+        # /var/lib/mysql is where MySQL stores its databases
+          mountPath: "/var/lib/mysql"
+      volumes:
+      - name: database
+        persistentVolumeClaim:
+          claimName: database
+```
+
+Once we create the ReplicaSet it will, in turn, create a Pod running MySQL using the persistent disk we originally created. The final step is to expose this as a Kubernetes service (Example 15-7).
+
+Example 15-7. mysql-service.yaml
+```
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql
+spec:
+  ports:
+  - port: 3306
+    protocol: TCP
+  selector:
+    app: mysql
+```
+Now we have a reliable singleton MySQL instance running in our cluster and exposed as a service named mysql, which we can access at the full domain name ``mysql.svc.default.cluster``.
+
+### Dynamic Volume Provisioning
+
+Many clusters also include dynamic volume provisioning. With dynamic volume provisioning, the cluster operator creates one or more **StorageClass** objects.
+
+Example 15-8. storageclass.yaml
+```
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: default
+  annotations:
+    storageclass.beta.kubernetes.io/is-default-class: "true"
+  labels:
+    kubernetes.io/cluster-service: "true"
+provisioner: kubernetes.io/azure-disk
+```
+
+Once a storage class has been created for a cluster, you can refer to this storage class in your persistent volume claim, rather than referring to any specific persistent volume.
+
+Example 15-9. dynamic-volume-claim.yaml
+```
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: my-claim
+  annotations:
+    volume.beta.kubernetes.io/storage-class: default
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+```
+
+The volume.beta.kubernetes.io/storage-class annotation is what links this claim back up to the storage class we created.
+
+## Kubernetes-Native Storage with StatefulSets
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
