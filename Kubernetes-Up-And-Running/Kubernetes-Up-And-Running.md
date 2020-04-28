@@ -2323,22 +2323,100 @@ The volume.beta.kubernetes.io/storage-class annotation is what links this claim 
 
 ## Kubernetes-Native Storage with StatefulSets
 
+### Properties of StatefulSets
 
+StatefulSets are replicated groups of Pods, similar to ReplicaSets. But unlike a ReplicaSet, they have certain unique properties:
+* Each replica gets a persistent hostname with a unique index (e.g., database-0, database-1, etc.).
+* Each replica is created in order from lowest to highest index, and creation will block until the Pod at the previous index is healthy and available. This also applies to scaling up.
+* When a StatefulSet is deleted, each of the managed replica Pods is also deleted in order from highest to lowest. This also applies to scaling down the number of replicas.
 
+### Manually Replicated MongoDB with StatefulSets
 
+To start, we’ll create a replicated set of three MongoDB Pods using a StatefulSet object (Example 15-10).
 
+Example 15-10. mongo-simple.yaml
+```
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mongo
+spec:
+  serviceName: "mongo"
+  replicas: 3
+  template:
+    metadata:
+      labels:
+        app: mongo
+    spec:
+      containers:
+      - name: mongodb
+        image: mongo:3.4.1
+        command:
+        - mongod
+        - --replSet
+        - rs0
+        ports:
+        - containerPort: 27017
+          name: peer
+```
 
+Create the StatefulSet:
+```
+$ kubectl apply -f mongo-simple.yaml
+```
 
+Once created, the differences between a ReplicaSet and a StatefulSet become apparent. Run kubectl get pods and you will likely see:
+```
+NAME READY STATUS RESTARTS AGE
+mongo-0 1/1 Running 0 1m
+mongo-1 0/1 ContainerCreating 0 10s
+```
 
+Each replicated Pod has a numeric index (0, 1, …), instead of the random suffix that is added by the ReplicaSet controller. The second is that the Pods are being slowly created in order, not all at once as they would be with a ReplicaSet.
 
+Once the StatefulSet is created, we also need to create a "headless" service to manage the DNS entries for the StatefulSet. In Kubernetes a service is called **"headless" if it doesn’t have a cluster virtual IP address.** Since with StatefulSets each Pod has a unique identity, it doesn’t really make sense to have a load-balancing IP address for the replicated service.
 
+Example 15-11. mongo-service.yaml
+```
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongo
+spec:
+  ports:
+  - port: 27017
+    name: peer
+  clusterIP: None
+  selector:
+    app: mongo
+```
 
+Once you create that service, there are usually four DNS entries that are populated. As usual, ``mongo.default.svc.cluster.local`` is created, but unlike with a standard service, doing a **DNS lookup on this hostname provides all the addresses in the StatefulSet.** In addition, entries are created for ``mongo-0.mongo.default.svc.cluster.local`` as well as ``mongo-1.mongo`` and ``mongo-2.mongo``. Each of these resolves to the specific IP address of the replica index in the StatefulSet.
 
+You can see these DNS entries in action by running the following commands in one of the Mongo replicas:
+```
+$ kubectl run -it --rm --image busybox busybox ping mongo-1.mongo
+```
 
+We’ll choose mongo-0.mongo to be our initial primary. Run the mongo tool in that Pod:
+```
+$ kubectl exec -it mongo-0 mongo
+> rs.initiate( {
+_id: "rs0",
+members:[ { _id: 0, host: "mongo-0.mongo:27017" } ]
+});
+OK
+```
 
+This command tells mongodb to initiate the ReplicaSet rs0 with mongo-0.mongo as the primary replica.
 
+Once you have initiated the Mongo ReplicaSet, you can add the remaining replicas by running the following commands in the mongo tool on the mongo-0.mongo Pod:
+```
+> rs.add("mongo-1.mongo:27017");
+> rs.add("mongo-2.mongo:27017");
+```
 
-
+As you can see, we are using the replica-specific DNS names to add them as replicas in our Mongo cluster.
 
 
 
