@@ -2527,45 +2527,9 @@ livenessProbe:
   timeoutSeconds: 10
 ...
 ```
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+# Chapter 16. Extending Kubernetes
+TODO
+# Chapter 17. Deploying Real-World Applications
+TODO
+# Chapter 18. Organizing Your Application
+TODO
