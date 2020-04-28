@@ -4,3 +4,5 @@ the pause container serves as the "parent container" for all of the containers i
 
 
 https://kubernetes.io/docs/reference/kubectl/overview/#resource-types
+
+https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#container-v1-core
