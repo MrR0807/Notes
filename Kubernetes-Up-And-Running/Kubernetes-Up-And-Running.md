@@ -1101,7 +1101,7 @@ Some Ingress controller implementations support, optionally, doing path rewritin
 
 # Chapter 9. ReplicaSets
 
-A ReplicaSet acts as a cluster-wide Pod manager, ensuring that the right types and number of Pods are running t all times.
+A ReplicaSet acts as a cluster-wide Pod manager, ensuring that the right types and number of Pods are running all times.
 
 ## Reconciliation Loops
 
