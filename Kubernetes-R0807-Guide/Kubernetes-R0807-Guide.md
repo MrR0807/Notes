@@ -158,6 +158,66 @@ metadata:
 
 ## Pods
 
+Create:
+```
+kubectl run kuard --generator=run-pod/v1 --image=gcr.io/kuar-demo/kuard-amd64:blue
+$ kubectl apply -f kuard-pod.yaml
+```
+
+Get more information:
+```
+$ kubectl get pods
+$ kubectl describe pods kuard
+$ kubectl logs kuard
+$ kubectl get pods hello-pod -o yaml
+$ kubectl get pods hello-pod -o wide
+```
+
+Deleting:
+```
+$ kubectl delete pods/kuard
+$ kubectl delete -f kuard-pod.yaml
+```
+
+Running commands:
+```
+$ kubectl exec kuard -it bash
+$ kubectl exec -it shell-demo -- /bin/bash
+```
+
+Utility commands:
+```
+$ kubectl cp <pod-name>:/captures/capture3.txt ./capture3.txt
+$ kubectl cp $HOME/config.txt <pod-name>:/config.txt
+```
+
+Watch flag:
+```
+$ kubectl get pods --watch
+```
+
+```
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-name
+spec:
+  containers:
+  - image:
+    args:
+    command:
+    env:
+    - name:
+      value:
+      
+    envFrom
+  restartPolicy: Always | OnFailure | Never
+  volumes:
+    -
+  
+
+```
+
 
 
 
