@@ -144,19 +144,22 @@ Similarly, you can combine positive and negative selectors together as follows:
 $ kubectl get pods -l 'ver=2,!canary'
 ```
 
-
-
-
-
-
-
-
-
-
-
 ## Annotations
 
+Annotations are defined in the common metadata section in every Kubernetes object:
+
+```
+...
+metadata:
+  annotations:
+    example.com/icon-url: "https://example.com/icon.png"
+...
+```
+
 ## Pods
+
+
+
 
 ## ReplicaSet
 
