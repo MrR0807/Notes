@@ -204,18 +204,67 @@ metadata:
 spec:
   containers:
   - image:
-    args:
-    command:
+    imagePullPolicy: Always | Never | IfNotPresent
+    args: [] #The docker image's CMD is used if this is not provided.
+    command: [ "/bin/sh", "-c", "env" ] #Not executed within a shell. The docker image's ENTRYPOINT is used if this is not provided.
+    ports:
+      - containerPort: 8080
+        protocol: UDP | TCP | SCTP #Defaults to TCP
+        name: http
+        hostPort: #Don’t specify a hostPort for a Pod unless it is absolutely necessary.
     env:
-    - name:
-      value:
-      
-    envFrom
+    - name: varvalue
+      value: ${VAR_NAME}
+    - name: DEMO_GREETING
+      value: "Hello from the environment"
+    - name: another
+      valueFrom: # Cannot be used if value is not empty.
+        configMapKeyRef:
+          name: hello
+    envFrom:
+    - configMapRef:
+        name: java-options
+    - secretRef:
+        name: rabbit-credentials
+    livenessProbe:
+      httpGet:
+        path: /healthy
+        port: 8080
+      initialDelaySeconds: 5
+      timeoutSeconds: 1
+      periodSeconds: 10
+      failureThreshold: 3
+    readinessProbe:
+      httpGet:
+        path: /healthy
+        port: 8080
+      initialDelaySeconds: 5
+      timeoutSeconds: 1
+      periodSeconds: 10
+      failureThreshold: 3
+    startupProbe: ## If the startup probe never succeeds, the container is killed after 300s and subject to the pod’s restartPolicy.
+      httpGet:
+        path: /healthy
+        port: 8080
+      failureThreshold: 30
+      periodSeconds: 10
+    resources:
+      requests:
+        cpu: "500m"
+        memory: "128Mi"
+      limits:
+        cpu: "1000m"
+        memory: "256Mi"
+    volumeMounts:
+    - mountPath: "/data"
+      name: "kuard-data"
+  imagePullSecrets: #Secret used to pull images
   restartPolicy: Always | OnFailure | Never
-  volumes:
-    -
-  
-
+  volumes: #List of volumes that can be mounted by containers belonging to the pod.
+  - name: "kuard-data"
+    nfs:
+      server: my.nfs.server.local
+      path: "/exports"
 ```
 
 
