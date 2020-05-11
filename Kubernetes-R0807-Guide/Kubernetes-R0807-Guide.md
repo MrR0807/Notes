@@ -286,10 +286,51 @@ spec:
       ...
 ```
 
+Create ReplicaSet:
+```
+$ kubectl apply -f kuard-rs.yaml
+replicaset "kuard" created
+```
 
+Insepect ReplicaSet:
+```
+$ kubectl describe rs kuard
+```
+
+Find a ReplicaSet from a Pod:
+```
+$ kubectl get pods <pod-name> -o yaml
+```
+
+Find a set of Pods for a ReplicaSet. Selector flag ``--selector`` or the shorthand ``-l``:
+```
+$ kubectl get pods -l app=kuard,version=2
+```
+
+Scale ReplicaSet. ``rs`` for short:
+```
+$ kubectl scale replicasets kuard --replicas=4
+```
+
+Deleting ReplicaSet:
+```
+$ kubectl delete rs kuard
+```
+
+Deleting ReplicaSet, but not underlying Pods:
+```
+$ kubectl delete rs kuard --cascade=false
+```
+
+Scale a replicaset named 'foo' to 3
+```
+kubectl scale --replicas=3 rs/foo
+```
 
 
 ## Deployment
+
+
 ## DaemonSets
 ## Jobs
 ## StatefulSets
