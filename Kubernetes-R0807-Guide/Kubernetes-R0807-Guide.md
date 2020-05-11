@@ -267,10 +267,23 @@ spec:
       path: "/exports"
 ```
 
-
-
-
 ## ReplicaSet
+
+```
+apiVersion:
+kind:
+metadata:
+spec:
+  replicas:
+  selector:
+    matchLabels:      
+  template:
+  metadata:
+
+```
+
+
+
 
 ## Deployment
 ## DaemonSets
