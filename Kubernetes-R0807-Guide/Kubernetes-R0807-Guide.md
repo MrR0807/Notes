@@ -274,12 +274,16 @@ apiVersion:
 kind:
 metadata:
 spec:
-  replicas:
+  replicas: 1
   selector:
-    matchLabels:      
+    matchLabels:
+      app: mylabel
   template:
-  metadata:
-
+    metadata:
+      labels:
+        app: mylabel
+    spec: ##podSpec from before
+      ...
 ```
 
 
