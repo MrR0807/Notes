@@ -384,7 +384,50 @@ kubectl delete -f kuard-deployment.yaml
 ```
 
 ## DaemonSets
+
+```
+apiVersion:
+kind:
+metadata:
+  labels:
+    app: hello
+spec:
+  minReadySeconds:
+  revisionHistoryLimit:
+  selector:
+    matchLabels:
+  updateStrategy:
+    type: RollingUpdate | OnDelete # Default is RollingUpdate
+    rollingUpdate: # Only if type is RollingUpdate
+      maxUnavailable:
+  template: #podSpec
+    ...
+```
+
+DaemonSets require a unique name.
+```
+apiVersion: extensions/v1beta1
+kind: DaemonSet
+metadata:
+  name: fluentd
+  labels:
+    app: fluentd
+spec:
+  ...
+```
+
+```
+$ kubectl apply -f fluentd.yaml
+daemonset "fluentd" created
+```
+```
+$ kubectl describe daemonset fluentd
+```
+
 ## Jobs
+
+
+
 ## StatefulSets
 ## Persistent Volume
 ## Persistent Volume Claim
