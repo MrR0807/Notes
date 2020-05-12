@@ -356,9 +356,32 @@ spec:
 
 ```
 
+Create:
+```
+kubectl create deployment nginx --image=nginx  # Start a single instance of nginx
 
+kubectl get deployment my-dep 
+# Or deployment short name deploy
+kubectl get deploy my-dep
 
+kubectl scale deployments kuard --replicas=2
 
+kubectl describe deployments kuard
+
+kubectl rollout status deployments kuard # Monitor new deployment rollout
+
+kubectl rollout history deployment kuard # Rollout history
+
+kubectl rollout history deployment kuard --revision=2 # More details about specific revision
+
+kubectl rollout undo deployments kuard # Rollback deployment
+
+kubectl rollout undo deployments kuard --to-revision=3 # Rollback deployment to specific revision
+
+kubectl delete deployments kuard
+
+kubectl delete -f kuard-deployment.yaml
+```
 
 ## DaemonSets
 ## Jobs
