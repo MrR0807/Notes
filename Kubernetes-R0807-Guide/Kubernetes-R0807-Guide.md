@@ -330,6 +330,35 @@ kubectl scale --replicas=3 rs/foo
 
 ## Deployment
 
+```
+apiVersion:
+kind:
+metadata:
+spec:
+  replicas: 3
+  revisionHistoryLimit: #default 10
+  minReadySeconds: 60 #indicates that the deployment must wait for 60 seconds after seeing a Pod become healthy before moving on to                            updating the next Pod
+  progressDeadlineSeconds: #default 600
+  strategy:
+    type: #Recreate | RollingUpdate. Defaults to RollingUpdate
+    rollingUpdate: #Only if type is RollingUpdate
+      maxSurge: 1 #You will never have more than 11 Pods during the update process
+      maxUnavailable: 1 #You'll never have less than 9
+  selector:
+    matchLabels:
+        app: helloworld
+  template:
+    metadata:
+      labels:
+        app: helloworld
+    spec: ##podSpec from before
+      ...
+
+```
+
+
+
+
 
 ## DaemonSets
 ## Jobs
