@@ -426,6 +426,39 @@ $ kubectl describe daemonset fluentd
 
 ## Jobs
 
+```
+apiVersion:
+kind:
+metadata:
+spec:
+  activeDeadlineSeconds: # Once a Job reaches activeDeadlineSeconds, all of its running Pods are terminated
+  bacckoffLimit: # Number of retries, before job is failed. Defaults to 6
+  completions: # Iterations how many times the pod will be run
+  parallelism: # How many pods will run at any given time
+  ttlSecondsAfterFinished: # Automatic cleanup of Job objects after it has finished (either Complete or Failed)
+  selector:
+    matchLabels:
+  template: #podSpecs
+    ...
+```
+
+Create. All parameter after ``--`` are command-line arguments:
+```
+$ kubectl run -i oneshot \
+--image=gcr.io/kuar-demo/kuard-amd64:blue \
+--restart=OnFailure \ 
+-- --keygen-enable \
+   --keygen-exit-on-complete \
+   --keygen-num-to-gen 10
+```
+
+``-a`` 
+
+```
+kubectl get pod -a -l job-name=oneshot
+```
+
+
 
 
 ## StatefulSets
