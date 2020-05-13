@@ -452,10 +452,8 @@ $ kubectl run -i oneshot \
    --keygen-num-to-gen 10
 ```
 
-``-a`` 
-
 ```
-kubectl get pod -a -l job-name=oneshot
+kubectl get pods -l job-name=oneshot
 ```
 
 
