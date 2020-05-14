@@ -556,12 +556,38 @@ spec:
 
 ![pv-vs-pvc.PNG](pictures/pv-vs-pvc.PNG)
 
+```
+$ kubectl apply -f pvc.yml
+persistentvolumeclaim/pvc1 created
+```
 
-
-## Persistent Volume Claim
-
+Pod:
+```
+apiVersion: v1
+kind: Pod
+  metadata:
+    name: volpod
+spec:
+  volumes:
+  - name: data
+    persistentVolumeClaim:
+      claimName: pvc1
+    containers:
+    - name: ubuntu-ctr
+      image: ubuntu:latest
+      command:
+      - /bin/bash
+      - "-c"
+      - "sleep 60m"
+      volumeMounts:
+      - mountPath: /data
+        name: data
+```
 
 ## Storage Classes
+
+
+
 
 
 ## ConfigMap
