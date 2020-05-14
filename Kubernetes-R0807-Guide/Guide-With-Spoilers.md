@@ -1,4 +1,4 @@
-<details><summary>CLICK ME</summary>
+<details>CLICK ME
 
 Hello
 
