@@ -498,7 +498,7 @@ Create a PV:
 apiVersion: v1
 kind: PersistentVolume
 metadata:
-  name: task-pv-volume
+  name: manual
   labels:
     type: local
 spec:
@@ -507,7 +507,7 @@ spec:
     storage: 10Gi
   accessModes:
     - ReadWriteOnce
-  persistentVolumeReclaimPolicy: Retain | Delete #
+  persistentVolumeReclaimPolicy: Retain | Delete
   hostPath:
     path: "/mnt/data"
 ```
@@ -531,17 +531,30 @@ pec.persistentVolumeReclaimPolicy tells Kubernetes what to do with a PV when its
 
 ```
 $ kubectl apply -f pv.yml
-persistentvolume/task-pv-volume created
+persistentvolume/manual created
 ```
 
 Check the PV exists:
 ```
-$ kubectl get pv task-pv-volume
+$ kubectl get pv manual
 ```
 
+PVC:
+```
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pvc1
+spec:
+  accessModes:
+  - ReadWriteOnce
+  storageClassName: manual
+  resources:
+    requests:
+      storage: 10Gi
+```
 
-
-
+![pv-vs-pvc.png](pictures/pv-vs-pvc.png)
 
 
 
