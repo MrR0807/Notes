@@ -456,13 +456,101 @@ $ kubectl run -i oneshot \
 kubectl get pods -l job-name=oneshot
 ```
 
+### CronJobs
 
-
+```
+apiVersion:
+kind:
+metadata:
+spec:
+  concurrencyPolicy: Allow | Forbid | Replace
+  schedule: "*/1 * * * *"
+  jobTemplate:
+    metadata:
+    spec: #JobSpec
+```
 
 ## StatefulSets
+
+```
+apiVersion:
+kind:
+metadata:
+spec:
+  serviceName: #
+  replicas:
+  selector:
+  template: #Pod Template
+  updateStrategy: #StatefulSetUpdateStrategy
+  volumeClaimTemplates: [] #PersistentVolumeClaim array
+```
+
+
 ## Persistent Volume
+
+Create a ``/mnt/data`` directory:
+```
+sudo mkdir /mnt/data
+```
+
+Create a PV:
+```
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: task-pv-volume
+  labels:
+    type: local
+spec:
+  storageClassName: manual
+  capacity:
+    storage: 10Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain | Delete #
+  hostPath:
+    path: "/mnt/data"
+```
+
+There are three ``accessModes``:
+* ReadWriteOnce (RWO) - defines a PV that can only be mounted/bound as R/W by a single PVC. Attempts from multiple PVCs to bind (claim) it will fail.
+* ReadWriteMany (RWM) - ReadWriteMany defines a PV that can be bound as R/W by multiple PVCs. This mode is usually only supported by file and object storage such as NFS. Block storage usually only supports RWO.
+* ReadOnlyMany (ROM) - ReadOnlyMany defines a PV that can be bound by multiple PVCs as R/O.
+
+
+pec.persistentVolumeReclaimPolicy tells Kubernetes what to do with a PV when its PVC has been released. Two policies currently exist:
+* Delete
+* Retain
+
+**Delete** is the most dangerous, and is the default for PVs that are created dynamically via storage classes.
+**Retain** will keep the associated PV object on the cluster as well as any data stored on the associated external asset. However, it will prevent another PVC from using the PV in future. If you want to re-use a retained PV, you need to perform the following three steps:
+* Manually delete the PV on Kubernetes
+* Re-format the associated storage asset on the external storage system to wipe any data
+* Recreate the PV
+
+
+```
+$ kubectl apply -f pv.yml
+persistentvolume/task-pv-volume created
+```
+
+Check the PV exists:
+```
+$ kubectl get pv task-pv-volume
+```
+
+
+
+
+
+
+
 ## Persistent Volume Claim
+
+
 ## Storage Classes
+
+
 ## ConfigMap
 ## Secrets
 ## Services
