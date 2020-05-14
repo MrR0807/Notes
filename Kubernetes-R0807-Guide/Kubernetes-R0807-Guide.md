@@ -586,13 +586,256 @@ spec:
 
 ## Storage Classes
 
+```
+kind: StorageClass
+apiVersion: storage.k8s.io/v1
+metadata:
+  name: fast
+provisioner: kubernetes.io/aws-ebs
+parameters:
+  type: io1
+  zones: eu-west-1a
+  iopsPerGB: "10"
+```
 
+google-sc.yml:
+```
+kind: StorageClass
+apiVersion: storage.k8s.io/v1
+metadata:
+  name: slow
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "true"
+provisioner: kubernetes.io/gce-pd
+parameters:
+  type: pd-standard
+reclaimPolicy: Retain
+```
 
+```
+$ kubectl apply -f google-sc.yml
+storageclass.storage.k8s.io/slow created
+```
 
+```
+$ kubectl get sc slow
+NAME PROVISIONER AGE
+slow (default) kubernetes.io/gce-pd 32s
+```
+
+google-pvc.yml:
+```
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pv-ticket
+spec:
+  accessModes:
+  - ReadWriteOnce
+  storageClassName: slow
+  resources:
+    requests:
+      storage: 25Gi
+```
+```
+$ kubectl apply -f google-pvc.yml
+persistentvolumeclaim/pv-ticket created
+```
+```
+$ kubectl get pvc pv-ticket
+NAME STATUS VOLUME CAPACITY ACCESS MODES STORAGECLASS
+pv-ticket Bound pvc-881a23... 25Gi RWO slow
+```
+```
+$ kubectl get pv
+NAME CAPACITY Mode STATUS CLAIM STORAGECLASS
+pvc-881... 25Gi RWO Bound pv-ticket slow
+```
+
+google-pod.yml:
+```
+apiVersion: v1
+kind: Pod
+metadata:
+  name: class-pod
+spec:
+  volumes:
+  - name: data
+    persistentVolumeClaim:
+      claimName: pv-ticket
+  containers:
+  - name: ubuntu-ctr
+    image: ubuntu:latest
+    command:
+    - /bin/bash
+    - "-c"
+    - "sleep 60m"
+    volumeMounts:
+    - mountPath: /data
+      name: data
+  ```
+
+```
+$ kubectl delete pod class-pod
+pod "class-pod" deleted
+
+$ kubectl delete pvc pv-ticket
+persistentvolumeclaim "pv-ticket" deleted
+
+$ kubectl delete sc slow
+storageclass.storage.k8s.io "slow" deleted
+```
 
 ## ConfigMap
+
+my-config.txt
+```
+\# This is a sample config file that I might use to configure an application
+parameter1 = value1
+parameter2 = value2
+```
+
+Creating ConfigMaps
+
+```
+$ kubectl create configmap my-config \
+--from-file=my-config.txt \
+--from-literal=extra-param=extra-value \
+--from-literal=another-param=another-value
+```
+```
+$ kubectl get configmaps my-config -o yaml
+apiVersion: v1
+data:
+  another-param: another-value
+  extra-param: extra-value
+  my-config.txt: |
+    # This is a sample config file that I might use to configure an application
+    parameter1 = value1
+    parameter2 = value2
+kind: ConfigMap
+metadata:
+  creationTimestamp: ...
+  name: my-config
+  namespace: default
+  resourceVersion: "13556"
+  selfLink: /api/v1/namespaces/default/configmaps/my-config
+  uid: 3641c553-f7de-11e6-98c9-06135271a273
+```
+
+```
+$ kubectl get cm
+AME DATA AGE
+testmap1 2 11m
+testmap2 1 2m23s
+```
+
+Declaratively:
+```
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: multimap
+data:
+  given: Nigel
+  family: Poulton
+```
+
+```
+$ kubectl apply -f multimap.yml
+configmap/multimap created
+```
+
+There are three main ways to use a ConfigMap:
+* Command-line argument.
+* Environment variable.
+* Filesystem.
+
+All possible situations are defined here:
+```
+apiVersion: v1
+kind: Pod
+metadata:
+  name: kuard-config
+spec:
+  containers:
+  - name: test-container
+    image: gcr.io/kuar-demo/kuard-amd64:blue
+    imagePullPolicy: Always
+    command:
+    - "/kuard"
+    - "$(EXTRA_PARAM)"
+    env:
+    - name: ANOTHER_PARAM
+      valueFrom:
+        configMapKeyRef:
+          name: my-config
+          key: another-param
+    - name: EXTRA_PARAM
+      valueFrom:
+        configMapKeyRef:
+          name: my-config
+          key: extra-param
+    volumeMounts:
+    - name: config-volume
+      mountPath: /config
+  volumes:
+  - name: config-volume
+    configMap:
+      name: my-config
+  restartPolicy: Never
+```
+
 ## Secrets
+
+```
+$ kubectl create secret generic kuard-tls \
+--from-file=kuard.crt \
+--from-file=kuard.key
+```
+
+Variations:
+* ``--from-file=<filename>``
+* ``--from-file=<key>=<filename>``
+* ``--from-file=<directory>``
+* ``--from-literal=<key>=<value>``
+
+
+```
+$ kubectl describe secrets kuard-tls
+Name: kuard-tls
+Namespace: default
+Labels: <none>
+Annotations: <none>
+Type: Opaque
+Data
+====
+kuard.crt: 1050 bytes
+kuard.key: 1679 bytes
+```
+
+```
+apiVersion: v1
+kind: Pod
+metadata:
+  name: kuard-tls
+spec:
+  containers:
+  - name: kuard-tls
+    image: gcr.io/kuar-demo/kuard-amd64:blue
+    imagePullPolicy: Always
+    volumeMounts:
+    - name: tls-certs
+      mountPath: "/tls"
+      readOnly: true
+  volumes:
+  - name: tls-certs
+    secret:
+      secretName: kuard-tls
+```
+
 ## Services
+
 ## Ingress
 
 ## Misc
