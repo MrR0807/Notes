@@ -82,7 +82,7 @@ kubectl label deployments foo "canary=true"
 
 </details>
 
-<details><summary>Show deployments with labels </summary>
+<details><summary>Show deployments where label is canary</summary>
 
 ```
 kubectl get deployments -L canary
