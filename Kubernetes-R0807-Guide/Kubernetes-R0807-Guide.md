@@ -432,7 +432,7 @@ kind:
 metadata:
 spec:
   activeDeadlineSeconds: # Once a Job reaches activeDeadlineSeconds, all of its running Pods are terminated
-  bacckoffLimit: # Number of retries, before job is failed. Defaults to 6
+  backoffLimit: # Number of retries, before job is failed. Defaults to 6
   completions: # Iterations how many times the pod will be run
   parallelism: # How many pods will run at any given time
   ttlSecondsAfterFinished: # Automatic cleanup of Job objects after it has finished (either Complete or Failed)
