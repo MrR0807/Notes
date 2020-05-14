@@ -2500,9 +2500,9 @@ StatefulSet replicates more than one Pod you cannot simply reference a persisten
 ```
 volumeClaimTemplates:
 - metadata:
-  name: database
-  annotations:
-    volume.alpha.kubernetes.io/storage-class: anything
+    name: database
+    annotations:
+      volume.alpha.kubernetes.io/storage-class: anything
   spec:
     accessModes: [ "ReadWriteOnce" ]
     resources:
