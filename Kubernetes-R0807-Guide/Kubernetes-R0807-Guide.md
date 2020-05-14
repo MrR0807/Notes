@@ -554,7 +554,7 @@ spec:
       storage: 10Gi
 ```
 
-![pv-vs-pvc.png](pictures/pv-vs-pvc.png)
+![pv-vs-pvc.PNG](pictures/pv-vs-pvc.PNG)
 
 
 
