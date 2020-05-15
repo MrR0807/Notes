@@ -130,9 +130,11 @@ kubectl run foo --generator=run-pod/v1 --image=busybox
 
 </details>
 
-<details><summary>        </summary>
+<details><summary>Create a busybox pod from YAML. Add args to print "Hello world"</summary>
 
 ```
+kubectl run foo --generator=run-pod/v1 --image=busybox --dry-run -o yaml > p.yml
+vim p.yml
 
 ```
 
