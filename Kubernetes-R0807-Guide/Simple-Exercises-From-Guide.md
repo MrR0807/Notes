@@ -90,6 +90,334 @@ kubectl get deployments -L canary
 
 </details>
 
+<details><summary>Remove canary label from deployment foo</summary>
+
+```
+kubectl label deploy foo canary-
+```
+
+</details>
+
+<details><summary>Show pods' labels</summary>
+
+```
+kubectl get pods --show-labels
+```
+
+</details>
+
+<details><summary>Show pods that have only label color=red</summary>
+
+```
+kubectl get pods --selector="color=red"
+```
+
+</details>
+
+<details><summary>Use selector to get all pods with label color</summary>
+
+```
+kubectl get pods --l="color"
+```
+
+</details>
+
+<details><summary>Create a busybox pod</summary>
+
+```
+kubectl run foo --generator=run-pod/v1 --image=busybox
+```
+
+</details>
+
+<details><summary>        </summary>
+
+```
+
+```
+
+</details>
+
+<details><summary>        </summary>
+
+```
+
+```
+
+</details>
+
+<details><summary>        </summary>
+
+```
+
+```
+
+</details>
+
+<details><summary>        </summary>
+
+```
+
+```
+
+</details>
+
+<details><summary>        </summary>
+
+```
+
+```
+
+</details>
+
+<details><summary>        </summary>
+
+```
+
+```
+
+</details>
+
+<details><summary>        </summary>
+
+```
+
+```
+
+</details>
+
+<details><summary>        </summary>
+
+```
+
+```
+
+</details>
+
+<details><summary>        </summary>
+
+```
+
+```
+
+</details>
+
+<details><summary>        </summary>
+
+```
+
+```
+
+</details>
+
+<details><summary>        </summary>
+
+```
+
+```
+
+</details>
+
+<details><summary>        </summary>
+
+```
+
+```
+
+</details>
+
+<details><summary>        </summary>
+
+```
+
+```
+
+</details>
+
+<details><summary>        </summary>
+
+```
+
+```
+
+</details>
+
+<details><summary>        </summary>
+
+```
+
+```
+
+</details>
+
+<details><summary>        </summary>
+
+```
+
+```
+
+</details>
+
+<details><summary>        </summary>
+
+```
+
+```
+
+</details>
+
+<details><summary>        </summary>
+
+```
+
+```
+
+</details>
+
+<details><summary>        </summary>
+
+```
+
+```
+
+</details>
+
+<details><summary>        </summary>
+
+```
+
+```
+
+</details>
+
+<details><summary>        </summary>
+
+```
+
+```
+
+</details>
+
+<details><summary>        </summary>
+
+```
+
+```
+
+</details>
+
+<details><summary>        </summary>
+
+```
+
+```
+
+</details>
+
+<details><summary>        </summary>
+
+```
+
+```
+
+</details>
+
+<details><summary>        </summary>
+
+```
+
+```
+
+</details>
+
+<details><summary>        </summary>
+
+```
+
+```
+
+</details>
+
+<details><summary>        </summary>
+
+```
+
+```
+
+</details>
+
+<details><summary>        </summary>
+
+```
+
+```
+
+</details>
+
+<details><summary>        </summary>
+
+```
+
+```
+
+</details>
+
+<details><summary>        </summary>
+
+```
+
+```
+
+</details>
+
+<details><summary>        </summary>
+
+```
+
+```
+
+</details>
+
+<details><summary>        </summary>
+
+```
+
+```
+
+</details>
+
+<details><summary>        </summary>
+
+```
+
+```
+
+</details>
+
+<details><summary>        </summary>
+
+```
+
+```
+
+</details>
+
+<details><summary>        </summary>
+
+```
+
+```
+
+</details>
+
+<details><summary>        </summary>
+
+```
+
+```
+
+</details>
+
 <details><summary>        </summary>
 
 ```
