@@ -96,17 +96,64 @@ scrape_configs:
 
 In Prometheus terms, a scrape is the action of collecting metrics through an HTTP request from a targeted instance, parsing the response, and ingesting the collected samples to storage. The default HTTP endpoint used in the Prometheus ecosystem for metrics collection is aptly named ``/metrics``.
 
+A collection of such instances is called a **job**.
 
+A scrape job definition needs at least a job_name and a set of targets. In this example, static_configs was used to declare the list of targets for both scrape jobs. While Prometheus supports a lot of ways to dynamically define this list, static_configs is the simplest and most straightforward method:
 
+```
+scrape_configs:
+ - job_name: 'prometheus'
+    scrape_interval: 15s
+    scrape_timeout: 5s
+    sample_limit: 1000
+    static_configs:
+      - targets: ['localhost:9090']
+    metric_relabel_configs:
+      - source_labels: [ __name__ ]
+        regex: expensive_metric_.+
+        action: drop
+```
 
+Analyzing the prometheus scrape job in detail, we can see that both ``scrape_interval`` and ``scrape_timeout`` can be redeclared at the job level, thus overriding the global values.
 
+``sample_limit`` is a scrape config field that will cause a scrape to fail if more than the given number of time series is returned. **``sample_limit`` can save you from exploding in cardinality. ``sample_limit`` is a scrape config field that will cause a scrape to fail if more than the given number of time series is returned.**
 
+The last relevant configuration here is ``metric_relabel_configs``. This is a powerful rewrite engine that allows a collected metrics' identity to be transformed, or even dropped, before being saved to storage. The most common use cases for this feature is to blacklist a set of misbehaving metrics, dropping labels. The preceding example is using ``metric_relabel_configs`` to drop every metric that starts with ``expensive_metric_``.
 
+```
+  - job_name: 'blackbox'
+    metrics_path: /probe
+    scheme: http
+    params:
+      module: [http_2xx]
+    static_configs:
+      - targets:
+        - http://example.com
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: 127.0.0.1:9115
+```
 
+* ``metrics_path`` is used to change which endpoint Prometheus should scrape
+* ``scheme`` defines whether HTTP or HTTPS is going to be used when connecting to targets
+* ``params`` allows you to define a set of optional HTTP parameters
 
+**``relabel_configs`` is used to manipulate the scrape job's list of targets.** By default, a target will have a couple of labels that have been generated automatically and that will be available for relabeling:
+* ``job`` label will be set to the ``job_name`` configuration;
+* ``__address__`` label will be created with the target's host and port;
+* ``__scheme__`` and ``__metrics_path__`` labels will be set to their respective configurations (``scheme`` and ``metrics_path``);
+* ``__param_<name>`` label will be created for each of the parameters defined in the params configuration.
 
+Example:
+* Copies the target's address into a ``__param_target`` label, which will be used to set the ``target`` ``GET`` parameter in the scrape;
+* Copies the content of this newly created label into the ``instance`` label so that it is explicitly set, bypassing the automatic generation based on the ``__address__``;
+* Replaces the ``__address__`` label with the address of the blackbox exporter so that scrapes are done to the exporter and not directly to the target we specified in ``static_configs``.
 
-
+# Managing Prometheus in a standalone server
 
 
 
