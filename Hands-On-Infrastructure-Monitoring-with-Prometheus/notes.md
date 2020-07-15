@@ -325,7 +325,7 @@ data:
 
 After a moment, a new deployment will take place, changing the Prometheus configuration and a new target will present itself, which you can validate in the Prometheus web user interface:
 
-
+![Prometheus-add-targets-1.png](pictures/Prometheus-add-targets-1.png)
 
 
 
