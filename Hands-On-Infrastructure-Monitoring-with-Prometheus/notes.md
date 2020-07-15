@@ -734,6 +734,47 @@ The blackbox_exporter service exposes two main endpoints:
 
 The /probe endpoint, when hit with an HTTP GET request with the parameters module and target, it executes the specified prober module against the defined target, and the result is then exposed as Prometheus metrics:
 
+![blackbox-exporter.JPG](pictures/blackbox-exporter.JPG)
+
+For example, a request such as http://192.168.42.11:9115/probe?module=http_2xx&target=example.com will return something like the following snippet (a couple of metrics were discarded for briefness):
+
+```
+# HELP probe_duration_seconds Returns how long the probe took to complete in seconds
+# TYPE probe_duration_seconds gauge
+probe_duration_seconds 0.454460181
+# HELP probe_http_ssl Indicates if SSL was used for the final redirect
+# TYPE probe_http_ssl gauge
+probe_http_ssl 0
+# HELP probe_http_status_code Response HTTP status code
+# TYPE probe_http_status_code gauge
+probe_http_status_code 200
+# HELP probe_ip_protocol Specifies whether probe ip protocol is IP4 or IP6
+# TYPE probe_ip_protocol gauge
+probe_ip_protocol 4
+# HELP probe_success Displays whether or not the probe was a success
+# TYPE probe_success gauge
+probe_success 1
+```
+
+# Pushing metrics
+
+Not interested for a moment.
+
+# More exporters
+
+## JMX exporter
+
+The Java Virtual Machine (JVM) is a popular choice for core infrastructure services, such as Kafka, ZooKeeper, and Cassandra, among others. These services, like many others, do not natively offer metrics in the Prometheus exposition format and instrumenting such applications is far from being a trivial task. In these scenarios, we can rely on the Java Management Extensions (JMX) to expose the application's internal state through the Managed Beans (MBeans). The JMX exporter extracts numeric data from the exposed MBeans and converts it into Prometheus metrics, exposing them on an HTTP endpoint for ingestion.
+
+The exporter is available in the following two forms:
+
+* **Java agent**: In this mode, the exporter is loaded inside the local JVM where the target application is running and exposes a new HTTP endpoint.
+* **Standalone HTTP server**: In this mode, a separate JVM instance is used to run the exporter that connects via JMX to the target JVM and exposes collected metrics on its own HTTP server.
+
+**The documentation strongly advises deploying the exporter using the Java agent**, for good reason; the agent produces richer sets of metrics as compared with the standalone exporter, as it has access to the full JVM being instrumented. However, both have trade-offs that are important to be aware of so that the right tool for the job is chosen.
+
+# Prometheus Query Language - PromQL
+
 
 
 
