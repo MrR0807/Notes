@@ -674,6 +674,63 @@ There are quite a few runtime flags, so we'll feature some of the most relevant 
 
 ![cAdvisor-command-line-flags.JPG](pictures/cAdvisor-command-line-flags.JPG)
 
+### Deployment
+
+Although historically the cAdvisor code was embedded in the Kubelet binary, it is currently scheduled to be deprecated there. Therefore, we'll be launching cAdvisor as a **DaemonSet** to future proof this example and to expose its configurations, while also enabling its web interface, as a Kubernetes service, to be explored.
+
+Config files can be found in: ``./cadvisor/``.
+
+It's time to add cAdvisor exporters as new targets for Prometheus. For that, we'll be using the next ``ServiceMonitor`` manifest as shown here:
+```
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  labels:
+    p8s-app: cadvisor
+  name: cadvisor-metrics
+  namespace: monitoring
+spec:
+  endpoints:
+  - interval: 30s
+    port: http
+  selector:
+    matchLabels:
+      p8s-app: cadvisor
+```
+
+**With this, we now have container-level metrics. Do note that cAdvisor exports a large amount of samples per container, which can easily balloon exported metrics to multiple thousands of samples per scrape, possibly causing cardinality-related issues on the scraping Prometheus.**
+
+From the thousands of metrics exported by cAdvisor, these are generally useful for keeping an eye out for problems:
+
+* ``container_last_seen``, which keeps track of the timestamp the container was last seen as running;
+* ``container_cpu_usage_seconds_total``, which gives you a counter of the number of CPU seconds per core each container has used;
+* ``container_memory_usage_bytes`` and ``container_memory_working_set_bytes``, which keep track of container memory usage (including cache and buffers) and just container active memory, respectively;
+* ``container_network_receive_bytes_total`` and ``container_network_transmit_bytes_total``, which let you know how much traffic in the container receiving and transmitting, respectively.
+
+### kube-state-metrics
+
+``kube-state-metrics`` does not export container-level data, as that's not its function. It operates at a higher level, exposing the Kubernetes state, providing metrics regarding the API internal objects such as pods, services, or deployments.
+
+Some interesting metrics from kube-state-metrics that can be used to keep an eye on your Kubernetes clusters are:
+
+* ``kube_pod_container_status_restarts_total``, which can tell you if a given pod is restarting on a loop;
+* ``kube_pod_status_phase``, which can be used to alert on pods that are in a non-ready state for a long time;
+* Comparing ``kube_<object>_status_observed_generation`` with ``kube_<object>_metadata_generation`` can give you a sense when a given object has failed but hasn't been rolled back.
+
+# From logs to metrics
+
+## mtail
+
+Developed by Google, mtail is a very light log processor that is capable of running programs with pattern matching logic, allowing the extraction of metrics from said logs.
+
+# Blackbox monitoring
+
+## Blackbox exporter
+
+
+
+
+
 
 
 
