@@ -264,6 +264,101 @@ spec:
     targetPort: 9090
 ```
 
+Check which nodePort was assign to this service, then you can try to access it.
+
+## Adding targets to Prometheus
+
+For the sake of this example, we'll deploy yet another service and add it to our Prometheus server, going step by step on how to do it. We'll use a small Hello World type of application called ``Hey`` for our setup.
+
+```
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hey-deployment
+  namespace: monitoring
+  labels:
+    app: hey
+...
+      - name: hey
+        image: kintoandar/hey:v1.0.1
+...
+        - name: http
+          containerPort: 8000
+...
+```
+
+```
+kind: Service
+apiVersion: v1
+metadata:
+  name: hey-service
+  namespace: monitoring
+spec:
+  selector:
+    app: hey
+  type: NodePort
+  ports:
+  - name: hey-port
+    protocol: TCP
+    port: 8000
+    targetPort: 8000
+```
+
+We need to change the Prometheus ConfigMap to reflect the newly added service:
+```
+kind: ConfigMap
+metadata:
+  name: prometheus-config
+  namespace: monitoring 
+data:
+  prometheus.yml: |
+    scrape_configs:
+    - job_name: prometheus
+      static_configs:
+      - targets:
+        - localhost:9090
+    - job_name: hey
+      static_configs:
+      - targets:
+        - hey-service.monitoring.svc:8000
+```
+
+After a moment, a new deployment will take place, changing the Prometheus configuration and a new target will present itself, which you can validate in the Prometheus web user interface:
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
