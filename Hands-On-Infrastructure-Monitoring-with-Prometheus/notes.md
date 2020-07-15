@@ -652,7 +652,27 @@ kubectl apply -f ./provision/kubernetes/operator/monitor/
 
 Content can be found in: ``./operator/``.
 
+# Operating system exporter
 
+Metrics for resources such as CPU, memory, and storage devices, as well as kernel operating counters and statistics provide valuable insight to assess a system's performance characteristics. For a Prometheus server to collect these types of metrics, an OS-level exporter is needed on the target hosts to expose them in an HTTP endpoint. 
+
+## The Node Exporter
+
+The Node Exporter is the most well-known Prometheus exporter, for good reason. It provides over 40 collectors for different areas of the OS, as well as a way of exposing local metrics for cron jobs and static information about the host. **Like the rest of the Prometheus ecosystem, the Node Exporter comes with a sane default configuration and some smarts to identify what can be collected, so it's perfectly reasonable to run it without much tweaking.**
+
+Although this exporter was designed to be run as a non-privileged user, it does need to access kernel and process statistics, which aren't normally available when running inside a container. This is not to say that it doesn't work in containers—every Prometheus component can be run in containers—but that additional configuration is required for it to work. It is, therefore, **recommended that the Node Exporter be run as a system daemon directly on the host whenever possible.**
+
+## Container exporter
+
+**Container Advisor (cAdvisor)** is a project developed by Google that collects, aggregates, analyzes, and exposes data from running containers. The data available covers pretty much anything you might require, from memory limits to GPU metrics, all available and segregated by container and/or host.
+
+Besides exposing metrics in the Prometheus format, cAdvisor also ships with a useful web interface, allowing the instant visualization of the status of hosts and their containers.
+
+### Configuration
+
+There are quite a few runtime flags, so we'll feature some of the most relevant for our test case in the following table:
+
+![cAdvisor-command-line-flags.JPG](pictures/cAdvisor-command-line-flags.JPG)
 
 
 
