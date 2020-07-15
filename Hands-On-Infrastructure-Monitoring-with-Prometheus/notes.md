@@ -336,6 +336,15 @@ In our case, **besides managing the deployment, including the number of pods and
 
 ![Prometheus-operator.png](pictures/Prometheus-operator.png)
 
+## Prometheus Operator deployment
+
+Like the previous example, we'll be creating a new namespace called ``monitoring`` with the help of ``kubectl``. With the new namespace available, it's time to ensure that all access permissions are in place for the Prometheus Operator, as shown in the next few configuration snippets:
+
+```
+
+
+```
+
 
 
 
