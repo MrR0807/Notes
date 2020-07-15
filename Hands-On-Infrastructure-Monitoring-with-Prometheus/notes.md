@@ -338,17 +338,295 @@ In our case, **besides managing the deployment, including the number of pods and
 
 ## Prometheus Operator deployment
 
-Like the previous example, we'll be creating a new namespace called ``monitoring`` with the help of ``kubectl``. With the new namespace available, it's time to ensure that all access permissions are in place for the Prometheus Operator, as shown in the next few configuration snippets:
+Like the previous example, we'll be creating a new namespace called ``monitoring``.
+
+### Prometheus Operator deployment
 
 ```
-
-
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: prometheus-operator
+rules:
+- apiGroups: [apiextensions.k8s.io]
+  resources: [customresourcedefinitions]
+  verbs: ['*']
+- apiGroups: [monitoring.coreos.com]
+  resources: 
+  - alertmanagers
+  - prometheuses
+  - prometheuses/finalizers
+  - alertmanagers/finalizers
+  - servicemonitors
+  - prometheusrules
+  verbs: ['*']
+- apiGroups: [apps]
+  resources: [statefulsets]
+  verbs: ['*']
+- apiGroups: [""]
+  resources: [configmaps, secrets]
+  verbs: ['*']
+- apiGroups: [""]
+  resources: [pods]
+  verbs: [list, delete]
+- apiGroups: [""]
+  resources: [services, endpoints]
+  verbs: [get, create, update]
+- apiGroups: [""]
+  resources: [nodes]
+  verbs: [list, watch]
+- apiGroups: [""]
+  resources: [namespaces]
+  verbs: [get, list, watch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: prometheus-operator
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: prometheus-operator
+subjects:
+- kind: ServiceAccount
+  name: prometheus-operator
+  namespace: monitoring
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: prometheus-operator
+  namespace: monitoring
 ```
 
+Having the new service account configured, we're ready to deploy the Operator itself, like so:
 
+```
+apiVersion: apps/v1beta2
+kind: Deployment
+metadata:
+  labels:
+    k8s-app: prometheus-operator
+  name: prometheus-operator
+  namespace: monitoring
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      k8s-app: prometheus-operator
+  template:
+    metadata:
+      labels:
+        k8s-app: prometheus-operator
+    spec:
+      containers:
+      - args:
+        - --kubelet-service=kube-system/kubelet
+        - --logtostderr=true
+        - --config-reloader-image=quay.io/coreos/configmap-reload:v0.0.1
+        - --prometheus-config-reloader=quay.io/coreos/prometheus-config-reloader:v0.29.0
+        image: quay.io/coreos/prometheus-operator:v0.29.0
+        name: prometheus-operator
+        ports:
+        - containerPort: 8080
+          name: http
+        resources:
+          limits:
+            cpu: 200m
+            memory: 200Mi
+          requests:
+            cpu: 100m
+            memory: 100Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+      nodeSelector:
+        beta.kubernetes.io/os: linux
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+      serviceAccountName: prometheus-operator
+```
 
+### Prometheus server deployment
 
+Before proceeding with the setup of Prometheus, we'll need to grant its instances with the right access control permissions. The following snippets from the Prometheus RBAC manifest do just that. Next, we create a ``ClusterRoleBinding`` to grant the permissions from the aforementioned ``ClusterRole`` to a user, which in our case will be a ``ServiceAccount``.
 
+```
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: prometheus-k8s
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - nodes
+  - services
+  - endpoints
+  - pods
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - configmaps
+  verbs:
+  - get
+- nonResourceURLs:
+  - /metrics
+  verbs:
+  - get
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: prometheus-k8s
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: prometheus-k8s
+subjects:
+- kind: ServiceAccount
+  name: prometheus-k8s
+  namespace: monitoring
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: prometheus-k8s
+  namespace: monitoring
+```
+
+Having the service account ready, we can now use the Prometheus Operator to deploy our Prometheus servers using the following manifest:
+
+```
+apiVersion: monitoring.coreos.com/v1
+kind: Prometheus
+metadata:
+  labels:
+    prometheus: k8s
+  name: k8s
+  namespace: monitoring
+spec:
+  baseImage: quay.io/prometheus/prometheus
+  version: v2.9.2
+  replicas: 2
+  resources:
+    requests:
+      memory: 200Mi
+  securityContext:
+    fsGroup: 2000
+    runAsNonRoot: true
+    runAsUser: 1000
+  serviceAccountName: prometheus-k8s
+  serviceMonitorNamespaceSelector: {}
+  serviceMonitorSelector: {}
+```
+
+### Adding targets to Prometheus
+
+So far, we've deployed the Operator and used it to deploy Prometheus itself. Now, we're ready to add targets and go over the logic of how to generate them.
+
+Before proceeding, we'll also deploy an application to increase the number of available targets. For this, we'll be using the Hey application once again.
+
+```
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hey-deployment
+  namespace: default
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: hey
+  template:
+    metadata:
+      labels:
+        app: hey
+    spec:
+      containers:
+      - name: hey
+        image: kintoandar/hey:v1.0.1
+        imagePullPolicy: "IfNotPresent"
+        resources:
+          limits:
+            cpu: 50m
+            memory: 48Mi
+          requests:
+            cpu: 25m
+            memory: 24Mi
+        ports:
+        - name: hey-port
+          containerPort: 8000
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: hey-port
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+```
+
+```
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    squad: frontend
+  name: hey-service
+  namespace: default
+spec:
+  selector:
+    app: hey
+  type: NodePort
+  ports:
+  - name: hey-port
+    protocol: TCP
+    port: 8000
+    targetPort: hey-port
+```
+
+Finally, we are going to create service monitors for both the Prometheus instances and the Hey application, which will instruct the Operator to configure Prometheus, adding the required targets. Pay close attention to the selector configuration – it will be used to match the services we created previously.
+
+```
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  labels:
+    k8s-app: prometheus
+  name: prometheus
+  namespace: monitoring
+spec:
+  endpoints:
+  - interval: 30s
+    port: web
+  selector:
+    matchLabels:
+      prometheus: k8s
+```
+
+```
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  labels:
+    app: hey
+  name: hey-metrics
+  namespace: default
+spec:
+  endpoints:
+  - interval: 30s
+    port: hey-port
+  selector:
+    matchLabels:
+      squad: frontend
+```
+
+ServiceMonitors are the main building block when using the Prometheus Operator. You can configure anything that goes into a scrape job, such as scrape and timeout intervals, metrics endpoint to scrape, HTTP query parameters, and so on.
 
 
 
