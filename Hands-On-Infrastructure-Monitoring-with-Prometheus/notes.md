@@ -628,10 +628,29 @@ spec:
 
 ServiceMonitors are the main building block when using the Prometheus Operator. You can configure anything that goes into a scrape job, such as scrape and timeout intervals, metrics endpoint to scrape, HTTP query parameters, and so on.
 
+# Exporters and Integrations
 
+Even though first-party exporters cover the basics pretty well, the Prometheus ecosystem provides a wide variety of third-party exporters that cover everything else. In this chapter, we will be introduced to some of the most useful exporters available — from **operating system (OS)** metrics and **Internet Control Message Protocol (ICMP)** probing to generating metrics from logs, or how to collect information from short-lived processes, such as batch jobs.
 
+# Test environments for this chapter
 
+In this chapter, we'll be using two test environments: 
+* one based on virtual machines (VMs) that mimic traditional static infrastructure;
+* one based on Kubernetes for modern workflows.
 
+## Static infrastructure test environment
+
+Not interested for now.
+
+## Kubernetes test environment
+
+```
+kubectl apply -f ./provision/kubernetes/operator/bootstrap/
+kubectl apply -f ./provision/kubernetes/operator/deploy/
+kubectl apply -f ./provision/kubernetes/operator/monitor/
+```
+
+Content can be found in: ``./operator/``.
 
 
 
