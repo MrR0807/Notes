@@ -727,6 +727,15 @@ Developed by Google, mtail is a very light log processor that is capable of runn
 
 ## Blackbox exporter
 
+The blackbox_exporter service exposes two main endpoints:
+
+* /metrics: Where its own metrics are exposed;
+* /probe: It is the query endpoint that enables blackbox probes, returning their results in Prometheus exposition format.
+
+The /probe endpoint, when hit with an HTTP GET request with the parameters module and target, it executes the specified prober module against the defined target, and the result is then exposed as Prometheus metrics:
+
+
+
 
 
 
