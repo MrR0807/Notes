@@ -328,6 +328,13 @@ After a moment, a new deployment will take place, changing the Prometheus config
 ![Prometheus-add-targets-1.png](pictures/Prometheus-add-targets-1.png)
 
 
+## Dynamic configuration – the Prometheus Operator
+
+The combination of both a Kubernetes custom resource and custom controller into a pattern is what brings the Operator definition to life.
+
+In our case, **besides managing the deployment, including the number of pods and persistent volumes of the Prometheus server, the Prometheus Operator will also update the configuration dynamically using the concept of ServiceMonitor, which targets services with matching rules against the labels of running containers**:
+
+![Prometheus-operator.png](pictures/Prometheus-operator.png)
 
 
 
