@@ -1,3 +1,6 @@
+[create an anchor](#Deep dive into the Prometheus configuration)
+
+
 # Deep dive into the Prometheus configuration
 
 ## The storage section
@@ -792,14 +795,16 @@ This selector is equivalent to the following:
 ### Label matchers
 
 Matchers are employed to restrict a query search to a specific set of label values. We'll be using the ``node_cpu_seconds_total`` metric to exemplify the four available label matcher operators: 
-* = 
-* != 
-* =~
-* !~
+* ``=``. Using ``=``, we can perform an exact match on the label value. For instance, if we only match CPU core 0;
+* ``!=``. We can also negate a match to obtain all the remaining time series using the ``!=`` matcher;
+* ``=~``. This matcher includes results that match the expression. Example: ``node_cpu_seconds_total{cpu=~"(1|0)"}`` matches all where cpu = 1 and cpu = 0;
+* ``!~``. This matcher excludes results that match the expression and allows all the remaining time series. Example: ``node_cpu_seconds_total{cpu!~"(1|0)"}`` matches all where cpu != 1 or cpu != 0.
 
 Without any matching specification, this metric alone returns an instant vector with all the available time series containing the metric name, as well as all combinations of the CPU core numbers (``cpu=”0”``, ``cpu=”1”``) and CPU modes (``mode="idle"``, ``mode="iowait"``, ``mode="irq"``, ``mode="nice"``, ``mode="softirq"``, ``mode="steal"``, ``mode="user"``, ``mode="system"``), which makes a grand total of 16 time series, as shown in the following screenshot:
 
 ![node-cpu-seconds-total-prometheus.JPG](pictures/node-cpu-seconds-total-prometheus.JPG)
+
+### Instant vectors
 
 
 
