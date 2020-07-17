@@ -905,17 +905,98 @@ process_open_fds{instance="172.17.0.11:8000", job="hey-service"} 1
 
 ### Vector matching
 
+Vector matching, as the name implies, is an operation only available between vectors. So far, we have learned that when we have a scalar and an instant vector, the scalar gets applied to each sample of the instant vector. However, when we have two instant vectors, how can we match their samples?
 
+#### One-to-one
 
+Example:
+```
+node_filesystem_avail_bytes{instance="172.17.0.13:9100", job="node-exporter-service", mountpoint="/Users"} 100397019136
+node_filesystem_avail_bytes{instance="172.17.0.13:9100", job="node-exporter-service", mountpoint="/data"} 14120038400
+node_filesystem_size_bytes{instance="172.17.0.13:9100", job="node-exporter-service", mountpoint="/Users"} 250685575168
+node_filesystem_size_bytes{instance="172.17.0.13:9100", job="node-exporter-service", mountpoint="/data"} 17293533184
+```
 
+Apply the following operation:
+```
+node_filesystem_avail_bytes{} / node_filesystem_size_bytes{} * 100
+```
 
+Returns:
+```
+{instance="172.17.0.13:9100", job="node-exporter-service", mountpoint="/Users"} 40.0489813060515
+{instance="172.17.0.13:9100", job="node-exporter-service", mountpoint="/data"} 81.64923991971679
+```
 
+It might be useful to aggregate vectors with mismatching labels. In those situations, you can apply the ``ignoring`` keyword right after the binary operator to ignore the specified labels. Additionally, it is also possible to restrict which labels from both sides should be used in matching by using the ``on`` keyword after the binary operator.
 
+#### Many-to-one and one-to-many
 
+Occasionally, you are required to perform operations where the element of one side is matched with several elements on the other side of the operation. When this happens, you are required to provide Prometheus with the means to interpret such operations. If the higher cardinality is on the left-hand side of the operation, you can use the ``group_left`` modifier after either ``on`` or ``ignoring``; if it's on the right-hand side, then ``group_right`` should be applied. The ``group_left`` operation is commonly used for its ability to copy labels over from the right side of the expression.
 
+### Logical operators
 
+These operators are the only ones in PromQL that work many-to-many:
+* and - intersection. The and logical operator works by only **returning the matches from the left-hand side if the expression on the right-hand side has results with matching label key/value pairs.** All other time series from the left-hand side that do not have a match on the right-hand side are dropped;
+* or - union. The union logical operator, ``or``, works by returning the elements from the left-hand side, except if there are no matches, it will return the elements from the right-hand side. Again, both sides need to have matching label names/values.
+* unless - complement. The ``unless`` logical operator will return the elements from the first expression that do not match the label name/value pairs from the second.
 
+Example:
+```
+node_filesystem_avail_bytes{instance="172.17.0.13:9100", job="node-exporter-service", mountpoint="/Users"} 1003970
+node_filesystem_avail_bytes{instance="172.17.0.13:9100", job="node-exporter-service", mountpoint="/data"} 141200
+node_filesystem_size_bytes{instance="172.17.0.13:9100", job="node-exporter-service", mountpoint="/Users"} 2506855
+node_filesystem_size_bytes{instance="172.17.0.13:9100", job="node-exporter-service", mountpoint="/data"} 172935
+```
 
+Expression:
+```
+node_filesystem_size_bytes > 100000 and node_filesystem_size_bytes < 200000
+```
+
+Results:
+```
+node_filesystem_avail_bytes{instance="172.17.0.13:9100", job="node-exporter-service", mountpoint="/data"} 141200
+node_filesystem_size_bytes{instance="172.17.0.13:9100", job="node-exporter-service", mountpoint="/data"} 172935
+```
+
+Expresion:
+```
+node_filesystem_avail_bytes > 200000 or node_filesystem_avail_bytes < 2500000
+```
+
+Results:
+```
+node_filesystem_avail_bytes{instance="172.17.0.13:9100", job="node-exporter-service", mountpoint="/Users"} 1003970
+```
+
+Expresion:
+```
+node_filesystem_avail_bytes unless node_filesystem_avail_bytes < 200000
+```
+
+Results:
+```
+node_filesystem_avail_bytes{instance="172.17.0.13:9100", job="node-exporter-service", mountpoint="/Users"} 1003970
+node_filesystem_size_bytes{instance="172.17.0.13:9100", job="node-exporter-service", mountpoint="/Users"} 2506855
+```
+
+## Aggregation operators
+
+By employing aggregation operators, we can take an instant vector and aggregate its elements, resulting in a new instant vector, usually with fewer elements.
+
+Available aggregation:
+* ``sum`` - Sums the elements
+* ``min`` - Selects the minimum element
+* ``max`` - Selects the maximum element
+* ``avg`` - Calculates the average of the elements
+* ``stddev`` - Calculates the standard deviation of the elements
+* ``stdvar`` - Calculates the standard variance of the elements
+* ``count`` - Counts the number of elements
+* ``count_value`` - Counts the number of elements with the same value
+* ``bottomk`` - The lower k elements by sample
+* ``topk`` - The higher k elements by sample value
+* ``quantile`` - Calculates the quantile of the elements
 
 
 
