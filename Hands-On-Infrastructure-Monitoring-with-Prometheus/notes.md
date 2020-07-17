@@ -5,8 +5,6 @@
   * [The query section](#the-query-section)
   * [Prometheus configuration file walkthrough](#prometheus-configuration-file-walkthrough)
   * [Global configuration](#global-configuration)
-  
-
 
 # Deep dive into the Prometheus configuration
 
@@ -811,7 +809,30 @@ Without any matching specification, this metric alone returns an instant vector 
 
 ![node-cpu-seconds-total-prometheus.JPG](pictures/node-cpu-seconds-total-prometheus.JPG)
 
-### Instant vectors
+### Range vectors
+
+A range vector selector is similar to an instant vector selector, but it returns a set of samples for a given time range, for each time series that matches it. To define a range vector selector query, you have to set an instant vector selector and append a range using square brackets ``[ ]``. Possible time units:
+* s - seconds
+* m - minutes
+* h - hours
+* d - days
+* w - weeks
+* y - years
+
+```
+http_requests_total{code="200"}[2m]
+```
+
+### The offset modifier
+
+The offset modifier allows you to query data in the past. This means that we can offset the query time of an instant or range vector selector relative to the current time. It is applied on a per-selector basis, which means that offsetting one selector but not another effectively unlocks the ability to compare current behavior with past behavior for each of the matched time series.
+
+```
+http_requests_total{code="200"}[2m] offset 1h
+```
+
+
+
 
 
 
