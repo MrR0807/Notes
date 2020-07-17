@@ -1,4 +1,4 @@
-Content:
+# Content
 * [Deep dive into the Prometheus configuration](#deep-dive-into-the-prometheus-configuration)
   * [The storage section](#the-storage-section)
   * [The web section](#the-web-section)
