@@ -1,5 +1,5 @@
 Content:
-* [Deep dive into the Prometheus configuration](https://github.com/MrR0807/Notes/blob/master/Hands-On-Infrastructure-Monitoring-with-Prometheus/notes.md#deep-dive-into-the-prometheus-configuration)
+* [Deep dive into the Prometheus configuration](#deep-dive-into-the-prometheus-configuration)
 
 
 # Deep dive into the Prometheus configuration
