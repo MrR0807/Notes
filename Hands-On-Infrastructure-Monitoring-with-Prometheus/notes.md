@@ -775,7 +775,31 @@ The exporter is available in the following two forms:
 
 # Prometheus Query Language - PromQL
 
+## Getting to know the basics of PromQL
 
+### Selectors
+
+**A selector** refers to a set of label matchers. The metric name is also included in this definition as, technically, its internal representation is also a label, albeit a special one: ``__name__``.  Each label name/value pair in a selector is called a label matcher, and multiple matchers can be used to further filter down the time series matched by the selector. Label matchers are enclosed in curly brackets. If no matcher is needed, the curly brackets can be omitted. Example:
+```
+prometheus_build_info{version="2.9.2"}
+```
+
+This selector is equivalent to the following:
+```
+{__name__="prometheus_build_info", version="2.9.2"}
+```
+
+### Label matchers
+
+Matchers are employed to restrict a query search to a specific set of label values. We'll be using the ``node_cpu_seconds_total`` metric to exemplify the four available label matcher operators: 
+* = 
+* != 
+* =~
+* !~
+
+Without any matching specification, this metric alone returns an instant vector with all the available time series containing the metric name, as well as all combinations of the CPU core numbers (``cpu=”0”``, ``cpu=”1”``) and CPU modes (``mode="idle"``, ``mode="iowait"``, ``mode="irq"``, ``mode="nice"``, ``mode="softirq"``, ``mode="steal"``, ``mode="user"``, ``mode="system"``), which makes a grand total of 16 time series, as shown in the following screenshot:
+
+![node-cpu-seconds-total-prometheus.JPG](pictures/node-cpu-seconds-total-prometheus.JPG)
 
 
 
