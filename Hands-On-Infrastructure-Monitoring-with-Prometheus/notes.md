@@ -1,4 +1,4 @@
-# (#Deep dive into the Prometheus configuration)
+# Deep dive into the Prometheus configuration
 
 ## The storage section
 
@@ -56,7 +56,7 @@ scrape_configs:
         action: drop
 ```
 
-### (#Global configuration)
+### Global configuration
 
 The **global configuration defines the default parameters for every other configuration section**, as well as outlining what labels should be added to metrics going to external systems, as shown in the following code block:
 
