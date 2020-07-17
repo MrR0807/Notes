@@ -1,1 +1,48 @@
+```
+docker volume create prom-config
+docker volume create prom-data
+docker volume create node-ex-data
+```
+
+We need to create a custom network, so other containers can talk to each other:
+```
+docker network create my-net
+```
+
+I needed a dummy container to copy information from my work computer to volume, because it was blocked by firewalls:
+```
+docker container create --name dummy -v prom-config:/etc/prometheus/ hello-world
+docker cp <full-path>/prometheus.yml dummy:/etc/prometheus/prometheus.yml
+docker rm dummy
+```
+
+Start infrastructure containers:
+```
+docker run -d -p 9090:9090 --name prom --user root -v prom-config:/etc/prometheus -v prom-data:/data/prometheus --network my-net prom/prometheus --config.file="/etc/prometheus/prometheus.yml" --storage.tsdb.path="/data/prometheus"
+
+docker run -d -p 9100:9100 --name nex --user 995:995 -v node-ex-data:/hostfs --network my-net prom/node-exporter --path.rootfs=/hostfs
+
+docker run -d --name=grafana -p 3000:3000 --network my-net grafana/grafana
+```
+
+Compile and build your own application:
+```
+
+mvn clean
+mvn install -DskipTests
+docker image build  -t citizen .
+
+docker run -d -p 8080:8080 --name citizen --network my-net citizen
+```
+
+
+
+
+
+
+
+
+
+
+
 
