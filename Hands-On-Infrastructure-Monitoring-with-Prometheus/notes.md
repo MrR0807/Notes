@@ -831,10 +831,79 @@ The offset modifier allows you to query data in the past. This means that we can
 http_requests_total{code="200"}[2m] offset 1h
 ```
 
+### Subqueries
+
+Subquery selector allows evaluation of functions that return instant vectors over time and return the result as a range vector. We'll be using the following query example to explain its syntax:
+```
+max_over_time(rate(http_requests_total{handler="/health", instance="172.17.0.9:8000"}[5m])[1h:1m])
+```
+
+Splitting the query into its components, we can see the following:
+* ``rate(http_requests_total{handler="/health", instance="172.17.0.9:8000"}[5m])`` - The inner query to be run, which in this case is aggregating five minutes' worth of data into an instant vector;
+* ``[1h`` - Just like a range vector selector, this defines the size of the range relative to the query evaluation time;
+* ``:1m]`` - The resolution step to use. If not defined, it defaults to the global evaluation interval;
+* ``max_over_time`` - The subquery returns a range vector, which is now able to become the argument of this aggregation operation over time.
 
 
+**Subqueries are fairly expensive to evaluate, so it is strongly discouraged to use them for dashboarding, as recording rules would produce the same result given enough time.** Similarly, they should not be used in recording rules for the same reason. **Subqueries are best suited for exploratory querying, where it is not known in advance which aggregations are needed to be looked at over time.**
 
+## Operators
 
+### Binary operators
+
+Binary operators: 
+* arithmetic;
+* comparison.
+
+#### Arithmetic
+
+The arithmetic operators provide basic math between two operands. Available arithmetic operators:
+* ``+``
+* ``-``
+* ``*``
+* ``/``
+* ``%``
+* ``^``
+
+#### Comparison
+
+* ``==``
+* ``!=``
+* ``>``
+* ``<``
+* ``>=``
+* ``<=``
+
+Say, for example, we have the following instant vector:
+```
+process_open_fds{instance="172.17.0.10:8000", job="hey-service"} 8
+process_open_fds{instance="172.17.0.11:8000", job="hey-service"} 23
+```
+
+Comparison operator:
+```
+process_open_fds{job="hey-service"} > 10
+```
+
+The result will be as follows:
+```
+process_open_fds{instance="172.17.0.11:8000", job="hey-service"} 23
+```
+
+Moreover, **we can use the bool modifier to not only return all matched time series but also modify each returned sample to become 1 or 0**, depending on whether the sample would be kept or dropped by the comparison operator.
+
+Example:
+```
+process_open_fds{job="hey-service"} > bool 10
+```
+
+Result:
+```
+process_open_fds{instance="172.17.0.10:8000", job="hey-service"} 0
+process_open_fds{instance="172.17.0.11:8000", job="hey-service"} 1
+```
+
+### Vector matching
 
 
 
