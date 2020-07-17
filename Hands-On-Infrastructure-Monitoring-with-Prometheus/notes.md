@@ -1,3 +1,7 @@
+Content:
+* [Deep dive into the Prometheus configuration](#Deep dive into the Prometheus configuration)
+
+
 # Deep dive into the Prometheus configuration
 
 ## The storage section
