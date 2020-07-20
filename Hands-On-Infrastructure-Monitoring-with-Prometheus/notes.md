@@ -1223,6 +1223,8 @@ rule_files:
 ...
 ```
 
+``rule_files`` takes a list of paths, which can be relative to the main Prometheus configuration or absolute paths. Changes in rule files are not automatically picked up by Prometheus, so a reload is needed.
+
 
 
 
