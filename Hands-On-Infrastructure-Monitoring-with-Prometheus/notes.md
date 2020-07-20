@@ -998,16 +998,84 @@ Available aggregation:
 * ``topk`` - The higher k elements by sample value
 * ``quantile`` - Calculates the quantile of the elements
 
+**There are two available modifiers to use in conjunction with aggregation operators that take a list of label names: ``without`` allows you to define which labels to aggregate away, effectively dropping those labels from the resulting vector, while ``by`` does exactly the opposite; that is, it allows you to specify which labels to keep from being aggregated.**
+
+Example:
+```
+rate(http_requests_total[5m])
+```
+
+Would generate:
+```
+{code="200",endpoint="hey-port",handler="/",instance="172.17.0.10:8000",job="hey-service",method="get"} 5.891716069444445
+{code="200",endpoint="hey-port",handler="/",instance="172.17.0.11:8000",job="hey-service",method="get"} 5.9669884444444445
+{code="200",endpoint="hey-port",handler="/",instance="172.17.0.9:8000",job="hey-service",method="get"} 11.1336484826487
+{code="200",endpoint="hey-port",handler="/health",instance="172.17.0.10:8000",job="hey-service",method="get"} 0.1
+{code="200",endpoint="hey-port",handler="/health",instance="172.17.0.11:8000",job="hey-service",method="get"} 0.1
+{code="200",endpoint="hey-port",handler="/health",instance="172.17.0.9:8000",job="hey-service",method="get"} 0.1000003703717421 
+```
+
+Aggregating:
+```
+sum(rate(http_requests_total[5m]))
+```
+
+Result:
+```
+{} 23.292353366909335
+```
+
+Example:
+```
+sum by (handler) (rate(http_requests_total[5m]))
+```
+
+Result:
+```
+{handler="/"} 22.99235299653759
+{handler="/health"} 0.3000003703717421
+```
+
+## Functions
+
+### absent()
+
+This function is quite useful for alerting on, as the name suggests, absent time series.
 
 
+For example, say that the instant vector exists and we execute the following expression:
+```
+absent(http_requests_total{method="get"})
+```
+This will return the following:
+```
+no data
+```
+Let's say we use an expression with a label matcher using a nonexistent label value, like in the following example:
+```
+absent(http_requests_total{method="nonexistent_dummy_label"})
+```
+This will produce an instant vector with the nonexistent label value:
+```
+{method="nonexistent_dummy_label"} 1
+```
+Let's apply absent to a nonexistent metric, as shown in this snippet:
+```
+absent(nonexistent_dummy_name)
+```
+This will translate into the following output:
+```
+{} 1
+```
 
-
-
-
-
-
-
-
+Finally, let's say we use absent on a nonexistent metric and a nonexistent label/value pair, as shown in the following snippet:
+```
+absent(nonexistent_dummy_name{method="nonexistent_dummy_label"})
+```
+The result can be seen in the following snippet:
+```
+{method="nonexistent_dummy_label"} 1
+```
 
 
 
