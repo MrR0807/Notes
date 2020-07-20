@@ -1077,6 +1077,73 @@ The result can be seen in the following snippet:
 {method="nonexistent_dummy_label"} 1
 ```
 
+### label_join() and label_replace()
+
+These functions are used to manipulate labels—they allow you to join labels to other ones, extract parts of label values, and even drop labels.
+
+```
+label_join(<vector>, <resulting_label>, <separator>, source_label1, source_labelN)
+```
+
+For example, say that we use the following sample data:
+```
+http_requests_total{code="200",endpoint="hey-port", handler="/",instance="172.17.0.10:8000",job="hey-service",method="get"} 1366
+http_requests_total{code="200",endpoint="hey-port", handler="/health",instance="172.17.0.10:8000",job="hey-service",method="get"} 942
+```
+We then apply the following expression:
+```
+label_join(http_requests_total{instance="172.17.0.10:8000"}, "url", "", "instance", "handler")
+```
+We end up with the following instant vector:
+```
+http_requests_total{code="200",endpoint="hey-port", handler="/",instance="172.17.0.10:8000",job="hey-service", method="get",**url="172.17.0.10:8000/"**} 1366
+http_requests_total{code="200",endpoint="hey-port", handler="/health",instance="172.17.0.10:8000",job="hey-service", method="get",**url="172.17.0.10:8000/health"**} 942
+```
+
+When you need to arbitrarily manipulate labels, ``label_replace`` is the function to use. The way it works is by applying a regular expression to the value of a chosen source label and storing the matched capture groups on the destination label.
+
+Say that we take the preceding sample data and apply the following expression:
+```
+label_replace(http_requests_total{instance="172.17.0.10:8000"}, "port", "$1", "instance", ".*:(.*)")
+```
+The result will then be the matching elements with the new label, called port:
+```
+http_requests_total{code="200",endpoint="hey-port",handler="/", instance="172.17.0.10:8000", job="hey-service",method="get",port="8000"} 1366
+http_requests_total{code="200",endpoint="hey-port",handler="/health", instance="172.17.0.10:8000", job="hey-service",method="get",port="8000"} 942
+```
+When using ``label_replace``, if the regular expression doesn't match the label value, the originating time series will be returned unchanged.
+
+### predict_linear()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
