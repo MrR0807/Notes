@@ -1165,9 +1165,8 @@ http_requests_total{handler="/"} or vector(0)
 
 The aggregation operations we discussed earlier are always applied to instant vectors. When we need to perform those aggregations on range vectors, PromQL provides the ``*_over_time family`` of functions.
 
----------------------------
 | Operation | Description |
----------------------------
+| --------- | ----------- | 
 | avg_over_time() | Average value of all samples in the range. |
 | count_over_time() | Count of all samples in the range. |
 | max_over_time() | Maximum value of all samples in the range. |
