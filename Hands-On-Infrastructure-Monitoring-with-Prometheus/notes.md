@@ -1292,6 +1292,67 @@ The same logic is applied to the second rule, but this time using the ``promethe
 
 # Setting up alerting in Prometheus
 
+To be clear, Prometheus is not responsible for issuing email, Slack, or any other forms of notification; that is the responsibility of another service. This service is typically **Alertmanager**.
+
+## What is an alerting rule?
+
+An alerting rule is much like a recording rule with some additional definitions; they can even share the same rule group without any issues. The biggest difference is that, when firing, they are sent to an external endpoint via an HTTP POST with a JSON payload for further processing. **Alert is triggered when an expression returns one or more samples.**
+
+Alerting rules, such as recording rules, rely on PromQL expressions that are evaluated on a defined interval. For every sample returned by our expression, it will trigger an alert.
+
+## Configuring alerting rules
+
+### Prometheus server configuration file
+
+```
+global:
+...
+ evaluation_interval: 1m
+...
+rule_files:
+ - "recording_rules.yml"
+ - "alerting_rules.yml"
+alerting:
+ alertmanagers:
+ - static_configs:
+ - targets:
+ - “prometheus:5001”
+...
+```
+
+In this configuration, there are three components to be aware of:
+* ``evaluation_interval``: This is responsible for defining the global evaluation interval for recording and alerting rules, which can be overridden at the rule group level using the ``interval`` keyword.
+* ``rule_files``: This is the file location where Prometheus can read the configured recording and/or alerting rules.
+* ``alerting``: This is the endpoint(s) where Prometheus sends alerts for further processing.
+
+### Rule file configuration
+
+```
+cat /etc/prometheus/alerting_rules.yml
+```
+
+```
+groups:
+- name: alerting_rules
+  rules:
+  - alert: NodeExporterDown
+    expr: up{job="node"} != 1
+    for: 1m
+    labels:
+      severity: "critical"
+    annotations:
+      description: "Node exporter {{ $labels.instance }} is down."
+      link: "https://example.com"
+```
+
+Components:
+* ``alert`` - The alert name to use. Mandatory;
+* ``expr`` - The PromQL expression to evaluate. Mandatory;
+* ``for`` - The time to ensure that the alert is being triggered before sending the alert, defaults to 0. Optional;
+* ``labels`` - User-defined key-value pairs. Optional;
+* ``annotations`` - User-defined key-value pairs. Optional.
+
+The ``NodeExporterDown`` rule will only trigger when the ``up`` metric with the ``job=”node”`` selector is not ``1`` for more than one minute.
 
 
 
