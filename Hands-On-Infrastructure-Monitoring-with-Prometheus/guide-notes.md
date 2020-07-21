@@ -61,7 +61,62 @@ scrape_configs:
 ```
 
 
-# Testing AlertManager
+# Testing Alertmanager
+
+prometheus.yml:
+```
+global:
+  scrape_interval:     15s
+  evaluation_interval: 15s
+
+rule_files:
+  - "alerting_rules.yml"
+  # - "second.rules"
+
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets: ['localhost:9090']
+
+  - job_name: node-exporter
+    static_configs:
+      - targets: ['nex:9100']
+
+  - job_name: citizen-app
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ['citizen:8080']
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
