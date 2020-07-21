@@ -1225,15 +1225,72 @@ rule_files:
 
 ``rule_files`` takes a list of paths, which can be relative to the main Prometheus configuration or absolute paths. Changes in rule files are not automatically picked up by Prometheus, so a reload is needed.
 
+Just like the ``prometheus.yml`` configuration file, the ``rules`` files are also defined in are YAML format. The actual format is very easy to understand:
+```
+groups:
+- name:  <group_name_1> 
+  interval:  <evaluation_interval> 
+  rules:
+  - record:  <rule_name_1> 
+    expr:  <promql_expression_1> 
+    labels:
+  <label_name> :  <label_value> 
+  ...
+  - record:  <rule_name_N> 
+    expr:  <promql_expression_N> 
+...
+- name:  <group_name_N> 
+  ...
+```
+
+Example:
+```
+...
+- name: recording_rules
+  rules:
+  - record: instance:node_cpu:count
+    expr: count without (cpu) (count without (mode) (node_cpu_seconds_total))
+...
+```
+
+The first rule group is composed of a single recording rule, which is using the global evaluation interval, taking the node_cpu_seconds_total metric from the Node Exporter to count the number of CPU cores available in the virtual machine (VM), and recording that result into a new time series named ``instance:node_cpu:count``.
 
 
+**Setting different intervals is usually discouraged**, for the same reasons as in scrape jobs: queries might produce erroneous results when using a series with different sampling rates, and having to periodically keep track of what series have what becomes unmanageable.
 
+### Naming convention for recording rules
 
+The recommended convention for recording rule naming is composed of three sections ``level:metric:operations``:
+- ``level`` - represents the aggregation level of the rule, which means that it will list the labels/dimensions that are present and relevant (usually separated by underscores);
+- ``metric`` - metric name that was the basis for the rule;
+- ``operations`` - lists the aggregation operations that were applied to the metric.
 
+Example:
+```
+- record: handler_instance:prometheus_http_request_duration_seconds_sum:rate5m
+  expr: >
+    rate(prometheus_http_request_duration_seconds_sum[5m])
 
+- record: handler_instance:prometheus_http_request_duration_seconds_count:rate5m
+  expr: > 
+    rate(prometheus_http_request_duration_seconds_count[5m])
 
+- record: handler:prometheus_http_request_duration_seconds:mean5m
+  expr: > 
+    sum without (instance) (
+      handler_instance:prometheus_http_request_duration_seconds_sum:rate5m
+    )
+    /
+    sum without (instance) (
+      handler_instance:prometheus_http_request_duration_seconds_count:rate5m
+    )
+```
 
+Looking at the naming of the first rule, we can easily understand that the rule is based on the ``prometheus_http_request_duration_seconds_sum`` metric; ``rate5m`` indicates that ``rate()`` is being applied to a range vector of five minutes, and the interesting labels present are ``handler`` and ``instance``.
 
+The same logic is applied to the second rule, but this time using the ``prometheus_http_request_duration_seconds_count`` metric. The third rule, however, is a bit more nuanced; as it is dividing ``_sum`` by the ``_count`` of latency events, it effectively represents the five-minute latency average of, in this case, HTTP requests served by Prometheus. As we aggregated the instance label away, the level section reflects this by only having handler as the relevant dimension. The last thing to note is that the metric name for this rule is now ``prometheus_http_request_duration_seconds``, as it neither represents the sum nor the count, but it still makes it possible to clearly understand which metrics this rule is based on.
+
+# Setting up alerting in Prometheus
 
 
 
