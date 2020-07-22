@@ -1391,6 +1391,7 @@ In the alert rule definition, there were two optional sections:
 **Something to keep in mind is the issue of using a sample value in a label. Although it is technically possible, it's also a very bad idea. Doing so will change the alert identity every time the value changes, and, as such, will always be restarting the defined for countdown, resulting in an alert that will never enter the firing state.**
 
 ``ALERTS`` metric:
+
 ![ALERTS-in-prometheus-query.png](pictures/ALERTS-in-prometheus-query.png)
 
 ### Delays on alerting
