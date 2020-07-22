@@ -88,6 +88,20 @@ scrape_configs:
       - targets: ['citizen:8080']
 ```
 
+alerting_rules.yml:
+```
+groups:
+- name: alerting_rules
+  rules:
+  - alert: NodeExporterDown
+    expr: up{job="node"} != 1
+    for: 1m
+    labels:
+      severity: "critical"
+    annotations:
+      description: "Node exporter {{ $labels.instance }} is down."
+      link: "https://example.com"
+```
 
 
 
