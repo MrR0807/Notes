@@ -111,16 +111,49 @@ docker rm dummy
 docker container restart prom
 ```
 
-Go to ``http://localhost:9090/alerts``. You should see something like this:
+Go to ``http://localhost:9090/rules``. You should see something like this:
 ![alerting-rules-prometheus-localhost.JPG](pictures/alerting-rules-prometheus-localhost.JPG)
 
-Stop ``nex`` container.
+Stop ``nex`` container. Go to ``http://localhost:9090/alerts``. There are three stages for alerting:
+* ``Inactive`` - Not yet pending or firing. In other words, no alert has been triggered;
+- ``Pending`` - Not yet active long enough to become firing. While the alert condition has been triggered, Prometheus will continue to check whether that condition keeps being triggered for each evaluation cycle until the ``for`` duration has passed;
+- ``Firing`` - This means that the alert is active ``for`` more than the duration defined by the for clause – in this case, 1 minute.
 
+When an alert becomes firing, Prometheus sends a JSON payload to the configured alerting service endpoint. Example of sent message:
+```
+[
+   {
+       "labels": {
+           "alertname": "NodeExporterDown",
+           "dc": "dc1",
+           "instance": "nex:9100",
+           "job": "node",
+           "prom": "prom1",
+           "severity": "critical"
+       },
+       "annotations": {
+           "description": "Node exporter nex:9100 is down.",
+           "link": "https://example.com"
+       },
+       "startsAt": "2020-07-22T21:51:15.04754979Z",
+       "endsAt": "2020-07-22T21:58:15.04754979Z",
+       "generatorURL": "http://prometheus:9090/graph?g0.expr=up%7Bjob%3D%22node%22%7D+%21%3D+1&g0.tab=1"
+   }
+]
+```
 
+### Labels and annotations
 
+In the alert rule definition, there were two optional sections: 
+* ``labels`` define the identity of an alert and they can change according to the evaluation cycle they're in; if they do this, it will alter the alert identity.
+* ``annotations`` are useful to enrich the alert with more context and information. 
 
+**Something to keep in mind is the issue of using a sample value in a label. Although it is technically possible, it's also a very bad idea. Doing so will change the alert identity every time the value changes, and, as such, will always be restarting the defined for countdown, resulting in an alert that will never enter the firing state.**
 
+``ALERTS`` metric:
+![ALERTS-in-prometheus-query.png](pictures/ALERTS-in-prometheus-query.png)
 
+### Delays on alerting
 
 
 
