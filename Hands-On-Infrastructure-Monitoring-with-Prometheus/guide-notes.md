@@ -103,7 +103,15 @@ groups:
       link: "https://example.com"
 ```
 
+Copy ``alerting_rules.yml`` to volume:
+```
+docker container create --name dummy -v prom-config:/etc/prometheus/ hello-world
+docker cp <full-path>/alerting_rules.yml dummy:/etc/prometheus/alerting_rules.yml
+docker rm dummy
+docker container restart prom
+```
 
+Go to ``http://localhost:9090/alerts``. Stop ``nex`` container.
 
 
 
