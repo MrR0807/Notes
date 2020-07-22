@@ -94,7 +94,7 @@ groups:
 - name: alerting_rules
   rules:
   - alert: NodeExporterDown
-    expr: up{job="node"} != 1
+    expr: up{job="node-exporter"} != 1
     for: 1m
     labels:
       severity: "critical"
@@ -111,7 +111,10 @@ docker rm dummy
 docker container restart prom
 ```
 
-Go to ``http://localhost:9090/alerts``. Stop ``nex`` container.
+Go to ``http://localhost:9090/alerts``. You should see something like this:
+![alerting-rules-prometheus-localhost.JPG](pictures/alerting-rules-prometheus-localhost.JPG)
+
+Stop ``nex`` container.
 
 
 
