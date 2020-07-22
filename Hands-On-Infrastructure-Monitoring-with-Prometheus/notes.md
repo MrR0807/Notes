@@ -1396,7 +1396,14 @@ In the alert rule definition, there were two optional sections:
 
 ### Delays on alerting
 
+Given:
+* ``scrape_interval: 30s``
+* ``evaluation_interval: 1m``
+* ``for: 1m``
 
+Then it can take up to 2 minutes for alert to becoming ``firing``.
+
+![alert-delay.png](pictures/alert-delay.png)
 
 
 
