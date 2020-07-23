@@ -1689,43 +1689,64 @@ There are several ways that you can add dashboards:
 
 ![grafana-panel.JPG](pictures/grafana-panel.JPG)
 
+A panel, besides having the ability to query the chosen data source, also provides multiple visualization options to choose from. Four of the most used ones are:
+* **Graph**: This the main Grafana panel. It provides the tools to create rich two-dimensional graphs backed by one or more PromQL expressions.
+* **Singlestat**: This is a multipurpose single-value display. As such, the PromQL query must return an instant vector with one sample only.
+* **Gauge**: Using thresholds, this represents the position the current value is at in relation to the defined higher and lower bounds. Like the Singlestat visualization, this option requires a single instant vector with only one sample.
+* **Table**: This displays the result of a PromQL expression in a table format, with each label in its own column, along with the value and the timestamp.
+
+### Variables
+
+The variables feature is extremely powerful. It allows a dashboard to configure placeholders that can be used in expressions, and those placeholders can be filled with values from either a static or dynamic list, which are usually presented to the dashboard user in the form of a drop-down menu. In our example dashboard, we're using this feature to allow the user to choose which node instance to present.
+
+Dashboard settings -> Variables
 
 
+### Creating a basic dashboard
 
+**``Shift + ?`` displays shortcuts.**
 
+Dashboard settings -> Variables
 
+![grafana-add-variable.JPG](pictures/grafana-add-variable.JPG)
 
+In this example, we're creating a variable named instance using the Query type, which means it will populate its values from the results of the query to the data source.
 
+Now comes the interesting part: since we are interested in collecting Node Exporter instances, we use a metric in the **Query** field that is guaranteed to return the instances we require, ``node_exporter_build_info``. The ``label_values()`` function isn't actually valid PromQL, but is provided by the Prometheus data source plugin in Grafana to use in this field to facilitate these kind of expressions.
 
+The **Regex** field is used to match the parts of the query result we want to use to populate the variable. In our example, we want the full content of the instance label, so we match everything inside a regular expression capture group, ``(.+)``. We can see that the matching is working in the **Preview of values** section at the bottom of the screen.
 
+We can now see the following dropdown menu with the values of the instance variable:
 
+![grafana-instance-variable.JPG](pictures/grafana-instance-variable.JPG)
 
+It's time to create our first panel. Click on the top-right graph logo, and in the new panel, click Add Query. The following screenshot illustrates the query interface:
 
+![grafana-custom-dashboard.JPG](pictures/grafana-custom-dashboard.JPG)
 
+Here, we can specify the PromQL queries (one or more, depending on the visualization type) to perform on the desired data source. In our example, we'll be creating a graph of CPU usage per mode, and we want to template the query so that it uses the ``instance`` variable we created earlier. Note the ``$instance``, which will be replaced at query time with the selected value in the ``instance`` combo box. The full expression is as follows:
+```
+label_replace(avg by (mode, instance) (irate(node_cpu_seconds_total{instance="$instance", mode!="idle"}[5m])), "instance", "$1", "instance", "([^:]+):.+")
+```
 
+The ``label_replace()`` function allows us to remove the port from the instance value, which we'll use in the **Legend** field. This field allows the substitution of ``{{ }}`` template markers with the values of the metric labels set within it.
 
+![grafana-custom-dashboard-1.JPG](pictures/grafana-custom-dashboard-1.JPG)
 
+![grafana-custom-dashboard-2.JPG](pictures/grafana-custom-dashboard-2.JPG)
 
+**If there are panels that are not related to each other inside a dashboard, perhaps it would be a good idea to split them into their own dashboard.**
 
+# Discovering ready-made dashboards
 
+Both community-driven and official dashboards are available at https://grafana.com/dashboards. For example by entering:
+Data Source: Prometheus;
+Panel Type: Singlestat;
+Category: Host Metrics;
+Collector: nodeExporter.
 
+# Default Prometheus visualizations
 
+Historically, Prometheus maintained its own tool to create dashboards, called PromDash. Over time, since Grafana improved its native support for Prometheus as a data source, the community began gravitating toward using Grafana as its primary visualization solution—so much so that PromDash was deprecated by the people who maintained Prometheus in favor of Grafana.
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+Even though Grafana is the recommended visualization solution for most people, Prometheus also ships with an internal dashboarding feature called **console templates**.
