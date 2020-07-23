@@ -1540,6 +1540,169 @@ The list of PromQL expressions to test is defined as ``promql_expr_test``. Each 
 - expr: instance:node_cpu:count
 ```
 
+The point in time at which this expression will be run is set by setting eval_time, and the expected samples should be returned by running that expression as exp_samples:
+```
+eval_time: 1m
+  exp_samples:
+    - labels: 'instance:node_cpu:count{instance="prometheus:9100", job="node"}'
+      value: 2
+    - labels: 'instance:node_cpu:count{instance="example:9100", job="node"}'
+      value: 1
+```
+
+In this test pack, we can see four time series being generated every 15 seconds for the same metric, ``node_cpu_seconds_total``. As the actual value of these series isn't relevant for this recording rule (it only counts the number of CPUs per instance), a value of ``1`` was set for every sample. Do note the variation of labels present, namely that the ``prometheus:9100`` instance is reporting metrics for two CPUs and ``example:9100`` for one. The actual test is just validating that, when the ``instance:node_cpu:count`` expression is evaluated at ``t=1m`` (**as if 1 minute had passed after the generated collection started**), the returned samples should show the correct count of CPUs for each instance.
+
+We are now ready to execute the tests using the following instruction:
+```
+vagrant@prometheus:/etc/prometheus$ promtool test rules tests.yml 
+Unit Testing: tests.yml
+  SUCCESS
+```
+
+The tests for the second recording rule group are mostly the same, but they showcase a powerful notation for generating a richer input series:
+```
+- interval: 5s
+    input_series:
+      - series: 'prometheus_http_request_duration_seconds_count{handler="/",instance="localhost:9090",job="prometheus"}'
+        values: '0+5x60'
+      - series: 'prometheus_http_request_duration_seconds_sum{handler="/",instance="localhost:9090",job="prometheus"}'
+        values: '0+1x60'
+```
+
+This is called an **expanding notation**. This is a compact way of declaring a formula for the generation of time series values over time. 
+It takes the form of either ``A+BxC`` or ``A-BxC``, where:
+* ``A`` is the starting value, 
+* ``B`` is the amount of increase (when preceded by +) or decrease (when preceded by -) 
+* ``C`` is how many iterations this increase or decrease should be applied for.
+
+Coming back to our example, ``0+5x60`` will expand to the following series:
+```
+0 5 10 15 20 … 290 295 300
+```
+
+You can mix and match literal values with expanding notation when declaring the values for an input time series:
+```
+0 1 1 0 1+0x3 0 1 1 0 1 1 0 0 0 1 1 0+0x3 1
+```
+
+Will become this:
+```
+0 1 1 0 1 1 1 1 0 1 1 0 1 1 0 0 0 1 1 0 0 0 0 1
+```
+
+## Alerting rules tests
+
+Alerting rules are located:
+```
+rule_files:
+  - /etc/prometheus/alerting_rules.yml
+```
+
+Evaluation time:
+```
+evaluation_interval: 1m
+```
+
+The alerting test is conveniently in its own test group, so let's have a look at its full definition:
+```
+- interval: 1m
+  input_series:
+    - series: 'up{job="node",instance="prometheus:9100"}'
+      values: '1 1 1 0 0 0 0 0 0 0'
+    - series: 'up{job="prometheus",instance="prometheus:9090"}'
+      values: '1 0 1 1 1 0 1 1 1 1'
+```
+
+A thing to note in this example is that the second input series should never be picked up by our testing rule, as the defined alert is specifically matching ``job="node"``:
+```
+alert_rule_test:
+  - alertname: NodeExporterDown
+    eval_time: 3m
+  - alertname: NodeExporterDown
+    eval_time: 4m
+    exp_alerts:
+      - exp_labels:
+          instance: "prometheus:9100"
+          job: "node"
+          severity: "critical"
+        exp_annotations:
+          description: "Node exporter prometheus:9100 is down."
+          link: "https://example.com"
+```
+
+The ``alert_rule_test`` section lists what alerts should be evaluated (``alertname``) at what time relative to the simulated start of the test run (``eval_time``). If the alert is expected to be firing at that time, an additional ``exp_alerts`` section should be defined listing what set of expected labels (``exp_labels``) and annotations (``exp_annotations``) should be present for each instance of the alert. **Leaving the ``exp_alerts`` section empty means that the alert is not expected to be firing at the given time.**
+
+The first alerting test will be executed at the third minute, and, as the matching series we provided previously returns the value ``1`` at that moment, the alert expression defined at ``alerting_rules.yml`` will not trigger – this means that no data is returned by the expression defined in the alert.
+
+The second alerting rule will be executed at the fourth minute and will return data, as the matching series we provided has the sample value ``0`` at that specific moment.
+
+# Discovering and Creating Grafana Dashboards
+
+## How to use Grafana with Prometheus
+
+Configuration -> Preferences -> Grafana theme: Light
+
+## Data source
+
+There are two ways to configure a data source:
+* One way is by adding a YAML file with the required configuration in the Grafana provisioning path, which is picked up by the service when starting up and is configured automatically;
+* The other option is using the web interface by going into Configuration -> Data Sources. 
+
+data-source.yaml:
+```
+cat /etc/grafana/provisioning/datasources/prometheus.yaml 
+
+apiVersion: 1
+datasources:
+- name: prometheus
+  type: prometheus
+  access: proxy
+  orgId: 1
+  url: http://prometheus:9090
+  isDefault: True
+  version: 1
+  editable: True
+```
+
+ Grafana provides two options for accessing data sources:
+ * with proxying requests;
+ * without proxying requests.
+ 
+When proxying requests, every single query that's made from a dashboard panel or through the Explore expression browser will be proxied through the Grafana backend to the data source.
+ 
+When ``Access`` option is set as ``Server (Default)``. This means that all the requests for the data source will be proxied through the Grafana instance.
+
+## Explore
+
+This feature was introduced in Grafana 6 and its developers continue to improve its tight integration with Prometheus. Before Explore, every single time you wanted to perform an exploratory query, you were required to jump to the Prometheus expression browser.
+
+## Dashboards
+
+There are several ways that you can add dashboards:
+* By manually building your own;
+* By importing grafana.com community-driven dashboards;
+* By automatically provisioning previously stored dashboards.
+
+# Building your own dashboards
+
+## Panels
+
+![grafana-panel.JPG](pictures/grafana-panel.JPG)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
