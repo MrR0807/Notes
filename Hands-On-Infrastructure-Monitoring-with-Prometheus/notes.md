@@ -83,7 +83,7 @@ As we can see in the following diagram, the main components in the Prometheus ec
 * Community-driven exporters expose metrics from applications that do not support Prometheus natively.
 * First-party and third-party dashboarding solutions provide a visualization of collected data.
 
-![a36a8207abe7bbe2b40696ea91e75eac.png](pictures/cc8b7d2ddf3646be89cb2bb929abfd55.png)
+![a36a8207abe7bbe2b40696ea91e75eac.png](pictures/a36a8207abe7bbe2b40696ea91e75eac.png)
 
 **A singular attribute of Prometheus is that it unabashedly does not try to do any type of clustering**. By not relying on the network for coordination and storage it makes a great argument for reliability and ease of use. Prometheus and run it locally on your computer, and yet the same binary might be able to handle thousands of scrape targets and the ingestion of millions of samples per second on server hardware.
 
@@ -99,7 +99,7 @@ When the exporter starts, it binds to a configured port and exposes the internal
 
 Alertmanager is the component from the Prometheus ecosystem that's responsible for the notifications that are triggered by the alerts that are generated from the Prometheus server.
 
-![0435af75d4bb1e0d8e0ae80d80356f44.png](pictures/26867ec1b85e433db0d079d3dc99a863.png)
+![0435af75d4bb1e0d8e0ae80d80356f44.png](pictures/0435af75d4bb1e0d8e0ae80d80356f44.png)
 
 At a very high level, Alertmanager is a service that receives HTTP POST requests from Prometheus servers via its API, which it then deduplicates and acts on by following a predefined set of routes.
 
