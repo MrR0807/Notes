@@ -126,9 +126,176 @@ The Prometheus server ships with two internal visualizations components:
 * Consoles: These are web pages that are built using the Golang templating language and are served by the Prometheus server itself. **This approach allows you to have pre-defined data visualization interfaces without you having to constantly type PromQL**.
 ![bce83c4a71d497dbac639a4e69793f8f.png](pictures/bce83c4a71d497dbac639a4e69793f8f.png)
 
----------jjjj
+# Understanding the Prometheus data model
+
+## Time series data
+
+Time series data can usually be defined as a sequence of numerical data points that are indexed chronologically from the same source. In the scope of Prometheus, these data points are collected at a fixed time interval.
+
+## Time series databases
+
+It all starts with the need to collect, store, and query measurements over time. When dealing with massive amounts of data from collectors and sensors (such as those that make up the Internet of Things), querying the resulting datasets is extremely slow if the database isn't designed with that use case in mind. **Prometheus chose to implement a time series database that was tailored to its unique problem space.**
+
+Besides the write-heavy aspect of these types of databases, it is also important to understand that a simple query can span over several hours, days, or even months, returning a tremendous amount of data points, but is still expected to return data reasonably fast.
+
+As such, modern time series databases store the following components:
+* A timestamp
+* A value
+* Some context about the value, encoded in a metric name or in associated key/value pairs
+
+Example:
+```
+timestamp=1544978108, company=ACME, location=headquarters, beverage=coffee, value=40172
+```
+
+## Prometheus local storage
+
+### Data flow
+
+The way Prometheus stores collected data locally can be seen as a three-part process:
+* The freshest batch of data is kept in memory for up to two hours. This includes one or more chunks of data that are gathered during the two-hour time window. This approach dramatically reduces disk I/O;
+* While in memory, data is not persisted and could be lost if the process terminates abnormally. To prevent this scenario, a **write-ahead log (WAL)** in disk keeps the state of the in-memory data so that it can be replayed if Prometheus, for any reason, crashes or restarts.
+* After the two-hour time window, the chunks get written to disk. These chunks are immutable and, even though data can be deleted, it's not an atomic operation. Instead, **tombstone files are created with the information of the data that's no longer required**.
+
+### Layout
+
+The way data gets stored in Prometheus, as we can see in the following example, is organized into a series of directories (blocks) containing the data chunks, the LevelDB index for that data, a meta.json file with human-readable information about the block, and tombstones for data that's no longer required.
+
+```
+...
+├── 01CZMVW4CB6DCKK8Q33XY5ESQH
+│   ├── chunks
+│   │ └── 000001
+│   ├── index
+│   ├── meta.json
+│   └── tombstones
+├── 01CZNGF9G10R2P56R9G39NTSJE
+│   ├── chunks
+│   │ └── 000001
+│   ├── index
+│   ├── meta.json
+│   └── tombstones
+├── 01CZNGF9ST4ZNKNSZ4VTDVW8DH
+│   ├── chunks
+│   │ └── 000001
+│   ├── index
+│   ├── meta.json
+│   └── tombstones
+├── lock
+└── wal
+    ├── 00000114
+    ├── 00000115
+    ├── 00000116
+    ├── 00000117
+    └── checkpoint.000113
+        └── 00000000
+```
+
+## Prometheus data model
+
+As we have seen so far, Prometheus stores data as time series, which includes:
+* key/value pairs known as labels;
+* a timestamp; 
+* a value.
+
+A time series in Prometheus is represented as follows:
+```
+<metric_name>[{<label_1="value_1">,<label_N="value_N">}] <datapoint_numerical_value>
+```
+
+## Cardinality
+
+Depending on the computing resources being assigned to a Prometheus instance (that is, CPU, memory, disk space, and IOPS), it will gracefully handle a number of time series. This number can be thought of as the primary indicator of capacity for that instance, and it will inform your scraping decisions: will you have thousands of targets with relatively few metrics, fewer targets with a thousand metrics each, or something in between? In the end, Prometheus will only be able to handle that amount of time series without performance degradation.
+
+It is in this context that the concept of cardinality appears. This term is often used to mean the number of unique time series that are produced by a combination of metric names and their associated label names/values. As an example, a single metric with no additional dimensions (such as labels) from an application that has one hundred instances will naturally mean that Prometheus will store 100 time series, one for each instance (the instance, here, is a dimension that's added outside of the application); another metric from that application that had a label with ten possible values will translate into 1,000 time series (10 time series per instance, times 100 instances). **This shows that cardinality is multiplicative** — each additional dimension will increase the number of produced time series by repeating the existing dimensions for each value of the new one. 
+
+**The following are some examples of data with high or unbound cardinality that should not be used as label values (or in metric names, for that matter):**
+* Email addresses
+* Usernames
+* Request/process/order/transaction ID
+
+# A tour of the four core metric types
+
+Prometheus metrics are divided into four main types: counters, gauges, histograms, and summaries.
+
+## Counter
+
+This is a strictly cumulative metric whose value can only increase. The only exception for this rule is when the metric is reset, which brings it back to zero.
+
+![3cbf40233e5e12f23b1d22996877eb3f.png](:/1e7762d08bee463788fa5bf7d1d0b9b0)
+
+## Gauge
+
+A gauge is a metric that snapshots a given measurement at the time of collection, which can increase or decrease (such as temperature, disk space, and memory usage).
+
+
+The number of established TCP connections on the Alertmanager instance:
+
+![bf7c1b248e7626aa01ceafe07e21b1b2.png](:/013a5092e1b946e293a542d09410ea16)
+
+## Histogram
+
+**Histograms allow you to retain some granularity by counting events into buckets that are configurable on the client side, and also by providing a sum of all observed values.** Prometheus histograms produce one time series per configured bucket, plus an additional two that track the sum and the count of observed events. Furthermore, histograms in Prometheus are cumulative, which means each bucket will have the value of the previous bucket, plus the number of its own events.
+
+This type of metric is especially useful to track bucketed latencies and sizes (for example, request durations or response sizes) as it can be freely aggregated across different dimensions. Another great use is to generate heatmaps (the evolution of histograms over time).
+
+A Prometheus HTTP request duration in seconds, divided into buckets. This is shown in a Grafana heatmap to better illustrate the concept of buckets:
+
+![6bbfec383d43892e8c268f2831d20de7.png](:/8da3859b186d41d3ada20e6e4b2d1f71)
+
+## Summaries
+
+Summaries are similar to histograms in some ways, but present different trade-offs and are generally less useful. They are also used to track sizes and latencies, and also provide both a sum and a count of observed events. Additionally (and if the client library used supports it), summaries can also provide pre-calculated quantiles over a predetermined sliding time window. The main reason to use summary quantiles is when accurate quantile estimation is needed, irrespective of the distribution and range of the observed events.
+
+The maximum duration of the Prometheus rule group in seconds by quantile:
+
+![0efa64fbbde145a3ad0758fa3660b4b0.png](:/8d0756fe78e64b47b247a134c8447e3c)
+
+# Longitudinal and cross-sectional aggregations
+
+There are two kinds of aggregations, which are often used together: **longitudinal** and **cross-sectional aggregations**.
+
+In the context of time series, an aggregation is a process that reduces or summarizes the raw data, which is to say that it receives a set of data points as input and produces a smaller set (often a single element) as output. **Some of the most common aggregation functions in time series databases are minimum, maximum, average, count, and sum.**
+
+Let's pretend we've selected {company=ACME, beverage=coffee} and we're now looking at the raw counters over time per location. The data would look something like this:
+
+![76d213b803b416a2d8a25b4266116c04.png](:/ce84550d8b7f431e953c6c818351b035)
+
+For argument's sake, let's say that the samples were collected every minute. The metric type is probably a counter, as it's monotonically increasing, with the exception of the counter that's reset at ``t=1`` for ``location=factory``.
+
+## Cross-sectional data
+
+For example, if we want to measure current obesity levels in a population, we could draw a sample of 1,000 people randomly from that population (also known as a cross section of that population), measure their weight and height, and calculate what percentage of that sample is categorized as obese. This cross-sectional sample provides us with a snapshot of that population, at that one point in time. Note that we do not know based on one cross-sectional sample if obesity is increasing or decreasing; we can only describe the current proportion. 
+
+## Longitudinal data
+
+Combines both cross-sectional and time series data ideas and looks at how the subjects (firms, individuals, etc.) change over a time series.
+
+Longitudinal aggregations are trickier to use because you need to select a time window over which to apply the aggregation.
+
+![2ea52db42ee1893c80e41a3662ed41f6.png](:/7d454d47efb0440dbc05ffdb2f45beba)
+
+Since the current selectors we're using return three rows of data, this means we'll have three results when applying longitudinal aggregations. In this example, we've selected the last three minutes of data for aggregation (as we mentioned previously, we're considering a 1-minute sample interval). If we apply the max() aggregation over time, since these are counters and there wasn't a reset in the selected window, we will get the latest values in the selected set: 6 for location=factory, 224 for location=warehouse, and 40,172 for location=headquarters. count() will return the number of points that were selected in the specified time range—in this case, since the collection occurs every minute and we requested it for three minutes, it will return 3 for each location.
+
+A more interesting aggregation of this kind that wasn't mentioned before is rate(). It is a particularly useful aggregation to use with counters, as you can calculate the rate of change per unit of time—we will explore this in detail later in this book. In this example, rate() would return 1, 0, and 2 for each location, respectively.
 
 # Deep dive into the Prometheus configuration
+
+One of the key features of Prometheus is, owing to incredibly sane default configurations, that it can scale from a quick test running on a local computer to a production-grade instance, handling millions of samples per second without having to touch almost any of its many knobs and dials.
+
+There are two main types of configuration on a Prometheus server: 
+* command-line flags. Command-line flags control the parameters that cannot be changed at runtime, such as the storage path or which TCP port to bind to, and need a full server restart to apply any change done at this level;  
+* configuration files. The configuration files control runtime configuration, such as scrape job definitions, rules files locations, or remote storage setup.
+
+## Prometheus startup configuration
+
+While running a Prometheus server with no startup configuration can be good enough for local instances, it is advisable to configure a couple of basic command-line flags for any serious deployment.
+
+At the time of writing, Prometheus has almost 30 command-line flags for tweaking several aspects of its operational configuration, grouped by the following namespaces: ``config``, ``web``, ``storage``, ``rules``, ``alertmanager``, ``query``, and ``log``.
+
+### The config section
+
+The first thing that is usually important to set is the Prometheus configuration file path, through the ``--config.file`` flag. By default, Prometheus will look for a file named ``prometheus.yml`` in the current working directory.
 
 ## The storage section
 
