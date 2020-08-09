@@ -83,8 +83,7 @@ As we can see in the following diagram, the main components in the Prometheus ec
 * Community-driven exporters expose metrics from applications that do not support Prometheus natively.
 * First-party and third-party dashboarding solutions provide a visualization of collected data.
 
-
-![a36a8207abe7bbe2b40696ea91e75eac.png](pictures/cc8b7d2ddf3646be89cb2bb929abfd55)
+![a36a8207abe7bbe2b40696ea91e75eac.png](pictures/cc8b7d2ddf3646be89cb2bb929abfd55.png)
 
 **A singular attribute of Prometheus is that it unabashedly does not try to do any type of clustering**. By not relying on the network for coordination and storage it makes a great argument for reliability and ease of use. Prometheus and run it locally on your computer, and yet the same binary might be able to handle thousands of scrape targets and the ingestion of millions of samples per second on server hardware.
 
@@ -100,7 +99,7 @@ When the exporter starts, it binds to a configured port and exposes the internal
 
 Alertmanager is the component from the Prometheus ecosystem that's responsible for the notifications that are triggered by the alerts that are generated from the Prometheus server.
 
-![0435af75d4bb1e0d8e0ae80d80356f44.png](pictures/26867ec1b85e433db0d079d3dc99a863)
+![0435af75d4bb1e0d8e0ae80d80356f44.png](pictures/26867ec1b85e433db0d079d3dc99a863.png)
 
 At a very high level, Alertmanager is a service that receives HTTP POST requests from Prometheus servers via its API, which it then deduplicates and acts on by following a predefined set of routes.
 
@@ -123,9 +122,9 @@ There are multiple out-of-the-box integrations available for the most common use
 
 The Prometheus server ships with two internal visualizations components:
 * Expression browser: Here, you can run PromQL directly to quickly query data and visualize it instantly.
-![5600b3830e416fcf0f02617f824de7fa.png](pictures/114a8559b71446959486321557a4521a)
+![5600b3830e416fcf0f02617f824de7fa.png](pictures/114a8559b71446959486321557a4521a.png)
 * Consoles: These are web pages that are built using the Golang templating language and are served by the Prometheus server itself. **This approach allows you to have pre-defined data visualization interfaces without you having to constantly type PromQL**.
-![bce83c4a71d497dbac639a4e69793f8f.png](pictures/5ea8ee7bd18d46bdbf0102966449ae83)
+![bce83c4a71d497dbac639a4e69793f8f.png](pictures/5ea8ee7bd18d46bdbf0102966449ae83.png)
 
 ---------jjjj
 
