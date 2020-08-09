@@ -222,7 +222,7 @@ Prometheus metrics are divided into four main types: counters, gauges, histogram
 
 This is a strictly cumulative metric whose value can only increase. The only exception for this rule is when the metric is reset, which brings it back to zero.
 
-![3cbf40233e5e12f23b1d22996877eb3f.png](:/1e7762d08bee463788fa5bf7d1d0b9b0)
+![3cbf40233e5e12f23b1d22996877eb3f.png](pictures/3cbf40233e5e12f23b1d22996877eb3f)
 
 ## Gauge
 
@@ -231,7 +231,7 @@ A gauge is a metric that snapshots a given measurement at the time of collection
 
 The number of established TCP connections on the Alertmanager instance:
 
-![bf7c1b248e7626aa01ceafe07e21b1b2.png](:/013a5092e1b946e293a542d09410ea16)
+![bf7c1b248e7626aa01ceafe07e21b1b2.png](pictures/bf7c1b248e7626aa01ceafe07e21b1b2)
 
 ## Histogram
 
@@ -241,7 +241,7 @@ This type of metric is especially useful to track bucketed latencies and sizes (
 
 A Prometheus HTTP request duration in seconds, divided into buckets. This is shown in a Grafana heatmap to better illustrate the concept of buckets:
 
-![6bbfec383d43892e8c268f2831d20de7.png](:/8da3859b186d41d3ada20e6e4b2d1f71)
+![6bbfec383d43892e8c268f2831d20de7.png](pictures/6bbfec383d43892e8c268f2831d20de7)
 
 ## Summaries
 
@@ -249,7 +249,7 @@ Summaries are similar to histograms in some ways, but present different trade-of
 
 The maximum duration of the Prometheus rule group in seconds by quantile:
 
-![0efa64fbbde145a3ad0758fa3660b4b0.png](:/8d0756fe78e64b47b247a134c8447e3c)
+![0efa64fbbde145a3ad0758fa3660b4b0.png](pictures/0efa64fbbde145a3ad0758fa3660b4b0)
 
 # Longitudinal and cross-sectional aggregations
 
@@ -259,7 +259,7 @@ In the context of time series, an aggregation is a process that reduces or summa
 
 Let's pretend we've selected {company=ACME, beverage=coffee} and we're now looking at the raw counters over time per location. The data would look something like this:
 
-![76d213b803b416a2d8a25b4266116c04.png](:/ce84550d8b7f431e953c6c818351b035)
+![76d213b803b416a2d8a25b4266116c04.png](pictures/76d213b803b416a2d8a25b4266116c04)
 
 For argument's sake, let's say that the samples were collected every minute. The metric type is probably a counter, as it's monotonically increasing, with the exception of the counter that's reset at ``t=1`` for ``location=factory``.
 
@@ -273,7 +273,7 @@ Combines both cross-sectional and time series data ideas and looks at how the su
 
 Longitudinal aggregations are trickier to use because you need to select a time window over which to apply the aggregation.
 
-![2ea52db42ee1893c80e41a3662ed41f6.png](:/7d454d47efb0440dbc05ffdb2f45beba)
+![2ea52db42ee1893c80e41a3662ed41f6.png](pictures/2ea52db42ee1893c80e41a3662ed41f6)
 
 Since the current selectors we're using return three rows of data, this means we'll have three results when applying longitudinal aggregations. In this example, we've selected the last three minutes of data for aggregation (as we mentioned previously, we're considering a 1-minute sample interval). If we apply the max() aggregation over time, since these are counters and there wasn't a reset in the selected window, we will get the latest values in the selected set: 6 for location=factory, 224 for location=warehouse, and 40,172 for location=headquarters. count() will return the number of points that were selected in the specified time range—in this case, since the collection occurs every minute and we requested it for three minutes, it will return 3 for each location.
 
