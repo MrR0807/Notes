@@ -122,9 +122,9 @@ There are multiple out-of-the-box integrations available for the most common use
 
 The Prometheus server ships with two internal visualizations components:
 * Expression browser: Here, you can run PromQL directly to quickly query data and visualize it instantly.
-![5600b3830e416fcf0f02617f824de7fa.png](pictures/114a8559b71446959486321557a4521a.png)
+![5600b3830e416fcf0f02617f824de7fa.png](pictures/5600b3830e416fcf0f02617f824de7fa.png)
 * Consoles: These are web pages that are built using the Golang templating language and are served by the Prometheus server itself. **This approach allows you to have pre-defined data visualization interfaces without you having to constantly type PromQL**.
-![bce83c4a71d497dbac639a4e69793f8f.png](pictures/5ea8ee7bd18d46bdbf0102966449ae83.png)
+![bce83c4a71d497dbac639a4e69793f8f.png](pictures/bce83c4a71d497dbac639a4e69793f8f.png)
 
 ---------jjjj
 
