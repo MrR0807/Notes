@@ -6,6 +6,129 @@
   * [Prometheus configuration file walkthrough](#prometheus-configuration-file-walkthrough)
   * [Global configuration](#global-configuration)
 
+# Definition of monitoring
+
+## Monitoring components
+
+* **Metrics**: This exposes a certain system resource, application action, or business characteristic as a specific point in time value. This information is obtained in an aggregated form; for example, you can find out how many requests per second were served but not the exact time for a specific request, and without context, you won't know the ID of the requests.
+* **Logging**: Containing much more data than a metric, this manifests itself as an event from a system or application, containing all the information that's produced by such an event. This information is not aggregated and has the full context.
+* **Tracing**: This is a special case of logging where a request is given a unique identifier so that it can be tracked during its entire life cycle across every system. Due to the increase of the dataset with the number of requests, it is a good idea to use samples instead of tracking all requests.
+* **Alerting**: This is the continuous threshold validation of metrics or logs, and fires an action or notification in the case of a transgression of the said threshold.
+* **Visualization**: This is a graphical representation of metrics, logs, or traces.
+
+# Whitebox versus blackbox monitoring
+
+In **blackbox monitoring**, the application or host is observed from the outside and, consequently, this approach can be fairly limited. Checks are made to assess whether the system under observation responds to probes in a known way:
+* Is a given TCP port open?
+* Does the application respond with the correct data and status code when it receives a specific HTTP request?
+
+On the other hand, in **whitebox monitoring**, the system under observation surfaces data about its internal state and the performance of critical sections:
+* Exported through logging: This is by far the most common case and how applications exposed their inner workings before instrumentation libraries were widespread. For instance, an HTTP server's access log can be processed to monitor request rates, latencies, and error percentages.
+* Emitted as structured events: This approach is similar to logging but instead of being written to disk, the data is sent directly to processing systems for analysis and aggregation.
+* Maintained in memory as aggregates: Data in this format can be hosted in an endpoint or read directly from command-line tools. Examples of this approach are /metrics with Prometheus metrics, HAProxy's stats page, or the varnishstats command-line tool.
+
+# Understanding metrics collection
+
+The process by which metrics are by monitoring systems can generally be divided into two approaches — **push** and **pull**.
+
+## An overview of the two collection approaches
+
+In push-based monitoring systems, emitted metrics or events are sent either directly from the producing application or from a local agent to the collecting service. Some examples that use this approach include Riemann, StatsD, and the Elasticsearch, Logstash, and the Kibana (ELK) stack.
+
+In contrast, pull-based monitoring systems collect metrics directly from applications or from proxy processes that make those metrics available to the system. Prometheus is also one of those that embraces the pull approach and is very opinionated about this.
+
+## Push versus pull
+
+The main point of contention is usually about target discovery.
+
+In push-based systems, the monitored hosts and services make themselves known by reporting to the monitoring system. The advantage here is that no prior knowledge of new systems is required for them to be picked up. However, this means that the monitoring service's location needs to be propagated to all targets, usually with some form of configuration management. **Staleness is a big drawback of this approach**: if a system hasn't reported in for some time, does that mean it's having problems or was it purposely decommissioned?
+
+**In pull-based monitoring, the system needs a definitive list of hosts and services to monitor so that their metrics are ingested.** Having a central source of truth provides some level of assurance that everything is where it's supposed to be, with the drawback of having to maintain said source of truth and keeping it updated with any changes. With the rapid rate of change in today's infrastructures, some form of automated discovery is needed to keep up with the full picture. Having a centralized point of configuration enables a much faster response in the case of issues or misconfigurations.
+
+## What to measure
+
+### Google's four golden signals
+
+Google's rationale regarding monitoring is quite simple. It states, pretty straightforwardly, that the four most important metrics to keep track of are the following:
+
+* Latency: The time required to serve a request
+* Traffic: The number of requests being made
+* Errors: The rate of failing requests
+* Saturation: The amount of work not being processed, which is usually queued
+
+### Brendan Gregg's USE method
+
+
+* Utilization: Measured as the percentage of the resource that was busy
+* Saturation: The amount of work the resource was not able to process, which is usually queued
+* Errors: Amount of errors that occurred
+
+### Tom Wilkie's RED method
+
+* Rate: Translated as requests per second
+* Errors: The amount of failing requests per second
+* Duration: The time taken by those requests
+
+# Metrics collection with Prometheus
+
+## High-level overview of the Prometheus architecture
+
+Prometheus itself is essential as it sits squarely in the middle of most interactions, but many components are in fact optional, depending on your monitoring needs.
+
+As we can see in the following diagram, the main components in the Prometheus ecosystem are as follows:
+* The Prometheus server collects time series data, stores it, makes it available for querying, and sends alerts based on it.
+* The Alertmanager receives alert triggers from Prometheus and handles routing and dispatching of alerts.
+* The Pushgateway handles the exposition of metrics that have been pushed from short-lived jobs such as cron or batch jobs.
+* Applications that support the Prometheus exposition format make internal state available through an HTTP endpoint.
+* Community-driven exporters expose metrics from applications that do not support Prometheus natively.
+* First-party and third-party dashboarding solutions provide a visualization of collected data.
+
+
+![a36a8207abe7bbe2b40696ea91e75eac.png](:/cc8b7d2ddf3646be89cb2bb929abfd55)
+
+**A singular attribute of Prometheus is that it unabashedly does not try to do any type of clustering**. By not relying on the network for coordination and storage it makes a great argument for reliability and ease of use. Prometheus and run it locally on your computer, and yet the same binary might be able to handle thousands of scrape targets and the ingestion of millions of samples per second on server hardware.
+
+# Exposing internal state with exporters
+
+An exporter is nothing more than a piece of software that collects data from a service or application and exposes it via HTTP in the Prometheus format. Each exporter usually targets a specific service or application and as such, their deployment reflects this one-to-one synergy.
+
+## Exporter fundamentals
+
+When the exporter starts, it binds to a configured port and exposes the internal state of whatever is being collected in an HTTP endpoint of your choosing (the default being /metrics).
+
+# Alert routing and management with Alertmanager
+
+Alertmanager is the component from the Prometheus ecosystem that's responsible for the notifications that are triggered by the alerts that are generated from the Prometheus server.
+
+![0435af75d4bb1e0d8e0ae80d80356f44.png](:/26867ec1b85e433db0d079d3dc99a863)
+
+At a very high level, Alertmanager is a service that receives HTTP POST requests from Prometheus servers via its API, which it then deduplicates and acts on by following a predefined set of routes.
+
+Alertmanager also exposes a web interface to allow, for instance, the visualization and silencing of firing alerts or applying inhibition rules for them.
+
+## Alerting routes
+
+A route, in its essence, can be seen as a tree-like structure. If an incoming alert has a specific payload that triggers a particular route (branch), a pre-defined integration will be invoked.
+
+There are multiple out-of-the-box integrations available for the most common use cases, such as the following:
+* Email
+* Hipchat
+* PagerDuty
+* Slack
+* Opsgenie
+* VictorOps
+* WeChat
+
+# Visualizing your data
+
+The Prometheus server ships with two internal visualizations components:
+* Expression browser: Here, you can run PromQL directly to quickly query data and visualize it instantly.
+![5600b3830e416fcf0f02617f824de7fa.png](:/114a8559b71446959486321557a4521a)
+* Consoles: These are web pages that are built using the Golang templating language and are served by the Prometheus server itself. **This approach allows you to have pre-defined data visualization interfaces without you having to constantly type PromQL**.
+![bce83c4a71d497dbac639a4e69793f8f.png](:/5ea8ee7bd18d46bdbf0102966449ae83)
+
+
+
 # Deep dive into the Prometheus configuration
 
 ## The storage section
