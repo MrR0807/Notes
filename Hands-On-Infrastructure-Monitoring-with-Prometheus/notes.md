@@ -2039,3 +2039,44 @@ Collector: nodeExporter.
 Historically, Prometheus maintained its own tool to create dashboards, called PromDash. Over time, since Grafana improved its native support for Prometheus as a data source, the community began gravitating toward using Grafana as its primary visualization solution—so much so that PromDash was deprecated by the people who maintained Prometheus in favor of Grafana.
 
 Even though Grafana is the recommended visualization solution for most people, Prometheus also ships with an internal dashboarding feature called **console templates**.
+
+# Understanding and Extending Alertmanager
+
+## Setting up the test environment
+
+To work with Alertmanager, we'll be three new instances to simulate a highly available setup.
+
+![alertmanager-test-setup.png](pictures/alertmanager-test-setup.png)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
