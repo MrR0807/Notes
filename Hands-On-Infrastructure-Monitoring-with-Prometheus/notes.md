@@ -2048,11 +2048,17 @@ To work with Alertmanager, we'll be three new instances to simulate a highly ava
 
 ![alertmanager-test-setup.png](pictures/alertmanager-test-setup.png)
 
+# Alertmanager fundamentals
 
+Prometheus delegates notification handling and routing to external systems through a Webhook-style HTTP interface. This is where Alertmanager comes in.
 
+**Alertmanager is responsible for accepting the alerts generated from Prometheus alerting rules and converting them into notifications.**
 
+Alertmanager is also the only component in the official stack that distributes its state across instances so that it can keep track of things such as which alerts were already sent and which ones are silenced.
 
+## The notification pipeline
 
+![alertmanager-alert-distribution.png](pictures/alertmanager-alert-distribution.png)
 
 
 
