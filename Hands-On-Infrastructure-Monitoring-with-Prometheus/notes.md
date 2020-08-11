@@ -2060,6 +2060,46 @@ Alertmanager is also the only component in the official stack that distributes i
 
 ![alertmanager-alert-distribution.png](pictures/alertmanager-alert-distribution.png)
 
+### Dispatching alert groups to the notification pipeline
+
+Whenever an alerting rule is triggered, Prometheus will send an alert in the form of a JSON payload to the Alertmanager API, and it will keep sending updates at each evaluation interval of that rule or every minute (configurable through the ``--rules.alert.resend-delay`` flag), whichever is longer. When alerts are received by Alertmanager, they go through the dispatching step, where they will be grouped using one or more of the alert labels, such as ``alertname``.
+
+**This allows you to sort alerts into categories, which can reduce the number of notifications that are sent as multiple alerts in the same category and are grouped together in a single notification.**
+
+**When running multiple Prometheus instances with the same configuration (a common setup when pursuing high availability/redundancy), alerting rules for the same condition won't necessarily trigger at the exact same time. Alertmanager accounts for this situation by having a configurable time interval.** It will wait before doing anything else so that similar alerts can be grouped together and thus avoid sending multiple notifications for a single type of problem.
+
+### Inhibition
+
+A good example to help us understand what alert inhibition is imagining a server rack and what happens if the top-of-rack switch fails. In this scenario, all the servers and services in that rack will start triggering alerts because they suddenly became unreachable. To avoid this problem, we can use the alert for the top-of-rack switch which, if triggered, will prevent the notifications for all the other alerts in that rack from going out. This helps the operator become more focused on the real problem and avoid a flood of unactionable alerts.
+
+**So, in a nutshell, inhibition allows you to map dependencies between alerts, and therefore prevents notifications for dependent alerts from going any further in the notification pipeline.**
+
+### Silencing
+
+Silencing is a common concept in monitoring/alerting systems; it is how you can avoid alert notifications from going out in a time-capped way. It is often used to disable notifications during maintenance windows, or to temporarily suppress alerts of lower importance during incidents. Alertmanager takes this concept and supercharges it by taking advantage of the fact that alerts coming in usually have one or more differentiating labels: ones from the originating alerting rule expression, the ``alertname``, the alert's label fields, from ``alert_relabel_configs``, as well as the ones from the Prometheus ``external_labels``. **This means that any one of these labels (or a combination of them) can be used to temporarily disable notifications through either direct matching or through regular expression matching.**
+
+**!NOTE. You should be careful with regex matching as you can accidentally silence more than you expect.**
+
+**Silences are defined at runtime. They can be set using the Alertmanager web interface, amtool (the Alertmanager command-line interface, which is going to be presented shortly), or directly through the API.**
+
+ Creating a silence requires that you set an expiration date for it, and why the web UI only recognizes durations up to days.
+ 
+ ### Routing
+ 
+When an alert batch reaches this phase, Alertmanager needs to decide where to send it. Since the most common use cases are to have different people interested in different alerts, different notification methods for different alert severities, or even a combination of both, this step enables just that by way of a routing tree. It is composed of routes (if any), each of which specifies a match criteria for one or more labels and a receiver, and a root node, which defines a catch-all receiver in case none of the sub-routes have a match for the alert groups passing through.
+
+### Alertmanager clustering
+
+The overview of the notification pipeline does not touch on the high availability component of Alertmanager. The way high availability is achieved is by relying on gossip instead of using a consensus-based protocol; this means there's no real reason for choosing an odd number of instances in a cluster. Using gossip, the cluster shares the notification log (nflog) between all Alertmanager instances, which in turn will be aware of the collective state of the cluster regarding notifications. 
+
+The Alertmanager ``/#/status`` page shows the status of the gossip cluster, along with the known peers. You can check out this endpoint in our test environment by opening up, for example, ``http://192.168.42.11:9093/#/status``:
+
+![alertmanager-gossip-peers.png](pictures/alertmanager-gossip-peers.png)
+
+As we now know, inhibition is set at the configuration file level, so it should be the same across all Alertmanager instances. **However, silences also need to be gossiped across the cluster as they are set at runtime on a single Alertmanager instance. This is a good way to validate if the clustering is working as expected – confirming whether the configured silences show up in all instances.**
+
+The way clustering works in Alertmanager is like so: every Prometheus instance sends alerts to all the Alertmanager instances they know about.
+
 
 
 
