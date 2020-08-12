@@ -2191,25 +2191,242 @@ Explained:
 * Sets a sub-route for alerts whose ``job`` label matches either ``checkoutService`` or ``paymentService`` with its own receiver, ``yellow-squad-email``
 * That sub-route, in turn, define its own child route that, if the severity label matches ``pager``, should use the ``yellow-squad-pager receiver`` instead
 
+### inhibit_rules
 
+```
+inhibit_rules:
+  - source_match:
+      job: 'icmp'
+    target_match_re:
+      alertname: (AlertmanagerDown|NodeExporterDown)
+    equal: ['base_instance']
+```
 
+In this example, we can read the following: if there's an alert with the ``job`` label set to ``icmp``, mute all other alerts with an ``alertname`` that matches ``AlertmanagerDown`` or ``NodeExporterDown`` when ``base_instance`` is the same across all matched alerts.
 
+### receiver
 
+A receiver contains notifiers. Example:
+```
+route:
+  receiver: operations
+...
+receivers:
+- name: 'operations'
+  webhook_configs:
+  - url: 'http://127.0.0.1:5001'
+...
+```
 
+The top-level route, also known as the catch-all or fallback route, will trigger the receiver named ``operations`` when incoming alerts aren't matched in other sub-routes. The ``operations`` receiver is configured using a single notifier, which is the Webhook notifier. This means that alerts that go to this receiver are sent to the URL specified in the ``url`` configuration key.
 
+## The amtool command-line tool
 
+Similar to ``promtool``, ``amtool`` is an easy-to-use command-line tool backed by the Alertmanager HTTP API. The amtool sub-commands are split into four groups:
+* ``alert``
+* ``silence``
+* ``check-config``
+* ``config``
 
+### alert
 
+This sub-command allows you to query the Alertmanager cluster for currently firing alerts, which can be achieved as follows:
+```
+amtool alert --alertmanager.url http://alertmanager02:9093
+Alertname Starts At Summary 
+deadmanswitch 2019-03-31 14:49:45 UTC 
+InstanceDown 2019-03-31 15:48:30 UTC
+```
 
+Another feature this sub-command has is the ability to create alerts on demand. This can come in useful for testing purposes. For example, let's create a new alert named ``ExampleAlert`` with the label ``example="amtool"``:
+```
+amtool alert add alertname="ExampleAlert" example="amtool" --alertmanager.url http://alertmanager02:9093
+```
 
+The ``add`` action expects one label name/value pair per command argument, as we can see in the preceding code. This action will also consider the first argument since the ``alertname`` has no label name. **An alert can be created without a name if we omit the alertname label, which can cause some weirdness in both amtool and the Alertmanager web UI, so some caution regarding this is advised.**
 
+We can check that it was added correctly by waiting a bit (the defined ``group_wait`` in the test environment is 30 seconds) and then querying the current alerts again:
+```
+amtool alert --alertmanager.url http://alertmanager02:9093
+Alertname Starts At Summary 
+deadmanswitch 2019-03-31 14:49:45 UTC 
+InstanceDown 2019-03-31 15:48:30 UTC 
+ExampleAlert 2019-03-31 15:55:00 UTC 
+```
 
+Keep in mind that this newly created alert will be considered resolved after five minutes of inactivity (the default value for ``resolve_timeout``).
 
+### silence
 
+With this sub-command, we can manage silences. First, we can try to query the available silences in the cluster by using the following instruction:
 
+```
+amtool silence --alertmanager.url http://alertmanager02:9093
+ID Matchers Ends At Created By Comment
+```
 
+As we can see, no silence is currently being enforced. Let's create a new one for the previous generated alert by matching its label, example="amtool", and checking the silences again:
+```
+amtool silence add 'example="amtool"' --comment "ups" --alertmanager.url http://alertmanager02:9093
+1afa55af-306a-408e-b85c-95b1af0d7169
+```
 
+```
+amtool silence --alertmanager.url http://alertmanager02:9093
+ID Matchers Ends At Created By Comment 
+1afa55af-306a-408e-b85c-95b1af0d7169 example=amtool 2019-03-31 16:58:08 UTC vagrant ups
+```
 
+We can now see that the new silence has been added. To verify that it's already in effect, we can use the alert sub-command and check that the ExampleAlert has disappeared from the list of current alerts:
+```
+amtool alert --alertmanager.url http://alertmanager02:9093
+Alertname Starts At Summary 
+deadmanswitch 2019-03-31 14:49:45 UTC 
+InstanceDown 2019-03-31 15:48:30 UTC
+```
+
+We can now see that the new silence has been added. To verify that it's already in effect, we can use the alert sub-command and check that the ExampleAlert has disappeared from the list of current alerts:
+```
+amtool alert --alertmanager.url http://alertmanager02:9093
+Alertname Starts At Summary 
+deadmanswitch 2019-03-31 14:49:45 UTC 
+InstanceDown 2019-03-31 15:48:30 UTC
+```
+
+Let's remove the silence we just created by using the expire action. For this, we need the silence identifier, which can be seen in the ID column when we listed the current silences:
+```
+amtool silence expire 1afa55af-306a-408e-b85c-95b1af0d7169 --alertmanager.url http://alertmanager02:9093
+amtool silence --alertmanager.url http://alertmanager02:9093
+ID Matchers Ends At Created By Comment
+```
+
+If we query the list of current alerts again, we will see our ``ExampleAlert`` there again.
+
+### check-config
+
+This is probably the most useful feature of ``amtool``: the ability to validate the syntax and schema of our Alertmanager configuration file and referenced template files. You can test the ``check-config`` sub-command by following this example:
+```
+amtool check-config /etc/alertmanager/alertmanager.yml 
+Checking '/etc/alertmanager/alertmanager.yml' SUCCESS
+Found:
+ - global config
+ - route
+ - 1 inhibit rules
+ - 8 receivers
+ - 1 templates
+  SUCCESS
+```
+
+### config
+
+With the ``config`` sub-command, we can consult the internal configuration of a running Alertmanager instance, which includes all configurable fields, even ones not explicitly listed in the configuration file. You can check this by issuing the following command:
+
+```
+amtool config --alertmanager.url http://alertmanager02:9093
+global:
+  resolve_timeout: 5m
+  http_config: {}
+  smtp_from: example@example.com
+  smtp_hello: localhost
+  smtp_smarthost: example.com:25
+  smtp_require_tls: true
+  slack_api_url: <secret>
+...
+```
+
+The next sub-command action, ``routes``, generates a text visualization of the configured routing tree.
+```
+amtool config routes --alertmanager.url http://alertmanager02:9093
+Routing tree:
+.
+└── default-route receiver: operations
+    ├── {job=~"^(?:^(?:(checkoutService|paymentService))$)$"} receiver: yellow-squad-email
+    │ └── {severity="pager"} receiver: yellow-squad-pager
+    ├── {job="firewall"} receiver: purple-squad-email
+    │ ├── {severity="slack"} receiver: purple-squad-slack
+    │ └── {severity="pager"} receiver: purple-squad-pager
+    └── {alertname=~"^(?:^(?:(AlertmanagerDown|NodeExporterDown))$)$"} receiver: violet-squad-slack
+        └── {severity="pager"} receiver: violet-squad-pager
+```
+
+# Common Alertmanager notification integrations
+
+Users and/or organizations have different requirements regarding notification methods; some might be using HipChat as a means of communication, while others rely on email, on-call usually demands a pager system such as PagerDuty or VictorOps, and so on. 
+Alertmanager provides several integration options out of the box and covers most of the notification needs you might have. If not, there's always the Webhook notifier, which allows integration with custom notification methods.
+
+If you happen to be using JIRA for task tracking, there's a custom integration that relies on the Webhook notifier called JIRAlert, available at https://github.com/free/jiralert.
+
+There is a configuration key that is common to all notifiers, and is called ``send_resolved``. It takes a Boolean (true or false) and declares whether a notification should be sent when an alert is resolved.
+
+### Email
+
+Alertmanager doesn't send emails directly, it needs to use an actual email relay. Example:
+```
+global:
+  smtp_smarthost: 'smtp.gmail.com:587'
+  smtp_from: 'alertmanager@example.com'
+  smtp_auth_username: 'alertmanager@example.com'
+  smtp_auth_identity: 'alertmanager@example.com'
+  smtp_auth_password: '<generated_token>'
+
+route: 
+  receiver: 'default'
+
+receivers:
+- name: 'default'
+  email_configs:
+  - to: 'squad@example.com'
+```
+
+### Chat
+
+The following example represents the configuration for the Slack integration:
+```
+global:
+  slack_api_url: 'https://hooks.slack.com/services/TOKEN'
+
+route:
+  receiver: 'default'
+
+receivers:
+- name: 'default'
+  slack_configs:
+  - channel: '#alerting'
+```
+
+### Webhook
+
+The Webhook integration opens up a world of possibilities for custom integrations. This feature allows Alertmanager to issue an HTTP POST request with the JSON payload of the notification to an endpoint of your choosing. Keep in mind that the URL is not templateable and the destination endpoint must be designed to handle the JSON payload. 
+
+A simple configuration can be seen in the following code:
+```
+global:
+
+route:
+  receiver: 'default'
+
+receivers:
+- name: 'default'
+  webhook_configs:
+  - url: 'http://127.0.0.1:5001'
+```
+
+This configuration will send every alert that's received by Alertmanager as-is to alertdump, which in turn will then append the payload to a log file named after the host that alertdump is running on.
+
+### null
+
+This is not a notifier per se, but a pattern commonly used to drop notifications. Example:
+```
+global:
+
+route:
+  receiver: 'null'
+
+receivers:
+- name: 'null'
+```
+
+# Customizing your alert notifications
 
 
 
