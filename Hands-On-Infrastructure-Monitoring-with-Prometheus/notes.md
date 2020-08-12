@@ -2100,6 +2100,126 @@ As we now know, inhibition is set at the configuration file level, so it should 
 
 The way clustering works in Alertmanager is like so: every Prometheus instance sends alerts to all the Alertmanager instances they know about.
 
+# Alertmanager configuration
+
+## Prometheus configuration
+
+There are a couple of configurations that need to be done in Prometheus so that we can start using Alertmanager.
+
+**The first thing to do is configure the external labels**, which are labels that are added to time series data (if it doesn't already have them) when communicating with external systems, including but not limited to Alertmanager. These are labels that uniquely identify the origin of the metrics, such as ``region``, ``datacenter``, or ``environment``.
+External labels are configured inside the top-level ``global`` key in the Prometheus main configuration file.
+
+**The second thing to do is configure Prometheus so that it can send alerts to Alertmanager.** This configuration is set on the Prometheus configuration file in a top-level section called ``alerting``.
+
+Example:
+```
+cat /etc/prometheus/prometheus.yml
+
+global:
+  external_labels:
+    dc: dc1
+alerting:
+  alertmanagers:
+  - static_configs:
+    - targets:
+      - alertmanager01:9093
+      - alertmanager02:9093
+      - alertmanager03:9093
+...
+```
+
+In this alerting section, we can also use ``alert_relabel_configs``, which has the same configuration syntax as ``relabel_configs`` and ``metric_relabel_configs`` as explained in Running a Prometheus Server. Since ``alert_relabel_configs`` is run right before we send out alerts, external labels are present in those alerts and as such are available for manipulation. Here's an example of preventing alerts with a label called ``environment`` and matching value of ``development`` from being pushed to Alertmanager:
+```
+alert_relabel_configs:
+- source_labels: [environment]
+  regex: development
+  action: drop
+```
+
+## Configuration file overview
+
+Alertmanager is configured through a single configuration file, and can reload it at runtime without restarting the same way Prometheus does: either sending a SIGHUP to the process or sending an HTTP POST request to the /-/reload endpoint.
+
+The configuration file is divided into five top-level sections: ``global``, ``route``, ``inhibit_rules``, ``receivers``, and ``templates``.
+
+### global
+
+The global section gathers all the configuration options that are valid in other sections of the file, and act as default settings for those options. Example:
+```
+global:
+  smtp_smarthost: 'mail.example.com:25'
+  smtp_from: 'example@example.com'
+...
+```
+
+This example configuration sets the default email ``smarthost`` and the ``from`` address for every receiver that uses the email (SMTP) notifier.
+
+### route
+
+This is ostensibly the most important configuration section of Alertmanager. In this section you can define:
+* ``group_by`` - group alerts based on their labels
+* ``group_interval`` - how long to wait for new alerts before sending additional notifications
+* ``repeat_interval`` - and how long to repeat them
+* ``receiver`` - which receivers should be triggered for each alert batch
+
+Example:
+```
+route:
+  receiver: operations
+  group_by: ['alertname', 'job']
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+
+  routes:
+  - match_re:
+      job: (checkoutService|paymentService)
+    receiver: yellow-squad-email
+    routes:
+    - match:
+        severity: pager
+      receiver: yellow-squad-pager
+...
+```
+
+Explained:
+* Defines the ``operations`` receiver as the default route when no other sub-routes match
+* Groups incoming alerts by ``alertname`` and ``job``
+* Waits 30 seconds for more alerts to arrive before sending the first notification to reduce the number of notifications for the same problem
+* Waits five minutes before sending additional notifications when new alerts are added to a batch
+* Resends a notification every four hours for each alert batch with the currently firing alerts
+* Sets a sub-route for alerts whose ``job`` label matches either ``checkoutService`` or ``paymentService`` with its own receiver, ``yellow-squad-email``
+* That sub-route, in turn, define its own child route that, if the severity label matches ``pager``, should use the ``yellow-squad-pager receiver`` instead
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
