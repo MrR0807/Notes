@@ -2501,6 +2501,79 @@ receivers:
 | ``receiver``  | The receiver that will handle the notification |
 | ``status``  | This will be firing as long as there's an alert in that state, or it will become resolved |
 
+The best way to demonstrate how we can build a template is to provide an example. End result:
+
+![alertmanager-slack-notification-full.png](pictures/alertmanager-slack-notification-full.png)
+
+Now, we're going to dissect the example configuration, which will generate notifications that look like the ones shown in the preceding screenshot:
+```
+route:
+  group_by: [alertname, job]
+  receiver: null
+  routes:
+  - match:
+      severity: slack
+    receiver: purple-squad-slack
+```
+
+For the sake of this example, we're grouping alerts by ``alertname`` and ``job``. This is important, because it will influence the ``CommonAnnotations`` and ``CommonLabels``, as we'll see soon:
+```
+receivers:
+- name: null
+- name: purple-squad-slack
+  slack_configs:
+  - api_url: 'https://hooks.slack.com/TOKEN'
+    channel: '#alerting'
+    title: >
+      [{{ .Alerts | len }}x ALERT{{ if gt (len .Alerts.Firing) 1 }}S{{end}}] {{ .CommonLabels.alertname }}
+```
+
+As we saw in the previous table, ``.Alerts`` is a list of all the alerts, so we want the length (``len``) of that list to create a title for the message, starting with the number of firing alerts. Note the ``if`` clause, which ensures the use of plurals if there is more than one alert. Finally, since we're grouping the alerts by ``alertname``, we print the ``alertname`` after the square brackets:
+```
+text: >      
+  :link: <{{ .CommonAnnotations.troubleshooting }}/{{ .CommonLabels.alertname }}|Troubleshooting Guide>
+```
+
+For the message body, we want to generate a link to the troubleshooting guide for this particular kind of alert. Our alerts are sending an annotation called ``troubleshooting`` with a base URL. If we rely on convention so that the guide name matches the alertname, we can easily generate the link using both fields.
+
+To provide more context about the firing alerts, we'll add all the available alert labels to the message. To achieve this goal, we must go through every alert in the list:
+```
+{{ range .Alerts }}
+```
+
+For every alert, we'll print the description that's available as an annotation of that alert:
+```
+  *Description:* {{ .Annotations.description }}
+*Details:*
+```
+
+We'll print each alert label/value pair as well. To do that, we'll be ranging over the result of SortedPairs, which returns a sorted list of label/value pairs:
+```
+{{- range .Labels.SortedPairs }}
+```
+
+We're using the severity label as a routing key in order to choose the notifier (pager, email, or slack), so we don't want to expose it in the alert message. We can do that by adding an if clause so that we don't print that particular label/value:
+```
+          {{- if ne .Name "severity"}}
+        • *{{ .Name }}:* `{{ .Value }}`
+          {{- end}}
+      {{- end }}
+      {{ end }}
+```
+
+And that's it. Receiver configuration:
+```
+- name: violet-squad-slack
+  slack_configs:
+  - channel: '#violet-squad-alerts'
+    title: '{{ template "slack.example.title" . }}'
+    text: '{{ template "slack.example.text" . }}'
+```
+
+# Who watches the Watchmen?
+
+
+
 
 
 
