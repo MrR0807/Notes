@@ -2428,6 +2428,80 @@ receivers:
 
 # Customizing your alert notifications
 
+Let's use the Slack integration as an example and understand how the messages are constructed so that they are tailored to your needs.
+
+## Default message format
+
+To have an idea of what a notification without any customization looks like, we're going to use a very simple example:
+```
+- alert: deadmanswitch
+  expr: vector(42)
+```
+
+As soon as this alert starts firing, an alert payload will be sent to Alertmanager. The following snippet demonstrates the payload being sent:
+```
+{
+    "labels": {
+        "alertname": "deadmanswitch",
+        "dc": "dc1"
+    },
+    "annotations": {},
+    "startsAt": "2019-04-02T19:11:30.04754979Z",
+    "endsAt": "2019-04-02T19:14:30.04754979Z",
+    "generatorURL": "http://prometheus:9090/graph?g0.expr=vector%2842%29&g0.tab=1"
+}
+```
+
+On the Alertmanager side, we will have this minimal configuration, just so that we can send a Slack notification (substituting TOKEN with an actual Slack token):
+```
+global:
+  slack_api_url: 'https://hooks.slack.com/services/TOKEN'
+
+route:
+  receiver: 'default'
+
+receivers:
+- name: 'default'
+  slack_configs:
+  - channel: '#alerting'
+```
+
+The end result would be a Slack message like the following:
+
+![alertmanager-slack-notification.png](pictures/alertmanager-slack-notification.png)
+
+As we can see, the default notification format has a lot of information in it. But the question remains, how was this generated? To answer this question, we can have a look into the runtime configuration of the default receiver that was generated from our basic Alertmanager configuration, which the following snippet illustrates:
+```
+...
+receivers:
+- name: default
+  slack_configs:
+  - send_resolved: false
+    http_config: {}
+    api_url: <secret>
+    channel: '#alerting'
+    username: '{{ template "slack.default.username" . }}'
+    color: '{{ if eq .Status "firing" }}danger{{ else }}good{{ end }}'
+    title: '{{ template "slack.default.title" . }}'
+    title_link: '{{ template "slack.default.titlelink" . }}'
+    pretext: '{{ template "slack.default.pretext" . }}'
+    text: '{{ template "slack.default.text" . }}'
+...
+```
+
+## Creating a new template
+
+| Variable  | Description |
+| ------------- | ------------- |
+| ``Alerts``  | A list of Alert structures, each one with its own Status, Labels, Annotations, StartsAt, EndsAt, and GeneratorURL |
+| ``CommonAnnotations``  | The annotations that are common to all alerts |
+| ``CommonLabels``  | The labels that are common to all alerts |
+| ``ExternalURL``  | The URL for the Alertmanager that sent the alert |
+| ``GroupLabels``  | The labels that are used in the grouping of alerts |
+| ``receiver``  | The receiver that will handle the notification |
+| ``status``  | This will be firing as long as there's an alert in that state, or it will become resolved |
+
+
 
 
 
