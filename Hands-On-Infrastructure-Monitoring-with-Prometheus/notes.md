@@ -2572,41 +2572,22 @@ And that's it. Receiver configuration:
 
 # Who watches the Watchmen?
 
+Guaranteeing that the monitoring stack is up and running, and that notifications are able to reach recipients, is a commonly overlooked task.
 
+## Meta-monitoring and cross-monitoring
 
+In broad terms, you can't have your monitoring system monitor itself; if the system suffers a serious failure, it won't be able to send a notification about it. This is where meta-monitoring comes in: it is the process by which the monitoring system is monitored.
 
+**The first option you should consider to mitigate this issue is to have a set of Prometheus instances that monitor every other Prometheus instance in their datacenter/zone.** Since Prometheus generates relatively few metrics of its own, this would translate to a fairly light scrape job for the ones doing the meta-monitoring.
 
+Second option cross-monitoring - involves having Prometheus instances on the same responsibility level monitor as their peers. This way, every instance will have at least one other Prometheus watching over it and generating alerts if it fails.
 
+But what happens if the problem is in the Alertmanager cluster? Or if external connectivity prevents notifications from reaching the notification provider?
 
+## Dead man's switch alerts
 
+The original concept of a dead man's switch refers to a mechanism that activates if it stops being triggered/pressed. This concept has been adopted in the software world in several ways; for our purpose, we can achieve this by creating an alert that should always be firing – thereby constantly sending out notifications – and then checking if it ever stops. This way, we can exercise the full alerting path from Prometheus, through Alertmanager, to the notification provider, and ultimately to the recipient of the notifications so that we can ensure end-to-end connectivity and service availability.
 
+For this, there's a service built around the dead man's switch type of alert, and it's curiously named **Dead Man's Snitch** (deadmanssnitch.com). This is a third-party provider, outside of your infrastructure, that's responsible for receiving your always-firing notification via email or Webhook and will, in turn, issue a page, Slack message, or Webhook if that notification stops being received for more than a configurable amount of time.
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+# Section 4. Scalability, Resilience, and Maintainability
