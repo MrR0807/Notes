@@ -114,4 +114,18 @@ docker container restart prom
 Go to ``http://localhost:9090/rules``. You should see something like this:
 ![alerting-rules-prometheus-localhost.JPG](pictures/alerting-rules-prometheus-localhost.JPG)
 
-Stop ``nex`` container. Go to ``http://localhost:9090/alerts``. 
+Stop ``nex`` container. Go to ``http://localhost:9090/alerts``.
+
+
+
+
+
+----------------------
+
+Prometheus Queries:
+```
+
+```
+
+
+
