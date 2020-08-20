@@ -128,4 +128,15 @@ Prometheus Queries:
 ```
 
 
+Cpu Usage (system_cpu_usage{application="$application", instance="$instance"}, process_cpu_usage{application="$application", instance="$instance"}, avg_over_time(process_cpu_usage{application="$application", instance="$instance"}[1h]))
+Memeory Usage (sum(jvm_memory_used_bytes{application="$application", instance="$instance"}), sum(jvm_memory_committed_bytes{application="$application", instance="$instance"}), sum(jvm_memory_max_bytes{application="$application", instance="$instance"}))
+Uptime (process_uptime_seconds{application="$application", instance="$instance"})
+Latency (moving average)
+increase(http_server_requests_seconds_sum[1m])
+/
+increase(http_server_requests_seconds_count[1m])
 
+Latency spike
+
+Traffic (requests per second) sum(increase(http_server_requests_seconds_count{outcome != "REDIRECTION", uri !~ "/|/\\*\\*|/actuator.*|/swagger-resources.*|/webjars.*|root"}[5m]))
+Errors (failing requests per second) sum(increase(http_server_requests_seconds_count{outcome !~ "REDIRECTION|SUCCESS", uri !~ "/|/\\*\\*|/actuator.*|/swagger-resources.*|/webjars.*|root"}[5m]))
