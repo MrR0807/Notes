@@ -140,3 +140,29 @@ Latency spike
 
 Traffic (requests per second) sum(increase(http_server_requests_seconds_count{outcome != "REDIRECTION", uri !~ "/|/\\*\\*|/actuator.*|/swagger-resources.*|/webjars.*|root"}[5m]))
 Errors (failing requests per second) sum(increase(http_server_requests_seconds_count{outcome !~ "REDIRECTION|SUCCESS", uri !~ "/|/\\*\\*|/actuator.*|/swagger-resources.*|/webjars.*|root"}[5m]))
+
+
+
+
+
+
+## Docker compose
+
+```
+version: "3.3"
+services:
+  prom:
+    image: prom/prometheus
+    ports:
+      - 9090:9090
+    volumes:
+      - prom-config:/etc/prometheus
+      - prom-data:/data/prometheus
+    command: 
+      - '--config.file=/etc/prometheus/prometheus.yml' 
+      - '--storage.tsdb.path="/data/prometheus"'
+volumes:
+  prom-data:
+  prom-config:
+    external: true
+```
