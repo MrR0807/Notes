@@ -8,9 +8,9 @@ If you choose to write your website in NodeJS, you just spent one of your innova
 
 This essay convinced me that “don’t repeat yourself” (DRY) isn’t a good motto.
 
-> Time passes. 
-> A new requirement appears for which the current abstraction is almost perfect.
-> Programmer B gets tasked to implement this requirement.
-> Programmer B feels honor-bound to retain the existing abstraction, but since isn’t exactly the same for every case, they alter the code to take a parameter….
-> … Loop until code becomes incomprehensible.
-> You appear in the story about here, and your life takes a dramatic turn for the worse.
+> * Time passes. 
+> * A new requirement appears for which the current abstraction is almost perfect.
+> * Programmer B gets tasked to implement this requirement.
+> * Programmer B feels honor-bound to retain the existing abstraction, but since isn’t exactly the same for every case, they alter the code to take a parameter….
+> * … Loop until code becomes incomprehensible.
+> * You appear in the story about here, and your life takes a dramatic turn for the worse.
