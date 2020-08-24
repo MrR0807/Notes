@@ -170,3 +170,7 @@ volumes:
 ```
 docker-compose -f docker-compose-prom.yml up -d
 ```
+
+```
+docker-compose -f docker-compose-prom.yml down
+```
