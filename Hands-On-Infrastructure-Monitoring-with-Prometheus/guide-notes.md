@@ -1,20 +1,55 @@
+# Java, Spring, Prometheus and Grafana
+
+#### Prerequisite
+
+* Have docker installed
+
+## Too long. Didn't not read
+
+### Setup
+
+Create necessary volumes:
+
 ```
 docker volume create prom-config
 docker volume create prom-data
 docker volume create node-ex-data
 ```
 
-We need to create a custom network, so other containers can talk to each other:
+Create a custom network, so other containers can talk to each other:
 ```
 docker network create my-net
 ```
 
-I needed a dummy container to copy information from my work computer to volume, because it was blocked by firewalls:
+Create a dummy container to copy information from local computer to volume, if your corporation does not allow direct access 
+
+
+
+
+### For corporate users
+
+If your corporation firewalled docker direct access to filesystem, you can use dummy container, to copy ``prometheus.yml`` like so:
+
+Create volume:
+```
+docker volume create prom-config
+```
+
+Copy to volume via dummy container:
 ```
 docker container create --name dummy -v prom-config:/etc/prometheus/ hello-world
 docker cp <full-path>/prometheus.yml dummy:/etc/prometheus/prometheus.yml
 docker rm dummy
 ```
+
+When launching prometheus, launch with volume:
+```
+docker run -d -p 9090:9090 --name prom --user root -v prom-config:/etc/prometheus -v prom-data:/data/prometheus --network my-net prom/prometheus --config.file="/etc/prometheus/prometheus.yml" --storage.tsdb.path="/data/prometheus"
+```
+
+
+
+
 
 Start infrastructure containers:
 ```
