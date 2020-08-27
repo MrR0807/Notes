@@ -162,7 +162,34 @@ public class MeterRegistryCustomizerConfiguration {
 }
 ```
 
-Add Dockerfile:
+Add ``application.yaml``:
+```
+spring:
+  application:
+    name: demo
+
+server:
+  port: 8080
+  servlet:
+    context-path: /
+
+management:
+  endpoints:
+    enabled-by-default: false # endpoint enablement to be opt-in rather than opt-out
+    web:
+      exposure:
+        include: health, info, prometheus, metrics #exclude everything except health, info, prometheus endpoints
+  endpoint:
+    health:
+      enabled: true
+      show-details: always
+    prometheus:
+      enabled: true
+    metrics:
+      enabled: true
+```
+
+Add ``Dockerfile``:
 ```
 FROM openjdk:11
 WORKDIR /app
