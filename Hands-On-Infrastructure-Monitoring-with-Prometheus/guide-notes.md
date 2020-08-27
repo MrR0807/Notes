@@ -6,12 +6,11 @@
 
 ## Too long. Didn't not read
 
-### Setup
+### Volumes and network
 
 Create necessary volumes:
 
 ```
-docker volume create prom-config
 docker volume create prom-data
 docker volume create node-ex-data
 ```
@@ -20,11 +19,6 @@ Create a custom network, so other containers can talk to each other:
 ```
 docker network create my-net
 ```
-
-Create a dummy container to copy information from local computer to volume, if your corporation does not allow direct access 
-
-
-
 
 ### For corporate users
 
@@ -42,35 +36,149 @@ docker cp <full-path>/prometheus.yml dummy:/etc/prometheus/prometheus.yml
 docker rm dummy
 ```
 
+### Prometheus config
+
+Create ``prometheus.yml``:
+```
+global:
+  scrape_interval:     15s
+  evaluation_interval: 15s
+
+rule_files:
+  # - "alerting_rules.yml"
+  # - "second.rules"
+
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets: ['localhost:9090']
+
+  - job_name: node-exporter
+    static_configs:
+      - targets: ['nex:9100']
+```
+
 When launching prometheus, launch with volume:
 ```
 docker run -d -p 9090:9090 --name prom --user root -v prom-config:/etc/prometheus -v prom-data:/data/prometheus --network my-net prom/prometheus --config.file="/etc/prometheus/prometheus.yml" --storage.tsdb.path="/data/prometheus"
 ```
 
-
-
-
-
-Start infrastructure containers:
+Or if you didn't use ``prom-config``, just use direct path.
 ```
-docker run -d -p 9090:9090 --name prom --user root -v prom-config:/etc/prometheus -v prom-data:/data/prometheus --network my-net prom/prometheus --config.file="/etc/prometheus/prometheus.yml" --storage.tsdb.path="/data/prometheus"
+docker run -d -p 9090:9090 --name prom --user root -v <path>:/etc/prometheus -v prom-data:/data/prometheus --network my-net prom/prometheus --config.file="/etc/prometheus/prometheus.yml" --storage.tsdb.path="/data/prometheus"
+```
 
+Start other containers:
+```
 docker run -d -p 9100:9100 --name nex --user 995:995 -v node-ex-data:/hostfs --network my-net prom/node-exporter --path.rootfs=/hostfs
 
 docker run -d --name=grafana -p 3000:3000 --network my-net grafana/grafana
 ```
 
+Go to ``localhost:9090``. This is Prometheus UI. Top bar → Status → Targets. Should look like below. That means that data is being scrapped.
+
+![guide-prometheus-ui-target.png](pictures/guide-prometheus-ui-target.png)
+
+Go to localhost:3000. You'll be prompted with Grafana login. Login: admin; Password: admin.
+
+Left Panel → Configuration Icon → Data Sources → Prometheus. Configure Prometheus connection. Either by entering direct IP address + port, or using localhost and ``Access`` → ``Browser``.
+
+Go to https://grafana.com/grafana/dashboards/1860 → Download JSON → Open → Grafana Left Panel → Plus Sign → Import → Paste JSON into "Import via panel json" → Load → Import.
+
+
+## Add Java Application into the mix
+
+Create simple Spring Application. pom.xml:
+```
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>2.3.3.RELEASE</version>
+        <relativePath/> <!-- lookup parent from repository -->
+    </parent>
+    <groupId>com.example</groupId>
+    <artifactId>demo</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+    <name>demo</name>
+    <description>Demo project for Spring Boot</description>
+ 
+    <properties>
+        <java.version>11</java.version>
+    </properties>
+ 
+    <dependencies>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+ 
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+ 
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-registry-prometheus</artifactId>
+        </dependency>
+ 
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.junit.vintage</groupId>
+                    <artifactId>junit-vintage-engine</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+    </dependencies>
+ 
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+</project>
+```
+
+Add additional Configuration class to identify your application by name:
+```
+@Configuration
+public class MeterRegistryCustomizerConfiguration {
+ 
+    @Bean
+    public MeterRegistryCustomizer<MeterRegistry> metricsCommonTags(@Value("${spring.application.name}") String applicationName){
+        return registry -> registry.config().commonTags("application", applicationName);
+    }
+}
+```
+
+Add Dockerfile:
+```
+FROM openjdk:11
+WORKDIR /app
+COPY target/*.jar /app/application.jar
+EXPOSE 8080
+ENTRYPOINT ["java"]
+CMD ["-jar", "application.jar"]
+```
+
 Compile and build your own application:
 ```
-
-mvn clean
-mvn install -DskipTests
-docker image build  -t citizen .
-
-docker run -d -p 8080:8080 --name citizen --network my-net citizen
+mvn clean install -DskipTests
+docker image build -t demo-app .
 ```
 
-prometheus.yml:
+Modify prometheus.yml:
 ```
 global:
   scrape_interval:     15s
@@ -89,10 +197,72 @@ scrape_configs:
     static_configs:
       - targets: ['nex:9100']
 
-  - job_name: citizen-app
+  - job_name: demo-app
     metrics_path: /actuator/prometheus
     static_configs:
-      - targets: ['citizen:8080']
+      - targets: ['demo-app:8080']
+```
+
+Start all applications in docker:
+```
+docker run -d -p 8080:8080 --name demo-app --network my-net demo-app
+docker container start nex prom grafana
+```
+
+Check http://localhost:9090/targets. You should see demo-app too.
+
+Download Grafana Java Micrometer already ready dashboard - https://grafana.com/grafana/dashboards/4701. Same steps as before.
+
+### Docker-compose
+
+docker-compose.yml: 
+```
+version: "3.3"
+services:
+  demo-app:
+    image: demo-app
+    ports:
+      - 8080:8080
+  prom:
+    image: prom/prometheus
+    ports:
+      - 9090:9090
+    volumes:
+      - prom-config:/etc/prometheus
+      - prom-data:/data/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path="/data/prometheus"'
+  nex:
+    image: prom/node-exporter
+    ports:
+      - 995:995
+    volumes:
+      - node-ex-data:/hostfs
+    command:
+      - '--path.rootfs=/hostfs'
+  grafana:
+    image: grafana/grafana
+    ports:
+      - 3000:3000
+ 
+volumes:
+  prom-data:
+    external: true
+  prom-config:
+    external: true
+  node-ex-data:
+    external: true
+```
+
+Scale up:
+```
+docker-compose -f docker-compose.yml up -d
+```
+
+Scale down:
+```
+docker-compose -f docker-compose.yml down
 ```
 
 
