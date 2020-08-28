@@ -347,3 +347,51 @@ Go to ``http://localhost:9090/rules``. You should see something like this:
 ![alerting-rules-prometheus-localhost.JPG](pictures/alerting-rules-prometheus-localhost.JPG)
 
 Stop ``nex`` container. Go to ``http://localhost:9090/alerts``.
+
+
+# Kubernetes
+
+- kind: DeploymentConfig
+    apiVersion: v1
+    metadata: 
+      name: "prometheus-deployment"
+      labels:
+        app: "prometheus-deployment"
+    spec:
+      replicas: 1
+      selector:
+        matchLabels:
+          name: prometheus-deployment
+      template:
+        metadata:
+          labels:
+            name: "prometheus-deployment"
+        spec:
+          containers:
+          - name: "prometheus-deployment"
+            image: "prom/prometheus"
+            imagePullPolicy: IfNotPresent
+            ports:
+            - containerPort: 9090
+            resources:
+              requests:
+                cpu: 20m
+                memory: 128Mi
+              limits:
+                cpu: 200m
+                memory: 1Gi
+            args:
+            - --storage.tsdb.path=/data/prometheus
+            - --storage.tsdb.retention=15d
+            - --config.file=/etc/prometheus/prometheus.yml
+            volumeMounts:
+            - mountPath: /etc/prometheus
+              name: prometheus-config
+            - mountPath: /data/prometheus
+              name: prometheus-data
+          volumes:
+          - name: prometheus-config
+            configMap:
+              name: "prometheus-server-conf"
+          - name: prometheus-data
+            emptyDir: {}
