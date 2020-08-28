@@ -350,7 +350,7 @@ Stop ``nex`` container. Go to ``http://localhost:9090/alerts``.
 
 
 # Kubernetes
-
+```
 - kind: DeploymentConfig
     apiVersion: v1
     metadata: 
@@ -395,3 +395,4 @@ Stop ``nex`` container. Go to ``http://localhost:9090/alerts``.
               name: "prometheus-server-conf"
           - name: prometheus-data
             emptyDir: {}
+```
