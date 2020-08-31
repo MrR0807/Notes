@@ -37,8 +37,23 @@ Jenkins has a built-in mechanism for the master/slave mode, which distributes it
 docker run -p <host_port>:8080 -v <host_volume>:/var/jenkins_home jenkins/jenkins:2.150.3
 ```
 
+## Initial configuration
 
+* Open Jenkins in the browser, at ``http://localhost:<host_port>`` (for binary installations, the default port is 8080).
+* Jenkins should ask for the administrator password. It can be found in the Jenkins logs:
 
+```
+docker logs jenkins
+
+...
+Jenkins initial setup is required. An admin user has been 
+created 
+and a password generated.
+Please use the following password to proceed to installation:
+
+c50508effc6843a1a7b06f6491ed0ca6
+...
+```
 
 
 
