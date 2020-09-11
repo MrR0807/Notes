@@ -458,3 +458,59 @@ spec:
     protocol: TCP
     targetPort: 3000
 ```
+
+```
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prometheus
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: prometheus
+  template:
+    metadata:
+      labels:
+        app: prometheus
+    spec:
+      containers:
+      - image: prom/prometheus
+        imagePullPolicy: IfNotPresent
+        name: prometheus
+        ports:
+        - containerPort: 9090
+          name: "http"
+          protocol: TCP
+        resources:
+          requests:
+            cpu: 20m
+            memory: 128Mi
+          limits:
+            cpu: 200m
+            memory: 1Gi
+        volumeMounts:
+        - mountPath: /etc/prometheus
+          name: config-volume
+      restartPolicy: Always
+      volumes:
+      - name: config-volume
+        configMap:
+          name: prom-config     
+```
+
+```
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus
+spec:
+  type: NodePort
+  selector:
+    app: prometheus
+  ports:
+  - port: 9090
+    targetPort: 9090
+```
+
+
