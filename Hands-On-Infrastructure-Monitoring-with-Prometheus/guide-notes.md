@@ -436,7 +436,6 @@ spec:
         volumeMounts:
         - name: grafana-storage
           mountPath: /var/lib/grafana
-      restartPolicy: Always
       volumes:
       - name: grafana-storage
         emptyDir: {}
@@ -478,6 +477,10 @@ spec:
       - image: prom/prometheus
         imagePullPolicy: IfNotPresent
         name: prometheus
+        args:
+        - --config.file=/etc/prometheus/prometheus.yml
+        - --storage.tsdb.path=/data/prometheus
+        - --storage.tsdb.retention=15d
         ports:
         - containerPort: 9090
           name: "http"
@@ -492,11 +495,14 @@ spec:
         volumeMounts:
         - mountPath: /etc/prometheus
           name: config-volume
-      restartPolicy: Always
+        - mountPath: /data/prometheus
+          name: prometheus-data
       volumes:
       - name: config-volume
         configMap:
-          name: prom-config     
+          name: prom-config
+      - name: prometheus-data
+        emptyDir: {}
 ```
 
 ```
