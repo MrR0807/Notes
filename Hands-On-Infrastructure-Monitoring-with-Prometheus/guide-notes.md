@@ -396,3 +396,65 @@ Stop ``nex`` container. Go to ``http://localhost:9090/alerts``.
           - name: prometheus-data
             emptyDir: {}
 ```
+
+
+
+
+
+
+
+```
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: grafana
+  labels:
+    app: grafana
+spec:
+  selector:
+    matchLabels:
+      app: grafana
+  template:
+    metadata:
+      labels:
+        app: grafana
+    spec:
+      containers:
+      - image: grafana/grafana
+        ports:
+        - containerPort: 3000
+          name: "http"
+        imagePullPolicy: IfNotPresent
+        name: grafana
+        resources:
+          requests:
+            cpu: 20m
+            memory: 128Mi
+          limits:
+            cpu: 200m
+            memory: 1024Mi
+        volumeMounts:
+        - name: grafana-storage
+          mountPath: /var/lib/grafana
+      restartPolicy: Always
+      volumes:
+      - name: grafana-storage
+        emptyDir: {}
+```
+
+```
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: grafana
+  name: grafana
+spec:
+  ports:
+  - port: 3000
+    protocol: TCP
+    targetPort: 3000
+  selector:
+    app: grafana
+  type: NodePort
+```
