@@ -446,15 +446,15 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
+  name: grafana
   labels:
     app: grafana
-  name: grafana
 spec:
+  type: NodePort
+  selector:
+    app: grafana
   ports:
   - port: 3000
     protocol: TCP
     targetPort: 3000
-  selector:
-    app: grafana
-  type: NodePort
 ```
