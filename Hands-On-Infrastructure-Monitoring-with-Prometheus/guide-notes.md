@@ -519,4 +519,15 @@ spec:
     targetPort: 9090
 ```
 
+## AlertManager
+
+```
+docker pull prom/alertmanager
+```
+
+
+
+
+
+
 
