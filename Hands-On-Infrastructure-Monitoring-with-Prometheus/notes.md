@@ -1604,8 +1604,7 @@ rule_files:
 alerting:
  alertmanagers:
  - static_configs:
- - targets:
- - “prometheus:5001”
+   - targets: ['prometheus:5001']
 ...
 ```
 
