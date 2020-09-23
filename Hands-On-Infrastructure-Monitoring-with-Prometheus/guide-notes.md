@@ -521,9 +521,153 @@ spec:
 
 ## AlertManager
 
+prometheus.yml:
 ```
-docker pull prom/alertmanager
+global:
+  scrape_interval:     15s
+  evaluation_interval: 15s
+
+rule_files:
+  - "alerting_rules.yml"
+
+alerting:
+  alertmanagers:
+  - static_configs:
+    - targets: ['alerts:9093']
+
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets: ['localhost:9090']
+
+  - job_name: node-exporter
+    static_configs:
+      - targets: ['nex:9100']
+
+  - job_name: demo-app
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ['demo-app:8080']
 ```
+
+alerting_rules.yml:
+```
+groups:
+- name: example
+  rules:
+  - alert: DemoAppIsDown
+    expr: up{job="demo-app"} != 1
+    for: 1m
+    labels:
+      severity: "critical"
+    annotations:
+      description: "Demo App instance: {{ $labels.instance }} is down."
+      link: "https://example.com"
+```
+
+### For Corporate users
+
+```
+docker container create --name dummy -v prom-config:/etc/prometheus/ hello-world
+docker cp <full-path>/prometheus.yml dummy:/etc/prometheus/prometheus.yml
+docker cp <full-path>/alerting_rules.yml dummy:/etc/prometheus/alerting_rules.yml
+docker rm dummy
+```
+
+#### Alertmanager
+
+Alerting with Prometheus is separated into two parts. Alerting rules in Prometheus servers send alerts to an Alertmanager. The Alertmanager then manages those alerts, including silencing, inhibition, aggregation and sending out notifications via methods such as email, on-call notification systems, and chat platforms.
+
+The Alertmanager handles alerts sent by client applications such as the Prometheus server. It takes care of de-duplicating, grouping, and routing them to the correct receiver integration such as email, PagerDuty, or OpsGenie. It also takes care of silencing and inhibition of alerts.
+
+alertmanager.yml:
+```
+global:
+  http_config:
+    tls_config:
+      insecure_skip_verify: true
+route:
+  group_by: [ 'alertname' ]
+  group_interval: 30s
+  repeat_interval: 30s
+  group_wait: 30s
+  receiver: 'low_priority_receiver'  # default/fallback request handler
+  routes:
+    - receiver: high_priority_receiver
+      match:
+        severity: critical
+    - receiver: low_priority_receiver
+      match:
+        severity: warning
+
+receivers:
+  - name: 'high_priority_receiver'
+    webhook_configs:
+      - send_resolved: true
+        url: 'http://promteams:2000/high_priority_channel' # request handler 1
+  - name: 'low_priority_receiver'
+    webhook_configs:
+      - send_resolved: true
+        url: 'http://promteams:2000/low_priority_channel' # request handler 2
+```
+
+Run Alertmanager:
+```
+docker volume create alerts-config
+
+docker container create --name dummy -v alerts-config:/etc/alertmanager/ hello-world
+docker cp <full-path>/alertmanager.yml dummy:/etc/alertmanager/alertmanager.yml
+docker rm dummy
+
+docker run -d --name alerts --read-only -v alerts-config:/etc/alertmanager/ -p 9093:9093 --network my-net prom/alertmanager --config.file="/etc/alertmanager/alertmanager.yml"
+```
+
+If you want to find out all possible config variables, run:
+```
+docker exec alertmanager alertmanager -h
+```
+
+I found only three variables interesting:
+* --config.file
+* --storage.path
+* --data.retention
+
+### Send Alerts to MS Teams
+
+Generate Webhook.
+
+Alertmanager doesn't support sending to Microsoft Teams out of the box. Fortunately, they allow you to use a generic webhook_config for cases like this.
+
+I'm using https://github.com/prometheus-msteams/prometheus-msteams in this setup.
+
+config.yml:
+```
+connectors:
+  - high_priority_channel: "https://outlook.office.com/webhook/<your generated code>"
+  - low_priority_channel: "https://outlook.office.com/webhook/<your generated code>"
+```
+
+```
+docker volume create sidecar-config
+
+docker container create --name dummy -v sidecar-config:/tmp/ hello-world
+docker cp <full-path>/config.yml dummy:/tmp/config.yml
+docker rm dummy
+
+docker run -d -p 2000:2000 --name promteams --read-only -v sidecar-config:/tmp/ --network my-net -e CONFIG_FILE="/tmp/config.yml" quay.io/prometheusmsteams/prometheus-msteams:v1.4.1
+```
+
+## Grafana Alertmanager
+
+
+
+
+
+
+
+
+
+
 
 
 
