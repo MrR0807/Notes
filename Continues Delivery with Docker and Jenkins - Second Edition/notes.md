@@ -2,7 +2,7 @@
 
 # Understanding CD
 
-Continuous Delivery is the ability to get changes of all types — including new features, configuration changes, bug fixes, and experiments—into production, or into the hands of users, safely and quickly, in a sustainable way.
+Continuous Delivery is the ability to get changes of all types — including new features, configuration changes, bug fixes, and experiments — into production, or into the hands of users, safely and quickly, in a sustainable way.
 
 **How long would it take your organization to deploy a change that involves just a single line of code? Do you do this on a repeatable, reliable basis?**
 
