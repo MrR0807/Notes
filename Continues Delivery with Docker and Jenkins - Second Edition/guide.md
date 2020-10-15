@@ -32,7 +32,7 @@ c50508effc6843a1a7b06f6491ed0ca6
 
 Behind proxy:
 ```
-docker run -p 49000:8080 -v jenkins-volume:/var/jenkins_home --name jenkins -e JAVA_OPTS="-Dhttp.proxyHost=192.168.0.101 -Dhttp.proxyPort=3128 -Dhttps.proxyHost=192.168.0.101 -Dhttps.proxyPort=3128" jenkins/jenkins:lts
+docker run -p 49000:8080 -v jenkins-volume:/var/jenkins_home --name jenkins -e JAVA_OPTS="-Dhttp.proxyHost=host.docker.internal -Dhttp.proxyPort=3128 -Dhttps.proxyHost=host.docker.internal -Dhttps.proxyPort=3128" jenkins/jenkins:lts
 ```
 
 
