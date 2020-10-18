@@ -3,7 +3,7 @@ docker volume create jenkins-volume
 ```
 
 ```
-docker run -p 49000:8080 -v jenkins-volume:/var/jenkins_home --name jenkins jenkins/jenkins:lts
+docker run -d -p 49000:8080 -v jenkins-volume:/var/jenkins_home --name jenkins jenkins/jenkins:lts
 ```
 
 For linux:
