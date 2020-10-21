@@ -141,6 +141,86 @@ These differences resulted in four common strategies for how agents are configur
   * ``Launch slave agents via SSH``: Here, the master will connect to the slave using the SSH protocol
 * ``Availability``: This is the option to decide whether the agent should be up all the time or the master should turn it offline under certain conditions
 
+**!NOTE**. The Java Web Start agent uses port 50000 for communication with Jenkins Master; therefore, if you use the Docker-based Jenkins master, you need to publish that port (-p 50000:50000).
+
+When the agents are set up correctly, **it's possible to update the master node configuration with ``# of executors`` set to 0**, so that no builds will be executed on it and it will only serve as the Jenkins UI and the builds' coordinator.
+
+As we've already mentioned, the drawback of such a solution is that we need to maintain multiple slave types (labels) for different project types. In our example, if we have three types of projects (java7, java8, and ruby), then we need to maintain three separately labeled (sets of) slaves.
+
+### Permanent Docker agents
+
+The idea behind this solution is to permanently add general-purpose slaves. Each slave is identically configured (with Docker Engine installed), and each build is defined along with the Docker image inside which the build is run.
+
+#### Configuring permanent Docker agents
+
+The configuration is static, so it's done exactly the same way as we did for the permanent agents. The only difference is that we need to install Docker on each machine that will be used as a slave. After the slaves are configured, we define the Docker image in each pipeline script:
+```
+pipeline {
+     agent {
+          docker {
+               image 'openjdk:8-jdk-alpine'
+          }
+     }
+     ...
+}
+```
+
+When the build is started, the Jenkins slave starts a container from the Docker image, ``openjdk:8-jdk-alpine``, and then executes all the pipeline steps inside that container.
+
+![permanent-docker-slaves.png](pictures/permanent-docker-slaves.png)
+
+### Jenkins Swarm agents
+
+#### Configuring Jenkins Swarm agents
+
+The first step to using Jenkins Swarm is to install the Self-Organizing Swarm Plug-in Modules plugin in Jenkins. We can do it through the Jenkins web UI, under ``Manage Jenkins`` and ``Manage Plugins``.
+
+The second step is to run the Jenkins Swarm slave application on every machine that would act as a Jenkins slave. We can do it using the ``swarm-client.jar`` application.
+
+**!NOTE**. The ``swarm-client.jar`` application can be downloaded from the Jenkins Swarm plugin page, at https://wiki.jenkins.io/display/JENKINS/Swarm+Plugin. On that page, you can also find all the possible options of its execution.
+
+In order to attach the Jenkins Swarm slave node, it's enough to run the following command:
+```
+$ java -jar swarm-client.jar -master <jenkins_master_url> -username <jenkins_master_user> -password <jenkins_master_password> -name jenkins-swarm-slave-1
+```
+
+After successful execution, we should notice that a new slave has appeared on the Jenkins master, as presented in the following screenshot:
+
+![added-jenkins-swarm-agent-slave.png](pictures/added-jenkins-swarm-agent-slave.png)
+
+**!NOTE**. The other possibility to add the Jenkins Swarm agent is to use the Docker image built from the ``swarm-client.jar`` tool.
+
+#### Understanding Jenkins Swarm agents
+
+At first glance, Jenkins Swarm may not seem very useful. After all, we have moved setting agents from the master to the slave, but we still have to do it manually. However, apparently, with the use of a clustering system such as Kubernetes or Docker Swarm, Jenkins Swarm enables the dynamic scaling of slaves on a cluster of servers.
+
+### Dynamically provisioned Docker agents
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
