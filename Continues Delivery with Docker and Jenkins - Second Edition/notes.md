@@ -206,13 +206,19 @@ First, we need to install the ``Docker plugin``. Configuration steps:
 * At the bottom of the page, there is the ``Cloud`` section.
 * Click on ``Add a new cloud`` and choose ``Docker``.
 * Fill in the Docker agent details, as shown in the following screenshot.
+* Most parameters do not need to be changed; however (apart from selecting Enabled), we need to at least set the Docker host URL (the address of the Docker host machine where agents will be run).
+* Click on Docker Agent templates... and select Add Docker Template.
+* Fill in the details about the Docker slave image.
 
 ![dynamic-docker-slave.png](pictures/dynamic-docker-slave.png)
 
 **!NOTE**. If you plan to use the same Docker host where the master is running, then the Docker daemon needs to listen on the ``docker0`` network interface. You can do it in a similar way as to what's described in the Installing on a server section ofChapter 2, Introducing Docker, by changing one line in the ``/lib/systemd/system/docker.service`` file to ``ExecStart=/usr/bin/dockerd -H 0.0.0.0:2375 -H fd://``.
 
+![docker-agent-template.png](pictures/docker-agent-template.png)
 
 
+* ``Docker Image``: The most popular slave image from the Jenkins community is evarga/jenkins-slave
+* ``Instance Capacity``: This defines the maximum number of agents running at the same time; for the beginning, it can be set to 10
 
 
 
