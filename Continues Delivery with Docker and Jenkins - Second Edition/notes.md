@@ -196,6 +196,20 @@ At first glance, Jenkins Swarm may not seem very useful. After all, we have move
 
 ### Dynamically provisioned Docker agents
 
+Another option is to set up Jenkins to dynamically create a new agent each time a build is started. Such a solution is obviously the most flexible one, since the number of slaves dynamically adjusts to the number of builds.
+
+#### Configuring dynamically provisioned Docker agents
+
+First, we need to install the ``Docker plugin``. Configuration steps:
+* Open the ``Manage Jenkins`` page.
+* Click on the ``Configure System`` link.
+* At the bottom of the page, there is the ``Cloud`` section.
+* Click on ``Add a new cloud`` and choose ``Docker``.
+* Fill in the Docker agent details, as shown in the following screenshot.
+
+![dynamic-docker-slave.png](pictures/dynamic-docker-slave.png)
+
+
 
 
 
