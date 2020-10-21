@@ -129,7 +129,17 @@ These differences resulted in four common strategies for how agents are configur
 
 ![permanent-agent.png](pictures/permanent-agent.png)
 
-
+* ``Name``: This is the unique name of the agent
+* ``Description``: This is an human-readable description of the agent
+* ``# of executors``: This is the number of concurrent builds that can be run on the slave
+* ``Remote root directory``: This is the dedicated directory on the slave machine that the agent can use to run build jobs (for example, /var/jenkins); the most important data is transferred back to the master, so the directory is not critical
+* ``Labels``: This includes the tags to match the specific builds (tagged the same); for example, only projects based on Java 8
+* ``Usage``: This is the option to decide whether the agent should only be used for matched labels (for example, only for Acceptance Testing builds), or for any builds
+* ``Launch method``: This includes the following:
+  * ``Launch agent via Java Web Start``: Here, the connection will be established by the agent; it is possible to download the JAR file and the instructions on how to run it on the slave machine
+  * ``Launch agent via execution of command on the master``: This is the custom command run on the master to start the slave; in most cases, it will send the Java Web Start JAR application and start it on the slave (for example, ssh <slave_hostname> java -jar ~/bin/slave.jar)
+  * ``Launch slave agents via SSH``: Here, the master will connect to the slave using the SSH protocol
+* ``Availability``: This is the option to decide whether the agent should be up all the time or the master should turn it offline under certain conditions
 
 
 
