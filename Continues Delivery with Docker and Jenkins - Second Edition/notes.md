@@ -209,6 +209,8 @@ First, we need to install the ``Docker plugin``. Configuration steps:
 
 ![dynamic-docker-slave.png](pictures/dynamic-docker-slave.png)
 
+**!NOTE**. If you plan to use the same Docker host where the master is running, then the Docker daemon needs to listen on the ``docker0`` network interface. You can do it in a similar way as to what's described in the Installing on a server section ofChapter 2, Introducing Docker, by changing one line in the ``/lib/systemd/system/docker.service`` file to ``ExecStart=/usr/bin/dockerd -H 0.0.0.0:2375 -H fd://``.
+
 
 
 
