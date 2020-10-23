@@ -33,7 +33,7 @@
 * Do you have dedicated testers?
 * How do you debug production issues?
 * What happens if during the weekend systems are down?
-* What monitoring tools do you use?
+* What monitoring tools do you use? Three observability pillars - logs, metrics, trace.
 * Are you documenting your project? Who is responsible for documentation?
 * How often do you test your code?
 * What kind of testing frameworks do you use? Example: Mockito, Junit, Spock, TestContainers etc.
