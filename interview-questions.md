@@ -21,7 +21,7 @@
 
 * What Java version are you using?
 * Java migration policy? If using old Java, when will you migrate to new one?
-* What Java projects are you most looking forward to?
+* What OpenJDK initiatives are you most looking forward to?
 * Are you using Lombok?
 * If there are multiple relation databases mentioned - why?
 * Is project based on microservices?
