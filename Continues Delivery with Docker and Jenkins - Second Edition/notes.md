@@ -226,11 +226,107 @@ Dynamically provisioned Docker agents can be treated as a layer over the standar
 
 ![master-slave-dynamic-docker-overview.png](pictures/master-slave-dynamic-docker-overview.png)
 
+Let's describe how the Docker agent mechanism is used, step by step:
+* When the Jenkins job is started, the master runs a new container from the jenkins-slave image on the slave Docker host.
+* The jenkins-slave container is actually the Ubuntu image with the sshd server installed.
+* The Jenkins master automatically adds the created agent to the agent list (the same as what we did manually in the Setting agents section).
+* The agent is accessed, using the SSH communication protocol, to perform the build.
+* After the build, the master stops and removes the slave container.
+
+**!NOTE.** The Jenkins build usually needs to download a lot of project dependencies (for example, Gradle/Maven dependencies), which may take a lot of time. If Docker slaves are automatically provisioned for each build, then it may be worth it to set up a Docker volume for them to enable caching between the builds.
+
+### Testing agents
+
+No matter which agent configuration you have chosen, you can now check whether everything works correctly. Let's go back to the Hello World pipeline.
+
+```
+pipeline {
+     agent any
+     stages {
+          stage("Hello") {
+               steps {
+                    sleep 300 // 5 minutes
+                    echo 'Hello World'
+               }
+          }
+     }
+}
+```
+
+![testing-jenkins-agents.png](pictures/testing-jenkins-agents.png)
+
+# Custom Jenkins images
+
+So far, we have used the Jenkins images pulled from the internet. We used ``jenkins/jenkins`` for the master container and ``evarga/jenkins-slave`` for the slave container.
+
+**!NOTE**. The base Docker image, ``evarga/jenkins-slave``, is suitable for the **dynamically provisioned Docker agents solution.** In the case of **permanent Docker agents**, it's enough to use ``alpine``, ``ubuntu``, or any other image, since it's not the slave that is dockerized, but only the build execution environment.
+
+## Building the Jenkins slave
+
+Let's start from the slave image, because it's more frequently customized. The build execution is performed on the agent, so it's the agent that needs to have the environment adjusted to the project we would like to build. There are four steps to building and using the custom image:
+* Create a Dockerfile
+* Build the image
+* Push the image into a registry
+* Change the agent configuration on the master
 
 
+As an example, let's create a slave that serves the Python project. We can build it on top of the evarga/jenkins-slave image, for the sake of simplicity. Steps accordingly:
+```
+FROM evarga/jenkins-slave
+RUN apt-get update && apt-get install -y python
+```
+
+```
+$ docker build -t leszko/jenkins-slave-python .
+```
+
+```
+$ docker push leszko/jenkins-slave-python
+```
+
+Change the agent configuration on master: The last step, of course, is to set ``leszko/enkins-slave-python`` instead of ``evarga/jenkins-slave`` in the Jenkins master's configuration (as described in the Dynamically provisioned Docker agents section).
 
 
+What if we need Jenkins to build two different kinds of projects, for example, one based on Python and another based on Ruby? In that case, we could prepare an agent that's generic enough to support both: Python and Ruby. However, in the case of Docker, it's recommended to create the second slave image (leszko/jenkins-slave-ruby by analogy). Then, in the Jenkins configuration, we need to create two Docker templates and label them accordingly.
 
+## Building the Jenkins master
+
+Why would we also want to build our own master image? One of the reasons might be that we don't want to use slaves at all, and since the execution would be done on the master, its environment has to be adjusted to the project's needs. 
+
+Imagine the following scenario: your organization scales Jenkins horizontally, and each team has its own instance. There is, however, some common configuration, for example, a set of base plugins, backup strategies, or the company logo. Then, repeating the same configuration for each of the teams is a waste of time. So, **we can prepare the shared master image and let the teams use it.**
+
+Jenkins is configured using XML files, and it provides the Groovy-based DSL language to manipulate over them. That is why we can add the Groovy script to the Dockerfile in order to manipulate the Jenkins configuration.
+
+As an example, let's create a master image with the docker-plugin already installed and a number of executors set to 5. In order to do it, we need to perform the following:
+* Create the Groovy script to manipulate on config.xml, and set the number of executors to 5.
+* Create the Dockerfile to install docker-plugin, and execute the Groovy script.
+* Build the image.
+
+Steps.
+Groovy script: Let's create a new directory and the ``executors.groovy`` file with the following content:
+```
+import jenkins.model.*
+Jenkins.instance.setNumExecutors(5)
+```
+
+**!NOTE.** The complete Jenkins API can be found on the official page, at http://javadoc.jenkins.io/.
+
+Dockerfile: In the same directory, let's create a ``Dockerfile``:
+```
+FROM jenkins/jenkins:2.150.3
+COPY executors.groovy /usr/share/jenkins/ref/init.groovy.d/executors.groovy
+RUN /usr/local/bin/install-plugins.sh docker-plugin
+```
+
+Build the image: We can finally build the image:
+```
+$ docker build -t jenkins-master .
+```
+
+# Configuration and management
+
+
+    
 
 
 
