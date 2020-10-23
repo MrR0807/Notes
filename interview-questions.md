@@ -28,7 +28,7 @@
 * How are you versioning microservices?
 * Are you using CI/CD? What are you using for CI? What are you using for CD?
 * How long would it take for change of one line to end up in Production?
-* Define the whole process CI/CD process. I've created a merge request. What's next? How long does it take to be review? Who does reviewing? Etc.
+* Define the whole CI/CD process. I've created a merge request. What's next?
 * How do you ensure high code quality? Peer code review? TDD? Sonar?
 * Do you have dedicated testers?
 * How do you debug production issues?
