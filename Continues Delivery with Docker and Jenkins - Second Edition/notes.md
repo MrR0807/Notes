@@ -220,7 +220,11 @@ First, we need to install the ``Docker plugin``. Configuration steps:
 * ``Docker Image``: The most popular slave image from the Jenkins community is evarga/jenkins-slave
 * ``Instance Capacity``: This defines the maximum number of agents running at the same time; for the beginning, it can be set to 10
 
+#### Understanding dynamically provisioned Docker agents
 
+Dynamically provisioned Docker agents can be treated as a layer over the standard agent mechanism. It changes neither the communication protocol nor how the agent is created. So, what does Jenkins do with the Docker agent configuration we provided?
+
+![master-slave-dynamic-docker-overview.png](pictures/master-slave-dynamic-docker-overview.png)
 
 
 
