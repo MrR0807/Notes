@@ -428,6 +428,113 @@ Hopefully, the pipeline didn't scare you. It is quite complex. Actually, it is s
   *  Print Testing the firefox browser
 * Print I will always say Hello again! regardless of whether there are any errors during the execution
 
+**!NOTE.** The complete pipeline syntax description can be found on the official Jenkins page at https://jenkins.io/doc/book/pipeline/syntax/.
+
+### Sections
+
+Sections define the pipeline structure and usually contain one or more directives or steps. They are defined with the following keywords:
+* Stages: This defines a series of one or more stage directives
+* Steps: This defines a series of one or more step instructions
+* Post: This defines a series of one or more step instructions that are run at the end of the pipeline build; they are marked with a condition (for example, always, success, or failure), and usually used to send notifications after the pipeline build
+
+### Directives
+
+Directives express the configuration of a pipeline or its parts:
+
+* Agent: This specifies where the execution takes place and can define the label to match the equally-labeled agents, or docker to specify a container that is dynamically provisioned to provide an environment for the pipeline execution
+* Triggers: This defines automated ways to trigger the pipeline and can use cron to set the time-based scheduling, or pollSCM to check the repository for changes
+* Options: This specifies pipeline-specific options, for example, timeout (maximum time of pipeline run) or retry (number of times the pipeline should be re-run after failure)
+* Environment: This defines a set of key values used as environment variables during the build
+* Parameters: This defines a list of user-input parameters
+* Stage: This allows for the logical grouping of steps
+* When: This determines whether the stage should be executed depending on the given condition
+
+### Steps
+
+Steps are the most fundamental part of the pipeline. They define the operations that are executed, so they actually tell Jenkins what to do:
+
+* sh: This executes the shell command; actually, it's possible to define almost any operation using sh
+* custom: Jenkins offers a lot of operations that can be used as steps (for example, echo); many of them are simply wrappers over the sh command used for convenience; plugins can also define their own operations
+* script: This executes a block of the Groovy-based code that can be used for some non-trivial scenarios where flow control is needed
+
+**!NOTE.** The complete specification of the available steps can be found at https://jenkins.io/doc/pipeline/steps/.
+
+# The commit pipeline
+
+The most basic Continuous Integration process is called a **commit pipeline**. This classic phase, as its name indicates, starts with a commit (or push in Git) to the main repository and results in a report about the build success or failure. Since it runs after each change in the code, the build should take no more than five minutes and should consume a reasonable amount of resources. The commit phase is always the starting point of the Continuous Delivery process.
+
+The most fundamental commit pipeline contains three stages:
+
+* Checkout: This stage downloads the source code from the repository
+* Compile: This stage compiles the source code
+* Unit test: This stage runs a suite of unit tests
+
+Let's create a sample project and see how to implement the commit pipeline.
+
+## Checkout
+
+### Creating a checkout stage
+
+We can create a new pipeline called calculator and, as Pipeline script, put the code with a stage called Checkout:
+```
+pipeline {
+     agent any
+     stages {
+          stage("Checkout") {
+               steps {
+                    git url: 'https://github.com/leszko/calculator.git'
+               }
+          }
+     }
+}
+```
+
+The pipeline can be executed on any of the agents, and its only step does nothing more than download code from the repository.
+
+**!NOTE.** The Git toolkit needs to be installed on the node where the build is executed.
+
+## Compile
+
+### Creating a compile stage
+
+```
+stage("Compile") {
+     steps {
+          sh "./gradlew compileJava"
+     }
+}
+```
+
+```
+
+
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
