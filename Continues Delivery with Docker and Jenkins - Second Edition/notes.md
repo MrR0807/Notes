@@ -325,12 +325,108 @@ $ docker build -t jenkins-master .
 
 # Configuration and management
 
+Everything can be changed under the ``Manage Jenkins`` subpage. In this section, we will focus on only a few aspects that are most likely to be changed: plugins, security, and backup.
 
+## Plugins
+
+With Jenkins' openness comes risk, and it's better to download only plugins from a reliable source, or check their source code. 
     
+There are literally tons of plugins to choose from. Some of them were already installed automatically, during the initial configuration. Another one (Docker plugin) was installed while setting the Docker agents. There are plugins for cloud integration, source control tools, code coverage, and much more. 
 
+## Security
 
+The way you should approach Jenkins security depends on the Jenkins architecture you have chosen within your organization. If you have a Jenkins master for every small team, then you may not need it at all (under the assumption that the corporate network is firewalled). **However, if you have a single Jenkins master instance for the whole organization, then you'd better be sure you've secured it well.**
 
+## Backup
 
+What files should be backed up, and from which machines? Luckily, agents automatically send all the relevant data back to the master, so we don't need to bother with them. If you run Jenkins in the container, then the container itself is also not interesting, since it does not hold persistent state. **The only place we are interested in is the Jenkins home directory.**
+
+**!Note.** There are quite a few plugins that can help with the backup process; the most common one is called ``Backup Plugin``.
+
+# Chapter 4. Continuous Integration Pipeline
+
+A **pipeline** is a sequence of automated operations that usually represents a part of the software delivery and quality assurance process. It can be seen as a chain of scripts that provide the following additional benefits:
+
+* **Operation grouping**: Operations are grouped together into stages (also known as gates or quality gates) that introduce a structure into the process and clearly define the rule—if one stage fails, no further stages are executed
+* **Visibility**: All aspects of the process are visualized, which helps in quick failure analysis and promotes team collaboration
+* **Feedback**: Team members learn about problems as soon as they occur, so that they can react quickly
+
+## The pipeline structure
+
+A Jenkins pipeline consists of two kinds of elements—Stage and Step. The following diagram shows how they are used:
+
+![pipeline-stages-and-steps.png](pictures/pipeline-stages-and-steps.png)
+
+The following are the basic pipeline elements:
+* Stage: A logical separation of steps that groups conceptually distinct sequences of steps, for example, Build, Test, and Deploy, used to visualize the Jenkins pipeline progress.
+* Step: A single operation that tells Jenkins what to do; for example, check out code from the repository, execute a script.
+
+## Multi-stage Hello World
+
+```
+pipeline {
+     agent any
+     stages {
+          stage('First Stage') {
+               steps {
+                    echo 'Step 1. Hello World'
+               }
+          }
+          stage('Second Stage') {
+               steps {
+                    echo 'Step 2. Second time Hello'
+                    echo 'Step 3. Third time Hello'
+               }
+          }
+     }
+}
+```
+
+When we click on Build Now, we should see the visual representation:
+
+![multistage-hello-world.png](pictures/multistage-hello-world.png)
+
+## The pipeline syntax
+
+```
+pipeline {
+     agent any
+     triggers { cron('* * * * *') }
+     options { timeout(time: 5) }
+     parameters { 
+          booleanParam(name: 'DEBUG_BUILD', defaultValue: true, 
+          description: 'Is it the debug build?') 
+     }
+     stages {
+          stage('Example') {
+               environment { NAME = 'Rafal' }
+               when { expression { return params.DEBUG_BUILD } } 
+               steps {
+                    echo "Hello from $NAME"
+                    script {
+                         def browsers = ['chrome', 'firefox']
+                         for (int i = 0; i < browsers.size(); ++i) {
+                              echo "Testing the ${browsers[i]} browser."
+                         }
+                    }
+               }
+          }
+     }
+     post { always { echo 'I will always say Hello again!' } }
+}
+```
+
+Hopefully, the pipeline didn't scare you. It is quite complex. Actually, it is so complex that it contains all possible Jenkins instructions. To answer the experiment puzzle, let's see what the pipeline does instruction by instruction:
+* Use any available agent
+* Execute automatically every minute
+* Stop if the execution takes more than five minutes
+* Ask for the Boolean input parameter before starting
+* Set Rafal as the NAME environment variable
+* Only in the case of the true input parameter:
+  *  Print Hello from Rafal
+  *  Print Testing the chrome browser
+  *  Print Testing the firefox browser
+* Print I will always say Hello again! regardless of whether there are any errors during the execution
 
 
 
