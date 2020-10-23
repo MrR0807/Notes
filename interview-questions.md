@@ -20,6 +20,9 @@
 ## For technical interview
 
 * What Java version are you using?
+* Java migration policy? If using old Java, when will you migrate to new one?
+* What Java projects are you most looking forward to?
+* Are you using Lombok?
 * If there are multiple relation databases mentioned - why?
 * Is project based on microservices?
 * Are you using CI/CD? What are you using for CI? What are you using for CD?
