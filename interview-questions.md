@@ -37,6 +37,8 @@
 * Are you documenting your project? Who is responsible for documentation?
 * How often do you test your code?
 * What kind of testing frameworks do you use? Example: Mockito, Junit, Spock, TestContainers etc.
+* Black box testing vs White box testing? (Detroit vs London).
+* How do use understand Unit Testing?
 * How does "back-end" and "front-end" communicate?
 * Learning for engineers? Do you have a budget? Certificates?
 * When do people come to the office? What are general working hours? When does standup start?
