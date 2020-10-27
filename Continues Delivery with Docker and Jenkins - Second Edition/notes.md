@@ -506,11 +506,77 @@ stage("Compile") {
 ```
 
 ```
+stage("Compile") {
+     steps {
+          sh "./mvnw clean compile"
+     }
+}
+```
 
-
-
+### Creating a unit test stage
 
 ```
+stage("Unit test") {
+     steps {
+          sh "./gradlew test"
+     }
+}
+```
+
+```
+stage("Unit test") {
+     steps {
+          sh "./mvnw test"
+     }
+}
+```
+
+### Jenkinsfile
+
+So far, we've created all the pipeline code directly in Jenkins. This is, however, not the only option. We can also put the pipeline definition inside a file called ``Jenkinsfile`` and commit it to the repository together with the source code. **This leads to the idea that the pipelines should be created by the same people who write the code—the developers.**
+
+This approach brings immediate benefits, as follows:
+* In case of Jenkins failure, the pipeline definition is not lost (because it's stored in the code repository, not in Jenkins)
+* The history of the pipeline changes is stored
+* Pipeline changes go through the standard code development process (for example, they are subjected to code reviews)
+* Access to the pipeline changes is restricted in exactly the same way as access to the source code
+
+#### Creating the Jenkinsfile
+
+We can create the ``Jenkinsfile`` and push it into our GitHub repository. Its content is almost the same as the commit pipeline we wrote. The only difference is that the checkout stage becomes redundant because Jenkins has to first check out the code (together with ``Jenkinsfile``) and then read the pipeline structure (from ``Jenkinsfile``). This is why Jenkins needs to know the repository address before it reads ``Jenkinsfile``.
+
+Let's create a file called ``Jenkinsfile`` in the root directory of our project:
+```
+pipeline {
+     agent any
+     stages {
+          stage("Compile") {
+               steps {
+                    sh "./gradlew compileJava"
+               }
+          }
+          stage("Unit test") {
+               steps {
+                    sh "./gradlew test"
+               }
+          }
+     }
+}
+```
+
+### Running the pipeline from Jenkinsfile
+
+When ``Jenkinsfile`` is in the repository, all we have to do is to open the pipeline configuration and do the following in the ``Pipeline`` section:
+* Change Definition from ``Pipeline script`` to ``Pipeline script from SCM``
+* Select ``Git`` in ``SCM``
+* Put ``https://github.com/leszko/calculator.git`` in ``Repository URL``.
+
+![pipeline-script-from-scm.png](pictures/pipeline-script-from-scm.png)
+
+# Code-quality stages
+
+## Code coverage
+
 
 
 
