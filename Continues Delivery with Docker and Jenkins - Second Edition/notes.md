@@ -816,12 +816,58 @@ Automated acceptance tests, however, can be considered difficult due to their sp
 
 ## Docker registry
 
+Artifact repository or software repository - server to store, load, and search software.
 
+The artifact repository plays a special role in the continuous delivery process because it guarantees that the same binary is used throughout all pipeline steps.
 
+![artifact-repository-and-ci-cd.png](pictures/artifact-repository-and-ci-cd.png)
 
+## The Docker build stage
 
+We would like to run the calculator project as a Docker container, so we need to create Dockerfile and add the ``Docker build`` stage to Jenkinsfile.
 
+### Adding Dockerfile
 
+Let's create Dockerfile in the root directory of the calculator project:
+```
+FROM openjdk:8-jre
+COPY build/libs/calculator-0.0.1-SNAPSHOT.jar app.jar
+ENTRYPOINT ["java", "-jar", "app.jar"]
+```
+
+### Adding the Docker build to the pipeline
+
+The final step we need to perform is to add the Docker build stage to Jenkinsfile. Usually, the JAR packaging is also declared as a separate Package stage:
+```
+stage("Package") {
+     steps {
+          sh "./gradlew build"
+     }
+}
+
+stage("Docker build") {
+     steps {
+          sh "docker build -t leszko/calculator ."
+     }
+}
+```
+
+When we commit and push Jenkinsfile, the pipeline build should start automatically and we should see all boxes green. This means that the Docker image has been built successfully.
+
+### The Docker push stage
+
+When the image is ready, we can store it in the registry. The Docker push stage is very simple. It's enough to add the following code to Jenkinsfile:
+```
+stage("Docker push") {
+     steps {
+          sh "docker push leszko/calculator"
+     }
+}
+```
+
+**!NOTE.** If Docker registry has access restricted, first, we need to log in using the docker login command. Needless to say, the credentials must be well secured, for example, using a dedicated credential store as described on the official Docker page: https://docs.docker.com/engine/reference/commandline/login/#credentials-store.
+
+# Chapter 6. Clustering with Kubernetes
 
 
 
