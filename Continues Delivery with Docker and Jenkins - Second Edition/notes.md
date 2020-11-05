@@ -652,19 +652,112 @@ TODO.
 
 ## SonarQube
 
+SonarQube is the most widespread source code quality management tool. It supports multiple programming languages and can be treated as an alternative to the code-coverage and static code analysis steps we looked at. Actually, it is a separate server that aggregates different code analysis frameworks, such as Checkstyle, FindBugs, and JaCoCo. It has its own dashboards and integrates well with Jenkins.
 
+# Triggers and notifications
 
+So far, we have always built the pipeline manually by clicking on the Build Now button. It works completely fine, but may not be very convenient in practice. All team members would have to remember that after committing to the repository, they need to open Jenkins and start the build. The same applies to pipeline monitoring; so far, we manually opened Jenkins and checked the build status. In this section, we will see how to improve the process so that the pipeline would start automatically and, when completed, notify team members regarding its status.
 
+## Triggers
 
+There are three types of triggers:
+* External
+* Polling Source Control Management (SCM)
+* Scheduled build
 
+### External
 
+External trigger mean that Jenkins starts the build after it's called by the notifier, which can be the other pipeline build, the SCM system (for example, GitHub), or any remote script.
 
+GitHub triggers Jenkins after a push to the repository and the build is started. To configure the system this way, we need the following setup steps:
+* Install the GitHub plugin in Jenkins
+* Generate a secret key for Jenkins
+* Set the GitHub web hook and specify the Jenkins address and key
 
+**!NOTE.** Jenkins must be accessible from the SCM server. In other words, if we use the public GitHub to trigger Jenkins, our Jenkins server must be public as well. 
 
+### Polling SCM
 
+Jenkins periodically calls GitHub and checks whether there was any push to the repository. Then, it starts the build. It may sound counter-intuitive, but there are at least two good cases for using this method:
 
+* Jenkins is inside the firewalled network (which GitHub does not have access to)
+* Commits are frequent and the build takes a long time, so executing a build after every commit would cause an overload
 
+The configuration of ``pollSCM`` is also somehow simpler because the way to connect from Jenkins to GitHub is already set up (Jenkins checks out the code from GitHub, so it knows how to access it). In the case of our calculator project, we can set up an automatic trigger by adding the triggers declaration (just after agent) to the pipeline:
+```
+triggers {
+     pollSCM('* * * * *')
+}
+```
 
+After running the pipeline manually for the first time, the automatic trigger is set. Then, it checks GitHub every minute, and, for new commits, it starts a build. To test that it works as expected, you can commit and push anything to the GitHub repository and see that the build starts.
+
+### Scheduled builds
+
+The scheduled trigger means that Jenkins runs the build periodically, regardless of whether there was any commit to the repository. The implementation of ``Scheduled build`` is exactly the same as polling SCM. The only difference is that the ``cron`` keyword is used instead of ``pollSCM``.
+
+## Notifications
+
+### Email
+
+The most classic way to notify users about the Jenkins build status is to send emails. The configuration of the email notification is very simple:
+* Have the SMTP server configured
+* Set its details in Jenkins (in Manage Jenkins | Configure System)
+* Use the mail to instruction in the pipeline
+
+The pipeline configuration can be as follows:
+```
+post {
+     always {
+          mail to: 'team@company.com',
+          subject: "Completed Pipeline: ${currentBuild.fullDisplayName}",
+          body: "Your build completed, please check: ${env.BUILD_URL}"
+     }
+}
+```
+
+Note that all notifications are usually called in the ``post`` section of the pipeline, which is executed after all steps, no matter whether the build succeeded or failed. We used the ``always`` keyword; however, there are different options:
+* ``always``: Execute regardless of the completion status
+* ``changed``: Execute only if the pipeline changed its status
+* ``failure``: Execute only if the pipeline has the failed status
+* ``success``: Execute only if the pipeline has the success status
+* ``unstable``: Execute only if the pipeline has the unstable status (usually caused by test failures or code violations)
+
+### Group chats
+
+No matter which tool you use, the procedure to configure it is always the same:
+* Find and install the plugin for your group chat tool (for example, the Slack Notification plugin)
+* Configure the plugin (server URL, channel, authorization token, and so on)
+* Add the sending instruction to the pipeline
+
+Let's see a sample pipeline configuration for Slack to send notifications after the build fails:
+```
+post {
+     failure {
+          slackSend channel: '#dragons-team',
+          color: 'danger',
+          message: "The pipeline ${currentBuild.fullDisplayName} failed."
+     }
+}
+```
+
+# Team development strategies
+
+We have covered everything regarding how the Continuous Integration pipeline should look. However, when exactly should it be run? Of course, it is triggered after the commit to the repository, but after the commit to which branch?Only to the trunk or to every branch? Or maybe it should run before, not after, committing so that the repository would always be healthy?
+
+## Adopting Continuous Integration
+
+### Branching strategies
+
+Each development workflow implies a different Continuous Integration approach:
+
+* **Trunk-based workflow**: This implies constantly struggling against the broken pipeline. If everyone commits to the main code base, the pipeline often fails. In this case, the old Continuous Integration rule says, If the build is broken, the development team stops whatever they are doing and fixes the problem immediately.
+* **Branching workflow**: This solves the broken trunk issue, but introduces another one: if everyone develops in their own branches, where is the integration? A feature usually takes weeks or months to develop, and for all this time, the branch is not integrated into the main code. Therefore, it cannot be really called Continuous Integration; not to mention that there is a constant need for merging and resolving conflicts.
+* **Forking workflow**: This implies managing the Continuous Integration process by every repository owner, which isn't usually a problem. It does share, however, the same issues as the branching workflow.
+
+There is no silver bullet, and different organizations choose different strategies. **The solution that is the closest to perfection is using the technique of the branching workflow and the philosophy of the trunk-based workflow. In other words, we can create very small branches and integrate them frequently into the master. This seems to take the best aspects of both.** However, it requires either having tiny features or using **feature toggles**. Since the concept of feature toggles fits very well into Continuous Integration and Continuous Delivery, let's take a moment to explore it.
+
+## Feature toggles
 
 
 
