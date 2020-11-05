@@ -780,6 +780,44 @@ if (feature_toggle) {
 
 The benefit of feature toggle is that all development is done in the trunk, which facilitates real Continuous Integration and mitigates problems with merging the code.
 
+## Jenkins multi-branch
+
+If you decide to use branches in any form, either the long-feature branches or the recommended short-lived branches, it is convenient to know that the code is healthy before merging it into the master. 
+
+In order to use multi-branch in our calculator project, let's proceed with the following steps:
+
+* Open the main Jenkins page
+* Click on New Item
+* Enter calculator-branches as the item name, select Multibranch Pipeline, and click on OK
+* In the Branch Sources section, click on Add source, and select Git
+* Enter the repository address into Project Repository
+* Tick Periodically if not otherwise run and set 1 minute as the Interval
+* Click on Save
+
+![jenkins-multi-branch.png](pictures/jenkins-multi-branch.png)
+
+Every minute, this configuration checks whether there were any branches added (or removed) and creates (or deletes) the dedicated pipeline defined by Jenkinsfile.
+
+![jenkins-multi-branch-working-example.png](pictures/jenkins-multi-branch-working-example.png)
+
+A very similar approach is to build a **pipeline per pull request instead of a pipeline per branch**, which gives the same result; the main code base is always healthy.
+
+# Chapter 5. Automated Acceptance Testing
+
+## Introducing acceptance testing
+
+Automated acceptance tests, however, can be considered difficult due to their specifics:
+
+* User-facing: They need to be written together with a user, which requires an understanding between two worlds—technical and non-technical.
+* Dependencies integration: The tested application should be run together with its dependencies in order to check that the system as a whole works properly.
+* Staging environment: The staging (testing) environment needs to be identical to the production one so as to ensure the same functional and non-functional behavior.
+* Application identity: Applications should be built only once and the same binary should be transferred to production. This eliminates the risk of different building environments.
+* Relevance and consequences: If the acceptance test passes, it should be clear that the application is ready for release from the user perspective.
+
+## Docker registry
+
+
+
 
 
 
