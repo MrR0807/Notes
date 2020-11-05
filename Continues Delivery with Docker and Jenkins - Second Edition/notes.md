@@ -577,7 +577,80 @@ When ``Jenkinsfile`` is in the repository, all we have to do is to open the pipe
 
 ## Code coverage
 
+Java test coverage analysis tools:
+* JaCoCo
+* Clover
+* Cobertura
 
+### Adding JaCoCo to Gradle
+
+In order to run JaCoCo from Gradle, we need to add the jacoco plugin to the build.gradle file by inserting the following line:
+```
+apply plugin: "jacoco"
+```
+
+Next, if we would like to make Gradle fail in case of low code coverage, we can add the following configuration to the build.gradle file:
+```
+jacocoTestCoverageVerification {
+     violationRules {
+          rule {
+               limit {
+                    minimum = 0.2
+               }
+          }
+     }
+}
+```
+
+This configuration sets the minimum code coverage to 20%. We can run it with the following command:
+```
+$ ./gradlew test jacocoTestCoverageVerification
+```
+
+We can also generate a test-coverage report using the following command:
+```
+$ ./gradlew test jacocoTestReport
+```
+
+#### Adding a code coverage stage
+
+```
+stage("Code coverage") {
+     steps {
+          sh "./gradlew jacocoTestReport"
+          sh "./gradlew jacocoTestCoverageVerification"
+     }
+}
+```
+
+#### Publishing the code coverage report
+
+When coverage is low and the pipeline fails, it would be useful to look at the code coverage report and find what parts are not yet covered with tests. We could run Gradle locally and generate the coverage report; however, it is more convenient if Jenkins shows the report for us.
+
+In order to publish the code coverage report in Jenkins, we require the following stage definition:
+```
+stage("Code coverage") {
+     steps {
+          sh "./gradlew jacocoTestReport"
+          publishHTML (target: [
+               reportDir: 'build/reports/jacoco/test/html',
+               reportFiles: 'index.html',
+               reportName: "JaCoCo Report"
+          ])
+          sh "./gradlew jacocoTestCoverageVerification"
+     }
+}
+```
+
+This stage copies the generated JaCoCo report to the Jenkins output. When we run the build again, we should see a link to the code coverage reports (in the menu on the left-hand side, below ``Build Now``).
+
+To perform the ``publishHTML`` step, you need to have the ``HTML Publisher`` plugin installed in Jenkins.
+
+### Adding JaCoCo to Maven (My section)
+
+TODO.
+
+## SonarQube
 
 
 
