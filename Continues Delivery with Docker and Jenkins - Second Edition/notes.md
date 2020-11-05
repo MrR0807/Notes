@@ -759,7 +759,26 @@ There is no silver bullet, and different organizations choose different strategi
 
 ## Feature toggles
 
+Feature toggles is a technique that is an alternative to maintaining multiple source code branches, such that the feature can be tested before it is completed and ready for release. It is used to disable the feature for users, but enable it for developers while testing.
 
+The simplest implementation of feature toggles are flags and the if statements. A development using feature toggles, as opposed to feature branching development, appears as follows:
+
+* A new feature has to be implemented
+* Create a new flag or a configuration property, feature_toggle (instead of the feature branch)
+* Every feature-related code is added inside the if statement (instead of committing to the feature branch), for example:
+```
+if (feature_toggle) {
+     // do something
+}
+```
+
+* During the feature development, the following takes place: 
+  *  Coding is done in the master with feature_toggle = true (instead of coding in the feature branch)
+  *  The release is done from the master with feature_toggle = false
+
+* When the feature development is completed, all if statements are removed and feature_toggle is removed from the configuration (instead of merging feature to the master and removing the feature branch)
+
+The benefit of feature toggle is that all development is done in the trunk, which facilitates real Continuous Integration and mitigates problems with merging the code.
 
 
 
