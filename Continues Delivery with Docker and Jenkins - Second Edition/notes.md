@@ -925,6 +925,22 @@ stage("Docker push") {
 
 # Chapter 6. Clustering with Kubernetes
 
+# Scaling Jenkins
+
+Jenkins infrastructure can be improved by running Jenkins agent nodes on a cluster. There are two different methods to achieve this goal:
+* Dynamic slave provisioning
+* Jenkins Swarm
+
+## Dynamic slave provisioning
+
+We looked at dynamic slave provisioning in Chapter 3, Configuring Jenkins. With Kubernetes, the idea is exactly the same. When the build is started, the Jenkins master runs a container from the Jenkins slave Docker image, and the ``Jenkinsfile`` script is executed inside the container. Kubernetes, however, makes the solution more powerful since we are not limited to a single Docker host machine and we can provide real horizontal scaling.
+
+To use dynamic Jenkins agent provisioning on Kubernetes, you need to install the **Kubernetes plugin**. Then, you can add an entry to the ``Cloud`` section in ``Manage Jenkins`` | ``Configure System``.
+
+## Jenkins Swarm
+
+
+
 
 
 
