@@ -947,7 +947,18 @@ The effect of running Kubernetes Pods with Jenkins Swarm should be exactly the s
 
 ## Comparing dynamic slave provisioning and Jenkins Swarm
 
+Jenkins slaves are run on the cluster and are, therefore, easily scaled up and down. If we need more Jenkins resources, we scale up Jenkins slaves. If we need more cluster resources, we add more physical machines to the cluster.
 
+The difference between these two solutions is that dynamic slave provisioning automatically adds a Jenkins slave to the cluster before each build. The benefit of such an approach is that we don't even have to think about how many Jenkins slaves should be running at the moment since the number automatically adapts to the number of pipeline builds. This is why, in most cases, dynamic slave provisioning is the first choice. Nevertheless, Jenkins Swarm also carries a few significant benefits:
+* **Control over the number of slaves**. 
+* **Stateful slaves**. Many builds share the same Jenkins slave, which may sound like a drawback; however, it becomes an advantage when a build requires that you download a lot of dependent libraries from the internet. In the case of dynamic slave provisioning, to cache the dependencies, we would need to set up a shared volume.
+* **Control over where the slaves are running**. Using Jenkins Swarm, we can decide not to run slaves on the cluster and choose the host machine dynamically; for example, for many startups, when the cluster infrastructure is costly, slaves can be dynamically run on the laptop of a developer who is starting the build.
+
+# Chapter 7. Configuration Management with Ansible
+
+# Chapter 8. Continuous Delivery Pipeline
+
+# Environments and infrastructure
 
 
 
