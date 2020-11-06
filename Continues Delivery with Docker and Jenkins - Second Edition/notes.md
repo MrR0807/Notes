@@ -939,7 +939,13 @@ To use dynamic Jenkins agent provisioning on Kubernetes, you need to install the
 
 ## Jenkins Swarm
 
+If we don't want to use dynamic slave provisioning, then another solution for clustering Jenkins slaves is to use Jenkins Swarm. We described how to use it in Chapter 3, Configuring Jenkins. Here, we add the description for Kubernetes.
 
+In Kubernetes, as always, you need to create a deployment YAML configuration that uses the Jenkins Swarm Docker image. The most popular image is provided as ``csanchez/jenkins-swarm-slave``. Then, you can horizontally scale Jenkins using the standard kubectl scale command.
+
+The effect of running Kubernetes Pods with Jenkins Swarm should be exactly the same as running Jenkins Swarm from the command line (as presented in Chapter 3, Configuring Jenkins); it dynamically adds a slave to the Jenkins master.
+
+## Comparing dynamic slave provisioning and Jenkins Swarm
 
 
 
