@@ -55,6 +55,7 @@ sudo cat /var/lib/jenkins/secrets/initialAdminPassword
 Jenkins -> Configuration.
 
 Labels: If you'd enter "master" into the label field and select ``Usage`` as ``Only build jobs with label expressions matching this node``, it would only start jobs if the node would have label - master.
+
 Quiet period: Wait period (seconds) after job completed.
 
 
