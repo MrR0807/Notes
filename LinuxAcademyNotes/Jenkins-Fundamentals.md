@@ -34,6 +34,49 @@ docker container run --name jenkins-blueocean --rm --detach \
   --publish 8080:8080 --publish 50000:50000 jenkinsci/blueocean
 ```
 
+# Jenkins Installation Lab
+
+```
+sudo yum install -y java-1.8.0-openjdk-devel
+sudo yum install -y wget
+sudo wget -O /etc/yum.repos.d/jenkins.repo https://pkg.jenkins.io/redhat/jenkins.repo
+sudo rpm --import https://pkg.jenkins.io/redhat/jenkins.io.key
+sudo yum install -y jenkins
+```
+
+```
+sudo systemctl enable jenkins
+sudo systemctl start jenkins
+sudo cat /var/lib/jenkins/secrets/initialAdminPassword
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
