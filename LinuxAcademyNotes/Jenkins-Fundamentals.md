@@ -60,10 +60,40 @@ Quiet period: Wait period (seconds) after job completed.
 
 # Setting up a Build Agent
 
+setting up the jenkins user:
 
+```
+ls -l /var/lib
+sudo mkdir /var/lib/jenkins
 
+ls -l /var/lib | grep jenkins
+sudo useradd -d /var/lib/jenkins jenkins
+sudo chown jenkins:jenkins /var/lib/jenkins
+```
 
+Generating and setting ssh keys:
+```
+ssh-keygen
 
+sudo mkdir /var/lib/jenkins/.ssh
+cat ./.ssh/id_rsa_pub
+sudo vim /var/lib/jenkins/.ssh/auhorized_keys
+```
+
+Installing java:
+```
+sudo apt-install openjdk-8-jre-headless
+```
+
+Getting the private key for the user:
+```
+cat ./.ssh/id_rsa 
+```
+
+Correcting the known hosts issue once we have ssh'd from master to agent:
+```
+sudo cp ./.ssh/known_hosts /var/lib/jenkins/.ssh
+```
 
 
 
