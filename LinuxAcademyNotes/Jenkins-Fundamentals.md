@@ -95,6 +95,47 @@ Correcting the known hosts issue once we have ssh'd from master to agent:
 sudo cp ./.ssh/known_hosts /var/lib/jenkins/.ssh
 ```
 
+# Distributing a Jenkins Build Lab
+
+Connect to master node -> From it, connect to slave node.
+This will create ``known_hosts`` file on master.
+
+Create ssh directory on master:
+```
+sudo mkdir /var/lib/jenkins/.ssh
+```
+Master:
+```
+sudo cp ~/.ssh/known_hosts /var/lib/jenkins/.ssh
+```
+
+Slave:
+```
+sudo mkdir /var/lib/jenkins
+sudo mkdir /var/lib/jenkins/.ssh
+```
+
+Generate key without phrase:
+```
+ssh-keygen
+```
+
+Copy content of public key into ``authorized_keys``:
+```
+cat ./.ssh/id_rsa.pub
+sudo vim /var/lib/jenkins/.ssh/authorized_keys
+```
+
+Add user:
+```
+sudo useradd -d /var/lib/jenkins jenkins
+sudo chown jenkins:jenkins /var/lib/jenkins
+```
+
+
+
+
+
 
 
 
