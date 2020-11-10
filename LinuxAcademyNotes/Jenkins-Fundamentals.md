@@ -100,18 +100,15 @@ sudo cp ./.ssh/known_hosts /var/lib/jenkins/.ssh
 Connect to master node -> From it, connect to slave node.
 This will create ``known_hosts`` file on master.
 
-Create ssh directory on master:
-```
-sudo mkdir /var/lib/jenkins/.ssh
-```
-Master:
-```
-sudo cp ~/.ssh/known_hosts /var/lib/jenkins/.ssh
-```
-
-Slave:
+Create jenkins folder on slave:
 ```
 sudo mkdir /var/lib/jenkins
+```
+
+Add user in slave:
+```
+sudo useradd -d /var/lib/jenkins jenkins
+sudo chown -R jenkins:jenkins /var/lib/jenkins
 sudo mkdir /var/lib/jenkins/.ssh
 ```
 
@@ -120,43 +117,21 @@ Generate key without phrase:
 ssh-keygen
 ```
 
-Copy content of public key into ``authorized_keys``:
+No passphrase.
+
 ```
-cat ./.ssh/id_rsa.pub
+cat ~/.ssh/id_rsa.pub
+//Past into id_rsa.pub
 sudo vim /var/lib/jenkins/.ssh/authorized_keys
 ```
 
-Add user:
+Get the content of private key and use it Jenkins:
 ```
-sudo useradd -d /var/lib/jenkins jenkins
-sudo chown jenkins:jenkins /var/lib/jenkins
+cat ~/.ssh/id_rsa
 ```
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+Exit into master. Make ssh folder in jenkins instalation:
+```
+sudo mkdir /var/lib/jenkins/.ssh
+sudo cp ~/.ssh/known_hosts /var/lib/jenkins/.ssh
+```
