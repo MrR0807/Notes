@@ -117,8 +117,6 @@ Generate key without phrase:
 ssh-keygen
 ```
 
-No passphrase.
-
 ```
 cat ~/.ssh/id_rsa.pub
 //Past into id_rsa.pub
