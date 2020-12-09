@@ -109,6 +109,11 @@ Just use **node** for Scripted Pipelines and **agent** for Declarative Pipelines
 
 **executor** is just a slot in which to run a job on a node/agent. A node can have zero or more executors. **The number of executors defines how many concurrent jobs can be run on that node.** When the master funnels jobs to a particular node, there must be an available executor slot in order for the job to be processed immediately. Otherwise, it will wait until an executor becomes available.
 
+## Creating Nodes
+
+In traditional versions of Jenkins, jobs would run either on the master instance or on slave instances. As noted previously, in Jenkins 2 terminology these kinds of instances are both referred to by the generic term **node**.
+
+![creating-node.PNG](pictures/creating-node.PNG)
 
 
 
