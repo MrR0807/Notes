@@ -113,21 +113,114 @@ Just use **node** for Scripted Pipelines and **agent** for Declarative Pipelines
 
 In traditional versions of Jenkins, jobs would run either on the master instance or on slave instances. As noted previously, in Jenkins 2 terminology these kinds of instances are both referred to by the generic term **node**.
 
+Manage Jenkins -> Manage Nodes -> Select New Node and fill in the forms (choose Permanent Agent) -> Enter parameters like showed in picture.
+
 ![creating-node.PNG](pictures/creating-node.PNG)
 
+### A quick note about node labels
+Labels can be used for both system and user purposes. For example, labels can be used to:
+* Identify a specific node (via a unique label).
+* Group classes of nodes together (by giving them the same label).
+* Identify some characteristic of a node that is useful to know for processing (via a meaningful label, such as “Windows” or “West Coast”).
 
+The last bullet is a recommended practice.
 
+## Structure: Working with the Jenkins DSL
 
+In this section, we’ll cover some basic terms and the structure and functionality of a Jenkins DSL pipeline. We’ll be talking about this in terms of a Scripted Pipeline (meaning without the enhancements that the declarative functionality adds). In Chapter 7, we’ll explain the differences and look at the changes that creating a Declarative Pipeline entails.
 
+Here’s a very simple pipeline expressed in the Jenkins DSL:
+```
+node ('worker1') {
+  stage('Source') { // for display purposes
+    // Get some code from our Git repository
+    git 'https://github.com/brentlaster/gradle-greetings.git'
+  }
+}
+```
+Let’s break this down and explain what each part is doing.
 
+### node
 
+As mentioned in “Node”, we can think of this as the new term for a master or agent. Nodes are defined through the Manage Jenkins → Manage Nodes interface and can be set up just like slaves. Each node then has a Jenkins agent installed on it to execute jobs. (Note that in this case we are assuming we have a node already set up on the Jenkins instance labeled ``worker1``).
 
+This line tells Jenkins on which node it should run this part of the pipeline. It binds the code to the particular Jenkins agent program running on that node. A particular one is specified by passing a defined name as a parameter (label). This must be a node or system that has already been defined and that your Jenkins system is aware of. You can omit supplying a label here, but if you omit a label, then you need to be aware of how this will be handled:
+* If master has been configured as the default node for execution, Jenkins will run the job on master (master can be configured to not run any jobs).
+* Otherwise, an empty node label (or ``agent any`` in declarative syntax) will tell Jenkins to run on the first executor that becomes available on any node.
 
+When this part of the pipeline is executed, it connects to the node, creates a workspace (working directory) for the code to execute in, and schedules the code to run when an executor is available. 
 
+#### Leveraging Multiple Labels on a Node
 
+In the configuration for a node, you can assign multiple labels in the Labels entry box. You can specify multiple labels using standard logic operands such as
+``||`` for “or” and ``&&`` for “and.” So, in this case, you could add the label Linux to all of the nodes and an additional label to indicate where each is located—i.e., east or west:
+```
+node("linux && east")
+```
 
+### stage
 
+Within a node definition, a stage closure allows us to group together individual settings, DSL commands, and logic. A stage is required to have a name, which provides a mechanism for describing what the stage does.
 
+### steps
+
+Inside the stage, we have the actual Jenkins DSL commands. These are referred to as steps in Jenkins terminology. **A step is the lowest level of functionality defined by the DSL.** These are not Groovy commands, but can be used with Groovy commands. In the case of our example, we have this initial step to get our source: 
+```
+git 'https://github.com/brentlaster/gradle-greetings.git'
+```
+
+### Understanding step syntax
+
+Steps in the Jenkins DSL always expect mapped (named) parameters. To illustrate this, here’s another version of the git step definition:
+```
+git branch: 'test',
+    url: 'https://github.com/brentlaster/gradle-greetings.git'
+```
+
+Groovy also allows skipping the parentheses for parameters. Without these shortcuts, the longer version of our step would be:
+```
+git([branch: 'test', url: 'http://github.com/brentlaster/gradle-greetings.git'])
+```
+
+Another trick is this: if there is a single required parameter, and only one value is passed, the parameter name can be omitted. This is how we arrive at our short version of the step as:
+```
+git 'https://github.com/brentlaster/gradle-greetings.git'
+```
+
+If a named parameter is not required, then the default parameter is the script object. An example here is with the bat step, which is used to run batch or shell processing on Windows system. Writing this with the full syntax would look like this:
+```
+bat([script: 'echo hi'])
+```
+Taking into account the shortcuts that are offered, this can simply be written as:
+```
+bat 'echo hi'
+```
+
+![relationship-between-node-and-stages.PNG](pictures/relationship-between-node-and-stages.PNG)
+
+## Supporting Environment: Developing a Pipeline Script
+
+A pipeline script in Jenkins can either be created within a **Jenkins job of type Pipeline** or as an **external file named Jenkinsfile**. If created as a Jenkinsfile, then it can be stored with the source.
+
+### Starting a Pipeline Project
+
+When you select Pipeline as the type of project to create, you’re presented with a familiar web-based form for a new Jenkins project. The main tab we are interested in for our new Pipeline project is the Pipeline tab. Switching to that presents a text entry screen where we can enter the code for our pipeline script.
+
+![pipeline-tab.PNG](pictures/pipeline-tab.PNG)
+
+### Working with the Snippet Generator
+
+To simplify finding the correct semantics and syntax for steps, Jenkins 2 includes a pipeline syntax help wizard, also known as the Snippet Generator.
+
+The Snippet Generator provides a way to search through the available DSL steps and find out the syntax and semantics of ones you are interested in. Additionally, it provides online help to explain what the step is intended to do. But perhaps the most useful option it provides is a web form with areas to enter values for the parameters you want to use.
+
+Let’s work through a simple example to see how this works. Suppose we want to create the earlier step to retrieve our Git code. Figure 2-11 shows our starting point.
+
+![snippet-generator-1.PNG](pictures/snippet-generator-1.PNG)
+
+We know we want to use Git, but we’re not sure of the syntax, so we click the Pipeline Syntax link at the bottom of the Pipeline tab. This takes us to the opening screen for the Snippet Generator.
+
+![snippet-generator-2.PNG](pictures/snippet-generator-2.PNG)
 
 
 
