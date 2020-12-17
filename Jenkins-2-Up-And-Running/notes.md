@@ -223,6 +223,68 @@ We know we want to use Git, but we’re not sure of the syntax, so we click the 
 ![snippet-generator-2.PNG](pictures/snippet-generator-2.PNG)
 
 
+## Running a Pipeline
+
+Nothing of interest.
+
+## Replay
+
+Coding pipelines is more involved than web form interaction with Jenkins. There may be times where something fails and you want to retry it in a temporary way without modifying your code. Replay allows you to modify your code after a run, and then run it again with the modifications. A new build record of that run is kept, but the original code remains unchanged.
+
+![Replay.PNG](pictures/Replay.PNG)
+
+Now Jenkins presents us with an edit window just like the one for the Pipeline tab of a Pipeline project. In this window, we can make any changes to our program that we want and then select Run to try out the changes. (Here, we’re changing bat back to sh).
+
+![Replay-2.PNG](pictures/Replay-2.PNG)
+
+Jenkins will attempt to run the edited code in the Replay window. In this case it will succeed, creating run #3. However, if we click Configure in the menu on the left and go back and look at our code in the Pipeline tab, we’ll see that it still shows bat. The Replay functionality allowed us to try out a change, but we still need to go back and update our code in the pipeline job to make the change.
+
+# Chapter 3. Pipeline Execution Flow
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
