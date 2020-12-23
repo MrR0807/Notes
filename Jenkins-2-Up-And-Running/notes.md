@@ -4,7 +4,7 @@
     + [Pipeline](#pipeline)
     + [Organization](#organization)
     + [Summary](#summary)
-- [Chapter 2:    The    Foundations](#chapter-2-----the----foundations)
+- [Chapter 2:    The    Foundations](#chapter-2-----the----foundations------)
   * [Syntax: Scripted Pipelines Versus Declarative Pipelines](#syntax-scripted-pipelines-versus-declarative-pipelines)
     + [Choosing Between Scripted and Declarative Syntax](#choosing-between-scripted-and-declarative-syntax)
   * [Systems: Masters, Nodes, Agents, and Executors](#systems-masters-nodes-agents-and-executors)
