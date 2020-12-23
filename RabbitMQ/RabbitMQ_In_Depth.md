@@ -99,7 +99,6 @@
     + [Adding nodes to the cluster](#adding-nodes-to-the-cluster)
       - [ERLANG COOKIES](#erlang-cookies)
       - [CREATING AD HOC CLUSTERS](#creating-ad-hoc-clusters)
-- [TODO](#todo)
 - [Chapter 8. Cross-cluster message distribution](#chapter-8-crosscluster-message-distribution)
     + [Federated exchanges](#federated-exchanges)
     + [Federated queues](#federated-queues)
