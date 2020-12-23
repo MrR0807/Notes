@@ -158,9 +158,6 @@
   * [Dead man's switch alerts](#dead-mans-switch-alerts)
 - [Section 4. Scalability, Resilience, and Maintainability](#section-4-scalability-resilience-and-maintainability)
 
-Process finished with exit code 0
-
-
 # Definition of monitoring
 
 ## Monitoring components
