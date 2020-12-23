@@ -86,9 +86,6 @@
 - [Chapter 8. Continuous Delivery Pipeline](#chapter-8-continuous-delivery-pipeline)
 - [Environments and infrastructure](#environments-and-infrastructure)
 
-Process finished with exit code 0
-
-
 # Chapter 1. Introducing Continuous Delivery
 
 # Understanding CD
