@@ -4,7 +4,7 @@
     + [Pipeline](#pipeline)
     + [Organization](#organization)
     + [Summary](#summary)
-- [Chapter 2: The Foundations](#chapter-2--the-foundations)
+- [Chapter 2: The Foundations](#chapter-2-the-foundations)
 
 # Chapter 1: Introducing Jenkins 2
 
