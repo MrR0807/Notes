@@ -1,6 +1,6 @@
 # Table of content
 
-- [Chapter 1: Introducing Jenkins 2](#chapter-1--introducing-jenkins-2)
+- [Chapter 1: Introducing Jenkins 2](#chapter-1--introducing-jenkins-2-)
     + [Pipeline](#pipeline)
     + [Organization](#organization)
     + [Summary](#summary)
