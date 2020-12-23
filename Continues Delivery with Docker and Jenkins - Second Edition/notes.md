@@ -1,3 +1,91 @@
+# Table of Content
+
+- [Chapter 1. Introducing Continuous Delivery](#chapter-1-introducing-continuous-delivery)
+- [Understanding CD](#understanding-cd)
+- [The automated deployment pipeline](#the-automated-deployment-pipeline)
+  * [Continuous Integration (CI)](#continuous-integration-ci)
+    + [The testing matrix](#the-testing-matrix)
+- [Chapter 3. Configuring Jenkins](#chapter-3-configuring-jenkins)
+- [What is Jenkins?](#what-is-jenkins)
+- [Installing Jenkins](#installing-jenkins)
+  * [Initial configuration](#initial-configuration)
+  * [Jenkins Hello World](#jenkins-hello-world)
+- [Jenkins architecture](#jenkins-architecture)
+  * [Master and slaves](#master-and-slaves)
+  * [Scalability](#scalability)
+  * [Test and production instances](#test-and-production-instances)
+- [Configuring agents](#configuring-agents)
+  * [Communication protocols](#communication-protocols)
+  * [Setting agents](#setting-agents)
+    + [Configuring permanent agents](#configuring-permanent-agents)
+    + [Permanent Docker agents](#permanent-docker-agents)
+      - [Configuring permanent Docker agents](#configuring-permanent-docker-agents)
+    + [Jenkins Swarm agents](#jenkins-swarm-agents)
+      - [Configuring Jenkins Swarm agents](#configuring-jenkins-swarm-agents)
+      - [Understanding Jenkins Swarm agents](#understanding-jenkins-swarm-agents)
+    + [Dynamically provisioned Docker agents](#dynamically-provisioned-docker-agents)
+      - [Configuring dynamically provisioned Docker agents](#configuring-dynamically-provisioned-docker-agents)
+      - [Understanding dynamically provisioned Docker agents](#understanding-dynamically-provisioned-docker-agents)
+    + [Testing agents](#testing-agents)
+- [Custom Jenkins images](#custom-jenkins-images)
+  * [Building the Jenkins slave](#building-the-jenkins-slave)
+  * [Building the Jenkins master](#building-the-jenkins-master)
+- [Configuration and management](#configuration-and-management)
+  * [Plugins](#plugins)
+  * [Security](#security)
+  * [Backup](#backup)
+- [Chapter 4. Continuous Integration Pipeline](#chapter-4-continuous-integration-pipeline)
+  * [The pipeline structure](#the-pipeline-structure)
+  * [Multi-stage Hello World](#multistage-hello-world)
+  * [The pipeline syntax](#the-pipeline-syntax)
+    + [Sections](#sections)
+    + [Directives](#directives)
+    + [Steps](#steps)
+- [The commit pipeline](#the-commit-pipeline)
+  * [Checkout](#checkout)
+    + [Creating a checkout stage](#creating-a-checkout-stage)
+  * [Compile](#compile)
+    + [Creating a compile stage](#creating-a-compile-stage)
+    + [Creating a unit test stage](#creating-a-unit-test-stage)
+    + [Jenkinsfile](#jenkinsfile)
+      - [Creating the Jenkinsfile](#creating-the-jenkinsfile)
+    + [Running the pipeline from Jenkinsfile](#running-the-pipeline-from-jenkinsfile)
+- [Code-quality stages](#codequality-stages)
+  * [Code coverage](#code-coverage)
+    + [Adding JaCoCo to Gradle](#adding-jacoco-to-gradle)
+      - [Adding a code coverage stage](#adding-a-code-coverage-stage)
+      - [Publishing the code coverage report](#publishing-the-code-coverage-report)
+    + [Adding JaCoCo to Maven (My section)](#adding-jacoco-to-maven-my-section)
+  * [SonarQube](#sonarqube)
+- [Triggers and notifications](#triggers-and-notifications)
+  * [Triggers](#triggers)
+    + [External](#external)
+    + [Polling SCM](#polling-scm)
+    + [Scheduled builds](#scheduled-builds)
+  * [Notifications](#notifications)
+    + [Email](#email)
+    + [Group chats](#group-chats)
+- [Team development strategies](#team-development-strategies)
+  * [Adopting Continuous Integration](#adopting-continuous-integration)
+    + [Branching strategies](#branching-strategies)
+  * [Feature toggles](#feature-toggles)
+  * [Jenkins multi-branch](#jenkins-multibranch)
+- [Chapter 5. Automated Acceptance Testing](#chapter-5-automated-acceptance-testing)
+  * [Introducing acceptance testing](#introducing-acceptance-testing)
+  * [Docker registry](#docker-registry)
+  * [The Docker build stage](#the-docker-build-stage)
+    + [Adding Dockerfile](#adding-dockerfile)
+    + [Adding the Docker build to the pipeline](#adding-the-docker-build-to-the-pipeline)
+    + [The Docker push stage](#the-docker-push-stage)
+- [Chapter 6. Clustering with Kubernetes](#chapter-6-clustering-with-kubernetes)
+- [Scaling Jenkins](#scaling-jenkins)
+  * [Dynamic slave provisioning](#dynamic-slave-provisioning)
+  * [Jenkins Swarm](#jenkins-swarm)
+  * [Comparing dynamic slave provisioning and Jenkins Swarm](#comparing-dynamic-slave-provisioning-and-jenkins-swarm)
+- [Chapter 7. Configuration Management with Ansible](#chapter-7-configuration-management-with-ansible)
+- [Chapter 8. Continuous Delivery Pipeline](#chapter-8-continuous-delivery-pipeline)
+- [Environments and infrastructure](#environments-and-infrastructure)
+
 # Chapter 1. Introducing Continuous Delivery
 
 # Understanding CD
@@ -959,35 +1047,3 @@ The difference between these two solutions is that dynamic slave provisioning au
 # Chapter 8. Continuous Delivery Pipeline
 
 # Environments and infrastructure
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
