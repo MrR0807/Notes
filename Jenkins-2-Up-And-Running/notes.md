@@ -1,3 +1,11 @@
+# Table of Content
+
+- [Chapter 1: Introducing Jenkins 2](#chapter-1--introducing-jenkins-2)
+    + [Pipeline](#pipeline)
+    + [Organization](#organization)
+    + [Summary](#summary)
+- [Chapter 2: The Foundations](#chapter-2--the-foundations)
+
 # Chapter 1: Introducing Jenkins 2
 
 ### Pipeline
