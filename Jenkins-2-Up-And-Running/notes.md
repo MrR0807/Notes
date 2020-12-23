@@ -1,11 +1,33 @@
-# Table of Content
+# Table of content
+
 - [Chapter 1: Introducing Jenkins 2](#chapter-1-introducing-jenkins-2)
-  * [Pipeline](#pipeline)
+    + [Pipeline](#pipeline)
     + [Organization](#organization)
-  * [Summary](#summary)
-    + [Hello](#hello)
+    + [Summary](#summary)
 - [Chapter 2: The Foundations](#chapter-2-the-foundations)
   * [Syntax: Scripted Pipelines Versus Declarative Pipelines](#syntax-scripted-pipelines-versus-declarative-pipelines)
+    + [Choosing Between Scripted and Declarative Syntax](#choosing-between-scripted-and-declarative-syntax)
+  * [Systems: Masters, Nodes, Agents, and Executors](#systems-masters-nodes-agents-and-executors)
+    + [Master](#master)
+    + [Node](#node)
+    + [Agent](#agent)
+      - [Directives Versus Steps](#directives-versus-steps)
+    + [Executor](#executor)
+  * [Creating Nodes](#creating-nodes)
+    + [A quick note about node labels](#a-quick-note-about-node-labels)
+  * [Structure: Working with the Jenkins DSL](#structure-working-with-the-jenkins-dsl)
+    + [node](#node)
+      - [Leveraging Multiple Labels on a Node](#leveraging-multiple-labels-on-a-node)
+    + [stage](#stage)
+    + [steps](#steps)
+    + [Understanding step syntax](#understanding-step-syntax)
+  * [Supporting Environment: Developing a Pipeline Script](#supporting-environment-developing-a-pipeline-script)
+    + [Starting a Pipeline Project](#starting-a-pipeline-project)
+    + [Working with the Snippet Generator](#working-with-the-snippet-generator)
+  * [Running a Pipeline](#running-a-pipeline)
+  * [Replay](#replay)
+- [Chapter 3. Pipeline Execution Flow](#chapter-3-pipeline-execution-flow)
+  * [Triggering Jobs](#triggering-jobs)
 
 # Chapter 1: Introducing Jenkins 2
 
