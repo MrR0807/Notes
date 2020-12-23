@@ -1,9 +1,9 @@
 # Table of Content
-
 - [Chapter 1: Introducing Jenkins 2](#chapter-1-introducing-jenkins-2)
   * [Pipeline](#pipeline)
-      - [Organization](#organization)
-    + [Summary](#summary)
+    + [Organization](#organization)
+  * [Summary](#summary)
+    + [Hello](#hello)
 - [Chapter 2: The Foundations](#chapter-2-the-foundations)
   * [Syntax: Scripted Pipelines Versus Declarative Pipelines](#syntax-scripted-pipelines-versus-declarative-pipelines)
 
