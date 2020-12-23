@@ -44,7 +44,7 @@ Certain source control platforms provide a mechanism for grouping repositories i
 
 Jenkins 2 also provides several new project types. The Folder type allows for grouping projects together under a shared namespace and shared environment. The Multibranch Pipeline type provides easy automated job creation per branch and continuous integration, all triggered by Jenkinsfiles residing in the branches. And the organization project type extends the multibranch functionality across all projects in an organization structure on GitHub or Bitbucket.
 
-# Chapter 2: The Foundations
+# Chapter 2:    The    Foundations      
 
 Four basic areas:
 * The two styles of syntax that can be used for creating pipelines
