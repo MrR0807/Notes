@@ -1,3 +1,24 @@
+# Table of Content
+
+- [Chapter 1. Introducing Continuous Delivery](#chapter-1-introducing-continuous-delivery)
+- [Understanding CD](#understanding-cd)
+- [The automated deployment pipeline](#the-automated-deployment-pipeline)
+  * [Continuous Integration (CI)](#continuous-integration-ci)
+    + [The testing matrix](#the-testing-matrix)
+- [Chapter 3. Configuring Jenkins](#chapter-3-configuring-jenkins)
+- [What is Jenkins?](#what-is-jenkins)
+- [Installing Jenkins](#installing-jenkins)
+  * [Initial configuration](#initial-configuration)
+  * [Jenkins Hello World](#jenkins-hello-world)
+- [Jenkins architecture](#jenkins-architecture)
+  * [Master and slaves](#master-and-slaves)
+  * [Scalability](#scalability)
+  * [Test and production instances](#test-and-production-instances)
+- [Configuring agents](#configuring-agents)
+  * [Communication protocols](#communication-protocols)
+  * [Setting agents](#setting-agents)
+    + [Configuring permanent agents](#configuring-permanent-agents)
+
 # Chapter 1. Introducing Continuous Delivery
 
 # Understanding CD
