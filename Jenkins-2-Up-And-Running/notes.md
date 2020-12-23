@@ -29,7 +29,7 @@
 - [Chapter 3. Pipeline Execution Flow](#chapter-3-pipeline-execution-flow)
   * [Triggering Jobs](#triggering-jobs)
 
-# Chapter 1: Introducing Jenkins 2
+# Chapter 1:  Introducing Jenkins 2
 
 ### Pipeline
 
