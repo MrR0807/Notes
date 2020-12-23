@@ -70,8 +70,6 @@
   * [Network firewalling](#network-firewalling)
   * [The bridge network](#the-bridge-network)
     + [Use the default bridge network](#use-the-default-bridge-network)
-- [ping -c 2 172.17.0.3](#ping-c-2-1721703)
-- [ping -c 2 alpine2](#ping-c-2-alpine2)
     + [Use user-defined bridge networks](#use-userdefined-bridge-networks)
   * [The host network](#the-host-network)
   * [The null network](#the-null-network)
@@ -142,6 +140,9 @@
     + [Creating secrets with kubectl](#creating-secrets-with-kubectl)
     + [Using secrets in a pod](#using-secrets-in-a-pod)
     + [Secret values in environment variables](#secret-values-in-environment-variables)
+
+Process finished with exit code 0
+
 
 # What are containers?
 
