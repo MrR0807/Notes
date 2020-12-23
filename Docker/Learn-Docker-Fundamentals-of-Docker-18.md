@@ -141,9 +141,6 @@
     + [Using secrets in a pod](#using-secrets-in-a-pod)
     + [Secret values in environment variables](#secret-values-in-environment-variables)
 
-Process finished with exit code 0
-
-
 # What are containers?
 
 A first approach was to use virtual machines (VMs). Instead of running multiple applications all on the same server, companies would package and run a single application per VM. With it, the compatibility problems were gone and life seemed good again. Unfortunately, the happiness didn't last for long. VMs are pretty heavy beasts on their own since they all contain a full-blown OS such as Linux or Windows Server and all that for just a single application. This is as if in the  transportation industry you would use a gigantic ship just to transport a truck load of bananas.
