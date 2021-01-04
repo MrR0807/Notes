@@ -274,6 +274,46 @@ Jenkins will attempt to run the edited code in the Replay window. In this case i
 
 ## Triggering Jobs
 
+To specify triggering events for pipeline code, there are three different approaches:
+* If working in the Jenkins application itself in a pipeline job, the trigger(s) can be specified in the traditional way within the project’s General configuration section in the web interface.
+* If creating a Scripted Pipeline, a ``properties`` block can be specified (usually before the start of the pipeline) that defines the triggers in code. (Note that this properties section will be merged with any properties defined in the web interface, with the web properties taking precedence).
+* If creating a Declarative Pipeline, there is a special ``triggers`` directive that can be used to define the types of things that should trigger the pipeline.
+
+## Build After Other Projects Are Built
+
+As the name implies, selecting this option allows you to start your project building after one or more other projects. You can choose the ending status you want the builds of the other projects to have (stable, unstable, or failed). For a Scripted Pipeline, the syntax for building your pipeline after another job, Job1, is successful would be like the following:
+```
+properties([
+  pipelineTriggers([
+    upstream(
+      threshold: hudson.model.Result.SUCCESS,
+      upstreamProjects: 'Job1'
+    )
+  ])
+])
+```
+
+If you need to specify a branch for a job (as for a multibranch job), add a slash after the job name and then the branch name (as in ``'Job1/master'``).
+
+## Build Periodically
+
+This option provides a cron type of functionality to start jobs at certain time intervals. While this is an option for builds, **this is not optimal for continuous integration**, where the builds are based on detecting updates in source management.
+
+Here’s an example of the syntax in a Scripted Pipeline. In this case, the job runs at 9 a.m., Monday–Friday:
+```
+properties([pipelineTriggers([cron('0 9 * * 1-5')])])
+```
+
+And here’s an example of the syntax in a Declarative Pipeline:
+```
+triggers { cron(0 9 * * 1-5)
+```
+
+## GitHub Hook Trigger for GitSCM Polling
+
+
+
+
 
 
 
