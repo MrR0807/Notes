@@ -311,6 +311,13 @@ triggers { cron(0 9 * * 1-5)
 
 ## GitHub Hook Trigger for GitSCM Polling
 
+A GitHub project configured as the source location in a Jenkins project can have a push hook (on the GitHub side) to trigger a build for the Jenkins project. When this is in place, a push to the repository causes the hook to fire and trigger Jenkins, which then invokes the Jenkins SCM polling functionality.
+
+```
+properties([pipelineTriggers([githubPush()])])
+```
+
+## Poll SCM
 
 
 
