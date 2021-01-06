@@ -319,50 +319,389 @@ properties([pipelineTriggers([githubPush()])])
 
 ## Poll SCM
 
+This is the standard polling functionality that periodically scans the source control system for updates. If any updates are found, then the job processes the changes. **This can be a very expensive operation.** The syntax for Scripted Pipelines is as follows (polling every 30 minutes):
+```
+properties([pipelineTriggers([pollSCM('*/30 * * * *')])])
+```
+The corresponding syntax for Declarative Pipelines would be this:
+```
+triggers { pollSCM(*/30 * * * *) }
+```
+
+## Quiet Period
+
+The value specified here serves as a “wait time” or offset between when the build is triggered (an update is detected) and when Jenkins acts on it. This can be useful for staggering jobs that frequently have changes at the same time.
+
+## Trigger Builds Remotely
+
+This allows for triggering builds by accessing a specific URL for the given job on the Jenkins system. This is useful for triggering builds via a hook or a script. An authorization token is required. 
+
+## User Input
+
+A key aspect of some Jenkins jobs is the ability to change their behavior based on user input. Jenkins offers a wide variety of parameters for gathering specific kinds of input. Jenkins pipelines provide constructs for this as well.
+
+The DSL step ``input`` is the way we get user input through a pipeline. The step accepts the same kinds of parameters as a regular Jenkins job for a Scripted Pipeline. For a Declarative Pipeline, there is a special ``parameters`` directive that supports a subset of those parameters.
+
+### input
+
+As the name suggests, the input step allows your pipeline to stop and wait for a user response. Here’s a simple example:
+```
+input 'Continue to next stage?'
+```
+
+This step can also optionally take parameters to gather additional information. Within the Jenkins application, the default form is to print a message and offer the user a choice of "Proceed" or "Abort".
+
+![jenkins-input-dialog-box.PNG](pictures/jenkins-input-dialog-box.PNG)
+
+**!NOTE.** As defined earlier in the book, an executor is a slot on a node for processing code. Using the input step in a node block ties up the executor for the node until the input step is done.
+
+The input step can have several parameters. These include:
+* *Message* (message) - The message to be displayed to the user, as demonstrated in the previous example. Can also be empty, as indicated by input ''.
+* *Custom ID* (id) - An ID that can be used to identify your input step to automated or external processing, such as when you want to respond via a REST API call. A unique identifier will be generated if you don’t supply one. As an example, you could add the custom ID, ctns-prompt (for "Continue to next stage" prompt) to our input step definition. The input step would then look as follows:
+```
+input id: 'ctns-prompt', message: 'Continue to the next stage?'
+```
+Given this step, when you run the job, a POST to this URL could be used to respond. The URL format would be: ``http://[jenkins-base-url]/job/[job_name]/[build_id]/input/Ctns-prompt/proceedEmpty``  to tell Jenkins to proceed without any input, or: ``http://[jenkins-base-url]/job/[job_name]/[build_id]/input/Ctns-prompt/abort`` to tell Jenkins to abort. (Notice that the parameter name is capitalized in the URL.)
+
+* *OK button caption* (ok) - A different label you can use instead of “Proceed.” For example: 
+```
+input message: '<message text>', ok: 'Yes'
+```
+
+### Parameters
+
+With the ``input`` statement, you have the option to add any of the standard Jenkins parameter types. For each parameter type, the different “subparameters” (arguments) that it can take are also listed. If the purpose of the subparameter is self-evident from its name (e.g., name, default value, description), the argument name will be listed without additional explanation.
+
+#### Boolean
+
+This is the basic true/false parameter. The subparameters for a Boolean are Name, Default Value, and Description.
+An example of the syntax would be:
+```
+def answer = input message: '<message>',
+parameters: [booleanParam(defaultValue: true,
+description: 'Prerelease setting', name: 'prerelease')]
+```
+
+![boolean-parameter.PNG](pictures/boolean-parameter.PNG)
 
 
+#### Choice
 
+This parameter allows the user to select from a list of choices. The subparameters for a Choice are Name, Choices, and Description. Here, Choices refers to a list of choices you enter to present to the user. An example of the syntax would be:
 
+```
+def choice = input message: '<message>',
+parameters: [choice(choices: "choice1\nchoice2\nchoice3\nchoice4\n",
+description: 'Choose an option', name: 'Options')]
+```
 
+Notice the syntax here for the list of choices—a single string with each choice separated by a newline character. There are other ways to instantiate a set of choices, but this is the simplest.
 
+#### Credentials
 
+This parameter allows the user to select a type and set of credentials to use. The available subparameters include Name, Credential Type, Required, Default Value, and Description.
 
+The options for Credential Type include Any, Username with password, Docker Host Certificate Authentication, SSH Username with private key, Secret file, Secret text, and Certificate.
 
+#### File
 
+This parameter allows for choosing a file to use with the pipeline. The subparameters include File Location and Description. The syntax is:
+```
+def selectedFile = input message: '<message>',
+parameters: [file(description: 'Choose file to upload', name: 'local')]
+```
 
+#### List Subversion tags
 
+More in the book.
 
+#### Multiline String
 
+More in the book.
 
+#### Password
 
+This parameter allows the user to enter a password. For passwords, the text the user enters is hidden while they type it. The available subparameters are Name, Default Value, and Description. Here’s an example:
+```
+def pw = input message: '<message>',
+parameters: [password(defaultValue: '',
+description: 'Enter your password.', name: 'passwd')]
+```
+When run, the user is presented with a field to enter the password, with the text being hidden as they type.
 
+#### Run
 
+More in the book.
 
+#### String
 
+More in the book
 
+## Return Values from Multiple Input Parameters
 
+If there were instead no parameters, such as having only a Proceed or Abort option, then the return value would be null. And when you have multiple parameters, a map
+is returned where you can extract each parameter’s return value via the parameter’s name. An example follows.
 
+Suppose we wanted to add a traditional login screen to our pipeline. We would use two parameters—one String parameter for the login name and one Password parameter for the password. We can do that in the same input statement and then extract the return values for each from the returned map.
 
+The following example code shows how to define the input statement along with some print statements that show different ways to access the individual return values (don’t forget that you can use the Snippet Generator for generating the input statement as well):
 
+```
+def loginInfo = input message: 'Login', parameters: [string(defaultValue: '', description: 'Enter Userid:', name: 'userid'), password(defaultValue: '', description: 'Enter Password:', name: 'passwd')]
+echo "Username = " + loginInfo['userid']
+echo "Password = ${loginInfo['passwd']}"
+echo loginInfo.userid + " " + loginInfo.passwd
+```
 
+## Parameters and Declarative Pipelines
 
+### Using the parameters section
 
+Within the Declarative Pipeline structure, there is a section/directive for declaring parameters. This is within the agent block of the main pipeline closure. Use of the parameters directive is covered in detail with Declarative Pipelines in Chapter 7, but here’s a simple example of the syntax (see “parameters” on page 234 for more details):
 
+```
+pipeline {
+    agent any
+    parameters {
+        string(name: 'USERID', defaultValue: '',
+        description: 'Enter your userid')
+    }
+    stages {
+        stage('Login') {
+            steps {
+                echo "Active user is now ${params.USERID}"
+            }
+        }
+    }
+}
+```
 
+If you are working in the Jenkins application itself, creating parameters like this in the code will also instantiate the “This build is parameterized” part of the job. **This approach is the recommended approach for Declarative Pipelines.**
 
+### Using the Jenkins application to parameterize the build
 
+If you have created a job in the Jenkins application (rather than using a Jenkinsfile automatically), a second approach for adding parameters is to simply use the traditional method for parameterizing a job. That is, in the General configuration section, select the checkbox for “This project is parameterized” and then define your parameters as normal in the job’s web interface (Figure 3-8).
 
+![Generating-parameters-in-jenkins-job.PNG](pictures/Generating-parameters-in-jenkins-job.PNG)
 
+You can then simply reference the job parameters via params.<name of parameter> without having the input line in the code, as shown here:
 
+```
+pipeline {
+    agent any
+    stages {
+        stage('Login') {
+            steps {
+                echo "Active user is now ${params.USERID}"
+            }
+        }
+    }
+}   
+```
 
+### Using a script block
 
+While Declarative Pipelines are continuing to evolve and add more functionality, there may still be instances where you need to do something in one that the declarative style doesn’t support or renders very difficult to implement. For those cases, the declarative syntax supports a ``script`` block. 
 
+A script block allows you to use nondeclarative syntax within the bounds of the block. This includes defining variables, which is not something you can do in a Declarative Pipeline outside of a script block. This also means that you cannot reference variables that are defined inside a script block outside of that block. Jenkins flags those with a "no such property" error.
 
+```
+stage ('Input') {
+    steps {
+        script {
+            def resp = input message: '<message>',
+            parameters: [string(defaultValue: '',
+            description: 'Enter response 1',
+            name: 'RESPONSE1'), string(defaultValue: '',
+            description: 'Enter response 2', name: 'RESPONSE2')]
+            echo "${resp.RESPONSE1}"
+        }
+        echo "${resp.RESPONSE2}"
+    }
+}
+```
 
+Here we have two parameters defined as part of an input step inside of a stage in a Declarative Pipeline. Since the first echo is in the script block where the variable resp is also defined, it will print out the response that is entered for that parameter as expected.
 
+Notice, though, that the second echo is outside of the scope where the resp variable is defined. Groovy/Jenkins will throw an error when it gets to this one.
 
+Because of this, it is advisable to try to limit accessing input to a small section of your code if you have to use a script block. However, there is one other workaround if you need to use the value outside the scope of the script block. **You can put the return value into an environment variable and then access the environment variable wherever you need the value.**
 
+```
+stage ('Input') {
+    steps {
+        script {
+            env.RESP1 = input message: '<message>', parameters: [
+                string(defaultValue: '', description: 'Enter response 1',
+                name: 'RESPONSE1')]
+            env.RESP2 = input message: '<message>', parameters: [
+                string(defaultValue: '', description: 'Enter response 2',
+                name: 'RESPONSE2')]
+            echo "${env.RESP1}"
+        }
+        echo "${env.RESP2}"
+    }
+}
+```
 
+We are putting the results of the input steps into the environment variable namespace (env). **Because these are environment variables, the values are set in the environment and therefore available for the pipeline to use wherever it needs.** 
+
+### Using external code
+
+One other option available to you is putting scripted statements (like the calls to input) in an external shared library or an external Groovy file that you load and execute. For example, we could code our input processing in a file named ``vars/getUser.groovy`` in a shared library structure, like this:
+
+```
+#!/usr/bin/env groovy
+def call(String prompt1 = 'Please enter your data', String prompt2 = 'Please enter your data') {
+    def resp = input message: '<message>', parameters: [string(defaultValue: '', description: prompt1, name: 'RESPONSE1'), string(defaultValue: '', description: prompt2, name: 'RESPONSE2')]
+    echo "${resp.RESPONSE1}"
+    echo "${resp.RESPONSE2}"
+    // do something with the input
+}
+```
+
+If our library were named ``Utilities``, then we could import it and call the ``getUser`` function as shown here:
+
+```
+@Library('Utilities')_
+pipeline {
+    agent any
+    stages {
+        stage ('Input') {
+            steps {
+                getUser 'Enter response 1','Enter response 2'
+            }
+        }
+    }
+}
+```
+
+One of the challenges with using an input statement is what happens if you don’t get input in an expected amount of time. While waiting for input, the node is effectively stopped, waiting on a response. To prevent this from going on too long, **you should consider wrapping the input call with another type of flow control construct: the ``time out`` statement.**
+
+## Flow Control Options
+
+One of the benefits of writing your pipeline-as-code in Jenkins is that you have more options for controlling the flow through the pipeline. 
+
+### timeout
+
+The timeout step allows you to limit the amount of time your script spends waiting for an action to happen. The syntax is fairly simple. Here’s an example:
+```
+timeout(time:60, unit: 'SECONDS') {
+    // processing to be timed out inside this block
+}
+```
+
+A best practice is to wrap any step that can pause the pipeline (such as an input step) with a timeout. This is so that your pipeline continues to execute (if desired) even if something goes wrong and the expected input doesn’t occur within the time limit. Here’s an example:
+```
+node {
+    def response
+    stage('input') {
+        timeout(time:10, unit:'SECONDS') {
+            response = input message: 'User', parameters: [string(defaultValue: 'user1', description: 'Enter Userid:', name: 'userid')]
+        }
+        echo "Username = " + response
+    }
+}
+```
+
+### retry
+
+The retry closure wraps code in a step that retries the process n times if an exception occurs in the code. n here refers to a value you pass in to the retry step. The syntax is just:
+
+```
+retry(<n>) { // processing }
+```
+
+If the retry limit is reached and an exception occurs, then the processing is aborted (unless that exception is handled, such as with a try-catch block).
+
+### sleep
+
+This is the basic delay step. It accepts a value and delays that amount of time before continuing processing. The default time unit is seconds, so sleep 5 waits for 5 seconds before continuing processing. If you want to specify a different unit, you just add the unit name parameter, as in:
+```
+sleep time: 5, unit: 'MINUTES'
+```
+
+### waitUntil
+
+More in the book.
+
+## Dealing with Concurrency
+
+For the most part, having concurrency in your pipeline builds is a good thing. Typically, concurrency refers to parallelism—being able to run similar parts of your jobs concurrently on different nodes. This can be especially useful in cases such as running tests, as long as you limit duplicate access to resources appropriately.
+
+### Locking Resources with the lock Step
+
+If you have the **Lockable Resources plugin** installed, there is a DSL ``lock`` step available to restrict multiple builds from trying to use the same resource at the same time.
+
+"Resource" here is a loose word. It could mean a node, an agent, a set of them, or just a name to use for the locking.
+
+The DSL lock step is a blocking step. It locks the specified resource until the steps within its closure are completed. In its simplest case, you just supply the resource name as the default argument. For example:
+```
+lock('worker_node1') {
+    // steps to do on worker_node1
+}
+```
+
+Alternatively, you can supply a label name to select a set of resources that have a certain label and a quantity to specify the number of resources that match that label to lock (reserve):
+```
+lock(label: 'docker-node', quantity: 3) {
+// steps
+}
+```
+
+You can think of this as, "How many of this resource do I have to have available to proceed?" If you specify a label but no quantity, then all resources with that label are locked.
+Finally, there is an ``inversePrecedence`` optional parameter. If this parameter is set to true, then the most recent build will get the resource when it becomes available. Otherwise, builds are awarded the resource in the same order that they requested it.
+
+As a quick example, consider a Declarative Pipeline where we want to use a certain agent to do the build on, no matter how many instances of the pipeline we are running. (Perhaps it is the only agent with the specific tools or setup we want at the moment.) Our code might look like this with the lock step:
+
+```
+stage('Build') {
+    // Run the gradle build
+    steps {
+        lock('worker_node1') {
+            sh 'gradle clean build -x test'
+        }
+    }
+}
+```
+
+If we start multiple builds running of the same project or if we have multiple projects with this same lock code for the resource, then one build/project will get the resource first and other builds/projects will have to wait. For the first build or project that gets the resource, the console log might show something like this:
+
+```
+[Pipeline] stage
+[Pipeline] { (Build)
+[Pipeline] lock
+00:00:02.858 Trying to acquire lock on [worker_node1]
+00:00:02.864 Resource [worker_node1] did not exist. Created.
+00:00:02.864 Lock acquired on [worker_node1]
+[Pipeline] {
+[Pipeline] tool
+[Pipeline] sh
+00:00:02.925 [gradle-demo-simple-pipe] Running shell script
+00:00:03.213 + /usr/share/gradle/bin/gradle clean build -x test
+00:00:06.671 Starting a Gradle Daemon
+...
+00:00:16.887
+00:00:16.887 BUILD SUCCESSFUL
+00:00:16.887
+00:00:16.887 Total time: 13.16 secs
+[Pipeline] }
+00:00:17.187 Lock released on resource [worker_node1]
+[Pipeline] // lock
+```
+
+And for the other builds/jobs trying to acquire the same lock, console output might look like this:
+
+```
+[Pipeline] // stage
+[Pipeline] stage
+[Pipeline] { (Build)
+[Pipeline] lock
+00:00:03.262 Trying to acquire lock on [worker_node1]
+00:00:03.262 Found 0 available resource(s). Waiting for correct
+amount: 1.
+00:00:03.262 [worker_node1] is locked, waiting...
+```
 
 
 
