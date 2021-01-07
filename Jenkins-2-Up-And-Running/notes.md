@@ -875,6 +875,55 @@ The advantages are the simpler syntax and the build result automatically being m
 
 ### Declarative Pipelines and Post-Processing
 
+Declarative Pipelines have a dedicated section for post-build processing. Not surprisingly, the section is called ``post``. A ``post`` section can be at the end of a stage or at the end of a pipeline — or both. The declarative syntax provides several predefined “build conditions” that can be checked and, if true, then initiate further action: 
+* ``always`` -  Always executes the steps in the block
+* ``changed`` - Executes the steps in the block if the current build’s status is different from the previous build’s status
+* ``success`` - Executes the steps in the block if the current build was successful
+* ``failure`` - Executes the steps in the block if the current build failed
+* ``unstable`` - Executes the steps in the block if the current build’s status is unstable
+
+So, for example, we can declare that if the failure condition is true, we want to send an email about the failure. The syntax here is fairly simple. Here’s an outline for a simple post structure at the end of a build:
+```
+        }
+    } // end stages
+    post {
+        always {
+            echo "Build stage complete"
+        }
+        failure {
+            echo "Build failed"
+            mail body: 'build failed', subject: 'Build failed!', to: 'devops@company.com'
+        }
+        success {
+            echo "Build succeeded"
+            mail body: 'build succeeded', subject: 'Build Succeeded', to: 'devops@company.com'
+        }
+    }
+} // end pipeline
+```
+
+Notice that the post section for the entire build comes after all of the stages in the pipeline.
+
+# Chapter 4. Notifications and Reports
+
+One of the core uses of Jenkins is implementing automation. In addition to repeatable processing that is triggered by some event, we also rely on being automatically notified when processes have completed, and of their overall status. Additionally, many plugins and steps produce useful reports as part of their processing.
+
+## Notifications
+
+For most cases, this will happen in the “post-processing” parts of a pipeline.
+
+## Email
+
+### Jenkins Location
+
+
+
+
+
+
+
+
+
 
 
 
