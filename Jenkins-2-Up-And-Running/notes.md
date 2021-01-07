@@ -705,6 +705,203 @@ amount: 1.
 
 ### Controlling Concurrent Builds with Milestones
 
+One of the scenarios that you might have to deal with at some point in Jenkins is builds of the same pipeline running concurrently that can have contention for resources. The runs could be reaching key points at different times and stepping on each other, or one run could be modifying required resources that leave things in a bad state when the other run makes it to that point. In short, there’s no guarantee that after one run has modified a resource, another run won’t come along and modify it while the earlier run is still in progress.
+
+To prevent the case where builds could run out of order (in terms of the order they were started) and step on each other, Jenkins pipelines can use the ``milestone`` step. When a milestone step is put in the pipeline, it prevents an older build from moving past the ``milestone``, if the newer build has already gotten there.
+
+The following example shows a milestone step placed in a script after a Gradle build:
+
+```
+  sh "'${gradleLoc}/bin/gradle' clean build"
+}
+milestone label: 'After build', ordinal: 1
+stage("NotifyOnFailure") {
+```
+
+Suppose we have two runs of this build happening concurrently. If build #11 gets to the milestone step first during its processing, then when build #10 arrives, it will be canceled. This prevents build #10 from overwriting or modifying any resources already in use or modified by build #11.
+
+The rules for milestone processing can be summed up as:
+* Builds pass the milestones in order by build number.
+* Older builds abort if a newer build has already passed the milestone.
+* When a build passes a milestone, Jenkins aborts older builds that have passed the previous milestone, but not this milestone.
+* If an older build passes a milestone, newer builds that haven’t passed the milestone won’t abort it.
+
+### Restricting Concurrency in Multibranch Pipelines
+
+The pipeline DSL includes a way to restrict Multibranch Pipelines to only building one branch at a time. When this is in place (in the Jenkinsfiles of the branches), requested builds for branches other than the one currently building will be queued.
+
+In a scripted syntax, the property can be set this way:
+```
+properties([disableConcurrentBuilds()])
+```
+In declarative syntax, it would look like this:
+```
+options {
+  disableConcurrentBuilds()
+}
+```
+
+### Running Tasks in Parallel
+
+More in the book.
+
+#### stash and unstash
+
+More in the book.
+
+### Alternative parallel syntax for Declarative Pipelines
+
+More in the book.
+
+#### parallel and failFast
+
+More in the book.
+
+## Conditional Execution
+
+Jenkins pipelines can provide similar functionality. In the case of a Scripted Pipeline, it’s as simple as using the Groovy/Java language conditionals in your pipeline code.
+
+```
+node ('worker_node1') {
+    def responses = null
+        stage('selection') {
+            responses = input message: 'Enter branch and select build type', parameters:[string(defaultValue: '', description: '', name: 'BRANCH_NAME'), choice(choices: 'DEBUG\nRELEASE\nTEST', description: '', name: 'BUILD_TYPE')]
+        }
+        stage('process') {
+        if ((responses.BRANCH_NAME == 'master') && (responses.BUILD_TYPE == 'RELEASE')) {
+            echo "Kicking off production build\n"
+        }
+    }
+}
+```
+
+Declarative Pipelines in Jenkins provide their own implementation for executing code based on conditionals. In general, it takes the form of a ``when`` that tests one or more ``expression`` blocks to see whether they are true. If so, then the remaining code in a stage is executed. If not, then the code is not executed.
+```
+pipeline {
+    agent any
+    parameters {
+        string(defaultValue: '', description: '', name : 'BRANCH_NAME')
+        choice ( choices: 'DEBUG\nRELEASE\nTEST', description: '', name : 'BUILD_TYPE')
+    }
+    stages {
+        stage('process') {
+            when {
+                allOf {
+                    expression {params.BRANCH_NAME == "master"}
+                    expression {params.BUILD_TYPE == 'RELEASE'}
+                }
+            }
+            steps {
+                echo "Kicking off production build\n"
+            }
+        }
+    }
+}
+```
+
+Notice the use of the parameters section to formally define the parameters in use in the Declarative Pipeline. Also, you can see how the when and allOf blocks combine like the if-&& construct in the Scripted Pipeline.
+
+## Post-Processing
+
+Post-build actions where users can add actions that always occur after a build is finished, regardless of whether it completed successfully, failed, or was aborted.
+
+### Scripted Pipelines Post-Processing
+
+Scripted Pipelines do not have built-in support for post-build processing. Use ``try-catch-finally`` mechanism.
+
+However, the Jenkins DSL includes another step that acts as a shortcut for the ``try-catch-finally`` functionality: ``catchError``.
+
+#### try-catch-finally
+
+What we want to have is a way to always do certain actions regardless of the final state of the build. We can accomplish that by catching any exceptions with a ``try-catch`` and using the finally clause to then do our processing based on the build’s state.
+
+```
+def err = null
+try {
+    // pipeline code
+    node ('node-name') {
+        stage ('first stage') {
+        ...
+        } // end of last stage
+    }
+}
+catch (err) {
+    currentBuild.result = "FAILURE"
+}
+finally {
+    (currentBuild.result != "ABORTED"){
+        // Send email notifications for builds that failed
+        // or are unstable
+    }
+}
+```
+
+The try-catch could also be within the node block if we preferred. That would, however, not catch issues thrown while trying to get the node, which might also not be able to send the notification. Finally, if we wanted to propagate the error, we could throw it again in our finally block.
+
+#### catchError
+
+The Jenkins pipeline syntax also provides a more advanced way of handling exceptions. The ``catchError`` block provides a way to detect the exception and change the overall build status, but still continue the processing.
+
+With the ``catchError`` construct, if an exception is thrown by a block of code, the build is marked as a failure. But the code in the pipeline continues to be executed from the statement following the catchError block.
+
+An example of using this is shown here:
+```
+node ('node-name') {
+    catchError {
+        stage ('first stage') {
+            ...
+        } // end of last stage
+    }
+    // step to send email notifications
+}
+```
+
+This is essentially equivalent to the following code:
+```
+node ('node-name') {
+    try {
+        stage ('first stage') {
+            ...
+        } // end of last stage
+    } catch (err) {
+        echo "Caught: ${err}"
+        currentBuild.result = 'FAILURE'
+    }
+    // step to send email notifications
+}
+```
+
+The advantages are the simpler syntax and the build result automatically being marked as failed if an exception occurs.
+
+### Declarative Pipelines and Post-Processing
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
