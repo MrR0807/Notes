@@ -1020,9 +1020,50 @@ Those with **dotted lines around them are optional in that part of the structure
 
 ![Overview-of-declerative-pipeline-structure.PNG](pictures/Overview-of-declerative-pipeline-structure.PNG)
 
+### pipeline
 
+The ``pipeline`` block is required in a Jenkins Declarative Pipeline. It is the outermost section and signals that this is a Pipeline project.
+```
+pipeline {
+  // pipeline code
+}
+```
 
+### agent
 
+The ``agent`` directive specifies where the entire pipeline or a specific stage runs. This is similar to how the node directive is used in Scripted Pipelines. In fact, you can reasonably think of an agent as a node, except that the master node is not an agent.
+
+**An ``agent`` directive near the top of the pipeline block is required as a "default" place for execution.** However, individual agent directives can optionally be specified at the beginning of individual stages to indicate where the code in those stages should be run.
+
+What the agent directive actually does is indicate which (if any) nodes to use in the execution of the pipeline or stage. It does this by mapping the argument supplied to it to the label(s) specified for the nodes in your Jenkins system.
+
+The possible options are summarized in the following sections:
+* ``agent any`` - This syntax tells Jenkins that the pipeline or stage can run on any agent that is defined, without regard to what label it has.
+* ``agent none`` - When used at the top level, this indicates that we are not specifying an agent globally for the pipeline. The implication is that an agent will be specified, if needed, for individual stages.
+* ``agent { label "<label>"}`` - This indicates that the pipeline or stage can run on any agent that has the label <label>.
+    
+#### Labels and custom workspaces
+
+A recent addition to the label syntax for agents allows us to specify a custom workspace for a pipeline or stage. Given an agent definition, we can include the custom Workspace directive to specify where the workspace that the agent uses should live. The syntax looks like this:
+```
+agent {
+  label {
+    label "<labelname>"
+    customWorkspace "<desired directory>"
+  }
+}
+```
+
+#### Agents and Docker
+
+The final agent options we’ll look at are Docker containers. There are two shorthand ways to get a Docker image — specifying an existing image or creating an image from a Dockerfile — in the ``agent`` declaration. Alternatively, the longer version of the declaration can be used to specify additional elements, such as a node to use for the container, and arguments for the container.
+
+First, we’ll look at the formats for using an existing Docker image:
+* ``agent { docker '<image>' }`` - This short syntax tells Jenkins to pull the given image from Docker Hub and run the pipeline or stage in a container based on the image, on a dynamically provisioned node.
+* ``agent { docker { <elements> } }`` - This long syntax allows for defining more specifics about the Docker agent. There are three additional elements that you can add in the declaration (within the { } block):
+  * ``image '<image>'`` - Like the short form, this tells Jenkins to pull the given image and use it to run the pipeline code.
+  * ``label '<label>'`` -  If this element is present in the declaration, it tells Jenkins to instantiate the container and "host" it on a node matching <label>. 
+  * ``args '<string>'`` - If this element is present in the declaration, it tells Jenkins to pass these arguments to the Docker container; the syntax here should be the same as you would normally pass to a Docker container.
 
 
 
