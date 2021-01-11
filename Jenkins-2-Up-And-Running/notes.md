@@ -1122,9 +1122,75 @@ environment {
 }
 ```
 
+Environment variable definitions can also incorporate variables that are already defined. The syntax for this is just to include the existing variable in the definition string in ${<variable>}:
+
+```
+environment {
+  TIMEZONE = "eastern"
+  TIMEZONE_DS = "${TIMEZONE}_daylight_savings"
+}
+```
+
+#### Credentials and environment variables
+
+In the environment block, you can assign a global variable to a particular credentials ID. Then you can use that variable throughout your pipeline in place of the ID. This can simplify things if you need to specify the ID in multiple places. The syntax is to assign the variable name to the string credentials('<credentials-id>'). For example:
+
+```
+environment {
+  ADMIN_USER = credentials('admin-user')
+}
+```
+
+### tools
+
+Jenkins users are familiar with using the Global Tool Configuration screen to configure versions, paths, and installers for tools. Once configured there, the tools directive allows us to specify which of these we want to have autoinstalled and made available in the path on the agent we’ve chosen.
+
+For example, suppose we had the configuration shown in Figure 7-4.
+
+![Global-gradle-tool.PNG](pictures/Global-gradle-tool.PNG)
+
+Then, in our tools block, we could refer to Gradle via:
+```
+tools {
+  gradle "gradle3.2"
+}
+```
+
+The lefthand part of this declaration is a specific string defined in the pipeline model. As of this writing, the valid tool types you can specify in declarative syntax are:
+* ant
+* git
+* gradle
+* jdk
+* jgit
+* jgitapache (JGit with Apache HTTP client)
+* maven
+
+Attempts to use other types that are not yet valid will result in an "Invalid tool type" error when running your pipeline.
+
+Once this is set up, the tool is autoinstalled and put on the path. We can then simply use the string gradle in place of the GRADLE_HOME path in our pipeline steps and Jenkins will map it back to this Gradle installation on our system. For example:
+```
+steps {
+  sh 'gradle clean compile'
+}
+```
+
+Also, it’s worth noting that the tools directive can use the value of a parameter if you need to input a particular version to use. Here’s an example:
+```
+pipeline {
+  agent any
+  parameters {
+    string(name: 'gradleTool', defaultValue: 'gradle3',
+    description: 'Gradle Version')
+  }
+  tools {
+    gradle "${params.gradleTool}"
+  }
+```
+
+Just keep in mind that there is currently a limitation with the declarative syntax such that Jenkins doesn’t recognize that a build requires a parameter the first time the pipeline is run.
 
 
-
+### options
 
 
 
