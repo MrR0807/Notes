@@ -1065,11 +1065,62 @@ First, we’ll look at the formats for using an existing Docker image:
   * ``label '<label>'`` -  If this element is present in the declaration, it tells Jenkins to instantiate the container and "host" it on a node matching <label>. 
   * ``args '<string>'`` - If this element is present in the declaration, it tells Jenkins to pass these arguments to the Docker container; the syntax here should be the same as you would normally pass to a Docker container.
 
+Here’s an example declaration using the long form:
+```
+agent {
+  docker {
+    image "image-name"
+    label "worker-node"
+    args "-v /dir:dir"
+  }
+}
+```
 
+The syntax for using a Dockerfile as the basis for the container is similar. Again, there are short and long forms:
+* ``agent { dockerfile true }`` - This short syntax is intended to be used when you have a source code repository, that you retrieve, that has a Dockerfile in its root (note that dockerfile here is a literal). In that case, this will tell Jenkins to build a Docker image using that Dockerfile, instantiate a container, and then run the pipeline (or the stage’s code if run in a stage) in that container.
+* ``agent { dockerfile { <elements> } }`` -  This long syntax allows for defining more specifics about the Docker agent you are trying to create from a Dockerfile. There are three additional elements that you can add in the declaration (within the { } block): 
+  * ``filename '<path to dockerfile>'`` -  This allows for specifying an alternate path to a Dockerfile, including a different name. Jenkins will try to build an image from the Dockerfile, instantiate a container, and use it to run the pipeline code.
+  * ``label '<label>'`` - If this element is present in the declaration, it tells Jenkins to instantiate the container and “host” it on a node matching <label>.
+  * ``args '<string>'`` - If this element is present in the agent Dockerfile declaration, it tells Jenkins to pass these arguments to the Docker container; the syntax here should be the same as you would normally pass to a Docker container.
+    
+An example of specifying a Docker agent via a Dockerfile using the long form is shown here:
+```
+agent {
+  dockerfile {
+    filename "<subdir/dockerfile name>"
+    label "<agent label>"
+    args "-v /dir:dir"
+  }
+}
+```
 
+##### Using the same node for Docker and non-Docker stages
+There is one other aspect associated with using Docker agents. Suppose you define a particular non-Docker agent at the top of your pipeline:
+```
+pipeline {
+  agent {label 'linux'}
+```
+Later, in a particular stage, you want to run the code in a Docker container - but you also want to use the same node and workspace that you defined for the pipeline. To enable this, the pipeline has a directive you can use with the Docker specification: ``reuseNode``. It would look something like the following in practice:
+```
+stage 'abc' {
+  agent {
+    docker {
+      image 'ubuntu:16.6'
+      reuseNode true
+```
 
+This tells Jenkins to reuse the same node and workspace that were defined for the original pipeline agent to “host” the resulting Docker container. Next, we’ll look at how to configure environment values for a pipeline.
 
+### environment
 
+This is an optional directive for your Declarative Pipeline. As the name implies, this directive allows you to specify names and values for environment variables that are then accessible within the scope of your pipeline. Like agent, you can have an instance of ``environment`` in the main pipeline definition and/or in individual stages.
+
+An environment definition in the top-level pipeline block will make the variable accessible to all steps in the pipeline. An environment definition within a stage will make the variable accessible to only the scope of the stage. Here is an example of defining an environment variable in this way:
+```
+environment {
+  TIMEZONE = "eastern"
+}
+```
 
 
 
