@@ -917,6 +917,108 @@ For most cases, this will happen in the “post-processing” parts of a pipelin
 ### Jenkins Location
 
 
+# Chapter 5. Access and Security
+
+# Chapter 6. Extending Your Pipeline
+
+# Chapter 7. Declarative Pipelines
+
+Declerative pipelines provide:
+* There is a well-defined, enforced structure. (You can think of this like the sections on the pages of a Jenkins web form.)
+* Defining a pipeline section is more about declaring the high-level steps/goals than defining the logic to accomplish it. (This is similar to filling in the fields in a Jenkins web form.)
+* Familiar Jenkins processing constructs are provided and don’t have to be emulated with programming. (For example, you have a way to do post-build processing and send notifications, as opposed to having to use try-catch-finally Groovy programming to handle this.)
+* All of the above enable better validation and error checking. (Errors are identified and presented in the context of the expected structure and keywords, not just Groovy tracebacks.)
+
+Declarative Pipelines are easiest for someone new to using the pipeline functionality. This is because they more closely resemble what was done and available in the web forms, and they have clearer, more contextual validation and error checking.
+
+Scripted Pipelines provide more flexibility and the ability to mix in programming constructs to execute logical flows, decision handling, assignments, etc. that are not available in Declarative Pipelines. For more experienced users or advanced applications, Scripted Pipelines can be the best option.
+
+## Motivation
+
+### Not Intuitive
+
+As we’ve discussed, moving from a web interface (with specific forms, help buttons, and UI elements that guide you in setting up jobs) to creating scripts, is not intuitive.
+
+### Getting Groovy
+
+While it’s not a requirement to be able to program in Groovy to create DSL scripts, sometimes it can feel that way to users. For missing functionality, Groovy constructs may be the only alternative. Verification such as syntax checking is done at the Groovy level. Also, errors are surfaced as Groovy errors (tracebacks) and not as DSL specific ones.
+
+### Additional Assembly Required
+
+Building on a point raised earlier, additional code can be required to get the familiar Jenkins constructs we had in the web forms version. For example, the simple task of sending email after a failed build has to be handled with something like a try-catchfinally construct, instead of the familiar built-in post-build functionality.
+
+## The Structure
+
+### Block
+
+A block here is really just any set of code that has a beginning and end. In Groovy, this translates to a closure (a section of code where the beginning and end are bracketed with { and }). It looks like this:
+```
+pipeline {
+  // code in declarative syntax
+}
+```
+
+### Section
+
+Sections in a Declarative Pipeline are a way to collect items that need to be executed at particular points during the overall flow of the pipeline. Currently, there are three areas we refer to as sections:
+* stages - This section wraps all of the individual stage definitions (directives) that define the main body and logic for the pipeline.
+* steps - This section wraps a set of DSL steps within a stage definition. It serves to separate the collection of steps from other items within a stage, such as environment definitions.
+* posts - This section wraps around steps and conditions to be done or checked at the end of a pipeline run or at the end of a stage.
+
+```
+pipeline {
+    agent any
+    stages {
+        stage('name1') {
+            steps {
+                ...
+            }
+            post {
+                ...
+            }
+        }
+        stage('name2') {
+            steps {
+                ...
+            }
+        }
+    }
+    post {
+        ...
+    }
+}
+```
+
+### Directives
+
+A directive can be thought of as a statement or block of code that does any of the following in a pipeline:
+* Defines values - An example of this is the agent directive, which allows us to specify a node or container to run an entire pipeline or a stage in. If we wanted to run our pipeline on a node named worker, we could use ``agent ('worker')``.
+* Configures behavior - An example of this is the triggers directive that lets us configure how often Jenkins checks for source updates or triggers our pipeline. If we wanted it to retrigger our pipeline at 7 a.m. every weekday, we could use triggers { cron ('0 7 0 0 1-5') }.
+* Specifies actions to be done - An example of this is the stage directive, which is expected to have a steps section containing DSL steps to be executed.
+
+### Steps
+
+The label ``steps`` itself is a section title with in a stage of the pipeline. However, within the ``steps`` section, we can have any valid DSL statement, such as git, sh, echo, etc. You can think of a step here as corresponding to one of these statements.
+
+### Conditionals
+
+Conditionals supply a condition or criteria under which an action should occur. These are optional. There are two cases you may encounter/use:
+* When: Strictly speaking, this is a directive. It resides within a stage definition and defines criteria for whether or not a stage should be executed. For example:
+```
+stage ('build') {
+  when {
+    branch 'foo'
+  }
+  <steps>
+}
+```
+* Conditions blocks in the post section that define the criteria for doing postprocessing. The criteria (conditions) here refer to the status of the build, such as success or failure.
+
+## The Building Blocks
+
+Those with **dotted lines around them are optional in that part of the structure**. Those with **solid lines are required in that part of the structure**. Note that there are some directives that can occur at both the pipeline and stage level. They may be required in one area and optional in another.
+
+![Overview-of-declerative-pipeline-structure.PNG](pictures/Overview-of-declerative-pipeline-structure.PNG)
 
 
 
