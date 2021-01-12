@@ -1192,9 +1192,69 @@ Just keep in mind that there is currently a limitation with the declarative synt
 
 ### options
 
+This directive can be used to specify properties and values for predefined options that should apply across the pipeline. These would be the type of things that we would set on the General tab of a project in the Jenkins web forms (other than parameters, which have their own section). You can think of it as a place to set Jenkins-defined job options.
 
+A simple example is the option to discard builds.
+```
+options {
+  buildDiscarder(logRotator(numToKeepStr:’3’))
+}
+```
+As well, there can be specific options for the declarative structure. Here’s an example of one:
+```
+options {
+  skipDefaultCheckout()
+}
+```
 
+#### Options summary
 
+The following list below enumerates the available options and, briefly, their meaning and usage:
+* ``buildDiscarder`` - Keep the console output and artifacts for the specified number of executions of the pipeline.
+* ``disableConcurrentBuilds`` - Prevent Jenkins from starting concurrent executions of the same pipeline. The use case could be for preventing simultaneous access to shared resources or preventing a faster concurrent execution from overtaking a slower one.
+```
+options { disableConcurrentBuilds() }
+```
+* ``retry`` - If the pipeline execution fails, retry the entire pipeline the specified number of times.
+```
+options { retry(2) }
+```
+* ``skipDefaultCheckout`` - this removes an implied checkout scm statement, thus skipping the automatic source code checkout from a pipeline defined in a Jenkinsfile.
+* ``skipStagesAfterUnstable`` - If a stage of the pipeline renders the pipeline unstable, don’t process the remaining stages.
+```
+options { skipStagesAfterUnstable()}
+```
+* ``timeout`` - Sets a timeout value for an execution of the pipeline. If this timeout value is passed, Jenkins will abort the pipeline.
+```
+options { timeout(time: 15, unit: 'MINUTES') }
+```
+* ``timestamps`` - Add timestamps to the console output. This option requires the Timestamper plugin. Note that this option applies globally to the whole pipeline execution.
+```
+options { timestamps() }
+```
+
+### triggers
+
+This directive allows you to specify what kinds of triggers should initiate builds in your pipeline. Note that these do not apply to Multibranch Pipeline or GitHub organization or Bitbucket team/project jobs that are marked by Jenkinsfiles and triggered otherwise — such as by a webhook that notifies Jenkins when a change is made.
+
+There are four different (SCM-neutral) triggers currently available: 
+* ``cron`` - Refers to executing the pipeline at a specified regular interval, and ``pollSCM`` is for checking for source code updates (polling the source control management system) at a specified regular interval. If a source change is detected, the pipeline will be executed.
+* ``upstream`` - Takes a comma-separated string of Jenkins jobs and a condition to check. When a job in the string finishes and the result matches the treshold, the current pipeline will be retriggered. For example:
+```
+triggers {
+  upstream(upstreamProjects: 'jobA,jobB', threshold: hudson.model.Result.SUCCESS)
+}
+```
+* ``githubPush`` - Refers to the same kind of behavior as the “GitHub hook trigger for GitSCM polling” setting in the Build Triggers section of a project in the Jenkins application. That is, if a webhook is set up on the GitHub side for events related to the GitHub repository, then when the payload is sent to Jenkins, it will trigger SCM polling for that repo from the Jenkins job to pick up any changes. The syntax should be simply:
+```
+triggers { githubPush() }
+```
+
+**Note.** There is ``bitbucketPush`` similar to ``githubPush``.
+
+### parameters
+
+This directive allows us to specify project parameters for a Declarative Pipeline. The input values for these parameters can come from a user or an API call. You can think of these parameters as being the same sort that you would specify in the web form with the “This build is parameterized” option.
 
 
 
