@@ -1256,9 +1256,170 @@ triggers { githubPush() }
 
 This directive allows us to specify project parameters for a Declarative Pipeline. The input values for these parameters can come from a user or an API call. You can think of these parameters as being the same sort that you would specify in the web form with the “This build is parameterized” option.
 
+The valid parameter types, with a description and example of each, are listed here:
+* ``booleanParam`` - This is the basic true/false parameter. The subparameters for a ``booleanParam`` are ``name``, ``defaultValue``, and ``description``.
+```
+parameters { booleanParam(defaultValue: false, description: 'test run?', name: 'testRun')}
+```
+* ``choice`` - This parameter allows selection from a list of choices. The subparameters for a choice are ``name``, ``choices``, and ``description``. Here, choices refers to a list of choices you enter, **separated by newlines**, to present to the user. The first one in the list will be the default.
+```
+parameters{ choice(choices: 'Windows-1\nLinux-2', description: 'Which platform?', name: 'platform')}
+```
+* ``file`` - This parameter allows for choosing a file to use with the pipeline. The subparameters include ``fileLocation`` and ``description``. The selected file location specifies where to put the file that is selected and uploaded. The location will be relative to the workspace.
+```
+parameters{ file(fileLocation: '', description: 'Select the file to upload')}
+```
+* ``text`` - This parameter allows the user to input multiple lines of text. The subparameters include ``name``, ``defaultValue``, and ``description``.
+```
+parameters{ text(defaultValue: 'No message', description: 'Enter your message', name: 'userMsg')
+```
+* ``password`` - This parameter allows the user to enter a password. For passwords, the text entered is hidden. The available subparameters are name, defaultValue, and description.
+```
+parameters{ password(defaultValue: "userpass1", description: 'User password?', name: 'userPW')}
+```
+* ``run`` - This parameter allows the user to select a particular run from a job. This might be used, for example, in a testing environment. The subparameters available include ``name``, ``project``, ``description``, and ``filter``.
+* ``string`` - This parameter allows for entering a string. (This is not hidden like a password parameter is.) The subparameters include ``description``, ``defaultValue``, and ``name``.
 
+#### Using parameters in a pipeline
 
+Once you define a parameter in the parameters block, you can reference it in your pipeline via the ``params`` namespace, as in ``params.<parameter_name>``. Here’s a simple example using a ``string`` parameter in a Declarative Pipeline:
+```
+pipeline {
+  agent any
+  parameters{
+    string(defaultValue: "maintainer", description: 'Enter user role:', name: 'userRole')
+  }
+  stages {
+    stage('listVals') {
+      steps {
+        echo "User's role = ${params.userRole}"
+      }
+    }
+  }
+}
+```
 
+### libraries
+
+One of the newer directives introduced in Jenkins for Declarative Pipelines is the ``libraries`` directive. This directive allows Declarative Pipelines to import shared libraries so that code contained in them can then be called and used.
+
+In addition to providing a way to share and include common code, **shared libraries can also be valuable for Declarative Pipeline use by encapsulating code that is not declarative, and couldn’t normally be directly used in a pipeline**.
+
+The syntax here is pretty straightforward, as shown in the following example. Note that the @ sign here provides a way of specifying (after it) which version of a shared library we want. In the first lib statement here, we are asking for the latest version from the master branch for this library:
+```
+pipeline {
+  agent any
+  libraries {
+    lib("mylib@master")
+    lib("alib")
+  }
+  stages {
+    ...
+```
+
+## stages
+
+Whether in a Scripted Pipeline or a Declarative Pipeline, Jenkins wants our code steps to be contained in one or more stages. In a Declarative Pipeline, the collection of individual stages is wrapped by the ``stages`` section. **``stages`` is a required section, and you must have at least one stage within it.** A section of a pipeline demonstrating this syntax is shown here:
+```
+pipeline {
+  agent any
+  stages {
+    stage('name1') {
+      steps {
+        ...
+      }
+```
+
+### stage
+
+Within the ``stages`` section are the individual ``stage``s. Each ``stage`` has at least a name and one or more DSL ``steps``. Within a ``stage``, you may also have local environment, tools, and agent directives. **If there are also corresponding global directives that define values with the same names, then the value defined in the directive in the stage will override the global one.**
+
+### steps
+
+The ``steps`` block is required and indicates the actual work that will happen in the stage. It has the form:
+```
+steps {
+  <individual steps - i.e., DSL statements>
+}
+```
+
+#### Conditional execution of a stage
+
+In any stage, you can have conditional execution. That is, you can have Jenkins decide whether or not to execute the steps in the stage based on one or more conditions evaluating to true.
+
+There are several different conditions that you can work with. The choices are:
+* ``branch "<name>"`` - Only proceed if the branch name is <name> or matches the (Ant-style) pattern.
+
+```
+stage('debug_build') {
+  when {
+    branch 'test'
+  }
+  ...
+}
+```
+
+* ``environment name: <name>, value: <value>`` - Only proceed if the specified environment variable <name> has the specified environment variable <value>.
+
+```
+stage('debug_build') {
+  when {
+    environment name: "BUILD_CONFIG", value: "DEBUG"
+  }
+  ...
+}
+```
+
+* ``expression <valid Groovy expression>`` - Only proceed if the specified Groovy expression evaluates to true (meaning not false and not null).
+
+```
+stage('debug_build') {
+  when {
+    expression {
+      echo "Checking for debug build parameter..."
+      expression { return params.DEBUG_BUILD }
+    }
+    ...
+}
+```
+
+#### Conditional execution with and, or, not.
+
+In addition to using these conditions one at a time only when they are true, we can also use logical operators to check multiple conditions, or the inverse of one. The keywords for the three logical operators are:
+* ``allOf`` - When used in a ``when`` statement for conditional stage execution, the ``allOf`` keyword functions like an “and.” In order for the stage to proceed with its processing, "all of" the conditions included must be true.
+```
+when {
+  allOf {
+    environment name: "BUILD_CONFIG", value: "DEBUG"
+    branch 'test'
+  }
+}
+```
+
+* ``anyOf`` - When used in a when statement for conditional stage execution, the anyOf keyword functions like an "or." In order for the stage to proceed with its processing, "any of" the conditions included must be true.
+
+```
+when {
+  anyOf {
+    environment name: "BUILD_CONFIG", value: "DEBUG"
+    branch 'test'
+  }
+}
+```
+
+* ``not`` - When used in a when statement for conditional stage execution, the not keyword functions just as the name implies. In order for the stage to proceed with its processing, the specified conditions must not be true.
+
+```
+when {
+  not {
+    branch 'prod'
+  }
+}
+```
+
+## post
+
+post is another section available for use in the pipeline or in a stage. It is optional in both places. If present, it gets executed at the end of a pipeline or stage if the conditions are met.
 
 
 
