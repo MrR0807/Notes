@@ -1421,44 +1421,142 @@ when {
 
 post is another section available for use in the pipeline or in a stage. It is optional in both places. If present, it gets executed at the end of a pipeline or stage if the conditions are met.
 
+The conditions in the post block are based on the build status. The syntax is as follows:
+```
+post {
+  <condition name> {
+    <valid DSL statements>
+  }
+  <condition name> {
+    <valid DSL statements
+  }
+...
+```
+The available conditions are:
+* ``always`` - Always execute the steps in the block.
+* ``changed`` - If the current build’s status is different from the previous build’s status, then execute the steps in the block.
+* ``success`` - If the current build was successful, then execute the steps in the block.
+* ``failure`` - If the current build failed, then execute the steps in the block.
+* ``unstable`` - If the current build’s status was unstable, then execute the steps in the block.
+
+Here’s an example of using these notifications in a stage:
+```
+stage('Build') {
+  steps {
+    gradle 'clean build'
+    ...
+  }
+  post {
+    always {
+      echo "Build stage complete"
+    }
+    failure{
+      echo "Build failed"
+      mail body: <some text>, subject: 'Build failed!',
+      to: 'devops@mycompany.com'
+    }
+    success {
+      echo "Build succeeded"
+      archiveArtifacts '**/*'
+    }
+  }
+}
+```
+
+## Dealing with Nondeclarative Code
+
+The Declarative Pipeline syntax is great for simplifying the way we define pipelines. However, if you need to do something that can’t be expressed declaratively, it can be challenging to figure out how to accomplish that within the declarative structure. Let’s take, for example, cases where you may need to do a simple assignment operation, or multiple ones. Here are some sample assignments needed to use Artifactory with Gradle in Scripted Pipeline code:
+```
+  def server = Artifactory.server 'my-server-id'
+  def rtGradle = Artifactory.newGradleBuild()
+  rtGradle.tool = 'gradle tool name'
+```
+
+Attempting to put these in a steps section in a stage and run them yields a failed build with error messages like these:
+```
+org.codehaus.groovy.control.MultipleCompilationErrorsException:
+startup failed:
+        WorkflowScript: 15: Expected a step @ line 15, column 16.
+        def server = Artifactory.server 'my-server-id'
+        ^
+        WorkflowScript: 17: Expected a step @ line 17, column 1.
+        def rtGradle = Artifactory.newGradleBuild()
+        ^
+        WorkflowScript: 19: Expected a step @ line 19, column 1.
+        rtGradle.tool = 'gradle3'
+        ^
+    3 errors
+```
+
+The problem here is that these assignment statements are trying to directly modify values via the DSL and are not declarative. While these statements are legal to use in Scripted Pipelines, they are not in Declarative Pipelines.
+
+## Solutions
+
+### Check Your Plugins
+
+If you are trying to port scripted code that works with a plugin, check to see if there is an updated version of the plugin that supports the declarative syntax.
+
+### Create a Shared Library
+
+Earlier in this chapter, we discussed the libraries directive for importing shared libraries into Declarative Pipelines. Rather than having to try to embed the code directly in the pipeline, you can put it in a shared library, then load the shared library and call the function declaratively through that.
+
+### Place Code Outside of the Pipeline Block
+
+Terrible option.
+
+### The script Statement
+
+The ``script`` DSL statement is a special statement intended just for use in Declarative Pipelines; it allows you to define a block/closure that can house any nondeclarative code.
+
+Turning back to our example assignment statements, wrapping them in a script statement would look like this:
+```
+stage('stage1') {
+    <declarative code>
+    script {
+        def server = Artifactory.server 'my-server-id'
+        def rtGradle = Artifactory.newGradleBuild()
+        rtGradle.tool = 'gradle tool name'
+    }
+    <declarative code>
+```
+
+## Using parallel in a Stage
+
+With regard to using ``parallel`` in Declarative Pipelines, **you can use it in a stage if it’s the only step in that stage.**
+
+```
+stage ('Unit Test') {
+    steps {
+        parallel(
+            set1 : {
+                ...
+
+stage('Unit Test') {
+    parallel{
+        stage ('set1') {
+            agent { label 'worker_node2' }
+            steps {
+```
+
+## Script Checking and Error Reporting
+
+As mentioned at the beginning of the chapter, one of the other nice features of Declarative Pipelines is that the formal structure allows for better script checking and more precise error reporting.
 
 
+# Chapter 8. Understanding Project Types
 
+# Chapter 9. The Blue Ocean Interface
 
+# Chapter 10. Conversions
 
+# Chapter 11. Integration with the OS (Shells, Workspaces, Environments, and Files)
 
+# Chapter 12. Integrating Analysis Tools
 
+# Chapter 13. Integrating Artifact Management
 
+# Chapter 14. Integrating Containers
 
+# Chapter 15. Other Interfaces
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+# Chapter 16. Troubleshooting
