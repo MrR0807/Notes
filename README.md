@@ -1,8 +1,7 @@
 Books to read:
 * Jenkins 2. Up and running
 * Spring Security in Action
-* Programming Interviews Exposed 4th edition
-* Cracking the Coding Interview 6th edition
+* Algorithhms 4th Edition by Robert Sedgewick, Kevin Wayne
 * Java Performance: In-Depth Advice for Tuning and Programming Java 8, 11, and Beyond 2nd Edition
 * OpenShift in Action
 * Terraform in Action
