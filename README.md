@@ -3,6 +3,8 @@ Books to read:
 * Spring Security in Action
 * Algorithhms 4th Edition by Robert Sedgewick, Kevin Wayne
 * Java Performance: In-Depth Advice for Tuning and Programming Java 8, 11, and Beyond 2nd Edition
+* Juint in Action. Thrid Edition
+* Kubernetes Native Microservices with Quarkus, and MicroProfile
 * OpenShift in Action
 * Terraform in Action
 * Vert.x in Action
