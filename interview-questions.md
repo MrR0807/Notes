@@ -26,6 +26,7 @@
 * If there are multiple relation databases mentioned - why?
 * Is project based on microservices?
 * How are you versioning microservices?
+* How much time do you dedicate to code maintenance/code refactoring?
 * Are you using CI/CD? What are you using for CI? What are you using for CD?
 * How long would it take for change of one line to end up in Production?
 * Define the whole CI/CD process. I've created a merge request. What's next?
