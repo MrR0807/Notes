@@ -9,6 +9,7 @@
 * How big is the company?
 * How big my team will be?
 * What's the composition of team?
+* Team's nationality?
 * Will I have a mentor?
 * Will I have to mentor someone?
 * Learning for engineers? Do you have a budget? Certificates?
