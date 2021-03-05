@@ -17,6 +17,7 @@
 * When do people come to the office? What are general working hours? When does standup start?
 * Is there traveling involved? How often? Traveling destinations?
 * How often is salary review?
+* Is Agile used? What framework - Scrum or Kanban?
 
 ## For technical interview
 
