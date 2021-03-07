@@ -87,8 +87,55 @@ ORDER BY n;
 
 ![producing-table-of-numbers-2.PNG](pictures/producing-table-of-numbers-2.PNG)
 
-
 ## Inner joins
+
+An inner join applies two logical query processing phases—it applies a Cartesian product between the two input tables like in a cross join, and then it filters rows based on a predicate you specify.
+
+### ISO/ANSI SQL-92 syntax
+
+Using the SQL-92 syntax, you specify the INNER JOIN keywords between the table names. **The INNER keyword is optional, because an inner join is the default.** So you can specify the JOIN keyword alone. **You specify the predicate that is used to filter rows in a designated clause called ON.** This predicate is also known as the join condition.
+
+```
+SELECT E.empid, E.firstname, E.lastname, O.orderid
+FROM HR.Employees AS E
+INNER JOIN Sales.Orders AS O
+ON E.empid = O.empid;
+```
+
+![inner-join.PNG](pictures/inner-join.PNG)
+
+Formal way to think of it is based on relational algebra. First, the join performs a Cartesian product between the two tables (9 employee rows × 830 order rows = 7,470 rows). Then, the join filters rows based on the predicate E.empid = O.empid, eventually returning 830 rows. As mentioned earlier, that’s just the logical way that the join is processed; in practice, physical processing of the query by the database engine can be different.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
