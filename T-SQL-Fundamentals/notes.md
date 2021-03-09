@@ -156,65 +156,138 @@ Next, filter the rows based on the predicate E1.empid < E2.empid, and you are le
 
 ### Multi-join queries
 
+A join table operator operates only on two tables, but a single query can have multiple joins. In general, when more than one table operator appears in the FROM clause, the table operators are logically processed from left to right. That is, the result table of the first table operator is treated as the left input to the second table operator; the result of the second table operator is treated as the left input to the third table operator; and so on. **So if there are multiple joins in the FROM clause, the first join operates on two base tables, but all other joins get the result of the preceding join as their left input.** With cross joins and inner joins, the database engine can (and often does) internally rearrange join ordering for optimization purposes because it won’t have an impact on the correctness of the result of the query.
 
+## Outer joins
 
+### Fundamentals of outer joins
 
+Outer joins were introduced in SQL-92 and, unlike inner joins and cross joins, have only one standard syntax—the one in which the JOIN keyword is specified between the table names and the join condition is specified in the ON clause. **Outer joins apply the two logical processing phases that inner joins apply (Cartesian Product and the ON filter), plus a third phase called Adding Outer Rows that is unique to this type of join.**
 
+In an outer join, you mark a table as a “preserved” table by using the keywords LEFT OUTER JOIN, RIGHT OUTER JOIN, or FULL OUTER JOIN between the table names. The OUTER keyword is optional. The **LEFT keyword means that the rows of the left table** (the one to the left of the JOIN keyword) **are preserved**; the **RIGHT keyword means that the rows in the right table are preserved; and the FULL keyword means that the rows in both the left and right tables are preserved.** The third logical query processing phase of an outer join identifies the rows from the preserved table that did not find matches in the other table based on the ON predicate. This phase adds those rows to the result table produced by the first two phases of the join, and it uses NULLs as placeholders for the attributes from the nonpreserved side of the join in those outer rows.
 
+A good way to understand outer joins is through an example. The following query joins the Customers and Orders tables, based on a match between the customer ’s customer ID and the order ’s customer ID, to return customers and their orders. The join type is a left outer join; therefore, the query also returns customers who did not place any orders:
+```
+SELECT C.custid, C.companyname, O.orderid
+FROM Sales.Customers AS C
+LEFT OUTER JOIN Sales.Orders AS O
+ON C.custid = O.custid;
+```
 
+This query returns the following output, shown here in abbreviated form:
 
+![outter-join.PNG](pictures/outter-join.PNG)
 
+Two customers in the Customers table did not place any orders. Their IDs are 22 and 57. Observe that in the output of the query, both customers are returned with NULLs in the attributes from the Orders table. Logically, the rows for these two customers were discarded by the second phase of the join (the filter based on the ON predicate), but the third phase added those as outer rows.
 
+A common question about outer joins that is the source of a lot of confusion is whether to specify a predicate in the ON or WHERE clause of a query. You can see that with respect to rows from the preserved side of an outer join, the **filter based on the ON predicate is not final.** In other words, the ON predicate does not determine whether a row will show up in the output, only whether it will be matched with rows from the other side. So when you need to express a predicate that is not final—meaning a predicate that determines which rows to match from the nonpreserved side — specify the predicate in the ON clause. **When you need a filter to be applied after outer rows are produced, and you want the filter to be final, specify the predicate in the WHERE clause.** **The WHERE clause is processed after the FROM clause — specifically, after all table operators have been processed and (in the case of outer joins) after all outer rows have been produced.** Also, the WHERE clause is final with respect to rows that it filters out, unlike the ON clause. To recap, in the ON clause you specify nonfinal, or matching, predicates. In the WHERE clause you specify final, or filtering, predicates.
 
+Suppose you need to return only customers who did not place any orders or, more technically speaking, you need to return only outer rows. You can use the previous query as your basis, adding a WHERE clause that filters only outer rows. Remember that outer rows are identified by the NULLs in the attributes from the nonpreserved side of the join. So you can filter only the rows in which one of the attributes on the nonpreserved side of the join is NULL, like this:
+```
+SELECT C.custid, C.companyname
+FROM Sales.Customers AS C
+LEFT OUTER JOIN Sales.Orders AS O
+ON C.custid = O.custid
+WHERE O.orderid IS NULL;
+```
 
+### Beyond the fundamentals of outer joins
 
+#### Including missing values
 
+You can use outer joins to identify and include missing values when querying data. For example, suppose you need to query all orders from the Orders table in the TSQLV4 database. You need to ensure that you get at least one row in the output for each date in the range January 1, 2014 through December 31, 2016. You don’t want to do anything special with dates within the range that have orders, but you do want the output to include the dates with no orders, with NULLs as placeholders in the attributes of the order.
 
+To produce a sequence of dates in a given range, I usually use an auxiliary table of numbers. I create a table called dbo.Nums with a column called n, and populate it with a sequence of integers (1, 2, 3, and so on). I find that an auxiliary table of numbers is an extremely powerful general-purpose tool I end up using to solve many problems.
 
+As the first step in the solution, you need to produce a sequence of all dates in the requested range. You can achieve this by querying the Nums table and filtering as many numbers as the number of days in the requested date range. You can use the DATEDIFF function to calculate that number. By adding n – 1 days to the starting point of the date range (January 1, 2014), you get the actual date in the sequence. Here’s the solution query:
+```
+SELECT DATEADD(day, n-1, CAST('20140101' AS DATE)) AS orderdate
+FROM dbo.Nums
+WHERE n <= DATEDIFF(day, '20140101', '20161231') + 1
+ORDER BY orderdate;
+```
 
+This query returns a sequence of all dates in the range January 1, 2014 through December 31, 2016, as shown here in abbreviated form:
 
+![beyond-fundamentals-outter-join.PNG](pictures/beyond-fundamentals-outter-join.PNG)
 
+The next step is to extend the previous query, adding a left outer join between Nums and the Orders tables. The join condition compares the order date produced from the Nums table and the orderdate from the Orders table by using the expression DATEADD(day, Nums.n – 1, CAST(‘20140101’ AS DATE)) like this:
+```
+SELECT DATEADD(day, Nums.n - 1, CAST('20140101' AS DATE)) AS orderdate,
+O.orderid, O.custid, O.empid
+FROM dbo.Nums
+LEFT OUTER JOIN Sales.Orders AS O
+ON DATEADD(day, Nums.n - 1, CAST('20140101' AS DATE)) = O.orderdate
+WHERE Nums.n <= DATEDIFF(day, '20140101', '20161231') + 1
+ORDER BY orderdate;
+```
 
+![beyond-fundamentals-outter-join-2.PNG](pictures/beyond-fundamentals-outter-join-2.PNG)
 
+#### Filtering attributes from the nonpreserved side of an outer join
 
+**When you need to review code involving outer joins to look for logical bugs, one of the things you should examine is the WHERE clause. If the predicate in the WHERE clause refers to an attribute from the nonpreserved side of the join using an expression in the form \<attribute\> \<operator\> \<value\>, it’s usually an indication of a bug**. This is because attributes from the nonpreserved side of the join are NULLs in outer rows, and an expression in the form NULL <operator> <value> yields UNKNOWN (unless it’s the IS NULL operator explicitly looking for NULLs).
+  
+Consider the following query:
+```
+SELECT C.custid, C.companyname, O.orderid, O.orderdate
+FROM Sales.Customers AS C
+LEFT OUTER JOIN Sales.Orders AS O
+ON C.custid = O.custid
+WHERE O.orderdate >= '20160101';
+```
 
+The query performs a left outer join between the Customers and Orders tables. Prior to applying the WHERE filter, the join operator returns inner rows for customers who placed orders and outer rows for customers who didn’t place orders, with NULLs in the order attributes. The predicate O.orderdate >= ‘20160101’ in the WHERE clause evaluates to UNKNOWN for all outer rows, because those have a NULL in the O.orderdate attribute. All outer rows are eliminated by the WHERE filter.
 
+#### Using outer joins in a multi-join query
 
+**Table operators are logically evaluated from left to right. Rearranging the order in which outer joins are processed might result in different output, so you cannot rearrange them at will.** 
 
+Some interesting bugs have to do with the logical order in which outer joins are processed. For example, a common bug could be considered a variation of the bug in the previous section. Suppose you write a multi-join query with an outer join between two tables, followed by an inner join with a third table. If the predicate in the inner join’s ON clause compares an attribute from the nonpreserved side of the outer join and an attribute from the third table, all outer rows are discarded. Remember that outer rows have NULLs in the attributes from the nonpreserved side of the join, and comparing a NULL with anything yields UNKNOWN. UNKNOWN is filtered out by the ON filter. In other words, such a predicate nullifies the outer join, effectively turning it into an inner join. For example, consider the following query:
+```
+SELECT C.custid, O.orderid, OD.productid, OD.qty
+FROM Sales.Customers AS C
+LEFT OUTER JOIN Sales.Orders AS O
+ON C.custid = O.custid
+INNER JOIN Sales.OrderDetails AS OD
+ON O.orderid = OD.orderid;
+```
 
+The first join is an outer join returning customers and their orders and also customers who did not place any orders. The outer rows representing customers with no orders have NULLs in the order attributes. The second join matches order lines from the OrderDetails table with rows from the result of the first join, based on the predicate O.orderid = OD.orderid; however, in the rows representing customers with no orders, the O.orderid attribute is NULL. Therefore, the predicate evaluates to UNKNOWN, and those rows are discarded. The output shown here in abbreviated form doesn’t contain the customers 22 and 57, the two customers who did not place orders.
 
+There are several ways to get around the problem if you want to return customers with no orders in the output. One option is to use a left outer join in the second join as well:
+```
+SELECT C.custid, O.orderid, OD.productid, OD.qty
+FROM Sales.Customers AS C
+LEFT OUTER JOIN Sales.Orders AS O
+ON C.custid = O.custid
+LEFT OUTER JOIN Sales.OrderDetails AS OD
+ON O.orderid = OD.orderid;
+```
 
+This way, the outer rows produced by the first join aren’t filtered out, as you can see in the output shown here in abbreviated form:
 
+![beyond-fundamentals-outter-join-3.PNG](pictures/beyond-fundamentals-outter-join-3.PNG)
 
+This solution is usually not a good one because it preserves all rows from Orders. What if there were rows in Orders that didn’t have matches in OrderDetails, and you wanted those rows to be discarded. What you want is an inner join between Orders and OrderDetails.
 
+A second option is to use an inner join between Orders and OrderDetails, and then join the result with the Customers table using a right outer join:
+```
+SELECT C.custid, O.orderid, OD.productid, OD.qty
+FROM Sales.Orders AS O
+INNER JOIN Sales.OrderDetails AS OD
+ON O.orderid = OD.orderid
+RIGHT OUTER JOIN Sales.Customers AS C
+ON O.custid = C.custid;
+```
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+A third option is to use parentheses to turn the inner join between Orders and OrderDetails into an independent unit. This way, you can apply a left outer join between the Customers table and that unit. The query would look like this:
+```
+SELECT C.custid, O.orderid, OD.productid, OD.qty
+FROM Sales.Customers AS C
+LEFT OUTER JOIN (Sales.Orders AS O INNER JOIN Sales.OrderDetails AS OD ON O.orderid = OD.orderid)
+ON C.custid = O.custid;
+```
 
 # Chapter 4. Subqueries
 
