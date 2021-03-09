@@ -106,6 +106,58 @@ ON E.empid = O.empid;
 
 Formal way to think of it is based on relational algebra. First, the join performs a Cartesian product between the two tables (9 employee rows × 830 order rows = 7,470 rows). Then, the join filters rows based on the predicate E.empid = O.empid, eventually returning 830 rows. As mentioned earlier, that’s just the logical way that the join is processed; in practice, physical processing of the query by the database engine can be different.
 
+### ISO/ANSI SQL-89 syntax
+
+```
+SELECT E.empid, E.firstname, E.lastname, O.orderid
+FROM HR.Employees AS E, Sales.Orders AS O
+WHERE E.empid = O.empid;
+```
+
+**SQL-92 is safer.**
+
+### Inner join safety
+
+In the book, this section explains why it's better to use SQL-92.
+
+### Composite joins
+
+A composite join is simply a join where you need to match multiple attributes from each side. You usually need such a join when a primary key–foreign key relationship is based on more than one attribute. For example, suppose you have a foreign key defined on dbo.Table2, columns col1, col2, referencing dbo.Table1, columns col1, col2, and you need to write a query that joins the two based on this relationship. The FROM clause of the query would look like this:
+```
+FROM dbo.Table1 AS T1
+INNER JOIN dbo.Table2 AS T2
+ON T1.col1 = T2.col1
+AND T1.col2 = T2.col2
+```
+
+### Non-equi joins
+
+When a join condition involves only an equality operator, the join is said to be an **equi join**. When a join condition involves any operator besides equality, the join is said to be a **non-equi join**. As an example of a non-equi join, the following query joins two instances of the Employees table to produce unique pairs of employees:
+```
+SELECT
+E1.empid, E1.firstname, E1.lastname,
+E2.empid, E2.firstname, E2.lastname
+FROM HR.Employees AS E1
+INNER JOIN HR.Employees AS E2
+ON E1.empid < E2.empid;
+```
+
+Notice the predicate specified in the ON clause. The purpose of the query is to produce unique pairs of employees. Had a cross join been used, the result would have included self pairs (for example, 1 with 1) and also mirrored pairs (for example, 1 with 2 and also 2 with 1). Using an inner join with a join condition that says the key on the left side must be smaller than the key on the right side eliminates the two inapplicable cases. Self pairs are eliminated because both sides are equal. With mirrored pairs, only one of the two cases qualifies because, of the two cases, only one will have a left key that is smaller than the right key. In this example, of the 81 possible pairs of employees a cross join would have returned, this query returns the 36 unique pairs shown here:
+
+![non-equi-inner-join.PNG](pictures/non-equi-inner-join.PNG)
+
+If it’s still not clear to you what this query does, try to process it one step at a time with a smaller set of employees. For example, suppose the Employees table contained only employees 1, 2, and 3. First, produce the Cartesian product of two instances of the table:
+
+![non-equi-inner-join-2.PNG](pictures/non-equi-inner-join-2.PNG)
+
+Next, filter the rows based on the predicate E1.empid < E2.empid, and you are left with only three rows:
+
+![non-equi-inner-join-3.PNG](pictures/non-equi-inner-join-3.PNG)
+
+### Multi-join queries
+
+
+
 
 
 
