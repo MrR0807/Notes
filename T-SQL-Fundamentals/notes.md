@@ -301,6 +301,139 @@ ON C.custid = O.custid;
 
 # Chapter 9. Temporal tables
 
+When you modify data in tables, normally you lose any trace of the premodified state of the rows. You can access only the current state. What if you need to be able to access historical states of the data? Perhaps you need these states for auditing, point-in-time analysis, comparing current states with older states, restoring an older state of rows because of accidental deletion or updating, and so on.
+ 
+Starting with Microsoft SQL Server 2016, you can use a built-in feature called system-versioned temporal tables. A system-versioned temporal table has two columns representing the validity period of the row, plus a linked history table with a mirrored schema holding older states of modified rows. When you need to modify data, you interact with the current table, issuing normal datamodification statements. SQL Server automatically updates the period columns and moves older versions of rows to the history table. When you need to query data, if you want the current state, you simply query the current table as usual. If you need access to older states, you still query the current table, but you add a clause indicating that you want to see an older state or period of time. SQL Server queries the current and history tables behind the scenes as needed.
+The SQL standard supports three types of temporal tables: 
+* **System-versioned temporal tables** rely on the system transaction time to define the validity period of a row.
+* **Application-time period tables** rely on the application’s definition of the validity period of a row. This means you can define a validity period that will become effective in the future.
+* **Bitemporal** combines the two types just mentioned (transaction and valid time).
+
+**SQL Server 2016 supports only system-versioned temporal tables.** 
+
+## Creating tables
+
+When you create a system-versioned temporal table, you need to make sure the table definition has all the following elements:
+* A primary key
+* Two columns defined as DATETIME2 with any precision, which are non-nullable and represent the start and end of the row’s validity period in the UTC time zone A start column that should be marked with the option GENERATED ALWAYS AS ROW START
+* An end column that should be marked with the option GENERATED ALWAYS AS ROW END
+* A designation of the period columns with the option PERIOD FOR SYSTEM_TIME (<startcol>, <endcol>)
+* The table option SYSTEM_VERSIONING, which should be set to ON
+* A linked history table (which SQL Server can create for you) to hold the past states of modified rows
+
+Run the following code to create a system-versioned temporal table called Employees and a linked history table called EmployeesHistory:
+```
+USE TSQLV4;
+-- Create Employees table
+CREATE TABLE dbo.Employees(
+empid INT NOT NULL CONSTRAINT PK_Employees PRIMARY KEY NONCLUSTERED,
+empname VARCHAR(25) NOT NULL,
+department VARCHAR(50) NOT NULL,
+salary NUMERIC(10, 2) NOT NULL,
+sysstart DATETIME2(0) GENERATED ALWAYS AS ROW START HIDDEN NOT NULL,
+sysend DATETIME2(0) GENERATED ALWAYS AS ROW END HIDDEN NOT NULL,
+PERIOD FOR SYSTEM_TIME (sysstart, sysend),
+INDEX ix_Employees CLUSTERED(empid, sysstart, sysend)) WITH (SYSTEM_VERSIONING = ON (HISTORY_TABLE = dbo.EmployeesHistory ));
+```
+
+SQL Server creates the history table with a mirrored schema of the current table, but with the following differences:
+* No primary key
+* A clustered index on (<endcol>, <startcol>), with page compression if possible
+* Period columns that are not marked with any special options, like GENERATED ALWAYS AS ROW START/END or HIDDEN
+* No designation of the period columns with the option PERIOD FOR SYSTEM_TIME
+* The history table is not marked with the option SYSTEM_VERSIONING
+
+If you browse the object tree in Object Explorer in SQL Server Management Studio (SSMS), you’ll find the Employees table marked as (System-Versioned) and below it the linked EmployeesHistory table marked as (History).
+
+![temporal-table.PNG](pictures/temporal-table.PNG)
+
+You can also turn an existing nontemporal table that already has data into a temporal one. For example, suppose you have a table called Employees in your database and you want to turn it into a temporal table. You first alter the table, adding the period columns and designating them as such using the following code:
+```
+ALTER TABLE dbo.Employees ADD sysstart DATETIME2(0) GENERATED ALWAYS AS ROW START HIDDEN NOT NULL CONSTRAINT DFT_Employees_sysstart DEFAULT('19000101'),
+sysend DATETIME2(0) GENERATED ALWAYS AS ROW END HIDDEN NOT NULL CONSTRAINT DFT_Employees_sysend DEFAULT('99991231 23:59:59'),
+PERIOD FOR SYSTEM_TIME (sysstart, sysend);
+```
+
+Notice the defaults that set the validity period for the existing rows. You decide what you want the start time of the validity period to be, as long as it’s not in the future. The end has to be the maximum supported value in the type.
+
+You then alter the table to enable system versioning and to link it to a history table using the following code (again, don’t actually run this code in our case):
+```
+ALTER TABLE dbo.Employees SET ( SYSTEM_VERSIONING = ON ( HISTORY_TABLE = dbo.EmployeesHistory ) );
+```
+
+Remember that if you marked the period columns as hidden, when you query the table with ``SELECT *`` SQL Server won’t return them. Try this with our Employees table by running the following code:
+```
+SELECT * FROM dbo.Employees;
+```
+
+You get the following output:
+```
+empid empname department salary
+------ -------- ----------- ---------
+```
+
+If you do want to return the period columns, mention them explicitly in the SELECT list, like so:
+```
+SELECT empid, empname, department, salary, sysstart, sysend FROM dbo.Employees;
+```
+
+```
+empid empname department salary sysstart sysend
+------ -------- ----------- --------- -------------------- --------------------
+```
+
+## Modifying data
+
+Modifying temporal tables is similar to modifying regular tables. You modify only the current table with INSERT, UPDATE, DELETE, and MERGE statements. (There’s no support for TRUNCATE in SQL Server 2016 temporal tables.) Behind the scenes, SQL Server updates the period columns and moves rows to the history table as needed. Remember that the period columns reflect the validity period of the row in the UTC time zone.
+
+In the following examples, I’ll demonstrate modifications against the Employees table and mention the point in time in the UTC time zone at which I apply them. Run the following code to add a few rows to the Employees table (the time was 2016-02-16 17:08:41 when I ran it):
+```
+INSERT INTO dbo.Employees(empid, empname, department, salary)
+VALUES
+(1, 'Sara', 'IT' , 50000.00),
+(2, 'Don' , 'HR' , 45000.00),
+(3, 'Judy', 'Sales' , 55000.00),
+(4, 'Yael', 'Marketing', 55000.00),
+(5, 'Sven', 'IT' , 45000.00),
+(6, 'Paul', 'Sales' , 40000.00);
+```
+
+Query the data in both the current and history tables to see what SQL Server did behind the scenes:
+```
+SELECT empid, empname, department, salary, sysstart, sysend FROM dbo.Employees;
+```
+
+```
+SELECT empid, empname, department, salary, sysstart, sysend FROM dbo.EmployeesHistory;
+```
+
+The current table has the six new rows, with the sysstart column reflecting the modification time and sysend holding the maximum possible value in the type with the chosen precision:
+![temporal-tables-select-1.PNG](pictures/temporal-tables-select-1.PNG)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 # Chapter 10. Transactions and concurrency
 
 # Chapter 11. Programmable objects
