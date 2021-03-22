@@ -449,31 +449,224 @@ Following is the content of the history table:
 
 ## Querying data
 
+Querying data in temporal tables is simple and elegant. If you want to query the current state of the data, you simply query the current table as you would query a normal table. If you want to query a past state of the data, you still query the current table, but you add a clause called FOR SYSTEM_TIME and a subclause that indicates the validity point or period of time you’re interested in.
 
+Before examining the specifics of querying temporal tables, run the following code to recreate the Employees and EmployeesHistory tables and to populate them with the same sample data as in my environment, including the values in the period columns:
+```
+USE TSQLV4;
+-- Drop tables if exist
+IF OBJECT_ID(N'dbo.Employees', N'U') IS NOT NULL
+BEGIN
+  IF OBJECTPROPERTY(OBJECT_ID(N'dbo.Employees', N'U'), N'TableTemporalType') = 2 ALTER TABLE dbo.Employees SET ( SYSTEM_VERSIONING = OFF );
+  DROP TABLE IF EXISTS dbo.EmployeesHistory, dbo.Employees;
+END;
+GO
 
+-- Create and populate Employees table
+CREATE TABLE dbo.Employees
+(
+empid INT NOT NULL CONSTRAINT PK_Employees PRIMARY KEY NONCLUSTERED,
+empname VARCHAR(25) NOT NULL,
+department VARCHAR(50) NOT NULL,
+salary NUMERIC(10, 2) NOT NULL,
+sysstart DATETIME2(0) NOT NULL,
+sysend DATETIME2(0) NOT NULL,
+INDEX ix_Employees CLUSTERED(empid, sysstart, sysend)
+);
 
+INSERT INTO dbo.Employees(empid, empname, department, salary, sysstart, sysend)
+VALUES
+(1 , 'Sara', 'IT' , 52500.00, '2016-02-16 17:20:02', '9999-12-31 23:59:59'),
+(2 , 'Don' , 'HR' , 45000.00, '2016-02-16 17:08:41', '9999-12-31 23:59:59'),
+(3 , 'Judy', 'IT' , 55000.00, '2016-02-16 17:28:10', '9999-12-31 23:59:59'),
+(4 , 'Yael', 'Marketing', 55000.00, '2016-02-16 17:08:41', '9999-12-31 23:59:59'),
+(5 , 'Sven', 'Sales' , 47250.00, '2016-02-16 17:28:10', '9999-12-31 23:59:59');
 
+-- Create and populate EmployeesHistory table
+CREATE TABLE dbo.EmployeesHistory
+(
+empid INT NOT NULL,
+empname VARCHAR(25) NOT NULL,
+department VARCHAR(50) NOT NULL,
+salary NUMERIC(10, 2) NOT NULL,
+sysstart DATETIME2(0) NOT NULL,
+sysend DATETIME2(0) NOT NULL,
+INDEX ix_EmployeesHistory CLUSTERED(sysend, sysstart) WITH (DATA_COMPRESSION = PAGE)
+);
 
+INSERT INTO dbo.EmployeesHistory(empid, empname, department, salary, sysstart,
+sysend) VALUES
+(6 , 'Paul', 'Sales' , 40000.00, '2016-02-16 17:08:41', '2016-02-16 17:15:26'),
+(1 , 'Sara', 'IT' , 50000.00, '2016-02-16 17:08:41', '2016-02-16 17:20:02'),
+(5 , 'Sven', 'IT' , 45000.00, '2016-02-16 17:08:41', '2016-02-16 17:20:02'),
+(3 , 'Judy', 'Sales' , 55000.00, '2016-02-16 17:08:41', '2016-02-16 17:28:10'),
+(5 , 'Sven', 'IT' , 47250.00, '2016-02-16 17:20:02', '2016-02-16 17:28:10');
 
+-- Enable system versioning
+ALTER TABLE dbo.Employees ADD PERIOD FOR SYSTEM_TIME (sysstart, sysend);
+ALTER TABLE dbo.Employees ALTER COLUMN sysstart ADD HIDDEN;
+ALTER TABLE dbo.Employees ALTER COLUMN sysend ADD HIDDEN;
+ALTER TABLE dbo.Employees SET ( SYSTEM_VERSIONING = ON ( HISTORY_TABLE = dbo.EmployeesHistory ) );
+```
 
+As mentioned, if you want to query the current state of the rows, simply query the current table:
 
+```
+SELECT *
+FROM dbo.Employees;
+```
 
+This query generates the following output:
+```
+empid empname department salary
+------ -------- ----------- ---------
+1 Sara IT 52500.00
+2 Don HR 45000.00
+3 Judy IT 55000.00
+4 Yael Marketing 55000.00
+5 Sven Sales 47250.00
+```
 
+Remember that because the period columns are defined as hidden, a SELECT * query doesn’t return them. Here I use SELECT * for illustration purposes, but **I remind you that the best practice is to be explicit about the column list in production code.**
 
+If you want to see a past state of the data, correct to a certain point or period of time, you query the current table followed by the FOR SYSTEM_TIME clause, plus a subclause that indicates more specifics. SQL Server will retrieve the data from both the current and history tables as needed.
 
+```
+SELECT *
+FROM dbo.Employees FOR SYSTEM_TIME AS OF '2016-02-16 17:00:00';
+```
+You’ll get an empty result because the first insert you issued against the table happened at 2016-02-16 17:08:41.
 
+Query the table again, this time as of 2016-02-16 17:10:00:
+```
+SELECT *
+FROM dbo.Employees FOR SYSTEM_TIME AS OF '2016-02-16 17:10:00';
+```
 
+You get the following output:
+```
+empid empname department salary
+------ -------- ----------- ---------
+2 Don HR 45000.00
+4 Yael Marketing 55000.00
+6 Paul Sales 40000.00
+1 Sara IT 50000.00
+5 Sven IT 45000.00
+3 Judy Sales 55000.00
+```
 
+You can also query multiple instances of the same table, comparing different states of the data at different points in time. For example, the following query returns the percentage of increase of salary of employees who had a salary increase between two different points in time:
+```
+SELECT T2.empid, T2.empname,
+CAST( (T2.salary / T1.salary - 1.0) * 100.0 AS NUMERIC(10, 2) ) AS pct
+FROM dbo.Employees FOR SYSTEM_TIME AS OF '2016-02-16 17:10:00' AS T1
+INNER JOIN dbo.Employees FOR SYSTEM_TIME AS OF '2016-02-16 17:25:00' AS T2
+ON T1.empid = T2.empid
+AND T2.salary > T1.salary;
+```
 
+```
+empid empname pct
+------ -------- -----
+1 Sara 5.00
+5 Sven 5.00
+```
 
+There are several ways to define time frame:
+* The subclause FROM @start TO @end returns the rows that satisfy the predicate **sysstart < @end AND sysend > @start**. Example:
+```
+SELECT empid, empname, department, salary, sysstart, sysend
+FROM dbo.Employees
+FOR SYSTEM_TIME FROM '2016-02-16 17:15:26' TO '2016-02-16 17:20:02';
+```
+* If you need the input @end value to be inclusive, use the BETWEEN subclause instead of the FROM subclause. The syntax of the BETWEEN subclause is **BETWEEN @start AND @end**, and it returns the rows that satisfy the predicate sysstart <= @end AND sysend > @start. Example:
+```
+SELECT empid, empname, department, salary, sysstart, sysend
+FROM dbo.Employees
+FOR SYSTEM_TIME BETWEEN '2016-02-16 17:15:26' AND '2016-02-16 17:20:02';
+```
+* The subclause FOR SYSTEM_TIME CONTAINED IN(@start, @end) returns the rows that satisfy the predicate **sysstart >= @start AND sysend <= @end**. Example:
+```
+SELECT empid, empname, department, salary, sysstart, sysend
+FROM dbo.Employees
+FOR SYSTEM_TIME CONTAINED IN('2016-02-16 17:00:00', '2016-02-16 18:00:00');
+```
+To summarize:
 
+![system_time-between.PNG](pictures/system_time-between.PNG)
 
+T-SQL also supports the ALL subclause, which simply returns all rows from both tables. The following query demonstrates the use of this subclause:
+```
+SELECT empid, empname, department, salary, sysstart, sysend
+FROM dbo.Employees FOR SYSTEM_TIME ALL;
+```
 
+## Conclusion
 
-
-
-
+SQL Server ’s support for system-versioned temporal tables is very powerful. In the past, many systems implemented their own customized solutions to address the same need. With built-in support, the solutions are much simpler and more efficient.
 
 # Chapter 10. Transactions and concurrency
+
+## Transactions
+
+A transaction is a unit of work that might include multiple activities that query and modify data and that can also change the data definition.
+
+You can define transaction boundaries either explicitly or implicitly. You define the beginning of a transaction explicitly with a BEGIN TRAN (or BEGIN TRANSACTION) statement. You define the end of a transaction explicitly with a COMMIT TRAN statement if you want to commit it and with a ROLLBACK TRAN (or ROLLBACK TRANSACTION) statement if you want to undo its changes. Here’s an example of marking the boundaries of a transaction with two INSERT statements:
+```
+BEGIN TRAN;
+  INSERT INTO dbo.T1(keycol, col1, col2) VALUES(4, 101, 'C');
+  INSERT INTO dbo.T2(keycol, col1, col2) VALUES(4, 201, 'X');
+COMMIT TRAN;
+```
+
+If you do not mark the boundaries of a transaction explicitly, by default, SQL Server treats each individual statement as a transaction; in other words, **by default, SQL Server automatically commits the transaction at the end of each statement.**
+
+Transactions have four properties—atomicity, consistency, isolation, and durability—abbreviated with the acronym ACID:
+* **Atomicity**. A transaction is an atomic unit of work. Either all changes in the transaction take place or none do. Some errors, such as primary-key violations and lock-expiration timeouts are not considered severe enough to justify an automatic rollback of the transaction.
+* **Consistency**. The term consistency refers to the state of the data that the relational database management system (RDBMS) gives you access to as concurrent transactions modify and query it. Consistency also refers to the fact that the database must adhere to all integrity rules that have been defined within it by constraints (such as primary keys, unique constraints, and foreign keys).
+* **Isolation**. Isolation ensures that transactions access only consistent data. You control what consistency means to your transactions through a mechanism called isolation levels. With disk-based tables, SQL Server supports two different models to handle isolation: one based purely on locking, and another based on a combination of locking and row versioning.
+* **Durability**. Data changes are always written to the database’s transaction log on disk before they are written to the data portion of the database on disk. After the commit instruction is recorded in the transaction log on disk, the transaction is considered durable even if the change hasn’t yet made it to the data portion on disk. When the system starts, either normally or after a system failure, SQL Server inspects the transaction log of each database and runs a recovery process with two phases: redo and undo.
+
+## Locks and blocking
+
+By default, a **SQL Server box product uses a pure locking model to enforce the isolation property of transactions. Azure SQL Database uses the row-versioning model by default. If you’re testing the code in this chapter on Azure SQL Database.**
+
+### Locks
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 # Chapter 11. Programmable objects
