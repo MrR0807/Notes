@@ -633,18 +633,35 @@ By default, a **SQL Server box product uses a pure locking model to enforce the 
 
 ### Locks
 
+Locks are control resources obtained by a transaction to guard data resources, preventing conflicting or incompatible access by other transactions.
 
+#### Lock modes and compatibility
 
+As you start learning about transactions and concurrency, you should first familiarize yourself with two main **lock modes: exclusive and shared.**
 
+When you try to **modify data, your transaction requests an exclusive lock on the data resource, regardless of your isolation level.** If granted, the exclusive lock is held until the end of the transaction. Exclusive locks means that if one transaction modifies rows, until the transaction is completed, another transaction cannot modify the same rows. However, whether another transaction can read the same rows or not depends on its isolation level.
 
+As for reading data, the defaults are different for a SQL Server box product and Azure SQL Database. In SQL Server, the **default isolation level is called READ COMMITTED.** In this isolation, when you try to read data, by default your transaction requests a shared lock on the data resource and releases the lock as soon as the read statement is done with that resource. This lock mode is called “shared” because multiple transactions can hold shared locks on the same data resource simultaneously.
 
+In Azure SQL Database, the default isolation level is called **READ COMMITTED SNAPSHOT.** Instead of relying only on locking, this isolation level relies on a combination of locking and row versioning. Under this isolation level, readers do not require shared locks, and therefore they never wait; they rely on the row-versioning technology to provide the expected isolation. In practical terms, this means that under the READ COMMITTED isolation level, if a transaction modifies rows, until the transaction completes, another transaction can’t read the same rows. This approach to concurrency control is known as the pessimistic concurrency approach. Under the READ COMMITTED SNAPSHOT isolation level, if a transaction modifies rows, another transaction trying to read the data will get the last committed state of the rows that was available when the statement started. This approach to concurrency control is known as the optimistic concurrency approach.
 
+The columns represent granted lock modes, and the rows represent requested lock modes.
 
+![lock-compatibility.PNG](pictures/lock-compatibility.PNG)
 
+A “No” in the intersection means that the locks are incompatible and the requested mode is denied; the requester must wait. A “Yes” in the intersection means that the locks are compatible and the requested mode is accepted.
 
+The following summarizes lock interaction between transactions in simple terms: data that was modified by one transaction can neither be modified nor read by another transaction until the first transaction finishes. And while data is being read by one transaction, it cannot be modified by another.
 
+#### Lockable resource types
 
+SQL Server can lock different types of resources. Those include rows (RID in a heap, key in an index) pages, objects (for example, tables), databases, and others. Rows reside within pages, and pages are the physical data blocks that contain table or index data.
 
+To obtain a lock on a certain resource type, your transaction must first obtain intent locks of the same mode on higher levels of granularity. For example, to get an exclusive lock on a row, your transaction must first acquire intent exclusive locks on the table and the page where the row resides. Similarly, to get a shared lock on a certain level of granularity, your transaction first needs to acquire intent shared locks on higher levels of granularity. The purpose of intent locks is to efficiently detect incompatible lock requests on higher levels of granularity and prevent the granting of those. For example, if one transaction holds a lock on a row and another asks for an incompatible lock mode on the whole page or table where that row resides, it’s easy for SQL Server to identify the conflict because of the intent locks that the first transaction acquired on the page and table.
+
+SQL Server determines dynamically which resource types to lock. **When SQL Server estimates that a transaction will interact with a small number of rows, it tends to use row locks. With larger numbers of rows, SQL Server tends to use page locks.**
+
+#### Troubleshooting blocking
 
 
 
