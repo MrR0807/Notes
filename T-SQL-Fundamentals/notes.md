@@ -411,6 +411,46 @@ The current table has the six new rows, with the sysstart column reflecting the 
 ![temporal-tables-select-1.PNG](pictures/temporal-tables-select-1.PNG)
 
 
+The validity period indicates that the rows are considered valid since the time they were inserted and with no end limit.
+The history table is empty at this point:
+```
+empid empname department salary sysstart sysend
+------ -------- ----------- --------- -------------------- --------------------
+```
+
+Run the following code to delete the row where the employee ID is 6 (the time was 2016-02-16 17:15:26 when I ran it):
+```
+DELETE FROM dbo.Employees WHERE empid = 6;
+```
+
+SQL Server moves the deleted row to the history table, setting its sysend value to the deletion time. Following is the content of the current table at this point:
+![temporal-tables-select-2.PNG](pictures/temporal-tables-select-2.PNG)
+
+Following is the content of the history table:
+```
+empid empname department salary sysstart sysend
+------ -------- ----------- --------- -------------------- --------------------
+6 Paul Sales 40000.00 2016-02-16 17:08:41 2016-02-16 17:15:26
+```
+
+An update of a row is treated as a delete plus an insert. SQL Server moves the old version of the row to the history table with the transaction time as the period end time, and it keeps the current version of the row in the current table with the transaction time as the period start time and the maximum value in the type as the period end time.
+For example, run the following update to increase the salary of all IT employees by 5 percent (the time was 2016-02-16 17:20:02 when I ran it):
+```
+UPDATE dbo.Employees
+SET salary *= 1.05
+WHERE department = 'IT';
+```
+
+Following is the content of the current table after the update:
+![temporal-tables-select-3.PNG](pictures/temporal-tables-select-3.PNG)
+
+Following is the content of the history table:
+![temporal-tables-select-1-history-table.PNG](pictures/temporal-tables-select-1-history-table.PNG)
+
+## Querying data
+
+
+
 
 
 
