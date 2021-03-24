@@ -663,6 +663,167 @@ SQL Server determines dynamically which resource types to lock. **When SQL Serve
 
 #### Troubleshooting blocking
 
+When one transaction holds a lock on a data resource and another transaction requests an incompatible lock on the same resource, the request is blocked and the requester enters a wait state. By default, the blocked request keeps waiting until the blocker releases the interfering lock. You can define a lock expiration time-out in your session if you want to restrict the amount of time that a blocked request waits before it times out.
+Example demonstrates a blocking situation and how to troubleshoot it. I’m assuming that you’re running under the isolation level READ COMMITTED. Open three separate query windows in SQL Server Management Studio. (For this example, I’ll refer to them as Connection 1, Connection 2, and Connection 3.) Make sure that in all of them you are connected to the sample database TSQLV4:
+```
+USE TSQLV4;
+```
+
+Run the following code in Connection 1 to update a row in the Production.Products table, adding 1.00 to the current unit price of 19.00 for product 2:
+```
+BEGIN TRAN;
+  UPDATE Production.Products SET unitprice += 1.00 WHERE productid = 2;
+```
+To update the row, your session had to acquire an exclusive lock, and if the update was successful, SQL Server granted your session the lock. Recall that exclusive locks are kept until the end of the transaction, and because the transaction remains open, the lock is still held. Run the following code in Connection 2 to try to query the same row:
+```
+SELECT productid, unitprice FROM Production.Products WHERE productid = 2;
+```
+Your session needs a shared lock to read the data, but because the row is exclusively locked by the other session, and a shared lock is incompatible with an exclusive lock, your session is blocked and has to wait.
+
+**Note for myself:**
+The remaining part of the section is walkthrough of how one would troubleshoot such a situation at DB level.
+
+### Isolation levels
+
+Isolation levels determine the level of consistency you get when you interact with data. In the default isolation level in a box product, **a reader uses shared locks on the target resources and a writer uses exclusive locks.** You **cannot control the way writers behave in terms of the locks they acquire and the duration of the locks, but you can control the way readers behave.** Also, as a result of controlling the behavior of readers, you can have an implicit influence on the behavior of writers. You do so by **setting the isolation level, either at the session level with a session option or at the query level with a table hint.**
+
+SQL Server supports four isolation levels that are based on the pure locking model: 
+* SERIALIZABLE;
+* REPEATABLE READ;
+* READ COMMITTED (the default in a SQL Server box product);
+* READ UNCOMMITTED.
+
+You can set the isolation level of the whole session by using the following command:
+```
+SET TRANSACTION ISOLATION LEVEL <isolation name>;
+```
+
+You can use a table hint to set the isolation level of a query:
+```
+SELECT ... FROM <table> WITH (<isolationname>);
+```
+
+With the first four isolation levels, the higher the isolation level, the stricter the locks are that readers request and the longer their duration is; therefore, the higher the isolation level is, the higher the consistency is and the lower the concurrency is.
+
+#### The READ UNCOMMITTED isolation level
+
+READ UNCOMMITTED is the lowest available isolation level. In this isolation level, **a reader doesn’t ask for a shared lock.** A reader that doesn’t ask for a shared lock can never be in conflict with a writer that is holding an exclusive lock. This means that the reader can read uncommitted changes (also known as dirty reads). It also means the reader won’t interfere with a writer that asks for an exclusive lock. In other words, **a writer can change data while a reader that is running under the READ UNCOMMITTED isolation level reads data.**
+
+To see how an uncommitted read (dirty read) works, open two query windows. (I’ll refer to them as Connection 1 and Connection 2.) Make sure that in all connections your database context is that of the sample database TSQLV4. To avoid confusion, make sure that this is the only activity in the instance.
+Run the following code in Connection 1 to open a transaction, update the unit price of product 2 by adding 1.00 to its current price (19.00), and then query the product’s row:
+```
+BEGIN TRAN;
+  UPDATE Production.Products SET unitprice += 1.00 WHERE productid = 2;
+  SELECT productid, unitprice FROM Production.Products WHERE productid = 2;
+```
+
+Note that the transaction remains open, meaning that the product’s row is locked exclusively by Connection 1. The code in Connection 1 returns the following output showing the product’s new price:
+```
+productid   unitprice
+----------- ---------------------
+2           20.00
+```
+
+In Connection 2, run the following code to set the isolation level to READ UNCOMMITTED and query the row for product 2:
+```
+SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;
+SELECT productid, unitprice FROM Production.Products WHERE productid = 2;
+```
+
+Because the query did not request a shared lock, it was not in conflict with the other transaction. This query returned the state of the row after the change, even though the change was not committed:
+```
+productid   unitprice
+----------- ---------------------
+2           20.00
+```
+
+Keep in mind that Connection 1 might apply further changes to the row later in the transaction or even roll back at some point. For example, run the following code in Connection 1 to roll back the transaction: ```ROLLBACK TRAN;```
+This rollback undoes the update of product 2, changing its price back to 19.00. The value 20.00 that the reader got was never committed. **That’s an example of a dirty read.**
+
+#### The READ COMMITTED isolation level
+
+If you want to prevent readers from reading uncommitted changes, you need to use a stronger isolation level. The lowest isolation level that prevents dirty reads is READ COMMITTED, which is also the default isolation level in SQL Server (the box product). As the name indicates, **this isolation level allows readers to read only committed changes.** It prevents uncommitted reads by requiring a reader to obtain a shared lock. This means that **if a writer is holding an exclusive lock, the reader ’s shared lock request will be in conflict with the writer, and it has to wait.** As soon as the writer commits the transaction, the reader can get its shared lock, but what it reads are necessarily only committed changes.
+
+Run the following code in Connection 1 to open a transaction, update the price of product 2, and query the row to show the new price:
+```
+BEGIN TRAN;
+  UPDATE Production.Products SET unitprice += 1.00 WHERE productid = 2;
+  SELECT productid, unitprice FROM Production.Products WHERE productid = 2;
+```
+
+This code returns the following output:
+```
+productid   unitprice
+----------- ---------------------
+2           20.00
+```
+
+Run the following code in Connection 2 to set the session’s isolation level to READ COMMITTED and query the row for product 2:
+```
+SET TRANSACTION ISOLATION LEVEL READ COMMITTED;
+SELECT productid, unitprice FROM Production.Products WHERE productid = 2;
+```
+
+The SELECT statement is currently blocked because it needs a shared lock to be able to read the row, and this shared lock request is in conflict with the exclusive lock held by the writer in Connection 1. Next, run the following code in Connection 1 to commit the transaction: ```COMMIT TRAN;```. Now go to Connection 2 and notice that you get the following output:
+```
+productid   unitprice
+----------- ---------------------
+2           20.00
+```
+
+In terms of the duration of locks, **in the READ COMMITTED isolation level, a reader holds the shared lock only until it’s done with the resource. It doesn’t keep the lock until the end of the transaction; in fact, it doesn’t even keep the lock until the end of the statement. This means that in between two reads of the same data resource in the same transaction, no lock is held on the resource.** Therefore, another transaction can modify the resource in between those two reads, and the reader might get different values in each read. This phenomenon is called **nonrepeatable reads** or inconsistent analysis. For many applications, this phenomenon is acceptable, but for some it isn’t.
+
+#### The REPEATABLE READ isolation level
+
+If you want to ensure that no one can change values in between reads that take place in the same transaction, you need to move up in the isolation levels to REPEATABLE READ. In this isolation level, **not only does a reader need a shared lock to be able to read, but it also holds the lock until the end of the transaction. This means that as soon as the reader acquires a shared lock on a data resource to read it, no one can obtain an exclusive lock to modify that resource until the reader ends the transaction.** This way, you’re guaranteed to get repeatable reads, or consistent analysis.
+The following example demonstrates getting repeatable reads:
+```
+SET TRANSACTION ISOLATION LEVEL REPEATABLE READ;
+BEGIN TRAN;
+  SELECT productid, unitprice FROM Production.Products WHERE productid = 2;
+```
+This code returns the following output showing the current price of product 2:
+```
+productid   unitprice
+----------- ---------------------
+2           19.00
+```
+
+Connection 1 still holds a shared lock on the row for product 2 because in REPEATABLE READ, shared locks are held until the end of the transaction. Run the following code from Connection 2 to try to modify the row for product 2:
+```
+UPDATE Production.Products SET unitprice += 1.00 WHERE productid = 2;
+```
+Notice that the attempt is blocked because the modifier ’s request for an exclusive lock is in conflict with the reader ’s granted shared lock. If the reader was running under the READ UNCOMMITTED or READ COMMITTED isolation level, it wouldn’t hold the shared lock at this point, and the attempt to modify the row would be successful.
+Back in Connection 1, run the following code to read the row for product 2 a second time and commit the transaction:
+```
+  SELECT productid, unitprice FROM Production.Products WHERE productid = 2;
+COMMIT TRAN;
+```
+This code returns the following output:
+```
+productid   unitprice
+----------- ---------------------
+2           19.00
+```
+Notice that the second read got the same unit price for product 2 as the first read. Now that the reader ’s transaction has been committed and the shared lock is released, the modifier in Connection 2 can obtain the exclusive lock it was waiting for and update the row.
+
+Another phenomenon prevented by REPEATABLE READ but not by lower isolation levels is called a **lost update**. A lost update happens when two transactions read a value, make calculations based on what they read, and then update the value. Because in isolation levels lower than REPEATABLE READ no lock is held on the resource after the read, both transactions can update the value, and whichever transaction updates the value last “wins,” overwriting the other transaction’s update. In REPEATABLE READ, both sides keep their shared locks after the first read, so neither can acquire an exclusive lock later in order to update. The situation results in a deadlock, and the update conflict is prevented.
+
+#### The SERIALIZABLE isolation level
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
