@@ -811,40 +811,252 @@ Another phenomenon prevented by REPEATABLE READ but not by lower isolation level
 
 #### The SERIALIZABLE isolation level
 
+Running under the REPEATABLE READ isolation level, readers keep shared locks until the end of the transaction. Therefore, you’re guaranteed to get a repeatable read of the rows that you read the first time in the transaction. However, your transaction locks only resources (for example, rows) that the query found the first time it ran, not rows that weren’t there when the query ran. Therefore, a second read in the same transaction might return new rows as well. Those new rows are called phantoms, and such reads are called phantom reads. This happens if, in between the reads, another transaction inserts new rows that satisfy the reader ’s query filter.
+To prevent phantom reads, you need to move up in the isolation levels to SERIALIZABLE. For the most part, the SERIALIZABLE isolation level behaves similarly to REPEATABLE READ: namely, it requires a reader to obtain a shared lock to be able to read, and it keeps the lock until the end of the transaction. But the SERIALIZABLE isolation level adds another facet—logically, this isolation level causes a reader to lock the whole range of keys that qualify for the query’s filter. This means that the reader locks not only the existing rows that qualify for the query’s filter, but also future ones. Or, more accurately, it blocks attempts made by other transactions to add rows that qualify for the reader ’s query filter.
+The following example demonstrates that the SERIALIZABLE isolation level prevents phantom reads. Run the following code in Connection 1 to set the transaction isolation level to SERIALIZABLE, open a transaction, and query all products with category 1:
+```
+SET TRANSACTION ISOLATION LEVEL SERIALIZABLE;
+BEGIN TRAN
+  SELECT productid, productname, categoryid, unitprice FROM Production.Products WHERE categoryid = 1;
+```
+You get the following output, showing 12 products in category 1:
+```
+productid   productname    categoryid  unitprice
+----------- -------------- ----------- ---------------------
+1           Product HHYDP  1           18.00
+2           Product RECZE  1           19.00
+24          Product QOGNU  1           4.50
+34          Product SWNJY  1           14.00
+35          Product NEVTJ  1           18.00
+38          Product QDOMO  1           263.50
+39          Product LSOFL  1           18.00
+43          Product ZZZHR  1           46.00
+67          Product XLXQF  1           14.00
+70          Product TOONT  1           15.00
+75          Product BWRLG  1           7.75
+76          Product JYGFE  1           18.00
+(12 row(s) affected)
+```
+From Connection 2, run the following code in an attempt to insert a new product with category 1:
+```
+INSERT INTO Production.Products (productname, supplierid, categoryid, unitprice, discontinued)
+VALUES('Product ABCDE', 1, 1, 20.00, 0);
+```
 
+In all isolation levels that are lower than SERIALIZABLE, such an attempt would be successful. **In the SERIALIZABLE isolation level, the attempt is blocked.**
+Back in Connection 1, run the following code to query products with category 1 a second time and commit the transaction:
+```
+  SELECT productid, productname, categoryid, unitprice FROM Production.Products WHERE categoryid = 1;
+COMMIT TRAN;
+```
 
+You get the same output as before, with no phantoms. Now that the reader ’s transaction is committed and the shared key-range lock is released, the modifier in Connection 2 can obtain the exclusive lock it was waiting for and insert the row.
 
+### Isolation levels based on row versioning
 
+With the row-versioning technology, SQL Server can store previous versions of committed rows in tempdb. SQL Server supports two isolation levels: 
+* SNAPSHOT - logically similar to the SERIALIZABLE isolation level in terms of the types of consistency problems that can or cannot happen
+* READ COMMITTED SNAPSHOT - similar to the READ COMMITTED isolation level.
 
+However, readers using isolation levels based on row versioning do not acquire shared locks, **so they don’t wait when the requested data is exclusively locked.** In other words, readers don’t block writers and writers don’t block readers. Readers still get levels of consistency similar to SERIALIZABLE and READ COMMITTED. SQL Server provides readers with an older version of the row if the current version is not the one they are supposed to see.
 
+Note that if you enable any of the row-versioning-based isolation levels (which are enabled in Azure SQL Database by default), the **DELETE and UPDATE statements need to copy the version of the row before the change to tempdb; INSERT statements don’t need to be versioned in tempdb because no earlier version of the row exists.** But it’s important to be aware that enabling any of the isolation levels that are based on row versioning might have a **negative impact on the performance of updates and deletes.** The performance of readers usually improves, sometimes dramatically, because they do not acquire shared locks and don’t need to wait when data is exclusively locked or its version is not the expected one.
 
+#### The SNAPSHOT isolation level
 
+Under the SNAPSHOT isolation level, when the reader is reading data, it’s guaranteed to get the last committed version of the row that was available when the transaction started. This means you’re guaranteed to get committed reads and repeatable reads, and you’re also guaranteed not to get phantom reads—just as in the SERIALIZABLE isolation level. But instead of using shared locks, this isolation level relies on row versioning.
 
+In SQL Server box (on Azure it's enabled by default):
+```
+ALTER DATABASE TSQLV4 SET ALLOW_SNAPSHOT_ISOLATION ON;
+```
 
+The following example demonstrates the behavior of the SNAPSHOT isolation level. Run the following code from Connection 1 to open a transaction, update the price of product 2 by adding 1.00 to its current price of 19.00, and query the product’s row to show the new price:
+```
+BEGIN TRAN;
+  UPDATE Production.Products SET unitprice += 1.00 WHERE productid = 2;
+  SELECT productid, unitprice FROM Production.Products WHERE productid = 2;
+```
 
+Here the output of this code shows that the product’s price was updated to 20.00:
+```
+productid   unitprice
+----------- ---------------------
+2           20.00
+```
 
+If someone begins a transaction using the SNAPSHOT isolation level, that session can request the version before the update. For example, run the following code from Connection 2 to set the isolation level to SNAPSHOT, open a transaction, and query the row for product 2:
+```
+SET TRANSACTION ISOLATION LEVEL SNAPSHOT;
+BEGIN TRAN;
+  SELECT productid, unitprice FROM Production.Products WHERE productid = 2;
+```
 
+If your transaction was under the SERIALIZABLE isolation level, the query would be blocked. But because it’s running under SNAPSHOT, you get the last committed version of the row that was available when the transaction started:
+```
+productid   unitprice
+----------- ---------------------
+2           19.00
+```
 
+Go back to Connection 1, and commit the transaction that modified the row: ```COMMIT TRAN;```
+At this point, the current version of the row with the price of 20.00 is a committed version. However, if you read the data again in Connection 2, you should still get the last committed version of the row that was available when the transaction started (with a price of 19.00):
+```
+  SELECT productid, unitprice FROM Production.Products WHERE productid = 2;
+COMMIT TRAN;
+```
 
+```
+productid   unitprice
+----------- ---------------------
+2           19.00
+```
 
+Run the following code in Connection 2 to open a new transaction, query the data, and commit the transaction:
+```
+BEGIN TRAN
+  SELECT productid, unitprice FROM Production.Products WHERE productid = 2;
+COMMIT TRAN;
+```
+This time, the last committed version of the row that was available when the transaction started is the one with a price of 20.00.
 
+##### Conflict detection
 
+The SNAPSHOT isolation level prevents update conflicts, but unlike the REPEATABLE READ and SERIALIZABLE isolation levels that do so by generating a deadlock, the SNAPSHOT isolation level fails the transaction, indicating that an update conflict was detected. The following example demonstrates a scenario with no update conflict, followed by an example of a scenario with an update conflict. 
+Run the following code in Connection 1 to set the transaction isolation level to SNAPSHOT, open a transaction, and read the row for product 2:
+```
+SET TRANSACTION ISOLATION LEVEL SNAPSHOT;
+BEGIN TRAN;
+  SELECT productid, unitprice FROM Production.Products WHERE productid = 2;
+```
 
+```
+productid   unitprice
+----------- ---------------------
+2           19.00
+```
 
+Assuming you made some calculations based on what you read, run the following code while still in Connection 1 to update the price of the product you queried previously to 20.00, and commit the transaction:
+```
+  UPDATE Production.Products SET unitprice = 20.00 WHERE productid = 2;
+COMMIT TRAN;
+```
+No other transaction modified the row between your read, calculation, and write; therefore, there was no update conflict and SQL Server allowed the update to take place. 
+Reset the price of product 2 back to 19.00.
 
+Next, run the following code in Connection 1, again, to open a transaction, and read the row for product 2:
+```
+BEGIN TRAN;
+  SELECT productid, unitprice FROM Production.Products WHERE productid = 2;
+```
 
+```
+productid   unitprice
+----------- ---------------------
+2           19.00
+```
 
+This time, run the following code in Connection 2 to update the price of product 2 to 25.00:
+```
+UPDATE Production.Products SET unitprice = 25.00 WHERE productid = 2;
+```
 
+Assume you made calculations in Connection 1 based on the price of 19.00 that you read. Based on your calculations, try to update the price of the product to 20.00 in Connection 1:
+```
+UPDATE Production.Products SET unitprice = 20.00 WHERE productid = 2;
+```
 
+SQL Server detected that this time another transaction modified the data between your read and write; therefore, it fails your transaction with the following error:
+```
+Msg 3960, Level 16, State 2, Line 1
+Snapshot isolation transaction aborted due to update conflict. 
+You cannot use snapshot isolation to access table 'Production.Products' directly or indirectly in database 'TSQLV4' to update, delete, or insert the row that has been modified or deleted by another transaction. 
+Retry the transaction or change the isolation level for the update/delete statement.
+```
 
+#### The READ COMMITTED SNAPSHOT isolation level
 
+The READ COMMITTED SNAPSHOT isolation level is also based on row versioning. It differs from the SNAPSHOT isolation level in that instead of providing a reader with a transaction-level consistent view of the data, it provides the reader with a statement-level consistent view of the data. **The READ COMMITTED SNAPSHOT isolation level also does not detect update conflicts.** This results in logical behavior similar to the READ COMMITTED isolation level, except that readers do not acquire shared locks and do not wait when the requested resource is exclusively locked.
+Run to following code to enable this option in the TSQLV4 database:
+```
+ALTER DATABASE TSQLV4 SET READ_COMMITTED_SNAPSHOT ON;
+```
 
+An interesting aspect of enabling this database flag is that, unlike with the SNAPSHOT isolation level, this flag actually changes the meaning, or semantics, of the READ COMMITTED isolation level to READ COMMITTED SNAPSHOT. This means that when this database flag is turned on, unless you explicitly change the session’s isolation level, READ COMMITTED SNAPSHOT is the default.
+For a demonstration of using the READ COMMITTED SNAPSHOT isolation level, open two connections.
+```
+USE TSQLV4;
+BEGIN TRAN;
+  UPDATE Production.Products SET unitprice += 1.00 WHERE productid = 2;
+  SELECT productid, unitprice FROM Production.Products WHERE productid = 2;
+```
 
+```
+productid   unitprice
+----------- ---------------------
+2           20.00
+```
 
+In Connection 2, open a transaction and read the row for product 2, leaving the transaction open:
+```
+BEGIN TRAN;
+  SELECT productid, unitprice FROM Production.Products WHERE productid = 2;
+```
+You get the last committed version of the row that was available when the statement started (19.00). 
+Run the following code in Connection 1 to commit the transaction: ```COMMIT TRAN;```
+Now run the code in Connection 2 to read the row for product 2 again, and commit the transaction:
+```
+  SELECT productid, unitprice FROM Production.Products WHERE productid = 2;
+COMMIT TRAN;
+```
 
+If this code was running under the SNAPSHOT isolation level, you would get a price of 19.00; however, because the code is running under the READ COMMITTED SNAPSHOT isolation level, **you get the last committed version of the row that was available when the statement started (20.00) and not when the transaction started (19.00)**:
+```
+productid   unitprice
+----------- ---------------------
+2           20.00
+```
 
+**Recall that this phenomenon is called a nonrepeatable read.**
 
+### Summary of isolation levels
 
+![summary-of-isolation-levels.PNG](pictures/summary-of-isolation-levels.PNG)
 
+## Deadlocks
+
+SQL Server detects the deadlock and intervenes by terminating one of the transactions. Unless otherwise specified, SQL Server chooses to terminate the transaction that did the least work. The following example demonstrates a simple deadlock. Open two connections.
+```
+USE TSQLV4;
+BEGIN TRAN;
+  UPDATE Production.Products SET unitprice += 1.00 WHERE productid = 2;
+```
+
+```
+BEGIN TRAN;
+  UPDATE Sales.OrderDetails SET unitprice += 1.00 WHERE productid = 2;
+```
+
+At this point, the transaction in Connection 1 is holding an exclusive lock on the row for product 2 in the Production.Products table, and the transaction in Connection 2 is now holding locks on the rows for product 2 in the Sales.OrderDetails table. Both queries succeed, and no blocking has occurred yet.
+Run the following code in Connection 1:
+```
+  SELECT orderid, productid, unitprice FROM Sales.OrderDetails WHERE productid = 2;
+COMMIT TRAN;
+```
+At this point, you have a blocking situation, not yet a deadlock. Next, run the following code in Connection 2:
+```
+  SELECT productid, unitprice FROM Production.Products WHERE productid = 2;
+COMMIT TRAN;
+```
+Each of the sessions blocks the other — you have a deadlock. SQL Server identifies the deadlock (typically within a few seconds), chooses one of the sessions involved as the deadlock victim, and terminates its transaction with the following error:
+```
+Msg 1205, Level 13, State 51, Line 1
+Transaction (Process ID 52) was deadlocked on lock resources with another process and has been chosen as the deadlock victim. Rerun the transaction.
+```
+You can follow a few practices to mitigate deadlock occurrences in your system:
+* You should try to keep transactions as short as possible, taking activities out of the transaction that aren’t logically supposed to be part of the same unit of work.
+* One typical deadlock, also called a deadly embrace deadlock, happens when transactions access resources in inverse order (given example above). This type of deadlock can’t happen if both transactions access resources in the same order.
+* In short, good index design can help mitigate the occurrences of deadlocks that have no real logical conflict.
+* If you use the READ COMMITTED SNAPSHOT isolation level, readers will not need shared locks, and deadlocks that evolve because of the involvement of shared locks can be eliminated.
 
 # Chapter 11. Programmable objects
