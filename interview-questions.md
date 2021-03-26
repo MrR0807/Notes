@@ -24,14 +24,14 @@
 * What Java version are you using?
 * Java migration policy? If using old Java, when will you migrate to new one?
 * What OpenJDK initiatives are you most looking forward to?
-* Are you using Lombok?
+* Are you using Lombok? Will you migrate off to records?
 * If there are multiple relation databases mentioned - why?
 * Is project based on microservices?
 * How are you versioning microservices?
 * How much time do you dedicate to code maintenance/code refactoring?
+* How much time do you spend reviewing code (on average)?
 * Are you using CI/CD? What are you using for CI? What are you using for CD?
 * How long would it take for change of one line to end up in Production?
-* Define the whole CI/CD process. I've created a merge request. What's next?
 * How do you ensure high code quality? Peer code review? TDD? Sonar?
 * Do you have dedicated testers?
 * How do you debug production issues?
