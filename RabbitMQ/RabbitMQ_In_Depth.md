@@ -1,9 +1,9 @@
 # Table of Content
 
-- [Chapter 1. RabbitMQ and application architecture](#part-1-rabbitmq-and-application-architecture)
+- [Chapter 1. RabbitMQ and application architecture](#chapter-1-rabbitmq-and-application-architecture)
   * [Foundational RabbitMQ](#foundational-rabbitmq)
     + [RabbitMQ’s features and benefits](#rabbitmqs-features-and-benefits)
-- [Chapter 2. How to speak Rabbit: the AMQ Protocol](#how-to-speak-rabbit-the-amq-protocol)
+- [Chapter 2. How to speak Rabbit: the AMQ Protocol](#chapter-2-how-to-speak-rabbit-the-amq-protocol)
   * [AMQP as an RPC transport](#amqp-as-an-rpc-transport)
     + [Kicking off the conversation](#kicking-off-the-conversation)
     + [Tuning in to the right channel](#tuning-in-to-the-right-channel)
