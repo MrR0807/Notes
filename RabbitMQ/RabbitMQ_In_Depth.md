@@ -1,9 +1,9 @@
 # Table of Content
 
-- [Part 1. RabbitMQ and application architecture](#part-1-rabbitmq-and-application-architecture)
+- [Chapter 1. RabbitMQ and application architecture](#part-1-rabbitmq-and-application-architecture)
   * [Foundational RabbitMQ](#foundational-rabbitmq)
     + [RabbitMQ’s features and benefits](#rabbitmqs-features-and-benefits)
-- [How to speak Rabbit: the AMQ Protocol](#how-to-speak-rabbit-the-amq-protocol)
+- [Chapter 2. How to speak Rabbit: the AMQ Protocol](#how-to-speak-rabbit-the-amq-protocol)
   * [AMQP as an RPC transport](#amqp-as-an-rpc-transport)
     + [Kicking off the conversation](#kicking-off-the-conversation)
     + [Tuning in to the right channel](#tuning-in-to-the-right-channel)
@@ -111,7 +111,7 @@
       - [Bidirectional federated exchanges](#bidirectional-federated-exchanges)
     + [Federation for cluster upgrades](#federation-for-cluster-upgrades)
 
-# Part 1. RabbitMQ and application architecture
+# Chapter 1. RabbitMQ and application architecture
 
 ## Foundational RabbitMQ
 
@@ -125,7 +125,7 @@
 * Plugins for higher-latency environments - Because not all network topologies and architectures are the same, RabbitMQ provides for messaging in low-latency environments and plugins for higher-latency environments, such as the internet. This allows for RabbitMQ to be clustered on the same local network and share federated messages across multiple data centers.
 * Layers of security
 
-# How to speak Rabbit: the AMQ Protocol
+# Chapter 2. How to speak Rabbit: the AMQ Protocol
 
 ## AMQP as an RPC transport
 
@@ -336,8 +336,6 @@ public static void main(String[] args) {
 ```
 
 ### Getting messages from RabbitMQ
-
-
 
 ```
 public static final String QUEUE_NAME = "example";
