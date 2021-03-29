@@ -23,7 +23,7 @@
     + [Writing a message publisher in Java](#writing-a-message-publisher-in-java)
       - [Default Exchange](#default-exchange)
     + [Getting messages from RabbitMQ](#getting-messages-from-rabbitmq)
-- [Chapter 3. An in-depth tour of message properties (Basic.Properties)](#chapter-3-an-indepth-tour-of-message-properties-basic-properties)
+- [Chapter 3. An in-depth tour of message properties (Basic.Properties)](#chapter-3-an-indepth-tour-of-message-properties--basic-properties-)
   * [Using properties properly](#using-properties-properly)
   * [Creating an explicit message contract with content-type](#creating-an-explicit-message-contract-with-contenttype)
   * [Reducing message size with gzip and content-encoding](#reducing-message-size-with-gzip-and-contentencoding)
