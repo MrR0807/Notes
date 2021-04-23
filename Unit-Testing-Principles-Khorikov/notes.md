@@ -464,13 +464,119 @@ passed. You may possibly even run them only on the build server, not on individu
 * An integration test is a test that doesn’t meet at least one of the criteria for a unit test. End-to-end tests are a subset of integration tests; they verify the system from the end user’s point of view. End-to-end tests reach out directly to all or almost all out-of-process dependencies your application works with.
 * For a canonical book about the classical style, I recommend Kent Beck’s Test-Driven Development: By Example. For more on the London style, see Growing Object- Oriented Software, Guided by Tests, by Steve Freeman and Nat Pryce. For further reading about working with dependencies, I recommend Dependency Injection: Principles, Practices, Patterns by Steven van Deursen and Mark Seemann.
 
+# Chapter 3. The anatomy of a unit test
 
+## How to structure a unit test
 
+### Using the AAA pattern
 
+The AAA pattern advocates for splitting each test into three parts: arrange, act, and assert. (This pattern is sometimes also called the 3A pattern.) Let’s take a Calculator
+class with a single method that calculates a sum of two numbers:
+```
+public class Calculator
+{
+    public double Sum(double first, double second)
+    {
+        return first + second;
+    }
+}
+```
 
+```
+public class CalculatorTests
+{
+    [Fact]
+    public void Sum_of_two_numbers()
+    {
+        // Arrange
+        double first = 10;
+        double second = 20;
+        var calculator = new Calculator();
+        
+        // Act
+        double result = calculator.Sum(first, second);
+        
+        // Assert
+        Assert.Equal(30, result);
+    }
+}
+```
 
+* In the arrange section, you bring the system under test (SUT) and its dependencies to a desired state.
+* In the act section, you call methods on the SUT, pass the prepared dependencies, and capture the output value (if any).
+* In the assert section, you verify the outcome. The outcome may be represented by the return value, the final state of the SUT and its collaborators, or the methods the SUT called on those collaborators.
 
+**Side Note**.
+Given-When-Then pattern
 
+You might have heard of the Given-When-Then pattern, which is similar to AAA. This pattern also advocates for breaking the test down into three parts:
+* Given — Corresponds to the arrange section
+* When — Corresponds to the act section
+* Then — Corresponds to the assert section
+
+### Avoid multiple arrange, act, and assert sections
+
+It’s best to avoid such a test structure.
+
+![chapter-3-multiple-aaa-steps.PNG](pictures/chapter-3-multiple-aaa-steps.PNG)
+
+### Avoid if statements in tests
+
+There are no benefits in branching within a test. You only gain additional maintenance costs: if statements make the tests harder to read and understand.
+
+### How large should each section be?
+
+#### THE ARRANGE SECTION IS THE LARGEST
+
+The arrange section is usually the largest of the three. It can be as large as the act and assert sections combined. But if it becomes significantly larger than that, it’s better to extract the arrangements either into private methods within the same test class or to a separate factory class. Two popular patterns can help you reuse the code in the arrange sections: **Object Mother** and **Test Data Builder**.
+
+#### WATCH OUT FOR ACT SECTIONS THAT ARE LARGER THAN A SINGLE LINE
+
+The act section is normally just a single line of code. If the act consists of two or more lines, it could indicate a problem with the SUT’s public API.
+
+This guideline of keeping the act section down to a single line holds true for the vast majority of code that contains business logic, but less so for utility or infrastructure code. Thus, I won’t say “never do it.” Be sure to examine each such case for a potential breach in encapsulation, though.
+
+### How many assertions should the assert section hold?
+
+Finally, there’s the assert section. You may have heard about the guideline of having one assertion per test. It takes root in the premise discussed in the previous chapter: the premise of targeting the smallest piece of code possible. 
+**As you already know, this premise is incorrect.** A unit in unit testing is a unit of behavior, not a unit of code. A single unit of behavior can exhibit multiple outcomes, and it’s fine to evaluate them all in one test.
+
+### What about the teardown phase?
+
+Some people also distinguish a fourth section, teardown, which comes after arrange, act, and assert. For example, you can use this section to remove any files created by the test, close a database connection, and so on. Note that most unit tests don’t need teardown. That’s a realm of integration testing.
+
+### Differentiating the system under test
+
+The SUT plays a significant role in tests. It provides an entry point for the behavior you want to invoke in the application. As we discussed in the previous chapter, this behavior can span across as many as several classes or as little as a single method. But there can be only one entry point: one class that triggers that behavior.
+
+### Dropping the arrange, act, and assert comments from tests
+
+Separating sections with empty lines works great in most unit tests. It allows you to keep a balance between brevity and readability. It doesn’t work as well in large tests, though, where you may want to put additional empty lines inside the arrange section to differentiate between configuration stages.
+
+```
+public class CalculatorTests
+{
+    [Fact]
+    public void Sum_of_two_numbers()
+    {
+        double first = 10;
+        double second = 20;
+        var sut = new Calculator();
+        
+        double result = sut.Sum(first, second);
+        
+        Assert.Equal(30, result);
+    }
+}
+```
+
+## Exploring the xUnit testing framework
+
+C# specific stuff. More in the book.
+
+## Reusing test fixtures between tests
+
+A test fixture is an object the test runs against. This object can be a regular dependency — an argument that is passed to the SUT. It can also be data in the database or a file on the hard disk. Such an object needs to remain in a known, fixed state before each test run, so it produces the same result. Hence the word fixture.
 
 
 
