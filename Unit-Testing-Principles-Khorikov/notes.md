@@ -273,14 +273,196 @@ Let’s now look at some examples. Since the classical style probably looks more
 
 Let’s say that we operate an online store. There’s just one simple use case in our sample application: a customer can purchase a product. When there’s enough inventory in the store, the purchase is deemed to be successful, and the amount of the product in the store is reduced by the purchase’s amount. If there’s not enough product, the purchase is not successful, and nothing happens in the store.
 
+The tests are written in the classical style and use the typical three-phase sequence: arrange, act, and assert.
 
+```
+[Fact]
+public void Purchase_succeeds_when_enough_inventory()
+{
+  // Arrange
+  var store = new Store();
+  store.AddInventory(Product.Shampoo, 10);
+  var customer = new Customer();
+  
+  // Act
+  bool success = customer.Purchase(store, Product.Shampoo, 5);
 
+  // Assert
+  Assert.True(success);
+  Assert.Equal(5, store.GetInventory(Product.Shampoo)); //Reduces the product amount in the store by five
+}
 
+[Fact]
+public void Purchase_fails_when_not_enough_inventory()
+{
+  // Arrange
+  var store = new Store();
+  store.AddInventory(Product.Shampoo, 10);
+  var customer = new Customer();
+  
+  // Act
+  bool success = customer.Purchase(store, Product.Shampoo, 15);
+  
+  // Assert
+  Assert.False(success);
+  Assert.Equal(10, store.GetInventory(Product.Shampoo)); //The product amount in the store remains unchanged
+}
 
+public enum Product 
+{
+  Shampoo, Book
+}
+```
 
+During the arrange phase, the tests put together two kinds of objects: the system under test (SUT) and one collaborator. In this case, Customer is the SUT and Store is the collaborator. We need the collaborator for two reasons:
+* To get the method under test to compile, because customer.Purchase() requires a Store instance as an argument
+* For the assertion phase, since one of the results of customer.Purchase() is a potential decrease in the product amount in the store
 
+This code is an example of the classical style of unit testing: the test doesn’t replace the collaborator (the Store class) but rather uses a production-ready instance of it.
 
+Let’s now modify the example toward the London style. I’ll take the same tests and replace the Store instances with test doubles—specifically, mocks.
 
+```
+[Fact]
+public void Purchase_succeeds_when_enough_inventory()
+{
+	// Arrange
+	var storeMock = new Mock<IStore>();
+	storeMock
+	.Setup(x => x.HasEnoughInventory(Product.Shampoo, 5))
+	.Returns(true);
+	var customer = new Customer();
+
+	// Act
+	bool success = customer.Purchase(storeMock.Object, Product.Shampoo, 5);
+	
+	// Assert
+	Assert.True(success);
+	storeMock.Verify(x => x.RemoveInventory(Product.Shampoo, 5),Times.Once);
+
+[Fact]
+public void Purchase_fails_when_not_enough_inventory()
+{
+	// Arrange
+	var storeMock = new Mock<IStore>();
+	storeMock
+	.Setup(x => x.HasEnoughInventory(Product.Shampoo, 5))
+	.Returns(false);
+	var customer = new Customer();
+	
+	// Act
+	bool success = customer.Purchase(storeMock.Object, Product.Shampoo, 5);
+	
+	// Assert
+	Assert.False(success);
+	storeMock.Verify(x => x.RemoveInventory(Product.Shampoo, 5),Times.Never);
+}
+```
+
+Note how different these tests are from those written in the classical style:
+* In arrange phase it's not longer a normal class, but mocked one;
+* Furthermore, instead of modifying the state of Store by adding a shampoo inventory to it, we directly tell the mock how to respond to calls to HasEnoughInventory().
+* The assertion phase has changed too, and that’s where the key difference lies. We still check the output from customer.Purchase as before, but the way we verify that the customer did the right thing to the store is different. Previously, we did that by asserting against the store’s state. Now, we examine the interactions between Customer and Store: the tests check to see if the customer made the correct call on the store.
+
+### The isolation issue: The classical take
+
+As I mentioned earlier, there’s another way to interpret the isolation attribute — the classical way. In the classical approach, it’s not the code that needs to be tested in an isolated manner. **Instead, unit tests themselves should be run in isolation from each other.** That way, you can run the tests in parallel, sequentially, and in any order, whatever fits you best, and they still won’t affect each other’s outcome.
+
+This alternative view of isolation also leads to a different take on what constitutes a unit (a small piece of code). A unit doesn’t necessarily have to be limited to a class. You can just as well unit test a group of classes, as long as none of them is a shared dependency.
+
+A **shared dependency** is a dependency that is shared between tests and provides means for those tests to affect each other’s outcome. A typical example of shared dependencies is a static mutable field. A change to such a field is visible across all unit tests running within the same process. A database is another typical example of a shared dependency.
+
+## The classical and London schools of unit testing
+
+As you can see, the root of the differences between the London and classical schools is the isolation attribute. The London school views it as isolation of the system under test from its collaborators, whereas the classical school views it as isolation of unit tests themselves from each other. This seemingly minor difference has led to a vast disagreement about how to approach unit testing, which, as you already know, produced the two schools of thought. Overall, the disagreement between the schools spans three major topics:
+* The isolation requirement
+* What constitutes a piece of code under test (a unit)
+* Handling dependencies
+
+![Chapter-2-london-vs-classic.PNG](pictures/Chapter-2-london-vs-classic.PNG)
+
+### How the classical and London schools handle dependencies
+
+Note that despite the ubiquitous use of test doubles, the London school still allows for using some dependencies in tests as-is. The litmus test here is whether a dependency
+is mutable. It’s fine not to substitute objects that don’t ever change — immutable objects.
+And you saw in the earlier examples that, when I refactored the tests toward the London style, I didn’t replace the Product instances with mocks but rather used the real objects.
+
+![chapter-2-shared-dependencies-london-vs-classic.PNG](pictures/chapter-2-shared-dependencies-london-vs-classic.PNG)
+
+Figure 2.4 shows the categorization of dependencies and how both schools of unit testing treat them. A dependency can be either shared or private. A private dependency, in turn, can be either mutable or immutable. In the latter case, it is called a value object. For example, a database is a shared dependency—its internal state is shared across all automated tests (that don’t replace it with a test double). A Store instance is a private dependency that is mutable. And a Product instance (or an instance of a number 5, for that matter) is an example of a private dependency that is immutable—a value object.
+
+## Contrasting the classical and London schools of unit testing
+
+To reiterate, the main difference between the classical and London schools is in how they treat the isolation issue in the definition of a unit test. This, in turn, spills over to the treatment of a unit—the thing that should be put under test—and the approach to handling dependencies.
+As I mentioned previously, I prefer the classical school of unit testing. It tends to produce tests of higher quality and thus is better suited for achieving the ultimate goal of unit testing, which is the sustainable growth of your project. **The reason is fragility: tests that use mocks tend to be more brittle than classical tests.**
+For now, let’s take the main selling points of the London school and evaluate them one by one:
+* **Better granularity**. The tests are fine-grained and check only one class at a time.
+* **It’s easier to unit test a larger graph of interconnected classes**. Since all collaborators are replaced by test doubles, you don’t need to worry about them at the time of writing the test.
+* **If a test fails, you know for sure which functionality has failed**. Without the class’s collaborators, there could be no suspects other than the class under test itself. Of course, there may still be situations where the system under test uses a value object and it’s the change in this value object that makes the test fail. But these cases aren’t that frequent because all other dependencies are eliminated in tests.
+
+### Unit testing one class at a time
+
+The point about better granularity relates to the discussion about what constitutes a unit in unit testing. The London school considers a class as such a unit.
+
+Tests shouldn’t verify units of code. Rather, they should verify units of behavior: something that is meaningful for the problem domain and, ideally, something that a business person can recognize as useful. The number of classes it takes to implement such a unit of behavior is irrelevant. The unit could span across multiple classes or only one class, or even take up just a tiny method.
+
+**A test should tell a story about the problem your code helps to solve, and this story should be cohesive and meaningful to a non-programmer.** For instance, this is an example of a cohesive story: When I call my dog, he comes right to me. 
+Now compare it to the following: When I call my dog, he moves his front left leg first, then the front right leg, his head turns, the tail start wagging.
+
+The second story makes much less sense. What’s the purpose of all those movements? Is the dog coming to me? Or is he running away? You can’t tell. This is what your tests start to look like when you target individual classes (the dog’s legs, head, and tail) instead of the actual behavior (the dog coming to his master).
+
+### Unit testing a large graph of interconnected classes
+
+The use of mocks in place of real collaborators can make it easier to test a class — especially when there’s a complicated dependency graph, where the class under test has dependencies, each of which relies on dependencies of its own, and so on, several layers deep. With test doubles, you can substitute the class’s immediate dependencies and thus break up the graph, which can significantly reduce the amount of preparation you have to do in a unit test. If you follow the classical school, you have to re-create the full object graph (with the exception of shared dependencies) just for the sake of setting up the system under test, which can be a lot of work.
+Although this is all true, this line of reasoning focuses on the wrong problem. Instead of finding ways to test a large, complicated graph of interconnected classes, you should focus on not having such a graph of classes in the first place. More often than not, a large class graph is a result of a code design problem.
+
+### Revealing the precise bug location
+
+It’s a valid concern, but I don’t see it as a big problem. If you run your tests regularly (ideally, after each source code change), then you know what caused the bug — it’s what you edited last, so it’s not that difficult to find the issue.
+
+### Other differences between the classical and London schools
+
+The most crucial distinction between the schools is the issue of over-specification: that is, coupling the tests to the SUT’s implementation details. The London style
+tends to produce tests that couple to the implementation more often than the classical style. And this is the main objection against the ubiquitous use of mocks and the London style in general.
+
+## Integration tests in the two schools
+
+The London and classical schools also diverge in their definition of an integration test. This disagreement flows naturally from the difference in their views on the isolation issue.
+The London school considers any test that uses a real collaborator object an integration test. Most of the tests written in the classical style would be deemed integration tests by the London school proponents. The Shop example is a typical unit test from the classical perspective, but it’s an integration test for a follower of the London school.
+
+Now that I’ve clarified what the first and third attributes mean, I’ll redefine them from the point of view of the classical school. A unit test is a test that
+. Verifies a single **unit of behavior**,
+. Does it quickly,
+. And does it in isolation **from other tests**.
+
+**An integration test, then, is a test that doesn’t meet one of these criteria.** For example, a test that reaches out to a shared dependency — say, a database — can’t run in isolation from other tests. A change in the database’s state introduced by one test would alter the outcome of all other tests that rely on the same database if run in parallel. You’d have to take additional steps to avoid this interference. In particular, you would have to run such tests sequentially, so that each test would wait its turn to work with the shared dependency.
+Similarly, an outreach to an out-of-process dependency makes the test slow. A call to a database adds hundreds of milliseconds, potentially up to a second, of additional execution time. Milliseconds might not seem like a big deal at first, but when your test suite grows large enough, every second counts.
+
+### End-to-end tests are a subset of integration tests
+
+In short, an **integration test** is a test that verifies that your code works in integration with shared dependencies, out-of-process dependencies, or code developed by other teams in the organization. There’s also a separate notion of an end-to-end test. End-to-end tests are a subset of integration tests. They, too, check to see how your code works with out-of-process dependencies. The difference between an end-to-end test and an integration test is that end-to-end tests usually include more of such dependencies.
+The line is blurred at times, but in general, an **integration test works with only one or two out-of-process dependencies.** On the other hand, an **end-to-end test works with all out-of-process dependencies, or with the vast majority of them.**
+
+Let’s say your application works with three out-of-process dependencies: a database, the file system, and a payment gateway. A typical integration test would include only the database and file system in scope and use a test double to replace the payment gateway. That’s because you have full control over the database and file system, and thus can easily bring them to the required state in tests, whereas you don’t have the same degree of control over the payment gateway. With the payment gateway, you may need to contact the payment processor organization to set up a special test account. You might also need to check that account from time to time to manually clean up all the payment charges left over from the past test executions.
+Since end-to-end tests are the most expensive in terms of maintenance, it’s better to run them late in the build process, after all the unit and integration tests have
+passed. You may possibly even run them only on the build server, not on individual developers’ machines.
+
+![chapter-2-e2e-vs-integration-test.PNG](pictures/chapter-2-e2e-vs-integration-test.PNG)
+
+## Summary
+
+* Throughout this chapter, I’ve refined the definition of a unit test:
+  – A unit test verifies a single unit of behavior,
+  – Does it quickly,
+  – And does it in isolation from other tests.
+* The isolation issue is disputed the most. The dispute led to the formation of two schools of unit testing: the classical (Detroit) school, and the London (mockist) school. This difference of opinion affects the view of what constitutes a unit and the treatment of the system under test’s (SUT’s) dependencies.
+  – The London school states that the units under test should be isolated from each other. A unit under test is a unit of code, usually a class. All of its dependencies, except immutable dependencies, should be replaced with test doubles in tests.
+  – The classical school states that the unit tests need to be isolated from each other, not units. Also, a unit under test is a unit of behavior, not a unit of code. Thus, only shared dependencies should be replaced with test doubles. Shared dependencies are dependencies that provide means for tests to affect each other’s execution flow.
+* The London school provides the benefits of better granularity, the ease of testing large graphs of interconnected classes, and the ease of finding which functionality contains a bug after a test failure.
+* The benefits of the London school look appealing at first. However, they introduce several issues. First, the focus on classes under test is misplaced: tests should verify units of behavior, not units of code. Furthermore, the inability to unit test a piece of code is a strong sign of a problem with the code design. The use of test doubles doesn’t fix this problem, but rather only hides it. And finally, while the ease of determining which functionality contains a bug after a test failure is helpful, it’s not that big a deal because you often know what caused the bug anyway — it’s what you edited last.
+* The biggest issue with the London school of unit testing is the problem of overspecification — coupling tests to the SUT’s implementation details.
+* An integration test is a test that doesn’t meet at least one of the criteria for a unit test. End-to-end tests are a subset of integration tests; they verify the system from the end user’s point of view. End-to-end tests reach out directly to all or almost all out-of-process dependencies your application works with.
+* For a canonical book about the classical style, I recommend Kent Beck’s Test-Driven Development: By Example. For more on the London style, see Growing Object- Oriented Software, Guided by Tests, by Steve Freeman and Nat Pryce. For further reading about working with dependencies, I recommend Dependency Injection: Principles, Practices, Patterns by Steven van Deursen and Mark Seemann.
 
 
 
