@@ -49,3 +49,9 @@
 * What do you like about this work?
 * What do you look for in programmers?
 * Do you have a deadline?
+
+
+## Misc
+
+* Top two business initiatives for the squad?
+* Top two development initiatives for the squad?
