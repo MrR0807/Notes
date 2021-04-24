@@ -666,12 +666,56 @@ Adhere to the following guidelines to write expressive, easily readable test nam
 * **Name the test as if you were describing the scenario to a non-programmer who is familiar with the problem domain.** A domain expert or a business analyst is a good example.
 * **Separate words with underscores.** Doing so helps improve readability, especially in long names.
 
+### Example: Renaming a test toward the guidelines
 
+``public void IsDeliveryValid_InvalidDate_ReturnsFalse``
 
+How would you rewrite the test’s name in plain English? The following would be a good first try:
+```
+public void Delivery_with_invalid_date_should_be_considered_invalid()
+```
 
+#### Method under test in the test’s name
 
+Don’t include the name of the SUT’s method in the test’s name. Remember, you don’t test code, you test application behavior. Therefore, it doesn’t matter what the name of the method under test is. As I mentioned previously, the SUT is just an entry point: a means to invoke a behavior. You can decide to rename the method under test to, say, IsDeliveryCorrect, and it will have no effect on the SUT’s behavior. On the other hand, if you follow the original naming convention, you’ll have to rename the test. This once again shows that targeting code instead of behavior couples tests to that code’s implementation details, which negatively affects the test suite’s maintainability.
 
+But let’s get back to the example. The new version of the test’s name is a good start, but it can be improved further. What does it mean for a delivery date to be invalid, exactly? So let’s be specific and reflect this knowledge in the test’s name:
+```
+public void Delivery_with_past_date_should_be_considered_invalid()
+```
 
+This is better but still not ideal. It’s too verbose. We can get rid of the word considered without any loss of meaning:
+```
+public void Delivery_with_past_date_should_be_invalid()
+```
+
+The wording *should be* is another common anti-pattern. Earlier in this chapter, I mentioned that a test is a single, atomic fact about a unit of behavior. There’s no place for a wish or a desire when stating a fact. Name the test accordingly—replace should be with is:
+```
+public void Delivery_with_past_date_is_invalid()
+```
+
+And finally, there’s no need to avoid basic English grammar. Articles help the test read flawlessly. Add the article a to the test’s name:
+```
+public void Delivery_with_a_past_date_is_invalid()
+```
+
+## Refactoring to parameterized tests
+
+One test usually is not enough to fully describe a unit of behavior. Such a unit normally consists of multiple components, each of which should be captured with its own test. If the behavior is complex enough, the number of tests describing it can grow dramatically and may become unmanageable. Luckily, most unit testing frameworks provide functionality that allows you to group similar tests using **parameterized tests**.
+
+Using parameterized tests, you can significantly reduce the amount of test code, but this benefit comes at a cost. It’s now hard to figure out what facts the test method represents. And the more parameters there are, the harder it becomes. As a compromise, you can extract the positive test case into its own test.
+
+## Summary
+
+* All unit tests should follow the AAA pattern: **arrange, act, assert**. If a test has multiple arrange, act, or assert sections, that’s a sign that the test verifies multiple units of behavior at once. If this test is meant to be a unit test, split it into several tests — one per each action.
+* **More than one line in the act section is a sign of a problem with the SUT’s API.** It requires the client to remember to always perform these actions together, which can potentially lead to inconsistencies. Such inconsistencies are called invariant violations. The act of protecting your code against potential invariant violations is called encapsulation.
+* Distinguish the SUT in tests by naming it sut. Differentiate the three test sections either by putting Arrange, Act, and Assert comments before them or by introducing empty lines between these sections.
+* Reuse test fixture initialization code by introducing factory methods, not by putting this initialization code to the constructor. Such reuse helps maintain a high degree of decoupling between tests and also provides better readability.
+* Don’t use a rigid test naming policy. Name each test as if you were describing the scenario in it to a non-programmer who is familiar with the problem domain. Separate words in the test name by underscores, and don’t include the name of the method under test in the test name.
+* Parameterized tests help reduce the amount of code needed for similar tests. The drawback is that the test names become less readable as you make them more generic.
+* Assertion libraries help you further improve test readability by restructuring the word order in assertions so that they read like plain English.
+
+# Chapter 4. The four pillars of a good unit test
 
 
 
