@@ -885,28 +885,165 @@ There are pros and cons to both of these methods. White-box testing tends to be 
 
 # Chapter 5. Mocks and test fragility
 
+## Differentiating mocks from stubs
+
+I briefly mentioned that **a mock** is a test double that allows you to examine interactions between the system under test (SUT) and its collaborators. There’s another type of test double: **a stub**. Let’s take a closer look at what a mock is and how it is different from a stub.
+
+### The types of test doubles
+
+The difference between these two types boils down to the following:
+* Mocks help to emulate and examine outcoming interactions. These interactions are calls the SUT makes to its dependencies to change their state.
+* Stubs help to emulate incoming interactions. These interactions are calls the SUT makes to its dependencies to get input data
+
+Java example:
+```
+// mock creation
+List mockedList = mock(List.class);
+
+// using mock object - it does not throw any "unexpected interaction" exception
+mockedList.add("one");
+mockedList.clear();
+
+// selective, explicit, highly readable verification
+verify(mockedList).add("one");
+verify(mockedList).clear();
+```
+
+```
+// you can mock concrete classes, not only interfaces
+LinkedList mockedList = mock(LinkedList.class);
+
+// stubbing appears before the actual execution
+when(mockedList.get(0)).thenReturn("first");
+
+// the following prints "first"
+System.out.println(mockedList.get(0));
+
+// the following prints "null" because get(999) was not stubbed
+System.out.println(mockedList.get(999));
+```
+
+C# example:
+```
+[Fact]
+public void Sending_a_greetings_email()
+{
+	var mock = new Mock<IEmailGateway>(); //Create mock to examine the call from SUT
+	var sut = new Controller(mock.Object);
+
+	sut.GreetUser("user@email.com");
+
+	mock.Verify(x => x.SendGreetingsEmail("user@email.com"), Times.Once);
+}
+```
+
+```
+[Fact]
+public void Creating_a_report()
+{
+	var stub = new Mock<IDatabase>();
+	stub.Setup(x => x.GetNumberOfUsers()).Returns(10);
+	var sut = new Controller(stub.Object);
+
+	Report report = sut.CreateReport();
+
+	Assert.Equal(10, report.NumberOfUsers);
+}
+```
+
+### Don’t assert interactions with stubs
+
+Mocks help to emulate and examine outcoming interactions between the SUT and its dependencies, while stubs only help to emulate incoming interactions, not examine them. The difference between the two stems from the guideline of **never asserting interactions with stubs.**
+
+As you might remember from chapter 4, the only way to avoid false positives and thus improve resistance to refactoring in tests is to make those tests verify the end result (which, ideally, should be meaningful to a non-programmer), not implementation details. In listing 5.1, the check
+```
+mock.Verify(x => x.SendGreetingsEmail("user@email.com"))
+```
+
+corresponds to an actual outcome, and that outcome is meaningful to a domain expert: sending a greetings email is something business people would want the system to do.
+
+At the same time, the call to GetNumberOfUsers() in listing 5.2 is not an outcome at all. It’s an internal implementation detail regarding how the SUT gathers data necessary for the report creation. Therefore, asserting this call would lead to test fragility: it shouldn’t matter how the SUT generates the end result, as long as that result is correct. The following listing shows an example of such a brittle test.
+
+```
+[Fact]
+public void Creating_a_report()
+{
+	var stub = new Mock<IDatabase>();
+	stub.Setup(x => x.GetNumberOfUsers()).Returns(10);
+	var sut = new Controller(stub.Object);
+
+	Report report = sut.CreateReport();
+
+	Assert.Equal(10, report.NumberOfUsers);
+	stub.Verify(x => x.GetNumberOfUsers(), Times.Once);
+}
+```
+
+### Using mocks and stubs together
+
+Sometimes you need to create a test double that exhibits the properties of both a mock and a stub.
+
+```
+[Fact]
+public void Purchase_fails_when_not_enough_inventory()
+{
+	var storeMock = new Mock<IStore>();
+	storeMock.Setup(x => x.HasEnoughInventory(Product.Shampoo, 5)).Returns(false);
+	var sut = new Customer();
+	
+	bool success = sut.Purchase(storeMock.Object, Product.Shampoo, 5);
+	
+	Assert.False(success);
+	storeMock.Verify(x => x.RemoveInventory(Product.Shampoo, 5), Times.Never);
+}
+```
+
+This test uses storeMock for two purposes: it returns a canned answer and verifies a method call made by the SUT. Notice, though, that these are two different methods: the test sets up the answer from HasEnoughInventory() but then verifies the call to RemoveInventory(). Thus, the rule of not asserting interactions with stubs is not violated here.
+
+### How mocks and stubs relate to commands and queries
+
+The notions of mocks and stubs tie to the command query separation (CQS) principle. The CQS principle states that every method should be either a command or a query, but not both:
+* Commands are methods that produce side effects and don’t return any value (return void).
+* Queries are the opposite of that—they are side-effect free and return a value.
+
+![chapter-5-commands-vs-queries.PNG](pictures/chapter-5-commands-vs-queries.PNG)
+
+Of course, it’s not always possible to follow the CQS principle. There are always methods for which it makes sense to both incur a side effect and return a value. A classical example is stack.Pop(). This method both removes a top element from the stack and returns it to the caller. Still, it’s a good idea to adhere to the CQS principle whenever you can.
+
+Test doubles that substitute commands become mocks. Similarly, test doubles that substitute queries are stubs:
+```
+var mock = new Mock<IEmailGateway>();
+mock.Verify(x => x.SendGreetingsEmail("user@email.com"));
+
+var stub = new Mock<IDatabase>();
+stub.Setup(x => x.GetNumberOfUsers()).Returns(10);
+```
+
+## Observable behavior vs. implementation details
+
+Section 5.1 showed what a mock is. The next step on the way to explaining the connection between mocks and test fragility is diving into what causes such fragility.
 
 
+Test fragility corresponds to the second attribute of a good unit test: resistance to refactoring. The metric of resistance to refactoring is the most important because whether a unit test possesses this metric is mostly a binary choice.
 
+In other words, tests must focus on the whats, not the hows. So, what exactly is an implementation detail, and how is it different from an observable behavior?
 
+### Observable behavior is not the same as a public API
 
+All production code can be categorized along two dimensions:
+* Public API vs. private API (where API means application programming interface)
+* Observable behavior vs. implementation details
 
+The categories in these dimensions don’t overlap. A method can’t belong to both a public and a private API; it’s either one or the other. Similarly, the code is either an internal implementation detail or part of the system’s observable behavior, but not both.
 
+The distinction between observable behavior and internal implementation details is more nuanced. For a piece of code to be part of the system’s observable behavior, it has to do one of the following things:
+* Expose an operation that helps the client achieve one of its goals. An operation is a method that performs a calculation or incurs a side effect or both.
+* Expose a state that helps the client achieve one of its goals. State is the current condition of the system.
+Any code that does neither of these two things is an implementation detail.
 
+Ideally, the system’s public API surface should coincide with its observable behavior, and all its implementation details should be hidden from the eyes of the clients. Such a system has a well-designed API (figure 5.4).
 
-
-
-
-
-
-
-
-
-
-
-
-
-
+![chapter-5-well-designed-api.PNG](pictures/chapter-5-well-designed-api.PNG)
 
 
 
