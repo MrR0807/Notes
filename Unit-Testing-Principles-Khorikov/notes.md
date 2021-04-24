@@ -717,26 +717,173 @@ Using parameterized tests, you can significantly reduce the amount of test code,
 
 # Chapter 4. The four pillars of a good unit test
 
+## Diving into the four pillars of a good unit test
 
+A good unit test has the following four attributes:
+* Protection against regressions
+* Resistance to refactoring
+* Fast feedback
+* Maintainability
 
+These four attributes are foundational. You can use them to analyze any automated test, be it unit, integration, or end-to-end.
 
+### The first pillar: Protection against regressions
 
+**A regression** is a software bug. It’s when a feature stops working as intended after some code modification, usually after you roll out new functionality.
 
+To evaluate how well a test scores on the metric of protecting against regressions, you need to take into account the following:
+* The amount of code that is executed during the test
+* The complexity of that code
+* The code’s domain significance
 
+Generally, the larger the amount of code that gets executed, the higher the chance that the test will reveal a regression. Note that it’s not only the amount of code that matters, but also its complexity and domain significance. Code that represents complex business logic is more important than boilerplate code — bugs in business - critical functionality are the most damaging.
 
+**To maximize the metric of protection against regressions, the test needs to aim at exercising as much code as possible.**
 
+### The second pillar: Resistance to refactoring
 
+The second attribute of a good unit test is resistance to refactoring—the degree to which a test can sustain a refactoring of the underlying application code without turning red (failing). This situation is called a false positive. A false positive is a false alarm. It’s a result indicating that the test fails, although in reality, the functionality it covers works as intended.
 
+There are two specific benefits here:
+* Tests provide an early warning when you break existing functionality. Thanks to such early warnings, you can fix an issue long before the faulty code is deployed to production, where dealing with it would require a significantly larger amount of effort.
+* You become confident that your code changes won’t lead to regressions. Without such confidence, you will be much more hesitant to refactor and much more likely to leave the code base to deteriorate.
 
+False positives interfere with both of these benefits:
+* If tests fail with no good reason, they dilute your ability and willingness to react to problems in code. Over time, you get accustomed to such failures and stop paying as much attention. After a while, you start ignoring legitimate failures, too, allowing them to slip into production.
+* On the other hand, when false positives are frequent, you slowly lose trust in the test suite. You no longer perceive it as a reliable safety net—the perception is diminished by false alarms. This lack of trust leads to fewer refactorings, because you try to reduce code changes to a minimum in order to avoid regressions.
 
+### What causes false positives?
 
+So, what causes false positives? And how can you avoid them?
+The number of false positives a test produces is directly related to the way the test is structured. The more the test is coupled to the implementation details of the system under test (SUT), the more false alarms it generates. The only way to reduce the chance of getting a false positive is to decouple the test from those implementation details.
 
+### Aim at the end result instead of implementation details
 
+As I mentioned earlier, the only way to avoid brittleness in tests and increase their resistance to refactoring is to decouple them from the SUT’s implementation details — keep as much distance as possible between the test and the code’s inner workings and instead aim at verifying the end result.
 
+## The intrinsic connection between the first two attributes
 
+As I mentioned earlier, there’s an intrinsic connection between the first two pillars of a good unit test — protection against regressions and resistance to refactoring. They both contribute to the accuracy of the test suite, though from opposite perspectives. These two attributes also tend to influence the project differently over time: while it’s important to have good protection against regressions very soon after the project’s initiation, the need for resistance to refactoring is not immediate.
 
+### Maximizing test accuracy
 
+Let’s step back for a second and look at the broader picture with regard to test results. When it comes to code correctness and test results, there are four possible outcomes, as shown in figure 4.3. The test can either pass or fail (the rows of the table). And the functionality itself can be either correct or broken (the table’s columns).
 
+![chapter-4-test-matrix.PNG](pictures/chapter-4-test-matrix.PNG)
+
+In the short term, false positives are not as bad as false negatives. In the beginning of a project, receiving a wrong warning is not that big a deal as opposed to not being warned at all and running the risk of a bug slipping into production. But as the project grows, false positives start to have an increasingly large effect on the test suite.
+
+![chapter-4-false-negatives-vs-false-positives.PNG](pictures/chapter-4-false-negatives-vs-false-positives.PNG)
+
+## The third and fourth pillars: Fast feedback and maintainability
+
+Two remaining pillars of a good unit test:
+* Fast feedback
+* Maintainability
+As you may remember from chapter 2, fast feedback is an essential property of a unit test. The faster the tests, the more of them you can have in the suite and the more often you can run them.
+
+Finally, the fourth pillar of good units tests, the maintainability metric, evaluates maintenance costs. This metric consists of two major components:
+* How hard it is to understand the test—This component is related to the size of the test.
+* How hard it is to run the test—If the test works with out-of-process dependencies, you have to spend time keeping those dependencies operational: reboot the database server, resolve network connectivity issues, and so on.
+
+## In search of an ideal test
+
+Here are the four attributes of a good unit test once again:
+* Protection against regressions
+* Resistance to refactoring
+* Fast feedback
+* Maintainability
+
+### Is it possible to create an ideal test?
+
+Unfortunately, it’s impossible to create an ideal test. You can’t just forgo one of the attributes in order to focus on the others. As I mentioned previously, a test that scores zero in one of the four categories is worthless. Therefore, you have to maximize these attributes in such a way that none of them is diminished too much. Let’s look at some examples of **tests that aim at maximizing two out of three attributes at the expense of the third and, as a result, have a value that’s close to zero.**
+
+### Extreme case #1: End-to-end tests
+
+The first example is end-to-end tests. As you may remember from chapter 2, end-to-end tests look at the system from the end user’s perspective. They normally go through all of the system’s components, including the UI, database, and external applications. Since end-to-end tests exercise a lot of code, they provide the **best protection against regressions**. In fact, of all types of tests, end-to-end tests exercise the most code—both your code and the code you didn’t write but use in the project, such as external libraries, frameworks, and third-party applications.
+End-to-end tests are also immune to false positives and thus **have a good resistance to refactoring**. A refactoring, if done correctly, doesn’t change the system’s observable behavior and therefore doesn’t affect the end-to-end tests. That’s another advantage of such tests: they don’t impose any particular implementation. The only thing end-toend tests look at is how a feature behaves from the end user’s point of view. They are as removed from implementation details as tests could possibly be.
+However, despite these benefits, **end-to-end tests have a major drawback: they are slow**. Any system that relies solely on such tests would have a hard time getting rapid feedback. And that is a deal-breaker for many development teams. This is why it’s pretty much impossible to cover your code base with only end-to-end tests.
+
+### Extreme case #2: Trivial tests
+
+Another example of maximizing two out of three attributes at the expense of the third is a trivial test. Such tests cover a simple piece of code, something that is unlikely to break because it’s too trivial.
+
+```
+public class User
+{
+	public string Name { get; set; }
+}
+
+[Fact]
+public void Test()
+{
+	var sut = new User();
+	
+	sut.Name = "John Smith";
+	
+	Assert.Equal("John Smith", sut.Name);
+}
+```
+
+Unlike end-to-end tests, trivial tests do provide fast feedback—they run very quickly. They also have a fairly low chance of producing a false positive, so they have good resistance to refactoring. Trivial tests are unlikely to reveal any regressions, though, because there’s not much room for a mistake in the underlying code.
+
+### Extreme case #3: Brittle tests
+
+Similarly, it’s pretty easy to write a test that runs fast and has a good chance of catching a regression but does so with a lot of false positives. Such a test is called a brittle test: it can’t withstand a refactoring and will turn red regardless of whether the underlying functionality is broken.
+
+### In search of an ideal test: The results
+
+The first three attributes of a good unit test (protection against regressions, resistance to refactoring, and fast feedback) are mutually exclusive. While it’s quite easy to come up with a test that maximizes two out of these three attributes, you can only do that at the expense of the third.
+
+The fourth attribute, maintainability, is not correlated to the first three, with the exception of end-to-end tests.
+
+**In reality, though, *resistance to refactoring* is non-negotiable.** You should aim at gaining as much of it as you can, provided that your tests remain reasonably quick and you don’t resort to the exclusive use of end-to-end tests. The trade-off, then, comes down to the **choice between how good your tests are at pointing out bugs and how fast they do that: that is, between protection against regressions and fast feedback.**
+
+## Exploring well-known test automation concepts
+
+### Breaking down the Test Pyramid
+
+The Test Pyramid is often represented visually as a pyramid with those three types of tests in it. The width of the pyramid layers refers to the prevalence of a particular type of test in the suite. The wider the layer, the greater the test count. The height of the layer is a measure of how close these tests are to emulating the end user’s behavior.
+
+![chapter-4-test-pyramid.PNG](pictures/chapter-4-test-pyramid.PNG)
+
+Tests in higher pyramid layers favor protection against regressions, while lower layers emphasize execution speed.
+
+Notice that neither layer gives up resistance to refactoring. Naturally, end-to-end and integration tests score higher on this metric than unit tests, but only as a side effect of being more detached from the production code. Still, even unit tests should not concede resistance to refactoring.
+
+### Choosing between black-box and white-box testing
+
+There are pros and cons to both of these methods. White-box testing tends to be more thorough. By analyzing the source code, you can uncover a lot of errors that you may miss when relying solely on external specifications. On the other hand, tests resulting from white-box testing are often brittle, as they tend to tightly couple to the specific implementation of the code under test. Such tests produce many false positives and thus fall short on the metric of resistance to refactoring.
+
+**As you may remember you can’t compromise on resistance to refactoring: a test either possesses resistance to refactoring or it doesn’t. Therefore, choose blackbox testing over white-box testing by default.**
+
+## Summary
+
+* A good unit test has four foundational attributes that you can use to analyze any automated test, whether unit, integration, or end-to-end:
+  * Protection against regressions
+  * Resistance to refactoring
+  * Fast feedback
+  * Maintainability
+* **Protection against regressions** is a measure of how good the test is at indicating the presence of bugs (regressions). The more code the test executes (both your code and the code of libraries and frameworks used in the project), the higher the chance this test will reveal a bug.
+* **Resistance to refactoring** is the degree to which a test can sustain application code refactoring without producing a false positive.
+* A false positive is a false alarm — a result indicating that the test fails, whereas the functionality it covers works as intended. False positives can have a devastating effect on the test suite:
+  * They dilute your ability and willingness to react to problems in code, because you get accustomed to false alarms and stop paying attention to them. 
+  * They diminish your perception of tests as a reliable safety net and lead to losing trust in the test suite.
+* False positives are a result of tight coupling between tests and the internal implementation details of the system under test. To avoid such coupling, the test must verify the end result the SUT produces, not the steps it took to do that.
+* Protection against regressions and resistance to refactoring contribute to test accuracy. A test is accurate insofar as it generates a strong signal (is capable of finding bugs, the sphere of protection against regressions) with as little noise (false positives) as possible (the sphere of resistance to refactoring).
+* False positives don’t have as much of a negative effect in the beginning of the project, but they become increasingly important as the project grows: as important as false negatives (unnoticed bugs).
+* Fast feedback is a measure of how quickly the test executes.
+* Maintainability consists of two components:
+  * How hard it is to understand the test. The smaller the test, the more readable it is.
+  * How hard it is to run the test. The fewer out-of-process dependencies the test reaches out to, the easier it is to keep them operational.
+* A test’s value estimate is the product of scores the test gets in each of the four attributes. If the test gets zero in one of the attributes, its value turns to zero as well.
+* It’s impossible to create a test that gets the maximum score in all four attributes, because the first three—protection against regressions, resistance to refactoring, and fast feedback—are mutually exclusive. The test can only maximize two out of the three.
+* Resistance to refactoring is non-negotiable because whether a test possess this attribute is mostly a binary choice: the test either has resistance to refactoring or it doesn’t. The trade-off between the attributes comes down to the choice between protection against regressions and fast feedback.
+* The Test Pyramid advocates for a certain ratio of unit, integration, and end-toend tests: end-to-end tests should be in the minority, unit tests in the majority, and integration tests somewhere in the middle.
+* Different types of tests in the pyramid make different choices between fast feedback and protection against regressions. End-to-end tests favor protection against regressions, while unit tests favor fast feedback.
+* Use the black-box testing method when writing tests. Use the white-box method when analyzing the tests.
+
+# Chapter 5. Mocks and test fragility
 
 
 
