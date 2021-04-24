@@ -578,6 +578,132 @@ C# specific stuff. More in the book.
 
 A test fixture is an object the test runs against. This object can be a regular dependency — an argument that is passed to the SUT. It can also be data in the database or a file on the hard disk. Such an object needs to remain in a known, fixed state before each test run, so it produces the same result. Hence the word fixture.
 
+### High coupling between tests is an anti-pattern
+
+A modification of one test should not affect other tests.
+
+### The use of constructors in tests diminishes test readability
+
+### A better way to reuse test fixtures
+
+Introduce private factory methods in the test class, as shown in the following listing.
+
+```
+public class CustomerTests
+{
+	[Fact]
+	public void Purchase_succeeds_when_enough_inventory()
+	{
+		Store store = CreateStoreWithInventory(Product.Shampoo, 10);
+		Customer sut = CreateCustomer();
+		
+		bool success = sut.Purchase(store, Product.Shampoo, 5);
+		
+		Assert.True(success);
+		Assert.Equal(5, store.GetInventory(Product.Shampoo));
+	}
+
+	[Fact]
+	public void Purchase_fails_when_not_enough_inventory()
+	{
+		Store store = CreateStoreWithInventory(Product.Shampoo, 10);
+		Customer sut = CreateCustomer();
+		
+		bool success = sut.Purchase(store, Product.Shampoo, 15);
+		
+		Assert.False(success);
+		Assert.Equal(10, store.GetInventory(Product.Shampoo));
+	}
+	private Store CreateStoreWithInventory(Product product, int quantity)
+	{
+		Store store = new Store();
+		store.AddInventory(product, quantity);
+		return store;
+	}
+
+	private static Customer CreateCustomer()
+	{
+		return new Customer();
+	}
+}
+```
+
+There’s one exception to this rule of reusing test fixtures. You can instantiate a fixture in the constructor if it’s used by all or almost all tests. **This is often the case for integration tests that work with a database. All such tests require a database connection, which you can initialize once and then reuse everywhere.** But even then, it would make more sense to introduce a base class and initialize the database connection in that class’s constructor, not in individual test classes.
+
+## Naming a unit test
+
+One of the most prominent, and probably least helpful, is the following convention:
+```
+[MethodUnderTest]_[Scenario]_[ExpectedResult]
+```
+
+where:
+* MethodUnderTest is the name of the method you are testing.
+* Scenario is the condition under which you test the method.
+* ExpectedResult is what you expect the method under test to do in the current scenario.
+
+It’s unhelpful specifically because it encourages you to focus on implementation details instead of the behavior.
+Simple phrases in plain English do a much better job: they are more expressive and don’t box you in a rigid naming structure. With simple phrases, you can describe the system behavior in a way that’s meaningful to a customer or a domain expert.
+
+How could the test’s name (Sum_of_two_numbers) be rewritten using the ``[MethodUnder-Test]_[Scenario]_[ExpectedResult]`` convention? Probably something like this:
+```
+public void Sum_TwoNumbers_ReturnsSum()
+```
+
+Here are the two versions again:
+```
+public void Sum_of_two_numbers()
+public void Sum_TwoNumbers_ReturnsSum()
+```
+The initial name written in plain English is much simpler to read. It is a down-to-earth description of the behavior under test.
+
+**My personal comment**. However, plain english names do not help with method locality. It is hard to find all possible test cases for a particular method. As a compromise I would suggest ``[MethodUnderTest]_[WhateverYouWant]``.
+
+### Unit test naming guidelines
+
+Adhere to the following guidelines to write expressive, easily readable test names:
+* **Don’t follow a rigid naming policy.** You simply can’t fit a high-level description of a complex behavior into the narrow box of such a policy. Allow freedom of expression.
+* **Name the test as if you were describing the scenario to a non-programmer who is familiar with the problem domain.** A domain expert or a business analyst is a good example.
+* **Separate words with underscores.** Doing so helps improve readability, especially in long names.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
