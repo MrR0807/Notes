@@ -1790,8 +1790,299 @@ The same is true for the size of the code base. Functional architecture requires
 
 # Chapter 7. Refactoring toward valuable unit tests
 
+In chapter 1, I defined the properties of a good unit test suite:
+* It is integrated into the development cycle.
+* It targets only the most important parts of your code base.
+* It provides maximum value with minimum maintenance costs. To achieve this last attribute, you need to be able to:
+  * Recognize a valuable test (and, by extension, a test of low value).
+  * Write a valuable test.
+
+Chapter 4 covered the topic of recognizing a valuable test using the four attributes: **protection against regressions, resistance to refactoring, fast feedback, and maintainability.**
+And chapter 5 expanded on the most important one of the four: resistance to refactoring.
+
+## Identifying the code to refactor
+
+It’s rarely possible to significantly improve a test suite without refactoring the underlying code. There’s no way around it — test and production code are intrinsically connected.
+
+### The four types of code
+
+In this section, I describe the four types of code that serve as a foundation for the rest of this chapter.
+All production code can be categorized along two dimensions:
+* Complexity or domain significance
+* The number of collaborators
+
+Complex code and code that has domain significance benefit from unit testing the most because the corresponding tests have great protection against regressions. Note that the domain code doesn’t have to be complex, and complex code doesn’t have to exhibit domain significance to be test-worthy.
+
+The second dimension is the number of collaborators a class or a method has. As you may remember from chapter 2, a collaborator is a dependency that is either mutable or out-of-process (or both). Code with a large number of collaborators is expensive to test.
+
+The combination of code complexity, its domain significance, and the number of collaborators give us the four types of code shown in figure 7.1:
+* Domain model and algorithms (figure 7.1, top left) — Complex code is often part of the domain model but not in 100% of all cases. You might have a complex algorithm that’s not directly related to the problem domain.
+* Trivial code (figure 7.1, bottom left) — Examples of such code in C# are parameterless constructors and one-line properties: they have few (if any) collaborators and exhibit little complexity or domain significance.
+* Controllers (figure 7.1, bottom right) — This code doesn’t do complex or businesscritical work by itself but coordinates the work of other components like domain classes and external applications.
+* Overcomplicated code (figure 7.1, top right) — Such code scores highly on both metrics: it has a lot of collaborators, and it’s also complex or important. An example here are fat controllers (controllers that don’t delegate complex work anywhere and do everything themselves).
+
+![chapter-7-production-code-categories.PNG](pictures/chapter-7-production-code-categories.PNG)
+
+**Unit testing the top-left quadrant (domain model and algorithms) gives you the best return for your efforts.** The resulting unit tests are highly valuable and cheap. They’re valuable because the underlying code carries out complex or important logic, thus increasing tests’ protection against regressions. And they’re cheap because the code has few collaborators (ideally, none), thus decreasing tests’ maintenance costs.
+**Trivial code shouldn’t be tested at all**; such tests have a close-to-zero value. As for controllers, you should test them briefly as part of a much smaller set of the overarching integration tests (I cover this topic in part 3).
+The most problematic type of code is the overcomplicated quadrant. It’s hard to unit test but too risky to leave without test coverage. Such code is one of the main reasons many people struggle with unit testing.
+
+**The more important or complex the code, the fewer collaborators it should have.**
+
+![chapter-7-solving-overcomplicated-code.PNG](pictures/chapter-7-solving-overcomplicated-code.PNG)
+
+### Using the Humble Object pattern to split overcomplicated code
+
+To split overcomplicated code, you need to use the Humble Object design pattern. This pattern was introduced by Gerard Meszaros in his book xUnit Test Patterns: Refactoring Test Code (Addison-Wesley, 2007) as one of the ways to battle code coupling, but it has a much broader application. You’ll see why shortly.
+We often find that code is hard to test because it’s coupled to a framework dependency (see figure 7.3). Examples include asynchronous or multi-threaded execution, user interfaces, communication with out-of-process dependencies, and so on.
+
+![chapter-7-solving-overcomplicated-code-humble-object.PNG](pictures/chapter-7-solving-overcomplicated-code-humble-object.PNG)
+
+To bring the logic of this code under test, you need to extract a testable part out of it. As a result, the code becomes a thin, humble wrapper around that testable part: it glues the hard-to-test dependency and the newly extracted component together, but itself contains little or no logic and thus doesn’t need to be tested (figure 7.4).
+
+If this approach looks familiar, it’s because you already saw it in this book. In fact, both hexagonal and functional architectures implement this exact pattern. As you may remember from previous chapters, hexagonal architecture advocates for the separation of business logic and communications with out-of-process dependencies.
+
+Another way to view the Humble Object pattern is as a means to adhere to the Single Responsibility principle, which states that each class should have only a single responsibility. One such responsibility is always business logic; the pattern can be applied to segregate that logic from pretty much anything.
+
+I can’t stress enough how important this separation is. In fact, many well-known principles and patterns can be described as a form of the Humble Object pattern: they are designed specifically to segregate complex code from the code that does orchestration.
+
+## Refactoring toward valuable unit tests
+
+In this section, I’ll show a comprehensive example of splitting overcomplicated code into algorithms and controllers. You saw a similar example in the previous chapter, where we talked about output-based testing and functional architecture. This time, I’ll generalize this approach to all enterprise-level applications, with the help of the Humble Object pattern.
+
+### Introducing a customer management system
+
+The sample project is a customer management system (CRM) that handles user registrations. All users are stored in a database. The system currently supports only one use case: changing a user’s email. There are three business rules involved in this operation:
+* If the user’s email belongs to the company’s domain, that user is marked as an employee. Otherwise, they are treated as a customer.
+* The system must track the number of employees in the company. If the user’s type changes from employee to customer, or vice versa, this number must change, too.
+* When the email changes, the system must notify external systems by sending a  message to a message bus.
+
+```
+public class User
+{
+    public int UserId { get; private set; }
+    public string Email { get; private set; }
+    public UserType Type { get; private set; }
+    
+    public void ChangeEmail(int userId, string newEmail)
+    {
+        object[] data = Database.GetUserById(userId);
+        UserId = userId;
+        Email = (string)data[1];
+        Type = (UserType)data[2];
+        if (Email == newEmail)
+            return;
+        
+        object[] companyData = Database.GetCompany();
+        string companyDomainName = (string)companyData[0];
+        int numberOfEmployees = (int)companyData[1];
+        string emailDomain = newEmail.Split('@')[1];
+        bool isEmailCorporate = emailDomain == companyDomainName;
+        
+        UserType newType = isEmailCorporate
+            ? UserType.Employee
+            : UserType.Customer;
+        if (Type != newType)
+        {
+            int delta = newType == UserType.Employee ? 1 : -1;
+            int newNumber = numberOfEmployees + delta;
+            Database.SaveCompany(newNumber);
+        }
+        
+        Email = newEmail;
+        Type = newType;
+        Database.SaveUser(this);
+        MessageBus.SendEmailChangedMessage(UserId, newEmail);
+    }
+}
+
+public enum UserType
+{
+    Customer = 1,
+    Employee = 2
+}
+```
+
+The code’s complexity is not too high. The ChangeEmail method contains only a couple of explicit decision-making points: whether to identify the user as an employee or a customer, and how to update the company’s number of employees. Despite being simple, these decisions are important: they are the application’s core business logic. Hence, the class scores highly on the complexity and domain significance dimension.
+
+On the other hand, the User class has four dependencies, two of which are explicit and the other two of which are implicit. The explicit dependencies are the userId
+and newEmail arguments. These are values, though, and thus don’t count toward the class’s number of collaborators. The implicit ones are Database and MessageBus. These two are out-of-process collaborators. As I mentioned earlier, out-of-process collaborators are a no-go for code with high domain significance. Hence, the User class scores highly on the collaborators dimension, which puts this class into the overcomplicated category.
+
+This approach — when a domain class retrieves and persists itself to the database — is called the Active Record pattern. It works fine in simple or short-lived projects but often fails to scale as the code base grows. The reason is precisely this lack of separation between these two responsibilities: business logic and communication with out- of process dependencies.
+
+### Take 1: Making implicit dependencies explicit
+
+The usual approach to improve testability is to make implicit dependencies explicit: that is, introduce interfaces for Database and MessageBus, inject those interfaces into User, and then mock them in tests. This approach does help, and that’s exactly what we did in the previous chapter when we introduced the implementation with mocks for the audit system. However, it’s not enough.
+
+### Take 2: Introducing an application services layer
+
+To overcome the problem of the domain model directly communicating with external systems, we need to shift this responsibility to another class, a humble controller (an application service, in the hexagonal architecture taxonomy). Here’s what the first version of that application service looks like.
+```
+public class UserController
+{
+    private readonly Database _database = new Database();
+    private readonly MessageBus _messageBus = new MessageBus();
+
+    public void ChangeEmail(int userId, string newEmail)
+    {
+        object[] data = _database.GetUserById(userId);
+        string email = (string)data[1];
+        UserType type = (UserType)data[2];
+        var user = new User(userId, email, type);
+        
+        object[] companyData = _database.GetCompany();
+        string companyDomainName = (string)companyData[0];
+        int numberOfEmployees = (int)companyData[1];
+        int newNumberOfEmployees = user.ChangeEmail(newEmail, companyDomainName, numberOfEmployees);
+        
+        _database.SaveCompany(newNumberOfEmployees);
+        _database.SaveUser(user);
+        _messageBus.SendEmailChangedMessage(userId, newEmail);
+    }
+}
+```
+
+This is a good first try; the application service helped offload the work with out-ofprocess
+dependencies from the User class. But there are some issues with this implementation:
+* The out-of-process dependencies (Database and MessageBus) are instantiated directly, not injected. That’s going to be a problem for the integration tests we’ll be writing for this class.
+* The controller reconstructs a User instance from the raw data it receives from the database. This is complex logic and thus shouldn’t belong to the application service, whose sole role is orchestration, not logic of any complexity or domain significance.
+* The same is true for the company’s data. The other problem with that data is that User now returns an updated number of employees, which doesn’t look right. The number of company employees has nothing to do with a specific user. This responsibility should belong elsewhere.
+* The controller persists modified data and sends notifications to the message bus unconditionally, regardless of whether the new email is different than the previous one.
+
+The User class has become quite easy to test because it no longer has to communicate with out-of-process dependencies. In fact, it has no collaborators whatsoever — out-ofprocess or not. Here’s the new version of User’s ChangeEmail method:
+```
+public int ChangeEmail(string newEmail, string companyDomainName, int numberOfEmployees)
+    {
+    if (Email == newEmail)
+        return numberOfEmployees;
+    
+    string emailDomain = newEmail.Split('@')[1];
+    bool isEmailCorporate = emailDomain == companyDomainName;
+    UserType newType = isEmailCorporate
+        ? UserType.Employee
+        : UserType.Customer;
+    if (Type != newType)
+    {
+        int delta = newType == UserType.Employee ? 1 : -1;
+        int newNumber = numberOfEmployees + delta;
+        numberOfEmployees = newNumber;
+    }
+    
+    Email = newEmail;
+    Type = newType;
+    return numberOfEmployees;
+}
+```
+
+### Take 3: Removing complexity from the application service
+
+To put UserController firmly into the controllers quadrant, we need to extract the reconstruction logic from it. If you use an object-relational mapping (ORM) library
+to map the database into the domain model, that would be a good place to which to attribute the reconstruction logic. If you don’t want to or can’t use an ORM, create a factory in the domain model that will instantiate the domain classes using raw database data.
+
+```
+public class UserFactory
+{
+    public static User Create(object[] data)
+    {
+        Precondition.Requires(data.Length >= 3);
+        
+        int id = (int)data[0];
+        string email = (string)data[1];
+        UserType type = (UserType)data[2];
+        
+        return new User(id, email, type);
+    }
+}
+```
+
+This code is now fully isolated from all collaborators and therefore easily testable.
+
+### Take 4: Introducing a new Company class
+
+Look at this code in the controller once again:
+```
+object[] companyData = _database.GetCompany();
+string companyDomainName = (string)companyData[0];
+int numberOfEmployees = (int)companyData[1];
+
+int newNumberOfEmployees = user.ChangeEmail(newEmail, companyDomainName, numberOfEmployees);
+```
+
+The awkwardness of returning an updated number of employees from User is a sign of a misplaced responsibility, which itself is a sign of a missing abstraction. To fix this, we need to introduce another domain class, Company.
+```
+public class Company
+{
+    public string DomainName { get; private set; }
+    public int NumberOfEmployees { get; private set; }
+    
+    public void ChangeNumberOfEmployees(int delta)
+    {
+        Precondition.Requires(NumberOfEmployees + delta >= 0);
+        NumberOfEmployees += delta;
+    }
+    public bool IsEmailCorporate(string email)
+    {
+        string emailDomain = email.Split('@')[1];
+        return emailDomain == DomainName;
+    }
+}
+```
+
+There are two methods in this class: ChangeNumberOfEmployees() and IsEmailCorporate(). These methods help adhere to the tell-don’t-ask principle I mentioned n chapter 5. This principle advocates for bundling together data and operations on hat data. A User instance will tell the company to change its number of employees or igure out whether a particular email is corporate; it won’t ask for the raw data and do verything on its own.
+
+This is how the controller now looks.
+```
+public class UserController
+{
+    private readonly Database _database = new Database();
+    private readonly MessageBus _messageBus = new MessageBus();
+
+    public void ChangeEmail(int userId, string newEmail)
+    {
+        object[] userData = _database.GetUserById(userId);
+        User user = UserFactory.Create(userData);
+        
+        object[] companyData = _database.GetCompany();
+        Company company = CompanyFactory.Create(companyData);
+        
+        user.ChangeEmail(newEmail, company);
+        _database.SaveCompany(company);
+        _database.SaveUser(user);
+        _messageBus.SendEmailChangedMessage(userId, newEmail);
+    }
+}
+```
+
+And here’s the User class.
+```
+public class User
+{
+    public int UserId { get; private set; }
+    public string Email { get; private set; }
+    public UserType Type { get; private set; }
 
 
+    public void ChangeEmail(string newEmail, Company company)
+    {
+        if (Email == newEmail)
+            return;
+        UserType newType = company.IsEmailCorporate(newEmail)
+            ? UserType.Employee
+            : UserType.Customer;
+        if (Type != newType)
+        {
+            int delta = newType == UserType.Employee ? 1 : -1;
+            company.ChangeNumberOfEmployees(delta);
+        }
+        Email = newEmail;
+        Type = newType;
+    }
+}
+```
+
+UserController now firmly stands in the controllers quadrant because all of its complexity as moved to the factories. The only thing this class is responsible for is gluing ogether all the collaborating parties. 
+
+## Analysis of optimal unit test coverage
 
 
 
