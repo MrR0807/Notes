@@ -1606,6 +1606,228 @@ The application creates files that are visible to end users (assuming that those
 
 ### Refactoring toward functional architecture
 
+Instead of hiding side effects behind an interface and injecting that interface into AuditManager, you can move those side effects out of the class entirely. AuditManager is then only responsible for making a decision about what to do with the files. A new class, Persister, acts on that decision and applies updates to the filesystem.
+
+Persister in this scenario acts as a mutable shell, while AuditManager becomes a functional (immutable) core. The following listing shows AuditManager after the refactoring.
+
+```
+public class AuditManager
+{
+    private readonly int _maxEntriesPerFile;
+    public AuditManager(int maxEntriesPerFile)
+    {
+        _maxEntriesPerFile = maxEntriesPerFile;
+    }
+    
+    public FileUpdate AddRecord(FileContent[] files, string visitorName, DateTime timeOfVisit)
+    {
+        (int index, FileContent file)[] sorted = SortByIndex(files);
+        string newRecord = visitorName + ';' + timeOfVisit;
+        if (sorted.Length == 0)
+        {
+            return new FileUpdate("audit_1.txt", newRecord);
+        }
+        
+        (int currentFileIndex, FileContent currentFile) = sorted.Last();
+        List<string> lines = currentFile.Lines.ToList();
+        
+        if (lines.Count < _maxEntriesPerFile)
+        {
+            lines.Add(newRecord);
+            string newContent = string.Join("\r\n", lines);
+            return new FileUpdate(currentFile.FileName, newContent);
+        }
+        else
+        {
+            int newIndex = currentFileIndex + 1;
+            string newName = $"audit_{newIndex}.txt";
+            return new FileUpdate(newName, newRecord);
+        }
+    }
+}
+```
+
+Instead of the working directory path, AuditManager now accepts an array of FileContent. This class includes everything AuditManager needs to know about the filesystem to make a decision:
+```
+public class FileContent
+{
+    public readonly string FileName;
+    public readonly string[] Lines;
+    public FileContent(string fileName, string[] lines)
+    {
+        FileName = fileName;
+        Lines = lines;
+    }
+}
+```
+
+And, instead of mutating files in the working directory, AuditManager now returns an instruction for the side effect it would like to perform:
+```
+public class FileUpdate
+{
+    public readonly string FileName;
+    public readonly string NewContent;
+    public FileUpdate(string fileName, string newContent)
+    {
+        FileName = fileName;
+        NewContent = newContent;
+    }
+}
+```
+
+```
+public class Persister
+{
+    public FileContent[] ReadDirectory(string directoryName)
+    {
+    return Directory
+        .GetFiles(directoryName)
+        .Select(x => new FileContent(Path.GetFileName(x), File.ReadAllLines(x)))
+        .ToArray();
+    }
+    public void ApplyUpdate(string directoryName, FileUpdate update)
+    {
+        string filePath = Path.Combine(directoryName, update.FileName);
+        File.WriteAllText(filePath, update.NewContent);
+    }
+}
+```
+
+All the complexity resides in the AuditManager class. This is the separation between business logic and side effects in action.
+
+To glue AuditManager and Persister together, you need another class: an application service in the hexagonal architecture taxonomy, as shown in the following listing.
+
+```
+public class ApplicationService
+{
+    private readonly string _directoryName;
+    private readonly AuditManager _auditManager;
+    private readonly Persister _persister;
+    
+    public ApplicationService(string directoryName, int maxEntriesPerFile)
+    {
+        _directoryName = directoryName;
+        _auditManager = new AuditManager(maxEntriesPerFile);
+        _persister = new Persister();
+    }
+    
+    public void AddRecord(string visitorName, DateTime timeOfVisit)
+    {
+        FileContent[] files = _persister.ReadDirectory(_directoryName);
+        FileUpdate update = _auditManager.AddRecord(files, visitorName, timeOfVisit);
+        
+        _persister.ApplyUpdate(_directoryName, update);
+    }
+}
+```
+
+```
+[Fact]
+public void A_new_file_is_created_when_the_current_file_overflows()
+{
+    var sut = new AuditManager(3);
+    var files = new FileContent[]
+        {
+            new FileContent("audit_1.txt", new string[0]),
+            new FileContent("audit_2.txt", new string[]
+            {
+                "Peter; 2019-04-06T16:30:00",
+                "Jane; 2019-04-06T16:40:00",
+                "Jack; 2019-04-06T17:00:00"
+            })
+        };
+    
+    FileUpdate update = sut.AddRecord(files, "Alice", DateTime.Parse("2019-04-06T18:00:00"));
+    
+    Assert.Equal("audit_3.txt", update.FileName);
+    Assert.Equal("Alice;2019-04-06T18:00:00", update.NewContent);
+}
+```
+
+This test retains the improvement the test with mocks made over the initial version (fast feedback) but also further improves on the maintainability metric.
+
+## Understanding the drawbacks of functional architecture
+
+Unfortunately, functional architecture isn’t always attainable. And even when it is, the maintainability benefits are often offset by a performance impact and increase in the size of the code base.
+
+### Applicability of functional architecture
+
+Functional architecture worked for our audit system because this system could gather all the inputs up front, before making a decision. Often, though, the execution flow is less straightforward. You might need to query additional data from an out-of-process dependency, based on an intermediate result of the decision-making process.
+
+Here’s an example. Let’s say the audit system needs to check the visitor’s access level if the number of times they have visited during the last 24 hours exceeds some threshold. And let’s also assume that all visitors’ access levels are stored in a database. You can’t pass an IDatabase instance to AuditManager. Such an instance would introduce a hidden input to the AddRecord() method. This method would, therefore, cease to be a mathematical function (figure 6.16), which means you would no longer be able to apply output-based testing.
+
+There are two solutions in such a situation:
+* You can gather the visitor’s access level in the application service up front, along with the directory content.
+* You can introduce a new method such as IsAccessLevelCheckRequired() in AuditManager. The application service would call this method before Add- Record(), and if it returned true, the service would get the access level from the database and pass it to AddRecord().
+
+Both approaches have drawbacks. The first one concedes performance — it unconditionally queries the database, even in cases when the access level is not required. But this approach keeps the separation of business logic and communication with external systems fully intact: all decision-making resides in AuditManager as before. The second approach concedes a degree of that separation for performance gains: the decision as to whether to call the database now goes to the application service, not AuditManager.
+
+### Performance drawbacks
+
+The choice between a functional architecture and a more traditional one is a trade-off between performance and code maintainability (both production and test code). In some systems where the performance impact is not as noticeable, it’s better to go with functional architecture for additional gains in maintainability. In others, you might need to make the opposite choice. There’s no one-size-fits-all solution.
+
+### Increase in the code base size
+
+The same is true for the size of the code base. Functional architecture requires a clear separation between the functional (immutable) core and the mutable shell. This necessitates additional coding initially, although it ultimately results in reduced code complexity and gains in maintainability.
+
+## Summary
+
+* **Output-based testing** is a style of testing where you feed an input to the SUT and check the output it produces. This style of testing assumes there are no hidden inputs or outputs, and the only result of the SUT’s work is the value it returns.
+* **State-based testing** verifies the state of the system after an operation is completed.
+* In **communication-based** testing, you use mocks to verify communications between the system under test and its collaborators.
+* The classical school of unit testing prefers the state-based style over the communication-based one. The London school has the opposite preference. Both schools use output-based testing.
+* Output-based testing produces tests of the highest quality. Such tests rarely couple to implementation details and thus are resistant to refactoring. They are also small and concise and thus are more maintainable.
+* State-based testing requires extra prudence to avoid brittleness: you need to make sure you don’t expose a private state to enable unit testing. Because statebased tests tend to be larger than output-based tests, they are also less maintainable. Maintainability issues can sometimes be mitigated (but not eliminated) with the use of helper methods and value objects.
+* Communication-based testing also requires extra prudence to avoid brittleness. You should only verify communications that cross the application boundary and whose side effects are visible to the external world. Maintainability of communication-based tests is worse compared to output-based and state-based tests. Mocks tend to occupy a lot of space, and that makes tests less readable.
+* Functional programming is programming with mathematical functions.
+* A mathematical function is a function (or method) that doesn’t have any hidden inputs or outputs. Side effects and exceptions are hidden outputs. A reference to an internal or external state is a hidden input. Mathematical functions are explicit, which makes them extremely testable.
+* The goal of functional programming is to introduce a separation between business logic and side effects.
+* Functional architecture helps achieve that separation by pushing side effects to the edges of a business operation. This approach maximizes the amount of code written in a purely functional way while minimizing code that deals with side effects.
+* Functional architecture divides all code into two categories: functional core and mutable shell. The functional core makes decisions. The mutable shell supplies input data to the functional core and converts decisions the core makes into side effects.
+* The difference between functional and hexagonal architectures is in their treatment of side effects. Functional architecture pushes all side effects out of the domain layer. Conversely, hexagonal architecture is fine with side effects made by the domain layer, as long as they are limited to that domain layer only. Functional architecture is hexagonal architecture taken to an extreme.
+* The choice between a functional architecture and a more traditional one is a trade-off between performance and code maintainability. Functional architecture concedes performance for maintainability gains.
+* Not all code bases are worth converting into functional architecture. Apply functional architecture strategically. Take into account the complexity and the importance of your system. In code bases that are simple or not that important, the initial investment required for functional architecture won’t pay off.
+
+# Chapter 7. Refactoring toward valuable unit tests
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
