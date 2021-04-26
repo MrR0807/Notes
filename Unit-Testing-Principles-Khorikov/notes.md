@@ -1045,6 +1045,263 @@ Ideally, the system’s public API surface should coincide with its observable b
 
 ![chapter-5-well-designed-api.PNG](pictures/chapter-5-well-designed-api.PNG)
 
+### Leaking implementation details: An example with an operation
+
+Let’s take a look at examples of code whose implementation details leak to the public API.
+
+```
+public class User
+{
+    public string Name { get; set; }
+
+    public string NormalizeName(string name)
+    {
+        string result = (name ?? "").Trim();
+        if (result.Length > 50)
+            return result.Substring(0, 50);
+        return result;
+    }
+}
+
+public class UserController
+{
+    public void RenameUser(int userId, string newName)
+    {
+        User user = GetUserFromDatabase(userId);
+        string normalizedName = user.NormalizeName(newName);
+        user.Name = normalizedName;
+        SaveUserToDatabase(user);
+    }
+}
+```
+
+To fix the situation and make the class’s API well-designed, User needs to hide NormalizeName() and call it internally as part of the property’s setter without relying on the client code to do so.
+
+```
+public class User
+{
+    private string _name;
+    public string Name
+    {
+        get => _name;
+        set => _name = NormalizeName(value);
+    }
+    private string NormalizeName(string name)
+    {
+        string result = (name ?? "").Trim();
+        if (result.Length > 50)
+            return result.Substring(0, 50);
+        return result;
+    }
+}
+
+public class UserController
+{
+    public void RenameUser(int userId, string newName)
+    {
+        User user = GetUserFromDatabase(userId);
+        user.Name = newName;
+        SaveUserToDatabase(user);
+    }
+}
+```
+
+There’s a good rule of thumb that can help you determine whether a class leaks its implementation details. **If the number of operations the client has to invoke on the class to achieve a single goal is greater than one, then that class is likely leaking implementation details.** Ideally, any individual goal should be achieved with a single operation. In my experience, this rule of thumb holds true for the vast majority of cases where business logic is involved. There could very well be exceptions, though.
+
+### Well-designed API and encapsulation
+
+Maintaining a well-designed API relates to the notion of encapsulation. Exposing implementation details goes hand in hand with invariant violations—the former often leads to the latter. Not only did the original version of User leak its implementation details, but it also didn’t maintain proper encapsulation. It allowed the client to bypass the invariant and assign a new name to a user without normalizing that name first.
+
+Encapsulation is crucial for code base maintainability in the long run. The reason why is complexity. Code complexity is one of the biggest challenges you’ll face in software development. 
+Without encapsulation, you have no practical way to cope with ever-increasing code complexity. When the code’s API doesn’t guide you through what is and what isn’t allowed to be done with that code, you have to keep a lot of information in mind to make sure you don’t introduce inconsistencies with new code changes.
+
+## The relationship between mocks and test fragility
+
+In this section, you will learn about hexagonal architecture, the difference between internal and external communications, and (finally!) the relationship between mocks and test fragility.
+
+### Defining hexagonal architecture
+
+A typical application consists of two layers, domain and application services, as shown in figure 5.8. The domain layer resides in the middle of the diagram because it’s the central part of your application. It contains the business logic: the essential functionality your application is built for. The domain layer and its business logic differentiate this application from others and provide a competitive advantage for the organization.
+
+![chapter-5-hexagonal-architecture.PNG](pictures/chapter-5-hexagonal-architecture.PNG)
+
+The application services layer sits on top of the domain layer and orchestrates communication between that layer and the external world. For example, if your application is a RESTful API, all requests to this API hit the application services layer first. This layer then coordinates the work between domain classes and out-of-process dependencies.
+
+The combination of the application services layer and the domain layer forms a hexagon, which itself represents your application. It can interact with other applications, which are represented with their own hexagons.
+
+![chapter-5-hexagonal-architecture-2.PNG](pictures/chapter-5-hexagonal-architecture-2.PNG)
+
+The term hexagonal architecture was introduced by Alistair Cockburn. Its purpose is to emphasize three important guidelines:
+* **The separation of concerns between the domain and application services layers** — Business logic is the most important part of the application. Therefore, the domain layer should be accountable only for that business logic and exempted from all other responsibilities.
+* **Communications inside your application** — Hexagonal architecture prescribes a one-way flow of dependencies: from the application services layer to the domain layer. Classes inside the domain layer should only depend on each other; they should not depend on classes from the application services layer.
+* **Communications between applications** — External applications connect to your application through a common interface maintained by the application services layer. No one has a direct access to the domain layer.
+
+Each layer of your application exhibits observable behavior and contains its own set of implementation details. You might remember from previous chapters how I mentioned that you should be able to trace any test back to a particular business requirement. Each test should tell a story that is meaningful to a domain expert, and if it doesn’t, that’s a strong indication that the test couples to implementation details and therefore is brittle. I hope now you can see why.
+
+Observable behavior flows inward from outer layers to the center. The overarching goal posed by the external client gets translated into subgoals achieved by individual domain classes. For a piece of code to be part of observable behavior, it needs to help the client achieve one of its goals. Tests that verify a code base with a well-designed API also have a connection to business requirements because those tests tie to the observable behavior only.
+
+### Intra-system vs. inter-system communications
+
+There are two types of communications in a typical application: 
+* intra-system - communications are communications between classes inside your application
+* inter-system - communications are when your application talks to other applications
+
+Intra-system communications are implementation details because the collaborations your domain classes go through in order to perform an operation are not part of their observable behavior. These collaborations don’t have an immediate connection to the client’s goal. Thus, coupling to such collaborations leads to fragile tests.
+
+Inter-system communications are a different matter. Unlike collaborations between classes inside your application, the way your system talks to the external world forms the observable behavior of that system as a whole. It’s part of the contract your application must hold at all times
+
+![chapter-5-inter-vs-intra-communication.PNG](pictures/chapter-5-inter-vs-intra-communication.PNG)
+
+**The use of mocks is beneficial when verifying the communication pattern between your system and external applications. Conversely, using mocks to verify communications between classes inside your system results in tests that couple to implementation details and therefore fall short of the resistance-to-refactoring metric.**
+
+### Intra-system vs. inter-system communications: An example
+
+To illustrate the difference between intra-system and inter-system communications, I’ll expand on the example with the Customer and Store classes that I used in chapter 2 and earlier in this chapter. Imagine the following business use case:
+* A customer tries to purchase a product from a store.
+* If the amount of the product in the store is sufficient, then
+  * The inventory is removed from the store.
+  * An email receipt is sent to the customer.
+  * A confirmation is returned.
+
+In the following listing, the CustomerController class is an application service that orchestrates the work between domain classes (Customer, Product, Store) and the external application (EmailGateway, which is a proxy to an SMTP service).
+
+```
+public class CustomerController
+{
+    public bool Purchase(int customerId, int productId, int quantity)
+    {
+        Customer customer = _customerRepository.GetById(customerId);
+        Product product = _productRepository.GetById(productId);
+        bool isSuccess = customer.Purchase(_mainStore, product, quantity);
+        
+        if (isSuccess)
+        {
+            _emailGateway.SendReceipt(
+            customer.Email, product.Name, quantity);
+        }
+        
+        return isSuccess;
+    }
+}
+```
+
+The act of making a purchase is a business use case with both intra-system and inter-system communications. The inter-system communications are those between the CustomerController application service and the two external systems: the thirdparty application (which is also the client initiating the use case) and the email gateway. The intra-system communication is between the Customer and the Store domain classes (figure 5.13).
+In this example, the call to the SMTP service is a side effect that is visible to the external world and thus forms the observable behavior of the application as a whole.
+
+![chapter-5-inter-vs-intra-communication-example.PNG](pictures/chapter-5-inter-vs-intra-communication-example.PNG)
+
+It also has a direct connection to the client’s goals. The client of the application is the third-party system. This system’s goal is to make a purchase, and it expects the customer to receive a confirmation email as part of the successful outcome.
+**The call to the SMTP service is a legitimate reason to do mocking. It doesn’t lead to test fragility because you want to make sure this type of communication stays in place even after refactoring. The use of mocks helps you do exactly that.**
+
+```
+[Fact]
+public void Successful_purchase()
+{
+    var mock = new Mock<IEmailGateway>();
+    var sut = new CustomerController(mock.Object);
+    
+    bool isSuccess = sut.Purchase(customerId: 1, productId: 2, quantity: 5);
+    
+    Assert.True(isSuccess);
+    mock.Verify(x => x.SendReceipt("customer@email.com", "Shampoo", 5), Times.Once);
+}
+```
+
+Note that the isSuccess flag is also observable by the external client and also needs verification. This flag doesn’t need mocking, though; a simple value comparison is enough.
+
+Let’s now look at a test that mocks the communication between Customer and Store.
+
+```
+[Fact]
+public void Purchase_succeeds_when_enough_inventory()
+{
+    var storeMock = new Mock<IStore>();
+    storeMock
+        .Setup(x => x.HasEnoughInventory(Product.Shampoo, 5))
+        .Returns(true);
+    var customer = new Customer();
+    
+    bool success = customer.Purchase(storeMock.Object, Product.Shampoo, 5);
+    
+    Assert.True(success);
+    storeMock.Verify(x => x.RemoveInventory(Product.Shampoo, 5), Times.Once);
+}
+```
+
+Unlike the communication between CustomerController and the SMTP service, the RemoveInventory() method call from Customer to Store doesn’t cross the application boundary: both the caller and the recipient reside inside the application.
+
+## The classical vs. London schools of unit testing, revisited
+
+The London school encourages the use of mocks for all but immutable dependencies and doesn’t differentiate between intrasystem and inter-system communications. As a result, tests check communications between classes just as much as they check communications between your application and external systems.
+
+### Not all out-of-process dependencies should be mocked out
+
+* **Shared dependency** — A dependency shared by tests (not production code)
+* **Out-of-process dependency** — A dependency hosted by a process other than the program’s execution process (for example, a database, a message bus, or an SMTP service)
+* **Private dependency** — Any dependency that is not shared
+
+The classical school recommends avoiding shared dependencies because they provide the means for tests to interfere with each other’s execution context and thus prevent those tests from running in parallel. The ability for tests to run in parallel, sequentially, and in any order is called test isolation.
+
+If a shared dependency is not out-of-process, then it’s easy to avoid reusing it in tests by providing a new instance of it on each test run. In cases where the **shared dependency is out-of-process**, testing becomes more complicated. You can’t instantiate a new database or provision a new message bus before each test execution; that
+would drastically slow down the test suite. **The usual approach is to replace such dependencies with test doubles—mocks and stubs.**
+
+Not all out-of-process dependencies should be mocked out, though. If an out-ofprocess dependency is only accessible through your application, then communications with such a dependency are not part of your system’s observable behavior.
+
+![chapter-5-out-of-process-dependency-database-not-mocked-out.PNG](pictures/chapter-5-out-of-process-dependency-database-not-mocked-out.PNG)
+
+A good example here is an application database: a database that is used only by your application. No external system has access to this database. Therefore, you can modify the communication pattern between your system and the application database in any way you like, as long as it doesn’t break existing functionality. Because that database is completely hidden from the eyes of the clients, you can even replace it with an entirely different storage mechanism, and no one will notice.
+
+**The use of mocks for out-of-process dependencies that you have a full control over also leads to brittle tests. You don’t want your tests to turn red every time you split a table in the database or modify the type of one of the parameters in a stored procedure. The database and your application must be treated as one system.**
+
+### Using mocks to verify behavior
+
+Mocks are often said to verify behavior. In the vast majority of cases, they don’t. The way each individual class interacts with neighboring classes in order to achieve some goal has nothing to do with observable behavior; it’s an implementation detail.
+
+## Summary
+
+* **Test double** is an overarching term that describes all kinds of non-productionready, fake dependencies in tests. There are five variations of test doubles — dummy, stub, spy, mock, and fake — that can be grouped in just two types: mocks and stubs. Spies are functionally the same as mocks; dummies and fakes serve the same role as stubs.
+* Mocks help emulate and examine **outcoming interactions**: calls from the SUT to its dependencies that change the state of those dependencies. Stubs help emulate **incoming interactions**: calls the SUT makes to its dependencies to get input data.
+* A mock (the tool) is a class from a mocking library that you can use to create a mock (the test double) or a stub.
+* Asserting interactions with stubs leads to **fragile tests**. Such an interaction doesn’t correspond to the end result; it’s an intermediate step on the way to that result, an implementation detail.
+* The command query separation (CQS) principle states that every method should be either a command or a query but not both. Test doubles that substitute commands are mocks. Test doubles that substitute queries are stubs.
+* All production code can be categorized along two dimensions: public API versus private API, and observable behavior versus implementation details. Code publicity is controlled by access modifiers, such as private, public, and internal keywords. Code is part of observable behavior when it meets one of the following requirements (any other code is an implementation detail):
+  * It exposes an operation that helps the client achieve one of its goals. An operation is a method that performs a calculation or incurs a side effect.
+  * It exposes a state that helps the client achieve one of its goals. State is the current condition of the system.
+* Well-designed code is code whose observable behavior coincides with the public API and whose implementation details are hidden behind the private API. A code **leaks implementation details** when its public API extends beyond the observable behavior.
+* **Encapsulation** is the act of protecting your code against invariant violations. Exposing implementation details often entails a breach in encapsulation because clients can use implementation details to bypass the code’s invariants.
+* **Hexagonal architecture** is a set of interacting applications represented as hexagons. Each hexagon consists of two layers: domain and application services.
+* Hexagonal architecture emphasizes three important aspects:
+  * Separation of concerns between the domain and application services layers. The domain layer should be responsible for the business logic, while the application services should orchestrate the work between the domain layer and external applications.
+  * A one-way flow of dependencies from the application services layer to the domain layer. Classes inside the domain layer should only depend on each other; they should not depend on classes from the application services layer.
+  * External applications connect to your application through a common interface maintained by the application services layer. No one has a direct access to the domain layer.
+* Each layer in a hexagon exhibits observable behavior and contains its own set of implementation details.
+* There are two types of communications in an application: **intra-system** and **inter-system**. Intra-system communications are communications between classes inside the application. Inter-system communication is when the application talks to external applications.
+* Intra-system communications are implementation details. Inter-system communications are part of observable behavior, with the exception of external systems that are accessible only through your application. Interactions with such systems are implementation details too, because the resulting side effects are not observed externally.
+* **Using mocks to assert intra-system communications leads to fragile tests**. Mocking is legitimate only when it’s used for inter-system communications — communications that cross the application boundary — and only when the side effects of those communications are visible to the external world.
+
+# Chapter 6. Styles of unit testing
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
