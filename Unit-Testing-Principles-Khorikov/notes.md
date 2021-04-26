@@ -1281,9 +1281,173 @@ Mocks are often said to verify behavior. In the vast majority of cases, they don
 
 # Chapter 6. Styles of unit testing
 
+There are three styles of unit testing: 
+* output-based -  produces tests of the highest quality
+* state-based - state-based testing is the second-best choice
+* communication based - communication-based testing should be used only occasionally
 
+### Defining the output-based style
 
+![chapter-6-output-based-tests.PNG](pictures/chapter-6-output-based-tests.PNG)
 
+```
+public class PriceEngine
+{
+    public decimal CalculateDiscount(params Product[] products)
+    {
+        decimal discount = products.Length * 0.01m;
+        return Math.Min(discount, 0.2m);
+    }
+}
+
+[Fact]
+public void Discount_of_two_products()
+{
+    var product1 = new Product("Hand wash");
+    var product2 = new Product("Shampoo");
+    var sut = new PriceEngine();
+    
+    decimal discount = sut.CalculateDiscount(product1, product2);
+    
+    Assert.Equal(0.02m, discount);
+}
+```
+
+There’s nothing else to this class. It doesn’t add the products to any internal collection, nor does it persist them in a database. The output-based style of unit testing is also known as functional.
+
+### Defining the state-based style
+
+The state-based style is about verifying the state of the system after an operation is complete (figure 6.3). The term state in this style of testing can refer to the state of the **SUT itself, of one of its collaborators, or of an out-of-process dependency, such as the database or the filesystem.**
+
+![chapter-6-state-based-tests.PNG](pictures/chapter-6-state-based-tests.PNG)
+
+```
+public class Order
+{
+    private readonly List<Product> _products = new List<Product>();
+    public IReadOnlyList<Product> Products => _products.ToList();
+    
+    public void AddProduct(Product product)
+    {
+        _products.Add(product);
+    }
+}
+
+[Fact]
+public void Adding_a_product_to_an_order()
+{
+    var product = new Product("Hand wash");
+    var sut = new Order();
+    
+    sut.AddProduct(product);
+    
+    Assert.Equal(1, sut.Products.Count);
+    Assert.Equal(product, sut.Products[0]);
+}
+```
+
+The test verifies the Products collection after the addition is completed.
+
+### Defining the communication-based style
+
+Finally, the third style of unit testing is communication-based testing. This style uses mocks to verify communications between the system under test and its collaborators (figure 6.4).
+
+![chapter-6-communication-based-tests.PNG](pictures/chapter-6-communication-based-tests.PNG)
+
+```
+[Fact]
+public void Sending_a_greetings_email()
+{
+    var emailGatewayMock = new Mock<IEmailGateway>();
+    var sut = new Controller(emailGatewayMock.Object);
+    
+    sut.GreetUser("user@email.com");
+    
+    emailGatewayMock.Verify(x => x.SendGreetingsEmail("user@email.com"), Times.Once);
+}
+```
+
+## Comparing the three styles of unit testing
+
+What’s interesting is comparing them to each other using the four attributes of a good unit test. Here are those attributes again (refer to chapter 4 for more details):
+* Protection against regressions
+* Resistance to refactoring
+* Fast feedback
+* Maintainability
+
+In our comparison, let’s look at each of the four separately.
+
+### Comparing the styles using the metrics of protection against regressions and feedback speed
+
+The metric of protection against regressions doesn’t depend on a particular style of testing. This metric is a product of the following three characteristics:
+* The amount of code that is executed during the test
+* The complexity of that code
+* Its domain significance
+
+Generally, you can write a test that exercises as much or as little code as you like; no particular style provides a benefit in this area. The same is true for the code’s complexity and domain significance.
+
+### Comparing the styles using the metric of resistance to refactoring
+
+When it comes to the metric of resistance to refactoring, the situation is different. Resistance to refactoring is the measure of how many false positives (false alarms) tests generate during refactorings. False positives, in turn, are a result of tests coupling to code’s implementation details as opposed to observable behavior.
+
+* Output-based testing provides the best protection against false positives because the resulting tests couple only to the method under test.
+* State-based testing is usually more prone to false positives.
+* Communication-based testing is the most vulnerable to false alarms.
+
+### Comparing the styles using the metric of maintainability
+
+Maintainability evaluates the unit tests’ maintenance costs and is defined by the following two characteristics:
+* How hard it is to understand the test, which is a function of the test’s size
+* How hard it is to run the test, which is a function of how many out-of-process dependencies the test works with directly
+
+Larger tests are less maintainable because they are harder to grasp or change when needed. Similarly, a test that directly works with one or several out-of-process dependencies (such as the database) is less maintainable because you need to spend time keeping those out-of-process dependencies operational: rebooting the database server, resolving network connectivity issues, and so on.
+
+#### MAINTAINABILITY OF OUTPUT-BASED TESTS
+
+Compared with the other two types of testing, output-based testing is the most maintainable.
+
+#### MAINTAINABILITY OF STATE-BASED TESTS
+
+State-based tests are normally less maintainable than output-based ones. This is because state verification often takes up more space than output verification.
+
+#### MAINTAINABILITY OF COMMUNICATION-BASED TESTS
+
+Communication-based tests score worse than output-based and state-based tests on the maintainability metric. Communication-based testing requires setting up test doubles and interaction assertions, and that takes up a lot of space.
+
+### Comparing the styles: The results
+
+![chapter-6-end-result.PNG](pictures/chapter-6-end-result.PNG)
+
+The rest of this chapter shows how to transition from state-based and collaborationbased testing to output-based testing. The transition requires you to make your code more purely functional, which, in turn, enables the use of output-based tests instead of state-based or communication-based ones.
+
+## Understanding functional architecture
+
+More in the book.
+
+### What is functional programming?
+
+More in the book.
+
+### What is functional architecture?
+
+The goal of functional programming is not to eliminate side effects altogether but rather to introduce a separation between code that handles business logic and code that incurs side effects. It separates business logic from side effects by pushing those side effects to the edges of a business operation.
+
+The separation between business logic and side effects is done by segregating two types of code:
+* Code that makes a decision — This code doesn’t require side effects and thus can be written using mathematical functions.
+* Code that acts upon that decision — This code converts all the decisions made by the mathematical functions into visible bits, such as changes in the database or messages sent to a bus.
+
+The code that makes decisions is often referred to as a functional core (also known as an immutable core). The code that acts upon those decisions is a mutable shell.
+
+![chapter-6-functional-architecture.PNG](pictures/chapter-6-functional-architecture.PNG)
+
+The functional core and the mutable shell cooperate in the following way:
+* The mutable shell gathers all the inputs.
+* The functional core generates decisions.
+* The shell converts the decisions into side effects.
+
+**To maintain a proper separation between these two layers, you need to make sure the classes representing the decisions contain enough information for the mutable shell to act upon them without additional decision-making. In other words, the mutable shell should be as dumb as possible.** The goal is to cover the functional core extensively with output-based tests and leave the mutable shell to a much smaller number of integration tests.
+
+### Comparing functional and hexagonal architectures
 
 
 
