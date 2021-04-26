@@ -2084,9 +2084,318 @@ UserController now firmly stands in the controllers quadrant because all of its 
 
 ## Analysis of optimal unit test coverage
 
+Now that we’ve completed the refactoring with the help of the Humble Object pattern, let’s analyze which parts of the project fall into which code category and how those parts should be tested.
 
+![chapter-7-production-code-belong-to-what-test-category.PNG](pictures/chapter-7-production-code-belong-to-what-test-category.PNG)
 
+### Testing the domain layer and utility code
 
+This is an example of how User could be tested:
+```
+[Fact]
+public void Changing_email_from_non_corporate_to_corporate()
+{
+    var company = new Company("mycorp.com", 1);
+    var sut = new User(1, "user@gmail.com", UserType.Customer);
+    
+    sut.ChangeEmail("new@mycorp.com", company);
+    
+    Assert.Equal(2, company.NumberOfEmployees);
+    Assert.Equal("new@mycorp.com", sut.Email);
+    Assert.Equal(UserType.Employee, sut.Type);
+}
+```
+
+To achieve full coverage, you’d need another three such tests:
+```
+public void Changing_email_from_corporate_to_non_corporate()
+public void Changing_email_without_changing_user_type()
+public void Changing_email_to_the_same_one()
+```
+
+### Testing the code from the other three quadrants
+
+Code with low complexity and few collaborators (bottom-left quadrant in table 7.1) is represented by the constructors in User and Company, such as:
+```
+public User(int userId, string email, UserType type)
+{
+    UserId = userId;
+    Email = email;
+    Type = type;
+}
+```
+
+These constructors are trivial and aren’t worth the effort. The resulting tests wouldn’t provide great enough protection against regressions.
+
+### Should you test preconditions?
+
+```
+public void ChangeNumberOfEmployees(int delta)
+{
+    Precondition.Requires(NumberOfEmployees + delta >= 0);
+    
+    NumberOfEmployees += delta;
+}
+```
+
+There’s no hard rule here, but the general guideline I recommend is to test all preconditions that have domain significance.
+
+## Handling conditional logic in controllers
+
+Handling conditional logic and simultaneously maintaining the domain layer free of out-of-process collaborators is often tricky and involves trade-offs. In this section, I’ll show what those trade-offs are and how to decide which of them to choose in your own project.
+The separation between business logic and orchestration works best when a business operation has three distinct stages:
+* Retrieving data from storage
+* Executing business logic
+* Persisting data back to the storage (figure 7.10)
+
+![chapter-7-separation-between-business-logic-and-controller.PNG](pictures/chapter-7-separation-between-business-logic-and-controller.PNG)
+
+There are a lot of situations where these stages aren’t as clearcut, though. As we discussed in chapter 6, you might need to query additional data from an out-of-process dependency based on an intermediate result of the decision-making process.
+
+As also discussed in the previous chapter, you have three options in such a situation:
+* **Push all external reads and writes to the edges anyway**. This approach preserves the read-decide-act structure but concedes performance: the controller will call out-of-process dependencies even when there’s no need for that.
+* **Inject the out-of-process dependencies into the domain model** and allow the business logic to directly decide when to call those dependencies.
+* **Split the decision-making process into more granular steps** and have the controller act on each of those steps separately.
+
+The challenge is to balance the following three attributes:
+* **Domain model testability**, which is a function of the number and type of collaborators in domain classes
+* **Controller simplicity**, which depends on the presence of decision-making (branching) points in the controller
+* **Performance**, as defined by the number of calls to out-of-process dependencies
+
+Each option only gives you two out of the three attributes:
+* Pushing all external reads and writes to the edges of a business operation — Preserves controller simplicity and keeps the domain model isolated from out-of-process dependencies (thus allowing it to remain testable) but concedes performance.
+* Injecting out-of-process dependencies into the domain model — Keeps performance and the controller’s simplicity intact but damages domain model testability.
+* Splitting the decision-making process into more granular steps — Helps with both performance and domain model testability but concedes controller simplicity. You’ll need to introduce decision-making points in the controller in order to manage these granular steps.
+
+In most software projects, performance is important, so the first approach (pushing external reads and writes to the edges of a business operation) is out of the question. The second option (injecting out-of-process dependencies into the domain model) brings most of your code into the overcomplicated quadrant on the types-of-code diagram. This is exactly what we refactored the initial CRM implementation away from.
+That leaves you with the third option: splitting the decision-making process into smaller steps. With this approach, you will have to make your controllers more complex, which will also push them closer to the overcomplicated quadrant. But there are ways to mitigate this problem.
+
+### Using the CanExecute/Execute pattern
+
+The first way to mitigate the growth of the controllers’ complexity is to use the Can- Execute/Execute pattern, which helps avoid leaking of business logic from the domain model to controllers.
+Let’s say that a user can change their email only until they confirm it. If a user tries to change the email after the confirmation, they should be shown an error message.
+```
+public class User
+{
+    public int UserId { get; private set; }
+    public string Email { get; private set; }
+    public UserType Type { get; private set; }
+    public bool IsEmailConfirmed { get; private set; }
+    /* ChangeEmail(newEmail, company) method */
+}
+```
+
+There are two options for where to put this check. First, you could put it in User’s ChangeEmail method:
+```
+public string ChangeEmail(string newEmail, Company company)
+{
+    if (IsEmailConfirmed)
+        return "Can't change a confirmed email";
+    /* the rest of the method */
+}
+```
+
+Then you could make the controller either return an error or incur all necessary side effects, depending on this method’s output.
+```
+public string ChangeEmail(int userId, string newEmail)
+{
+    object[] userData = _database.GetUserById(userId);
+    User user = UserFactory.Create(userData);
+    
+    object[] companyData = _database.GetCompany();
+    Company company = CompanyFactory.Create(companyData);
+    
+    string error = user.ChangeEmail(newEmail, company);
+    
+    if (error != null)
+        return error;
+    
+    _database.SaveCompany(company);
+    _database.SaveUser(user);
+    _messageBus.SendEmailChangedMessage(userId, newEmail);
+    return "OK";
+}
+```
+
+This implementation keeps the controller free of decision-making, but it does so at the expense of a performance drawback. The Company instance is retrieved from the database unconditionally, even when the email is confirmed and thus can’t be changed. This is an example of pushing all external reads and writes to the edges of a business operation.
+
+The second option is to move the check for IsEmailConfirmed from User to the controller.
+```
+public string ChangeEmail(int userId, string newEmail)
+{
+    object[] userData = _database.GetUserById(userId);
+    User user = UserFactory.Create(userData);
+    
+    if (user.IsEmailConfirmed)
+        return "Can't change a confirmed email";
+    
+    object[] companyData = _database.GetCompany();
+    Company company = CompanyFactory.Create(companyData);
+    
+    user.ChangeEmail(newEmail, company);
+    
+    _database.SaveCompany(company);
+    _database.SaveUser(user);
+    _messageBus.SendEmailChangedMessage(userId, newEmail);
+    return "OK";
+}
+```
+
+With this implementation, the performance stays intact: the Company instance is retrieved from the database only after it is certain that the email can be changed. But now the decision-making process is split into two parts:
+* Whether to proceed with the change of email (performed by the controller)
+* What to do during that change (performed by User)
+
+To prevent this fragmentation, you can introduce a new method in User, CanChangeEmail(), and make its successful execution a precondition for changing an email. The modified version in the following listing follows the CanExecute/Execute pattern.
+
+```
+public string CanChangeEmail()
+{
+    if (IsEmailConfirmed)
+        return "Can't change a confirmed email";
+    return null;
+}
+public void ChangeEmail(string newEmail, Company company)
+{
+    Precondition.Requires(CanChangeEmail() == null);
+    /* the rest of the method */
+}
+```
+
+This pattern helps you to consolidate all decisions in the domain layer. The controller no longer has an option not to check for the email confirmation, which essentially eliminates the new decision-making point from that controller.
+
+### Using domain events to track changes in the domain model
+
+It’s sometimes hard to deduct what steps led the domain model to the current state. Still, it might be important to know these steps because you need to inform external systems about what exactly has happened in your application. Putting this responsibility on the controllers would make them more complicated. To avoid that, you can track important changes in the domain model and then convert those changes into calls to out-of-process dependencies after the business operation is complete. **Domain events** help you implement such tracking.
+
+Our CRM has a tracking requirement, too: it has to notify external systems about changed user emails by sending messages to the message bus. The current implementation has a flaw in the notification functionality: it sends messages even when the email is not changed, as shown in the following listing.
+
+```
+// User
+public void ChangeEmail(string newEmail, Company company)
+{
+    Precondition.Requires(CanChangeEmail() == null);
+    
+    if (Email == newEmail)
+        return;
+    /* the rest of the method */
+}
+// Controller
+public string ChangeEmail(int userId, string newEmail)
+{
+    /* preparations */
+    user.ChangeEmail(newEmail, company);
+    
+    _database.SaveCompany(company);
+    _database.SaveUser(user);
+    _messageBus.SendEmailChangedMessage(userId, newEmail);
+    
+    return "OK";
+}
+```
+
+You could resolve this bug by moving the check for email sameness to the controller, but then again, there are issues with the business logic fragmentation.
+
+From an implementation standpoint, a domain event is a class that contains data needed to notify external systems. In our specific example, it is the user’s ID and email:
+```
+public class EmailChangedEvent
+{
+    public int UserId { get; }
+    public string NewEmail { get; }
+}
+```
+
+User will have a collection of such events to which it will add a new element when the email changes. This is how its ChangeEmail() method looks after the refactoring.
+```
+public void ChangeEmail(string newEmail, Company company)
+{
+    Precondition.Requires(CanChangeEmail() == null);
+    
+    if (Email == newEmail)
+        return;
+    
+    UserType newType = company.IsEmailCorporate(newEmail)
+        ? UserType.Employee
+        : UserType.Customer;
+    
+    if (Type != newType)
+    {
+        int delta = newType == UserType.Employee ? 1 : -1;
+        company.ChangeNumberOfEmployees(delta);
+    }
+    Email = newEmail;
+    Type = newType;
+    EmailChangedEvents.Add(new EmailChangedEvent(UserId, newEmail));
+}
+```
+
+The controller then will convert the events into messages on the bus.
+```
+public string ChangeEmail(int userId, string newEmail)
+{
+    object[] userData = _database.GetUserById(userId);
+    User user = UserFactory.Create(userData);
+    
+    string error = user.CanChangeEmail();
+    if (error != null)
+        return error;
+    
+    object[] companyData = _database.GetCompany();
+    Company company = CompanyFactory.Create(companyData);
+    
+    user.ChangeEmail(newEmail, company);
+    
+    _database.SaveCompany(company);
+    _database.SaveUser(user);
+    foreach (var ev in user.EmailChangedEvents)
+    {
+        _messageBus.SendEmailChangedMessage(ev.UserId, ev.NewEmail);
+    }
+    
+    return "OK";
+}
+```
+
+Notice that the Company and User instances are still persisted in the database unconditionally: the persistence logic doesn’t depend on domain events. This is due to the difference between changes in the database and messages in the bus. Assuming that no application has access to the database other than the CRM, communications with that database are not part of the CRM’s observable behavior — they are implementation details. As long as the final state of the database is correct, it doesn’t matter how many calls your application makes to that database. On the other hand, communications with the message bus are part of the application’s observable behavior. In order to maintain the contract with external systems, the CRM should put messages on the bus only when the email changes.
+
+## Conclusion
+
+**There are situations where business logic fragmentation is inevitable.**
+For example, there’s no way to verify email uniqueness outside the controller without introducing out-of-process dependencies in the domain model. Another example is failures in out-of-process dependencies that should alter the course of the business operation. The decision about which way to go can’t reside in the domain layer because it’s not the domain layer that calls those out-of-process dependencies. You will have to put this logic into controllers and then cover it with integration tests. Still, even with the potential fragmentation, there’s a lot of value in separating business logic from orchestration because this separation drastically simplifies the unit testing process.
+
+**Just as you can’t avoid having some business logic in controllers, you will rarely be able to remove all collaborators from domain classes. And that’s fine. One, two, or even three collaborators won’t turn a domain class into overcomplicated code, as long as these collaborators don’t refer to out-of-process dependencies.**
+
+## Summary
+
+* Code complexity is defined by the number of decision-making points in the code, both explicit (made by the code itself) and implicit (made by the libraries the code uses).
+* Domain significance shows how significant the code is for the problem domain of your project. Complex code often has high domain significance and vice versa, but not in 100% of all cases.
+* Complex code and code that has domain significance benefit from unit testing the most because the corresponding tests have greater protection against regressions.
+* Unit tests that cover code with a large number of collaborators have high maintenance costs. Such tests require a lot of space to bring collaborators to an expected condition and then check their state or interactions with them afterward.
+* All production code can be categorized into four types of code by its complexity or domain significance and the number of collaborators:
+  * Domain model and algorithms (high complexity or domain significance, few collaborators) provide the best return on unit testing efforts.
+  * Trivial code (low complexity and domain significance, few collaborators) isn’t worth testing at all.
+  * Controllers (low complexity and domain significance, large number of collaborators) should be tested briefly by integration tests.
+  * Overcomplicated code (high complexity or domain significance, large number of collaborators) should be split into controllers and complex code.
+* The more important or complex the code is, the fewer collaborators it should have.
+* The Humble Object pattern helps make overcomplicated code testable by extracting business logic out of that code into a separate class. As a result, the remaining code becomes a controller—a thin, humble wrapper around the business logic.
+* The hexagonal and functional architectures implement the Humble Object pattern. Hexagonal architecture advocates for the separation of business logic and communications with out-of-process dependencies. Functional architecture separates business logic from communications with all collaborators, not just out-ofprocess ones.
+* Think of the business logic and orchestration responsibilities in terms of code depth versus code width. Your code can be either deep (complex or important) or wide (work with many collaborators), but never both.
+* Test preconditions if they have a domain significance; don’t test them otherwise.
+* There are three important attributes when it comes to separating business logic from orchestration:
+  * Domain model testability—A function of the number and the type of collaborators in domain classes
+  * Controller simplicity—Depends on the presence of decision-making points in the controller
+  * Performance—Defined by the number of calls to out-of-process dependencies
+* You can have a maximum of two of these three attributes at any given moment:
+  * Pushing all external reads and writes to the edges of a business operation—Preserves controller simplicity and keeps the domain model testability, but concedes performance
+  * Injecting out-of-process dependencies into the domain model—Keeps performance and the controller’s simplicity, but damages domain model testability
+  * Splitting the decision-making process into more granular steps—Preserves performance and domain model testability, but gives up controller simplicity
+* Splitting the decision-making process into more granular steps—Is a trade-off with the best set of pros and cons. You can mitigate the growth of controller complexity using the following two patterns:
+  * The CanExecute/Execute pattern introduces a CanDo() for each Do() method and makes its successful execution a precondition for Do(). This pattern essentially eliminates the controller’s decision-making because there’s no option not to call CanDo() before Do().
+  * Domain events help track important changes in the domain model, and then convert those changes to calls to out-of-process dependencies. This pattern removes the tracking responsibility from the controller.
+* It’s easier to test abstractions than the things they abstract. Domain events are abstractions on top of upcoming calls to out-of-process dependencies. Changes in domain classes are abstractions on top of upcoming modifications in the data storage.
+
+# Chapter 8. Why integration testing?
+
+You can never be sure your system works as a whole if you rely on unit tests exclusively. Unit tests are great at verifying business logic, but it’s not enough to check that logic in a vacuum. You have to validate how different parts of it integrate with each other and external systems: the database, the message bus, and so on.
 
 
 
