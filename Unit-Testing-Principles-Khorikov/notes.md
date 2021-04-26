@@ -1449,9 +1449,162 @@ The functional core and the mutable shell cooperate in the following way:
 
 ### Comparing functional and hexagonal architectures
 
+Functional architecture is a subset of the hexagonal architecture. You can view functional architecture as the hexagonal architecture taken to an extreme.
 
+## Transitioning to functional architecture and outputbased testing
 
+In this section, we’ll take a sample application and refactor it toward functional architecture. You’ll see two refactoring stages:
+* Moving from using an out-of-process dependency to using mocks
+* Moving from using mocks to using functional architecture
 
+### Introducing an audit system
+
+The sample project is an audit system that keeps track of all visitors in an organization. It uses flat text files as underlying storage with the structure shown in figure 6.11. The system appends the visitor’s name and the time of their visit to the end of the most recent file. When the maximum number of entries per file is reached, a new file with an incremented index is created.
+
+![chapter-6-audit-system-example.PNG](pictures/chapter-6-audit-system-example.PNG)
+
+```
+public class AuditManager
+{
+    private readonly int _maxEntriesPerFile;
+    private readonly string _directoryName;
+    
+    public AuditManager(int maxEntriesPerFile, string directoryName)
+    {
+        _maxEntriesPerFile = maxEntriesPerFile;
+        _directoryName = directoryName;
+    }
+    
+    public void AddRecord(string visitorName, DateTime timeOfVisit)
+    {
+        string[] filePaths = Directory.GetFiles(_directoryName);
+        (int index, string path)[] sorted = SortByIndex(filePaths);
+        string newRecord = visitorName + ';' + timeOfVisit;
+        
+        if (sorted.Length == 0)
+        {
+            string newFile = Path.Combine(_directoryName, "audit_1.txt");
+            File.WriteAllText(newFile, newRecord);
+            return;
+        }
+        
+        (int currentFileIndex, string currentFilePath) = sorted.Last();
+        List<string> lines = File.ReadAllLines(currentFilePath).ToList();
+        if (lines.Count < _maxEntriesPerFile)
+        {
+            lines.Add(newRecord);
+            string newContent = string.Join("\r\n", lines);
+            File.WriteAllText(currentFilePath, newContent);
+        }
+        else
+        {
+            int newIndex = currentFileIndex + 1;
+            string newName = $"audit_{newIndex}.txt";
+            string newFile = Path.Combine(_directoryName, newName);
+            File.WriteAllText(newFile, newRecord);
+        }
+    }
+}
+```
+
+The AuditManager class is hard to test as-is, because it’s tightly coupled to the filesystem. Before the test, you’d need to put files in the right place, and after the test finishes, you’d read those files, check their contents, and clear them out You won’t be able to parallelize such tests—at least, not without additional effort that would significantly increase maintenance costs. The bottleneck is the filesystem: it’s a shared dependency through which tests can interfere with each other’s execution flow.
+
+![chapter-6-audit-system-example-2.PNG](pictures/chapter-6-audit-system-example-2.PNG)
+
+### Using mocks to decouple tests from the filesystem
+
+The usual solution to the problem of tightly coupled tests is to mock the filesystem. You can extract all operations on files into a separate class (IFileSystem) and inject
+that class into AuditManager via the constructor. The tests will then mock this class and capture the writes the audit system do to the files.
+
+```
+public class AuditManager
+{
+    private readonly int _maxEntriesPerFile;
+    private readonly string _directoryName;
+    private readonly IFileSystem _fileSystem;
+    public AuditManager(int maxEntriesPerFile, string directoryName, IFileSystem fileSystem)
+    {
+        _maxEntriesPerFile = maxEntriesPerFile;
+        _directoryName = directoryName;
+        _fileSystem = fileSystem;
+    }
+
+    public void AddRecord(string visitorName, DateTime timeOfVisit)
+    {
+        string[] filePaths = _fileSystem.GetFiles(_directoryName);
+        (int index, string path)[] sorted = SortByIndex(filePaths);
+        string newRecord = visitorName + ';' + timeOfVisit;
+        if (sorted.Length == 0)
+        {
+            string newFile = Path.Combine(_directoryName, "audit_1.txt");
+            _fileSystem.WriteAllText(newFile, newRecord);
+            return;
+        }
+        
+        (int currentFileIndex, string currentFilePath) = sorted.Last();
+        List<string> lines = _fileSystem.ReadAllLines(currentFilePath);
+        if (lines.Count < _maxEntriesPerFile)
+        {
+            lines.Add(newRecord);
+            string newContent = string.Join("\r\n", lines);
+            _fileSystem.WriteAllText(currentFilePath, newContent);
+        }
+        else
+        {
+            int newIndex = currentFileIndex + 1;
+            string newName = $"audit_{newIndex}.txt";
+            string newFile = Path.Combine(_directoryName, newName);
+            _fileSystem.WriteAllText(newFile, newRecord);
+        }
+    }
+}
+```
+
+In listing 6.10, IFileSystem is a new custom interface that encapsulates the work with the filesystem:
+```
+public interface IFileSystem
+{
+    string[] GetFiles(string directoryName);
+    void WriteAllText(string filePath, string content);
+    List<string> ReadAllLines(string filePath);
+}
+```
+
+Now that AuditManager is decoupled from the filesystem, the shared dependency
+
+```
+[Fact]
+public void A_new_file_is_created_when_the_current_file_overflows()
+{
+    var fileSystemMock = new Mock<IFileSystem>();
+    fileSystemMock
+        .Setup(x => x.GetFiles("audits"))
+        .Returns(new string[]
+            {
+                @"audits\audit_1.txt",
+                @"audits\audit_2.txt"
+            });
+    fileSystemMock
+        .Setup(x => x.ReadAllLines(@"audits\audit_2.txt"))
+        .Returns(new List<string>
+            {
+                "Peter; 2019-04-06T16:30:00",
+                "Jane; 2019-04-06T16:40:00",
+                "Jack; 2019-04-06T17:00:00"
+            });
+    var sut = new AuditManager(3, "audits", fileSystemMock.Object);
+    
+    sut.AddRecord("Alice", DateTime.Parse("2019-04-06T18:00:00"));
+    
+    fileSystemMock.Verify(x => x.WriteAllText(@"audits\audit_3.txt", "Alice;2019-04-06T18:00:00"));
+}
+```
+
+The application creates files that are visible to end users (assuming that those users use another program to read the files, be it specialized software or a simple notepad.exe). Therefore, communications with the filesystem and the side effects of these communications (that is, the changes in files) are part of the application’s observable behavior. As you may remember from chapter 5, that’s the only legitimate use case for mocking.
+
+![chapter-6-audit-system-example-3.PNG](pictures/chapter-6-audit-system-example-3.PNG)
+
+### Refactoring toward functional architecture
 
 
 
