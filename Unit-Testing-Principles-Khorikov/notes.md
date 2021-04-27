@@ -2634,16 +2634,140 @@ The explicit boundary between domain classes and controllers makes it easier to 
 
 ### Reducing the number of layers
 
+Most programmers naturally gravitate toward abstracting and generalizing the code by introducing additional layers of indirection.
+
 ![chapter-8-reducing-number-of-layers.PNG](pictures/chapter-8-reducing-number-of-layers.PNG)
 
+> All problems in computer science can be solved by another layer of indirection, except for the problem of too many layers of indirection.
+ 
+Layers of indirection negatively affect your ability to reason about the code. When every feature has a representation in each of those layers, you have to expend significant effort assembling all the pieces into a cohesive picture. This creates an additional mental burden that handicaps the entire development process.
+
+There’s also a much stronger tendency to verify each layer separately. This tendency results in a lot of low-value integration tests, each of which exercises only the code from a specific layer and mocks out layers underneath. The end result is always the same: insufficient protection against regressions combined with low resistance to refactoring.
+
+Try to have as few layers of indirection as possible. In most backend systems, you can get away with just three: the domain model, application services layer (controllers), and infrastructure layer. The infrastructure layer typically consists of algorithms that don’t belong to the domain model, as well as code that enables access to out-ofprocess dependencies (figure 8.10).
+
+![chapter-8-reducing-number-of-layers-solution.PNG](pictures/chapter-8-reducing-number-of-layers-solution.PNG)
+
+### Eliminating circular dependencies
+
+Another practice that can drastically improve the maintainability of your code base and make testing easier is eliminating circular dependencies.
+
+```
+public class CheckOutService
+{
+    public void CheckOut(int orderId)
+    {
+        var service = new ReportGenerationService();
+        service.GenerateReport(orderId, this);
+        /* other code */
+    }
+}
 
 
+public class ReportGenerationService
+{
+    public void GenerateReport(int orderId, CheckOutService checkOutService)
+    {
+        /* calls checkOutService when generation is completed */
+    }
+}
+```
 
+Here, CheckOutService creates an instance of ReportGenerationService and passes itself to that instance as an argument. ReportGenerationService calls CheckOutService back to notify it about the result of the report generation.
 
+A better approach to handle circular dependencies is to get rid of them. Refactor ReportGenerationService such that it depends on neither CheckOutService nor the
+ICheckOutService interface, and make ReportGenerationService return the result of its work as a plain value instead of calling CheckOutService:
+```
+public class CheckOutService
+{
+    public void CheckOut(int orderId)
+    {
+        var service = new ReportGenerationService();
+        Report report = service.GenerateReport(orderId);
+        /* other work */
+    }
+}
 
+public class ReportGenerationService
+{
+    public Report GenerateReport(int orderId)
+    {
+        /* ... */
+    }
+}
+```
 
+It’s rarely possible to eliminate all circular dependencies in your code base. But even then, you can minimize the damage by making the remaining graphs of interdependent classes as small as possible.
 
+### Using multiple act sections in a test
 
+Such a test could have the following structure:
+* Arrange—Prepare data with which to register a user.
+* Act—Call UserController.RegisterUser().
+* Assert—Query the database to see if the registration is completed successfully.
+* Act—Call UserController.DeleteUser().
+* Assert—Query the database to make sure the user is deleted.
+
+This approach is compelling because the user states naturally flow from one another, and the first act (registering a user) can simultaneously serve as an arrange phase for the subsequent act (user deletion). The problem is that such tests lose focus and can quickly become too bloated.
+
+It’s best to split the test by extracting each act into a test of its own. It may seem like unnecessary work (after all, why create two tests where one would suffice?), but this work pays off in the long run. Having each test focus on a single unit of behavior makes those tests easier to understand and modify when necessary.
+
+**The exception to this guideline is tests working with out-of-process dependencies that are hard to bring to a desirable state.**
+
+## How to test logging functionality
+
+More in book.
+
+### Should you test logging?
+
+More in book.
+
+### How should you test logging?
+
+More in book.
+
+### How much logging is enough?
+
+More in book.
+
+### How do you pass around logger instances?
+
+More in book.
+
+## Conclusion
+
+View communications with all out-of-process dependencies through the lens of whether this communication is part of the application’s observable behavior or an implementation detail.
+
+## Summary
+
+* An **integration test** is any test that is not a unit test. Integration tests verify how your system works in integration with out-of-process dependencies:
+  * Integration tests cover controllers; unit tests cover algorithms and the domain model.
+  * Integration tests provide better protection against regressions and resistance to refactoring; unit tests have better maintainability and feedback speed.
+* The bar for integration tests is higher than for unit tests: the score they have in the metrics of protection against regressions and resistance to refactoring must be higher than that of a unit test to offset the worse maintainability and feedback speed. **The Test Pyramid** represents this trade-off: the majority of tests should be fast and cheap unit tests, with a smaller number of slow and more expensive integration tests that check correctness of the system as a whole:
+  * Check as many of the business scenario’s edge cases as possible with unit tests. Use integration tests to cover one happy path, as well as any edge cases that can’t be covered by unit tests.
+  * The shape of the Test Pyramid depends on the project’s complexity. Simple projects have little code in the domain model and thus can have an equal number of unit and integration tests. In the most trivial cases, there might be no unit tests.
+* The **Fail Fast principle** advocates for making bugs manifest themselves quickly and is a viable alternative to integration testing.
+* **Managed dependencies** are out-of-process dependencies that are only accessible through your application. Interactions with managed dependencies aren’t observable externally. A typical example is the application database.
+* **Unmanaged dependencies** are out-of-process dependencies that other applications have access to. Interactions with unmanaged dependencies are observable externally. Typical examples include an SMTP server and a message bus.
+* Communications with managed dependencies are implementation details; communications with unmanaged dependencies are part of your system’s observable behavior.
+* Use real instances of managed dependencies in integration tests; replace unmanaged dependencies with mocks.
+* Sometimes an out-of-process dependency exhibits attributes of both managed and unmanaged dependencies. A typical example is a database that other applications have access to. Treat the observable part of the dependency as an unmanaged dependency: replace that part with mocks in tests. Treat the rest of the dependency as a managed dependency: verify its final state, not interactions with it.
+* An integration test must go through all layers that work with a managed dependency. In an example with a database, this means checking the state of that database independently of the data used as input parameters.
+* Interfaces with a single implementation are not abstractions and don’t provide loose coupling any more than the concrete classes that implement those interfaces. Trying to anticipate future implementations for such interfaces violates the YAGNI (you aren’t gonna need it) principle.
+* The only legitimate reason to use interfaces with a single implementation is to enable mocking. Use such interfaces only for unmanaged dependencies. Use concrete classes for managed dependencies.
+* **Interfaces with a single implementation used for in-process dependencies are a red flag.** Such interfaces hint at using mocks to check interactions between domain classes, which leads to coupling tests to the code’s implementation details.
+* Have an explicit and well-known place for the domain model in your code base. The explicit boundary between domain classes and controllers makes it easier to tell unit and integration tests apart.
+* An excessive number of layers of indirection negatively affects your ability to reason about the code. Have as few layers of indirections as possible. In most backend systems, you can get away with just three of them: the domain model, an application services layer (controllers), and an infrastructure layer. 
+* Circular dependencies add cognitive load when you try to understand the code. A typical example is a callback (when a callee notifies the caller about the result of its work). Break the cycle by introducing a value object; use that value object to return the result from the callee to the caller.
+* Multiple act sections in a test are only justified when that test works with out-ofprocess dependencies that are hard to bring into a desirable state. You should never have multiple acts in a unit test, because unit tests don’t work with out-ofprocess dependencies. Multistep tests almost always belong to the category of end-to-end tests.
+* Support logging is intended for support staff and system administrators; it’s part of the application’s observable behavior. Diagnostic logging helps developers understand what’s going on inside the application: it’s an implementation detail.
+* Because support logging is a business requirement, reflect that requirement explicitly in your code base. Introduce a special DomainLogger class where you list all the support logging needed for the business.
+* Treat support logging like any other functionality that works with an out-of-process dependency. Use domain events to track changes in the domain model; convert those domain events into calls to DomainLogger in controllers.
+* Don’t test diagnostic logging. Unlike support logging, you can do diagnostic logging directly in the domain model.
+* Use diagnostic logging sporadically. Excessive diagnostic logging clutters the code and damages the logs’ signal-to-noise ratio. Ideally, you should only use diagnostic logging for unhandled exceptions.
+* Always inject all dependencies explicitly (including loggers), either via the constructor or as a method argument.
+
+# Chapter 9. Mocking best practices
 
 
 
