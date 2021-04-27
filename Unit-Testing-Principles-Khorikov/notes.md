@@ -3154,8 +3154,82 @@ It’s fine to open multiple transactions during read-only operations: for examp
 
 A lot about how to structure .NET code to work with transactions. More in the book.
 
+## Test data life cycle
 
+The shared database raises the problem of isolating integration tests from each other. To solve this problem, you need to
+* Execute integration tests sequentially.
+* Remove leftover data between test runs.
 
+### Parallel vs. sequential test execution
+
+Parallel execution of integration tests involves significant effort. You have to ensure that all test data is unique so no database constraints are violated and tests don’t accidentally pick up input data after each other. **It’s more practical to run integration tests sequentially rather than spend time trying to squeeze additional performance out of them.**
+
+### Clearing data between test runs
+
+There are four options to clean up leftover data between test runs:
+* Restoring a database backup before each test
+* Cleaning up data at the end of a test
+* Wrapping each test in a database transaction and never committing it
+* Cleaning up data at the beginning of a test
+
+### Avoid in-memory databases
+
+Another way to isolate integration tests from each other is by replacing the database with an in-memory analog, such as SQLite. In-memory databases can seem beneficial because they
+* Don’t require removal of test data
+* Work faster
+* Can be instantiated for each test run
+
+In spite of all these benefits, I don’t recommend using in-memory databases because they aren’t consistent functionality-wise with regular databases.
+
+## Reusing code in test sections
+
+The best way to shorten integration is by extracting technical, non-business-related bits into private methods or helper classes. As a side bonus, you’ll get to reuse those bits.
+
+### Reusing code in arrange sections
+
+More in book. 
+
+### Reusing code in act sections
+
+More in book.
+
+### Reusing code in assert sections
+
+More in book.
+
+### Does the test create too many database transactions?
+
+More in book.
+
+## Common database testing questions
+
+### Should you test reads?
+
+### Should you test repositories?
+
+Should you test repositories independently of other integration tests? It might seem beneficial to test how repositories map domain objects to the database. After all, there’s significant room for a mistake in this functionality. Still, such **tests are a net loss to your test suite due to high maintenance costs and inferior protection against regressions.**
+
+## Summary
+
+* Store database schema in a source control system, along with your source code. Database schema consists of tables, views, indexes, stored procedures, and anything else that forms a blueprint of how the database is constructed.
+* Reference data is also part of the database schema. It is data that must be prepopulated in order for the application to operate properly. To differentiate between reference and regular data, look at whether your application can modify that data. If so, it’s regular data; otherwise, it’s reference data.
+* Have a separate database instance for every developer. Better yet, host that instance on the developer’s own machine for maximum test execution speed.
+* The state-based approach to database delivery makes the state explicit and lets a comparison tool implicitly control migrations. The migration-based approach emphasizes the use of explicit migrations that transition the database from one state to another. The explicitness of the database state makes it easier to handle merge conflicts, while explicit migrations help tackle data motion.
+* Prefer the migration-based approach over state-based, because handling data motion is much more important than merge conflicts. Apply every modification to the database schema (including reference data) through migrations.
+* Business operations must update data atomically. To achieve atomicity, rely on the underlying database’s transaction mechanism.
+* Use the unit of work pattern when possible. A unit of work relies on the underlying database’s transactions; it also defers all updates to the end of the business operation, thus improving performance.
+* Don’t reuse database transactions or units of work between sections of the test. Each arrange, act, and assert section should have its own transaction or unit of work.
+* Execute integration tests sequentially. Parallel execution involves significant effort and usually is not worth it.
+* Clean up leftover data at the start of a test. This approach works fast, doesn’t result in inconsistent behavior, and isn’t prone to accidentally skipping the cleanup phase. With this approach, you don’t have to introduce a separate teardown phase, either.
+* Avoid in-memory databases such as SQLite. You’ll never gain good protection if your tests run against a database from a different vendor. Use the same database management system in tests as in production.
+* Shorten tests by extracting non-essential parts into private methods or helper classes:
+  * For the arrange section, choose Object Mother over Test Data Builder.
+  * For act, create decorator methods.
+  * For assert, introduce a fluent interface.
+* The threshold for testing reads should be higher than that for writes. Test only the most complex or important read operations; disregard the rest.
+* Don’t test repositories directly, but only as part of the overarching integration test suite. Tests on repositories introduce too high maintenance costs for too few additional gains in protection against regressions.
+
+# Chapter 11. Unit testing anti-patterns
 
 
 
