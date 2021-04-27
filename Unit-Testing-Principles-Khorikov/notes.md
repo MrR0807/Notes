@@ -2397,22 +2397,244 @@ For example, there’s no way to verify email uniqueness outside the controller 
 
 You can never be sure your system works as a whole if you rely on unit tests exclusively. Unit tests are great at verifying business logic, but it’s not enough to check that logic in a vacuum. You have to validate how different parts of it integrate with each other and external systems: the database, the message bus, and so on.
 
+## What is an integration test?
 
+### The role of integration tests
 
+As you may remember from chapter 2, a unit test is a test that meets the following three requirements:
+* Verifies a single unit of behavior,
+* Does it quickly,
+* And does it in isolation from other tests.
 
+A test that doesn’t meet at least one of these three requirements falls into the category of integration tests. An integration test then is any test that is not a unit test.
 
+![chapter-8-integration-tests-matrix.PNG](pictures/chapter-8-integration-tests-matrix.PNG)
 
+Note that tests covering the controllers quadrant can sometimes be unit tests too. If all out-of-process dependencies are replaced with mocks, there will be no dependencies shared between tests, which will allow those tests to remain fast and maintain their isolation from each other. Most applications do have an out-of-process dependency that **can’t be replaced with a mock, though. It’s usually a database — a dependency that is not visible to other applications.**
 
+### The Test Pyramid revisited
 
+Integration tests go through a larger amount of code (both your code and the code of the libraries used by the application), which makes them better than unit tests at protecting against regressions. They are also more detached from the production code and therefore have better resistance to refactoring.
 
+The ratio between unit and integration tests can differ depending on the project’s specifics, but the general rule of thumb is the following: check as many of the business scenario’s edge cases as possible with unit tests; use integration tests to cover one happy path, as well as any edge cases that can’t be covered by unit tests.
 
+The Test Pyramid can take different shapes depending on the project’s complexity. Simple applications have little (if any) code in the domain model and algorithms quadrant. As a result, tests form a rectangle instead of a pyramid, with an equal number of unit and integration tests (figure 8.3). In the most trivial cases, you might have no unit tests whatsoever.
 
+![chapter-8-integration-tests-simple-aplications.PNG](pictures/chapter-8-integration-tests-simple-aplications.PNG)
 
+### Integration testing vs. failing fast
 
+This section elaborates on the guideline of using integration tests to cover one happy path per business scenario and any edge cases that can’t be covered by unit tests. For an integration test, **select the longest happy path in order to verify interactions with all out-of-process dependencies. If there’s no one path that goes through all such interactions, write additional integration tests—as many as needed to capture communications with every external system.**
 
+There’s no need to test an edge case if an incorrect execution of that edge case immediately fails the entire application.
 
+For example:
+```
+public void ChangeEmail(string newEmail, Company company)
+{
+	Precondition.Requires(CanChangeEmail() == null);
+	/* the rest of the method */
+}
+```
 
+```
+// UserController
+public string ChangeEmail(int userId, string newEmail)
+{
+	object[] userData = _database.GetUserById(userId);
+	User user = UserFactory.Create(userData);
+	
+	string error = user.CanChangeEmail();
+	if (error != null)
+		return error;
+	/* the rest of the method */
+}
+```
 
+This example shows the edge case you could theoretically cover with an integration test. Such a test doesn’t provide a significant enough value, though. If the controller tries to change the email without consulting with CanChangeEmail() first, the application crashes. This bug reveals itself with the first execution and thus is easy to notice and fix. It also doesn’t lead to data corruption.
+
+## Which out-of-process dependencies to test directly
+
+There are two ways to implement such verification: use the real out-of-process dependency, or replace that dependency with a mock.
+
+### The two types of out-of-process dependencies
+
+All out-of-process dependencies fall into two categories:
+* **Managed dependencies (out-of-process dependencies you have full control over)** — These dependencies are only accessible through your application; interactions with them aren’t visible to the external world. **A typical example is a database**. External systems normally don’t access your database directly; they do that through the API your application provides.
+* **Unmanaged dependencies (out-of-process dependencies you don’t have full control over)** — Interactions with such dependencies are observable externally. Examples include an **SMTP server and a message bus**: both produce side effects visible to other applications.
+
+As discussed in chapter 5, the requirement to preserve the communication pattern with unmanaged dependencies stems from the necessity to maintain backward compatibility with those dependencies. Mocks are perfect for this task.
+
+However, there’s no need to maintain backward compatibility in communications with managed dependencies, because your application is the only one that talks to them.
+
+### Working with both managed and unmanaged dependencies
+
+Sometimes you’ll encounter an out-of-process dependency that exhibits attributes of both managed and unmanaged dependencies. A good example is a database that other applications have access to.
+
+Treat tables that are visible to other applications as an unmanaged dependency. Such tables in effect act as a message bus, with their rows playing the role of messages. Use mocks to make sure the communication pattern with these tables remains unchanged. At the same time, treat the rest of your database as a managed dependency.
+
+### What if you can’t use a real database in integration tests?
+
+Sometimes, for reasons outside of your control, you just can’t use a real version of a managed dependency in integration tests. An example would be a legacy database that you can’t deploy to a test automation environment.
+
+What should you do in such a situation? Should you mock out the database anyway, despite it being a managed dependency? No, because mocking out a managed dependency compromises the integration tests’ resistance to refactoring. 
+
+If you can’t test the database as-is, don’t write integration tests at all, and instead, focus exclusively on unit testing of the domain model. Remember to always put all your tests under close scrutiny. Tests that don’t provide a high enough value should have no place in your test suite.
+
+## Integration testing: An example
+
+Let’s get back to the sample CRM system from chapter 7 and see how it can be covered with integration tests. As you may recall, this system implements one feature: changing the user’s email. It retrieves the user and the company from the database, delegates the decision-making to the domain model, and then saves the results back to the database and puts a message on the bus if needed.
+
+```
+public class UserController
+{
+	private readonly Database _database = new Database();
+	private readonly MessageBus _messageBus = new MessageBus();
+
+	public string ChangeEmail(int userId, string newEmail)
+	{
+		object[] userData = _database.GetUserById(userId);
+		User user = UserFactory.Create(userData);
+
+		string error = user.CanChangeEmail();
+		if (error != null)
+			return error;
+		
+		object[] companyData = _database.GetCompany();
+		Company company = CompanyFactory.Create(companyData);
+		
+		user.ChangeEmail(newEmail, company);
+		
+		_database.SaveCompany(company);
+		_database.SaveUser(user);
+		foreach (EmailChangedEvent ev in user.EmailChangedEvents)
+		{
+			_messageBus.SendEmailChangedMessage(ev.UserId, ev.NewEmail);
+		}
+		return "OK";
+	}
+}
+```
+
+### What scenarios to test?
+
+As I mentioned earlier, the general guideline for integration testing is to cover the longest happy path and any edge cases that can’t be exercised by unit tests. The longest happy path is the one that goes through all out-of-process dependencies.
+
+In the CRM project, the longest happy path is a change from a corporate to a noncorporate email. Such a change leads to the maximum number of side effects:
+* In the database, both the user and the company are updated: the user changes its type (from corporate to non-corporate) and email, and the company changes its number of employees.
+* A message is sent to the message bus.
+
+As for the edge cases that aren’t tested by unit tests, there’s only one such edge case: the scenario where the email can’t be changed. There’s no need to test this scenario, though, because the application will fail fast if this check isn’t present in the controller. That leaves us with a single integration test:
+```
+public void Changing_email_from_corporate_to_non_corporate()
+```
+
+### Categorizing the database and the message bus
+
+The application database is a managed dependency because no other system can access it.
+On the other hand, the message bus is an unmanaged dependency.
+
+### What about end-to-end testing?
+
+There will be no end-to-end tests in our sample project.
+
+### Integration testing: The first try
+
+```
+public void Changing_email_from_corporate_to_non_corporate()
+{
+    // Arrange
+    var db = new Database(ConnectionString);
+    User user = CreateUser("user@mycorp.com", UserType.Employee, db);
+    CreateCompany("mycorp.com", 1, db);
+    var messageBusMock = new Mock<IMessageBus>();
+    var sut = new UserController(db, messageBusMock.Object);
+    // Act
+    string result = sut.ChangeEmail(user.UserId, "new@gmail.com");
+    
+    // Assert
+    Assert.Equal("OK", result);
+    object[] userData = db.GetUserById(user.UserId);
+    User userFromDb = UserFactory.Create(userData);
+    Assert.Equal("new@gmail.com", userFromDb.Email);
+    Assert.Equal(UserType.Customer, userFromDb.Type);
+    object[] companyData = db.GetCompany();
+    Company companyFromDb = CompanyFactory.Create(companyData);
+    Assert.Equal(0, companyFromDb.NumberOfEmployees);
+    messageBusMock.Verify(x => x.SendEmailChangedMessage(user.UserId, "new@gmail.com"), Times.Once);
+}
+```
+
+This integration test, while it gets the job done, can still benefit from some improvement. For instance, you could use helper methods in the assertion section, too, in order to reduce this section’s size. Also, messageBusMock doesn’t provide as good protection against regressions as it potentially could.
+
+## Using interfaces to abstract dependencies
+
+### Interfaces and loose coupling
+
+Many developers introduce interfaces for out-of-process dependencies, such as the database or the message bus, even when these interfaces have only one implementation.
+
+This practice has become so widespread nowadays that hardly anyone questions it. You’ll often see class-interface pairs similar to the following:
+```
+public interface IMessageBus
+public class MessageBus : IMessageBus
+
+public interface IUserRepository
+public class UserRepository : IUserRepository
+```
+
+The common reasoning behind the use of such interfaces is that they help to
+* Abstract out-of-process dependencies, thus achieving loose coupling
+* Add new functionality without changing the existing code, thus adhering to the Open-Closed principle (OCP)
+
+Both of these reasons are misconceptions. Interfaces with a single implementation are not abstractions and don’t provide loose coupling any more than concrete classes that implement those interfaces. Genuine abstractions are discovered, not invented. The discovery, by definition, takes place post factum, when the abstraction already exists but is not yet clearly defined in the code. Thus, for an interface to be a genuine abstraction, it must have at least two implementations.
+The second reason (the ability to add new functionality without changing the existing code) is a misconception because it violates a more foundational principle: YAGNI. YAGNI stands for “You aren’t gonna need it” and advocates against investing time in functionality that’s not needed right now. You shouldn’t develop this functionality, nor should you modify your existing code to account for the appearance of such functionality in the future. The two major reasons are as follows:
+* Opportunity cost — If you spend time on a feature that business people don’t need at the moment, you steer that time away from features they do need right now.
+* The less code in the project, the better. Introducing code just in case without an immediate need unnecessarily increases your code base’s cost of ownership.
+
+### Why use interfaces for out-of-process dependencies?
+
+So, why use interfaces for out-of-process dependencies at all, assuming that each of those interfaces has only one implementation? The real reason is much more practical and down-to-earth. **It’s to enable mocking** — as simple as that.
+
+Therefore, don’t introduce interfaces for out-of-process dependencies unless you need to mock out those dependencies. You only mock out unmanaged dependencies, so the guideline can be boiled down to this: **use interfaces for unmanaged dependencies only.**
+
+And you might have noticed in listing 8.2 that UserController now accepts both the message bus and the database explicitly via the constructor, but only the message bus has a corresponding interface.
+
+```
+public class UserController
+{
+    private readonly Database _database;      //Use concrete class
+    private readonly IMessageBus _messageBus; //Use interface
+    
+    public UserController(Database database, IMessageBus messageBus)
+    {
+        _database = database;
+        _messageBus = messageBus;
+    }
+    public string ChangeEmail(int userId, string newEmail)
+    {
+        /* the method uses _database and _messageBus */
+    }
+}
+```
+
+### Using interfaces for in-process dependencies
+
+You sometimes see code bases where interfaces back not only out-of-process dependencies but in-process dependencies as well. Assuming that IUser has only one implementation (and such specific interfaces always have only one implementation), **this is a huge red flag.** Just like with out-of-process dependencies, the only reason to introduce an interface with a single implementation for a domain class is to enable mocking.
+
+## Integration testing best practices
+
+There are some general guidelines that can help you get the most out of your integration tests:
+* Making domain model boundaries explicit
+* Reducing the number of layers in the application
+* Eliminating circular dependencies
+
+### Making domain model boundaries explicit
+
+The explicit boundary between domain classes and controllers makes it easier to tell the difference between unit and integration tests.
+
+### Reducing the number of layers
+
+![chapter-8-reducing-number-of-layers.PNG](pictures/chapter-8-reducing-number-of-layers.PNG)
 
 
 
