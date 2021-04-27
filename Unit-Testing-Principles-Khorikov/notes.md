@@ -3215,7 +3215,7 @@ Should you test repositories independently of other integration tests? It might 
 * Reference data is also part of the database schema. It is data that must be prepopulated in order for the application to operate properly. To differentiate between reference and regular data, look at whether your application can modify that data. If so, it’s regular data; otherwise, it’s reference data.
 * Have a separate database instance for every developer. Better yet, host that instance on the developer’s own machine for maximum test execution speed.
 * The state-based approach to database delivery makes the state explicit and lets a comparison tool implicitly control migrations. The migration-based approach emphasizes the use of explicit migrations that transition the database from one state to another. The explicitness of the database state makes it easier to handle merge conflicts, while explicit migrations help tackle data motion.
-* Prefer the migration-based approach over state-based, because handling data motion is much more important than merge conflicts. Apply every modification to the database schema (including reference data) through migrations.
+* **Prefer the migration-based approach over state-based**, because handling data motion is much more important than merge conflicts. Apply every modification to the database schema (including reference data) through migrations.
 * Business operations must update data atomically. To achieve atomicity, rely on the underlying database’s transaction mechanism.
 * Use the unit of work pattern when possible. A unit of work relies on the underlying database’s transactions; it also defers all updates to the end of the business operation, thus improving performance.
 * Don’t reuse database transactions or units of work between sections of the test. Each arrange, act, and assert section should have its own transaction or unit of work.
@@ -3231,67 +3231,94 @@ Should you test repositories independently of other integration tests? It might 
 
 # Chapter 11. Unit testing anti-patterns
 
+## Unit testing private methods
 
+### Private methods and test fragility
 
+Exposing methods that you would otherwise keep private just to enable unit testing violates one of the foundational principles we discussed in chapter 5: testing observable behavior only. Exposing private methods leads to coupling tests to implementation details and, ultimately, damaging your tests’ resistance to refactoring—the most important metric of the four.
 
+**Don't test privat methods.**
 
+### Private methods and insufficient coverage
 
 
+Sometimes, the private method is too complex, and testing it as part of the observable behavior doesn’t provide sufficient coverage. Assuming the observable behavior already has reasonable test coverage, there can be two issues at play:
+* This is dead code. If the uncovered code isn’t being used, this is likely some extraneous code left after a refactoring. It’s best to delete this code.
+* There’s a missing abstraction. If the private method is too complex (and thus is hard to test via the class’s public API), it’s an indication of a missing abstraction that should be extracted into a separate class.
 
+### When testing private methods is acceptable
 
+## Exposing private state
 
+Another common anti-pattern is exposing private state for the sole purpose of unit testing. The guideline here is the same as with private methods: don’t expose state that you would otherwise keep private — test observable behavior only.
 
+## Leaking domain knowledge to tests
 
+Leaking domain knowledge to tests is another quite common anti-pattern. It usually takes place in tests that cover complex algorithms.
 
+```
+public static class Calculator
+{
+    public static int Add(int value1, int value2)
+    {
+        return value1 + value2;
+    }
+}
+```
 
+```
+public class CalculatorTests
+{
+    [Fact]
+    public void Adding_two_numbers()
+    {
+        int value1 = 1;
+        int value2 = 3;
+        int expected = value1 + value2; //Leak
+        
+        int actual = Calculator.Add(value1, value2);
+        Assert.Equal(expected, actual);
+    }
+}
+```
 
+Anti-pattern: these tests duplicate the algorithm implementation from the production code.
 
+How to test the algorithm properly, then? **Don’t imply any specific implementation when writing tests.**
 
+```
+public class CalculatorTests
+{
+    [Theory]
+    [InlineData(1, 3, 4)]
+    [InlineData(11, 33, 44)]
+    [InlineData(100, 500, 600)]
+    public void Adding_two_numbers(int value1, int value2, int expected)
+    {
+        int actual = Calculator.Add(value1, value2);
+        Assert.Equal(expected, actual);
+    }
+}
+```
 
+## Code pollution
 
+Code pollution is adding production code that’s only needed for testing.
 
+## Mocking concrete classes
 
+So far, this book has shown mocking examples using interfaces, but there’s an alternative approach: you can mock concrete classes instead and thus preserve part of the original classes’ functionality, which can be useful at times. This alternative has a significant drawback, though: it violates the Single Responsibility principle.
 
+## Working with time
 
+More in book. But I like to use TimeMachine.
 
+## Summary
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+* Exposing private methods to enable unit testing leads to coupling tests to implementation and, ultimately, damaging the tests’ resistance to refactoring. Instead of testing private methods directly, test them indirectly as part of the overarching observable behavior.
+* If the private method is too complex to be tested as part of the public API that uses it, that’s an indication of a missing abstraction. Extract this abstraction into a separate class instead of making the private method public.
+* In rare cases, private methods do belong to the class’s observable behavior. Such methods usually implement a non-public contract between the class and an ORM or a factory.
+* Don’t expose state that you would otherwise keep private for the sole purpose of unit testing. Your tests should interact with the system under test exactly the same way as the production code; they shouldn’t have any special privileges. Don’t imply any specific implementation when writing tests. Verify the production code from a black-box perspective; avoid leaking domain knowledge to tests (see chapter 4 for more details about black-box and white-box testing).
+* Code pollution is adding production code that’s only needed for testing. It’s an anti-pattern because it mixes up test and production code and increases the maintenance costs of the latter.
+* The necessity to mock a concrete class in order to preserve part of its functionality is a result of violating the Single Responsibility principle. Separate that class into two classes: one with the domain logic, and the other one communicating with the out-of-process dependency.
+* Representing the current time as an ambient context pollutes the production code and makes testing more difficult. Inject time as an explicit dependency — either as a service or as a plain value. Prefer the plain value whenever possible.
