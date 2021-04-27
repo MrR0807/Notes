@@ -3052,6 +3052,148 @@ The IBus interface in our sample CRM project serves exactly that purpose. Even i
 
 # Chapter 10. Testing the database
 
+The last piece of the puzzle in integration testing is managed out-of-process dependencies. The most common example of a managed dependency is an application database — a database no other application has access to.
+
+## Prerequisites for testing the database
+
+* Keeping the database in the source control system
+* Using a separate database instance for every developer
+* Applying the migration-based approach to database deliver
+
+### Keeping the database in the source control system
+
+The first step on the way to testing the database is treating the database schema as regular code. Just as with regular code, a database schema is best stored in a source control system such as Git.
+
+Keeping all the database schema updates in the source control system helps you to maintain a single source of truth and also to track database changes along with the changes of regular code. No modifications to the database structure should be made outside of the source control.
+
+### Reference data is part of the database schema
+
+More in book.
+
+### Separate instance for every developer
+
+Keep a separate database instance for every developer, preferably on that developer’s own machine in order to maximize test execution speed.
+
+### State-based vs. migration-based database delivery
+
+The migration-based approach is more difficult to implement and maintain initially, but it works much better than the state-based approach in the long run.
+
+#### THE STATE-BASED APPROACH
+
+You also have a model database that you maintain throughout development. During deployments, a comparison tool generates scripts for the production database to bring it up to date with the model database.
+
+#### THE MIGRATION-BASED APPROACH
+
+On the other hand, the migration-based approach emphasizes the use of explicit migrations that transition the database from one version to another.
+
+#### PREFER THE MIGRATION-BASED APPROACH OVER THE STATE-BASED ONE
+
+## Database transaction management
+
+Database transaction management is a topic that’s important for both production and test code. Proper transaction management in production code helps you avoid data inconsistencies. In tests, it helps you verify integration with the database in a close-toproduction setting.
+
+### Managing database transactions in production code
+
+Our sample CRM project uses the Database class to work with User and Company. Database creates a separate SQL connection on each method call. Every such connection implicitly opens an independent transaction behind the scenes.
+
+```
+public class Database
+{
+    private readonly string _connectionString;
+    
+    public Database(string connectionString)
+    {
+        _connectionString = connectionString;
+    }
+
+    public void SaveUser(User user)
+    {
+        bool isNewUser = user.UserId == 0;
+        using (var connection = new SqlConnection(_connectionString))
+        {
+            /* Insert or update the user depending on isNewUser */
+        }
+    }
+    
+    public void SaveCompany(Company company)
+    {
+    using (var connection = new SqlConnection(_connectionString))
+        {
+            /* Update only; there's only one company */
+        }
+    }
+}
+```
+
+As a result, the user controller creates a total of four database transactions during a single business operation, as shown in the following listing.
+```
+public string ChangeEmail(int userId, string newEmail)
+{
+    object[] userData = _database.GetUserById(userId);  //Call 1
+    User user = UserFactory.Create(userData);
+    string error = user.CanChangeEmail();
+    
+    if (error != null)
+        return error;
+    
+    object[] companyData = _database.GetCompany();      //Call 2
+    Company company = CompanyFactory.Create(companyData);
+    user.ChangeEmail(newEmail, company);
+    
+    _database.SaveCompany(company);                     //Call 3
+    _database.SaveUser(user);                           //Call 4
+    _eventDispatcher.Dispatch(user.DomainEvents);
+    
+    return "OK";
+}
+```
+
+It’s fine to open multiple transactions during read-only operations: for example, when returning user information to the external client. But if the business operation involves data mutation, all updates taking place during that operation should be atomic in order to avoid inconsistencies. For example, the controller can successfully persist the company but then fail when saving the user due to a database connectivity issue.
+
+#### SEPARATING DATABASE CONNECTIONS FROM DATABASE TRANSACTIONS
+
+A lot about how to structure .NET code to work with transactions. More in the book.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
