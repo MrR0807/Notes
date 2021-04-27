@@ -1,6 +1,5 @@
 # Table of Content
 
-- [Part 1](#part-1)
 - [Chapter 1. The goal of unit testing](#chapter-1-the-goal-of-unit-testing)
   * [The current state of unit testing](#the-current-state-of-unit-testing)
   * [The goal of unit testing](#the-goal-of-unit-testing)
@@ -215,11 +214,9 @@
 
 > Most of my unit tests spent a great deal of time setting up expectations and wiring up a complicated web of dependencies—all that, just to check that the three lines of code in my controller were correct. I couldn’t pinpoint what exactly was wrong with the tests, but my sense of proportion sent me unambiguous signals that something was off.
 
-# Part 1
+# Chapter 1. The goal of unit testing
 
 We’ll look at the definition of unit test. **A seemingly minor disagreement over this definition has led to the formation of two schools of unit testing**, which we’ll also dive into.
-
-# Chapter 1. The goal of unit testing
 
 You always have to strive to achieve the best return on the time you invest in unit testing, **minimizing the effort you put into tests and maximizing the benefits they provide.** Achieving both things isn’t an easy task.
 
