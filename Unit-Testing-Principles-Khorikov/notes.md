@@ -2939,8 +2939,118 @@ There’s a huge difference between verifying a call to a custom class that you 
 ### Replacing mocks with spies
 
 As you may remember from chapter 5, **a spy is a variation of a test double that serves the same purpose as a mock. The only difference is that spies are written manually, whereas mocks are created with the help of a mocking framework.** Indeed, spies are often called handwritten mocks.
+It turns out that, when it comes to classes residing at the system edges, spies are superior to mocks. Spies help you reuse code in the assertion phase, thereby reducing the test’s size and improving readability.
 
+```
+public interface IBus
+{
+    void Send(string message);
+}
 
+public class BusSpy : IBus
+{
+    private List<string> _sentMessages = new List<string>();
+    
+    public void Send(string message)
+    {
+        _sentMessages.Add(message);
+    }
+    
+    public BusSpy ShouldSendNumberOfMessages(int number)
+    {
+        Assert.Equal(number, _sentMessages.Count);
+        return this;
+    }
+    
+    public BusSpy WithEmailChangedMessage(int userId, string newEmail)
+    {
+        string message = "Type: USER EMAIL CHANGED; " + $"Id: {userId}; " + $"NewEmail: {newEmail}";
+        Assert.Contains(_sentMessages, x => x == message);
+        return this;
+    }
+}
+```
+
+The following listing is a new version of the integration test. Again, I’m showing only the relevant parts.
+
+```
+[Fact]
+public void Changing_email_from_corporate_to_non_corporate()
+{
+    var busSpy = new BusSpy();
+    var messageBus = new MessageBus(busSpy);
+    var loggerMock = new Mock<IDomainLogger>();
+    var sut = new UserController(db, messageBus, loggerMock.Object);
+    
+    /* ... */
+    
+    busSpy.ShouldSendNumberOfMessages(1).WithEmailChangedMessage(user.UserId, "new@gmail.com");
+}
+```
+
+There’s a reasonable question to be asked here: didn’t we just make a full circle and come back to where we started? The version of the test in listing 9.7 looks a lot like the earlier version that mocked IMessageBus:
+```
+messageBusMock.Verify(x => x.SendEmailChangedMessage(user.UserId, "new@gmail.com"), Times.Once);
+```
+
+But there’s a crucial difference between the two: BusSpy is part of the test code, whereas MessageBus belongs to the production code. This difference is important because you shouldn’t rely on the production code when making assertions in tests.
+
+**Personal Note**. This is weird statement. You shouldn't rely on production code?
+
+### What about IDomainLogger?
+
+More in the book.
+
+## Mocking best practices
+
+You’ve learned two major mocking best practices so far:
+* Applying mocks to unmanaged dependencies only
+* Verifying the interactions with those dependencies at the very edges of your system
+
+In this section, I explain the remaining best practices:
+* Using mocks in integration tests only, not in unit tests
+* Always verifying the number of calls made to the mock
+* Mocking only types that you own
+
+### Mocks are for integration tests only
+
+The guideline saying that mocks are for integration tests only, and that you shouldn’t use mocks in unit tests, stems from the foundational principle described in chapter 7: the separation of business logic and orchestration.
+
+### Not just one mock per test
+
+You might sometimes hear the guideline of having only one mock per test. According to this guideline, if you have more than one mock, you are likely testing several things at a time.
+This is a misconception that follows from a more foundational misunderstanding covered in chapter 2: that a unit in a unit test refers to a unit of code, and all such units must be tested in isolation from each other. On the contrary: the term unit means **a unit of behavior, not a unit of code**.
+With mocks, the same principle is at play: **it’s irrelevant how many mocks it takes to verify a unit of behavior.**
+
+### Verifying the number of calls
+
+When it comes to communications with unmanaged dependencies, it’s important to ensure both of the following:
+* The existence of expected calls
+* The absence of unexpected calls
+
+This requirement, once again, stems from the need to maintain backward compatibility with unmanaged dependencies. The compatibility must go both ways: your application shouldn’t omit messages that external systems expect, and it also shouldn’t produce unexpected messages.
+
+### Only mock types that you own
+
+The last guideline I’d like to talk about is mocking only types that you own. It was first introduced by Steve Freeman and Nat Pryce.1 The guideline states that you should always write your own adapters on top of third-party libraries and mock those adapters instead of the underlying types. A few of their arguments are as follows:
+* You often don’t have a deep understanding of how the third-party code works.
+* Even if that code already provides built-in interfaces, it’s risky to mock those interfaces, because you have to be sure the behavior you mock matches what the external library actually does.
+* Adapters abstract non-essential technical details of the third-party code and define the relationship with the library in your application’s terms.
+
+The IBus interface in our sample CRM project serves exactly that purpose. Even if the underlying message bus’s library provides as nice and clean an interface as IBus, you are still better off introducing your own wrapper on top of it.
+
+## Summary
+
+* Verify interactions with an unmanaged dependency at the very edges of your system. Mock the last type in the chain of types between the controller and the unmanaged dependency. This helps you increase both protection against regressions (due to more code being validated by the integration test) and resistance to refactoring (due to detaching the mock from the code’s implementation details).
+* Spies are handwritten mocks. When it comes to classes residing at the system’s edges, spies are superior to mocks. They help you reuse code in the assertion phase, thereby reducing the test’s size and improving readability.
+* Don’t rely on production code when making assertions. Use a separate set of literals and constants in tests. Duplicate those literals and constants from the production code if necessary. Tests should provide a checkpoint independent of the production code. Otherwise, you risk producing tautology tests (tests that don’t verify anything and contain semantically meaningless assertions).
+* Not all unmanaged dependencies require the same level of backward compatibility. If the exact structure of the message isn’t important, and you only want to verify the existence of that message and the information it carries, you can ignore the guideline of verifying interactions with unmanaged dependencies at the very edges of your system. The typical example is logging.
+* Because mocks are for unmanaged dependencies only, and because controllers are the only code working with such dependencies, you should only apply mocking when testing controllers—in integration tests. Don’t use mocks in unit tests.
+* The number of mocks used in a test is irrelevant. That number depends solely on the number of unmanaged dependencies participating in the operation.
+* Ensure both the existence of expected calls and the absence of unexpected calls to mocks.
+* Only mock types that you own. Write your own adapters on top of third-party libraries that provide access to unmanaged dependencies. Mock those adapters instead of the underlying types.
+
+# Chapter 10. Testing the database
 
 
 
