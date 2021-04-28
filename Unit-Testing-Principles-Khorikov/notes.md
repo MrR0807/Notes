@@ -526,6 +526,46 @@ public enum Product
 }
 ```
 
+Rewritten by me to Java:
+```
+public class Classic {
+ 
+    @Test
+    void purchase_succeeds_when_enough_inventory() {
+        // Arrange
+        var store = new Store();
+        store.addInventory(Product.SHAMPOO, 10);
+        var customer = new Customer();
+ 
+        //Act
+        boolean success = customer.purchase(store, Product.SHAMPOO, 5);
+ 
+        //Assert
+        assertThat(success).isTrue();
+        assertThat(store.getInventory(Product.SHAMPOO)).isEqualTo(5); //Reduces the product amount in the store by five
+    }
+ 
+    @Test
+    void purchase_fails_when_not_enough_inventory() {
+        // Arrange
+        var store = new Store();
+        store.addInventory(Product.SHAMPOO, 10);
+        var customer = new Customer();
+ 
+        // Act
+        boolean success = customer.purchase(store, Product.SHAMPOO, 15);
+ 
+        // Assert
+        assertThat(success).isFalse();
+        assertThat(store.getInventory(Product.SHAMPOO)).isEqualTo(10); //The product amount in the store remains unchanged
+    }
+}
+ 
+public enum Product {
+    SHAMPOO, BOOK
+}
+```
+
 During the arrange phase, the tests put together two kinds of objects: the system under test (SUT) and one collaborator. In this case, Customer is the SUT and Store is the collaborator. We need the collaborator for two reasons:
 * To get the method under test to compile, because customer.Purchase() requires a Store instance as an argument
 * For the assertion phase, since one of the results of customer.Purchase() is a potential decrease in the product amount in the store
@@ -568,6 +608,42 @@ public void Purchase_fails_when_not_enough_inventory()
 	// Assert
 	Assert.False(success);
 	storeMock.Verify(x => x.RemoveInventory(Product.Shampoo, 5),Times.Never);
+}
+```
+
+Rewritten by me to Java:
+```
+public class MockedLondon {
+ 
+    @Test
+    void purchase_succeeds_when_enough_inventory() {
+        // Arrange
+        var store = spy(Store.class);
+        when(store.hasEnoughInventory(Product.SHAMPOO, 5)).thenReturn(true);
+        var customer = new Customer();
+ 
+        //Act
+        boolean success = customer.purchase(store, Product.SHAMPOO, 5);
+ 
+        //Assert
+        assertThat(success).isTrue();
+        verify(store, times(1)).removeInventory(Product.SHAMPOO, 5);
+    }
+ 
+    @Test
+    void purchase_fails_when_not_enough_inventory() {
+        // Arrange
+        var store = spy(Store.class);
+        when(store.hasEnoughInventory(Product.SHAMPOO, 5)).thenReturn(false);
+        var customer = new Customer();
+ 
+        // Act
+        boolean success = customer.purchase(store, Product.SHAMPOO, 5);
+ 
+        // Assert
+        assertThat(success).isFalse();
+        verify(store, never()).removeInventory(Product.SHAMPOO, 5);
+    }
 }
 ```
 
