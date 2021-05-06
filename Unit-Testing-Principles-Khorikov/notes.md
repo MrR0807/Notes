@@ -15,7 +15,7 @@
     + [It’s integrated into the development cycle](#its-integrated-into-the-development-cycle)
     + [It targets only the most important parts of your code base](#it-targets-only-the-most-important-parts-of-your-code-base)
     + [It provides maximum value with minimum maintenance costs](#it-provides-maximum-value-with-minimum-maintenance-costs)
-  * [Summary](#summary)
+  * [Chapter 1. Summary](#chapter-1-summary)
 - [Chapter 2. What is a unit test?](#chapter-2-what-is-a-unit-test)
   * [The definition of “unit test”](#the-definition-of-unit-test)
     + [The isolation issue: The London take](#the-isolation-issue-the-london-take)
@@ -29,7 +29,7 @@
     + [Other differences between the classical and London schools](#other-differences-between-the-classical-and-london-schools)
   * [Integration tests in the two schools](#integration-tests-in-the-two-schools)
     + [End-to-end tests are a subset of integration tests](#end-to-end-tests-are-a-subset-of-integration-tests)
-  * [Summary](#summary)
+  * [Chapter 2. Summary](#chapter-2-summary)
 - [Chapter 3. The anatomy of a unit test](#chapter-3-the-anatomy-of-a-unit-test)
   * [How to structure a unit test](#how-to-structure-a-unit-test)
     + [Using the AAA pattern](#using-the-aaa-pattern)
@@ -52,7 +52,7 @@
     + [Example: Renaming a test toward the guidelines](#example-renaming-a-test-toward-the-guidelines)
       - [Method under test in the test’s name](#method-under-test-in-the-tests-name)
   * [Refactoring to parameterized tests](#refactoring-to-parameterized-tests)
-  * [Summary](#summary)
+  * [Chapter 3. Summary](#chapter-3-summary)
 - [Chapter 4. The four pillars of a good unit test](#chapter-4-the-four-pillars-of-a-good-unit-test)
   * [Diving into the four pillars of a good unit test](#diving-into-the-four-pillars-of-a-good-unit-test)
     + [The first pillar: Protection against regressions](#the-first-pillar-protection-against-regressions)
@@ -71,7 +71,7 @@
   * [Exploring well-known test automation concepts](#exploring-well-known-test-automation-concepts)
     + [Breaking down the Test Pyramid](#breaking-down-the-test-pyramid)
     + [Choosing between black-box and white-box testing](#choosing-between-black-box-and-white-box-testing)
-  * [Summary](#summary)
+  * [Chapter 4. Summary](#chapter-4-summary)
 - [Chapter 5. Mocks and test fragility](#chapter-5-mocks-and-test-fragility)
   * [Differentiating mocks from stubs](#differentiating-mocks-from-stubs)
     + [The types of test doubles](#the-types-of-test-doubles)
@@ -89,7 +89,7 @@
   * [The classical vs. London schools of unit testing, revisited](#the-classical-vs-london-schools-of-unit-testing-revisited)
     + [Not all out-of-process dependencies should be mocked out](#not-all-out-of-process-dependencies-should-be-mocked-out)
     + [Using mocks to verify behavior](#using-mocks-to-verify-behavior)
-  * [Summary](#summary)
+  * [Chapter 5. Summary](#chapter-5-summary)
 - [Chapter 6. Styles of unit testing](#chapter-6-styles-of-unit-testing)
     + [Defining the output-based style](#defining-the-output-based-style)
     + [Defining the state-based style](#defining-the-state-based-style)
@@ -114,7 +114,7 @@
     + [Applicability of functional architecture](#applicability-of-functional-architecture)
     + [Performance drawbacks](#performance-drawbacks)
     + [Increase in the code base size](#increase-in-the-code-base-size)
-  * [Summary](#summary)
+  * [Chapter 6. Summary](#chapter-6-summary)
 - [Chapter 7. Refactoring toward valuable unit tests](#chapter-7-refactoring-toward-valuable-unit-tests)
   * [Identifying the code to refactor](#identifying-the-code-to-refactor)
     + [The four types of code](#the-four-types-of-code)
@@ -133,7 +133,7 @@
     + [Using the CanExecute/Execute pattern](#using-the-canexecuteexecute-pattern)
     + [Using domain events to track changes in the domain model](#using-domain-events-to-track-changes-in-the-domain-model)
   * [Conclusion](#conclusion)
-  * [Summary](#summary)
+  * [Chapter 7. Summary](#chapter-7-summary)
 - [Chapter 8. Why integration testing?](#chapter-8-why-integration-testing)
   * [What is an integration test?](#what-is-an-integration-test)
     + [The role of integration tests](#the-role-of-integration-tests)
@@ -163,7 +163,7 @@
     + [How much logging is enough?](#how-much-logging-is-enough)
     + [How do you pass around logger instances?](#how-do-you-pass-around-logger-instances)
   * [Conclusion](#conclusion)
-  * [Summary](#summary)
+  * [Chapter 8. Summary](#chapter-8-summary)
 - [Chapter 9. Mocking best practices](#chapter-9-mocking-best-practices)
   * [Maximizing mocks’ value](#maximizing-mocks-value)
     + [Verifying interactions at the system edges](#verifying-interactions-at-the-system-edges)
@@ -174,7 +174,7 @@
     + [Not just one mock per test](#not-just-one-mock-per-test)
     + [Verifying the number of calls](#verifying-the-number-of-calls)
     + [Only mock types that you own](#only-mock-types-that-you-own)
-  * [Summary](#summary)
+  * [Chapter 9. Summary](#chapter-9-summary)
 - [Chapter 10. Testing the database](#chapter-10-testing-the-database)
   * [Prerequisites for testing the database](#prerequisites-for-testing-the-database)
     + [Keeping the database in the source control system](#keeping-the-database-in-the-source-control-system)
@@ -199,7 +199,7 @@
   * [Common database testing questions](#common-database-testing-questions)
     + [Should you test reads?](#should-you-test-reads)
     + [Should you test repositories?](#should-you-test-repositories)
-  * [Summary](#summary)
+  * [Chapter 10. Summary](#chapter-10-summary)
 - [Chapter 11. Unit testing anti-patterns](#chapter-11-unit-testing-anti-patterns)
   * [Unit testing private methods](#unit-testing-private-methods)
     + [Private methods and test fragility](#private-methods-and-test-fragility)
@@ -210,7 +210,7 @@
   * [Code pollution](#code-pollution)
   * [Mocking concrete classes](#mocking-concrete-classes)
   * [Working with time](#working-with-time)
-  * [Summary](#summary)
+  * [Chapter 11. Summary](#chapter-11-summary)
 
 > Most of my unit tests spent a great deal of time setting up expectations and wiring up a complicated web of dependencies—all that, just to check that the three lines of code in my controller were correct. I couldn’t pinpoint what exactly was wrong with the tests, but my sense of proportion sent me unambiguous signals that something was off.
 
@@ -437,7 +437,7 @@ The most difficult part of unit testing is achieving maximum value with minimum 
 * Recognizing a valuable test (and, by extension, a test of low value)
 * Writing a valuable test
 
-## Summary
+## Chapter 1. Summary
 
 Code tends to deteriorate. Each time you change something in a code base, the amount of disorder in it, or entropy, increases. Without proper care, such as constant cleaning and refactoring, the system becomes increasingly complex and disorganized. Tests help overturn this tendency. They act as a safety net — a tool that provides insurance against the vast majority of regressions.
 * It’s important to write unit tests. It’s equally important to write good unit tests. The end result for projects with bad tests or no tests is the same: either stagnation or a lot of regressions with every new release.
@@ -739,7 +739,7 @@ passed. You may possibly even run them only on the build server, not on individu
 
 ![chapter-2-e2e-vs-integration-test.PNG](pictures/chapter-2-e2e-vs-integration-test.PNG)
 
-## Summary
+## Chapter 2. Summary
 
 * Throughout this chapter, I’ve refined the definition of a unit test:
   * A unit test verifies a single unit of behavior,
@@ -995,7 +995,7 @@ One test usually is not enough to fully describe a unit of behavior. Such a unit
 
 Using parameterized tests, you can significantly reduce the amount of test code, but this benefit comes at a cost. It’s now hard to figure out what facts the test method represents. And the more parameters there are, the harder it becomes. As a compromise, you can extract the positive test case into its own test.
 
-## Summary
+## Chapter 3. Summary
 
 * All unit tests should follow the AAA pattern: **arrange, act, assert**. If a test has multiple arrange, act, or assert sections, that’s a sign that the test verifies multiple units of behavior at once. If this test is meant to be a unit test, split it into several tests — one per each action.
 * **More than one line in the act section is a sign of a problem with the SUT’s API.** It requires the client to remember to always perform these actions together, which can potentially lead to inconsistencies. Such inconsistencies are called invariant violations. The act of protecting your code against potential invariant violations is called encapsulation.
@@ -1147,7 +1147,7 @@ There are pros and cons to both of these methods. White-box testing tends to be 
 
 **As you may remember you can’t compromise on resistance to refactoring: a test either possesses resistance to refactoring or it doesn’t. Therefore, choose blackbox testing over white-box testing by default.**
 
-## Summary
+## Chapter 4. Summary
 
 * A good unit test has four foundational attributes that you can use to analyze any automated test, whether unit, integration, or end-to-end:
   * Protection against regressions
