@@ -1547,7 +1547,7 @@ A good example here is an application database: a database that is used only by 
 
 Mocks are often said to verify behavior. In the vast majority of cases, they don’t. The way each individual class interacts with neighboring classes in order to achieve some goal has nothing to do with observable behavior; it’s an implementation detail.
 
-## Summary
+## Chapter 5. Summary
 
 * **Test double** is an overarching term that describes all kinds of non-productionready, fake dependencies in tests. There are five variations of test doubles — dummy, stub, spy, mock, and fake — that can be grouped in just two types: mocks and stubs. Spies are functionally the same as mocks; dummies and fakes serve the same role as stubs.
 * Mocks help emulate and examine **outcoming interactions**: calls from the SUT to its dependencies that change the state of those dependencies. Stubs help emulate **incoming interactions**: calls the SUT makes to its dependencies to get input data.
@@ -2060,7 +2060,7 @@ The choice between a functional architecture and a more traditional one is a tra
 
 The same is true for the size of the code base. Functional architecture requires a clear separation between the functional (immutable) core and the mutable shell. This necessitates additional coding initially, although it ultimately results in reduced code complexity and gains in maintainability.
 
-## Summary
+## Chapter 6. Summary
 
 * **Output-based testing** is a style of testing where you feed an input to the SUT and check the output it produces. This style of testing assumes there are no hidden inputs or outputs, and the only result of the SUT’s work is the value it returns.
 * **State-based testing** verifies the state of the system after an operation is completed.
@@ -2654,7 +2654,7 @@ For example, there’s no way to verify email uniqueness outside the controller 
 
 **Just as you can’t avoid having some business logic in controllers, you will rarely be able to remove all collaborators from domain classes. And that’s fine. One, two, or even three collaborators won’t turn a domain class into overcomplicated code, as long as these collaborators don’t refer to out-of-process dependencies.**
 
-## Summary
+## Chapter 7. Summary
 
 * Code complexity is defined by the number of decision-making points in the code, both explicit (made by the code itself) and implicit (made by the libraries the code uses).
 * Domain significance shows how significant the code is for the problem domain of your project. Complex code often has high domain significance and vice versa, but not in 100% of all cases.
@@ -3028,7 +3028,7 @@ More in book.
 
 View communications with all out-of-process dependencies through the lens of whether this communication is part of the application’s observable behavior or an implementation detail.
 
-## Summary
+## Chapter 8. Summary
 
 * An **integration test** is any test that is not a unit test. Integration tests verify how your system works in integration with out-of-process dependencies:
   * Integration tests cover controllers; unit tests cover algorithms and the domain model.
@@ -3329,7 +3329,7 @@ The last guideline I’d like to talk about is mocking only types that you own. 
 
 The IBus interface in our sample CRM project serves exactly that purpose. Even if the underlying message bus’s library provides as nice and clean an interface as IBus, you are still better off introducing your own wrapper on top of it.
 
-## Summary
+## Chapter 9. Summary
 
 * Verify interactions with an unmanaged dependency at the very edges of your system. Mock the last type in the chain of types between the controller and the unmanaged dependency. This helps you increase both protection against regressions (due to more code being validated by the integration test) and resistance to refactoring (due to detaching the mock from the code’s implementation details).
 * Spies are handwritten mocks. When it comes to classes residing at the system’s edges, spies are superior to mocks. They help you reuse code in the assertion phase, thereby reducing the test’s size and improving readability.
@@ -3499,7 +3499,7 @@ More in book.
 
 Should you test repositories independently of other integration tests? It might seem beneficial to test how repositories map domain objects to the database. After all, there’s significant room for a mistake in this functionality. Still, such **tests are a net loss to your test suite due to high maintenance costs and inferior protection against regressions.**
 
-## Summary
+## Chapter 10. Summary
 
 * Store database schema in a source control system, along with your source code. Database schema consists of tables, views, indexes, stored procedures, and anything else that forms a blueprint of how the database is constructed.
 * Reference data is also part of the database schema. It is data that must be prepopulated in order for the application to operate properly. To differentiate between reference and regular data, look at whether your application can modify that data. If so, it’s regular data; otherwise, it’s reference data.
@@ -3603,7 +3603,7 @@ So far, this book has shown mocking examples using interfaces, but there’s an 
 
 More in book. But I like to use TimeMachine.
 
-## Summary
+## Chapter 11. Summary
 
 * Exposing private methods to enable unit testing leads to coupling tests to implementation and, ultimately, damaging the tests’ resistance to refactoring. Instead of testing private methods directly, test them indirectly as part of the overarching observable behavior.
 * If the private method is too complex to be tested as part of the public API that uses it, that’s an indication of a missing abstraction. Extract this abstraction into a separate class instead of making the private method public.
