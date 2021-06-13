@@ -18,6 +18,8 @@
 * Is there traveling involved? How often? Traveling destinations?
 * How often is salary review?
 * Is Agile used? What framework - Scrum or Kanban?
+* What is average/median tenure at the company? How many people stay beyond 1yr/3yr/5yrs?
+* Do you have exit interviews? What do you do with the data?
 
 ## For technical interview
 
@@ -49,7 +51,6 @@
 * What do you like about this work?
 * What do you look for in programmers?
 * Do you have a deadline?
-
 
 ## Misc
 
