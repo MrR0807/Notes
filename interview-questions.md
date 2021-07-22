@@ -51,6 +51,7 @@
 * What do you like about this work?
 * What do you look for in programmers?
 * Do you have a deadline?
+* How long does it take to start an application (that I'll be working on)?
 
 ## Misc
 
