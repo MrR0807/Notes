@@ -2,7 +2,6 @@ Books to read:
 * ~~Jenkins 2. Up and running~~
 * ~~Spring Security in Action~~
 * ~~Gradle Effective Implementations Guide~~
-* Gradle Essentials
 * Kafka: The Definitive Guide, 2nd Edition
 * Mastering Kafka Streams and ksqlDB
 * Read Kafka in Action
