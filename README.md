@@ -4,10 +4,10 @@ Books to read:
 * ~~Gradle Effective Implementations Guide~~
 * Kafka: The Definitive Guide, 2nd Edition
 * Mastering Kafka Streams and ksqlDB
-* Read Kafka in Action
-* Read Kafka Streams in Action
-* Algorithhms 4th Edition by Robert Sedgewick, Kevin Wayne
+* Kafka in Action
+* Kafka Streams in Action
 * Java Performance: In-Depth Advice for Tuning and Programming Java 8, 11, and Beyond 2nd Edition
+* Algorithhms 4th Edition by Robert Sedgewick, Kevin Wayne
 * Juint in Action. Thrid Edition
 * Kubernetes Native Microservices with Quarkus, and MicroProfile
 * OpenShift in Action
