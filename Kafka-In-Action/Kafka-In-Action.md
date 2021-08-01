@@ -393,3 +393,446 @@ The easiest way to maintain exactly-once is to stay within Kafka’s walls (and 
 
 # Chapter 3. Design a Kafka project
 
+In our previous chapter, we started to see how we can work with Kafka from the command line and using a Java client. Now, we will expand on those first concepts and look at designing various solutions with Kafka.
+
+## 3.1 Designing a Kafka project
+
+While Kafka is being used in new companies and projects as they get started, that is not the case for all adopters. For those of us who have been in enterprise environments or worked with legacy systems (and anything over five years old is probably considered legacy these days), that is not a luxury we always have in reality.
+
+We will work on the project for a company that is ready to shift from their current way of doing data and apply this new hammer named Kafka.
+
+### 3.1.1 Taking over an existing data architecture
+
+Using the topic of sensors as a uses-case, we will dig into a made-up example project. Our new fictional consulting company has just won a contract to help re-architect a plant that works on e-bikes and manages them remotely. Sensors were placed throughout the bike which continuously provide events about the condition and status of the internal equipment they are monitoring.
+
+Besides this, our current data context includes traditional relational database systems that are large and clustered.
+
+### 3.1.2 Kafka Connect
+
+One of the best ways to start our journey is probably not a big-bang approach: all our data does not have to move into Kafka at once. If we use a database today and want to kick the tires on streaming data, one of the easiest on-ramps is to start with Kafka Connect. It can handle production loads, but it does not have to out of the gate. We will take one database table and start our new architecture while letting the existing applications run for the time being.
+
+### 3.1.3 Connect Features
+
+The purpose of Connect is to help move data into or out of Kafka without writing our own producers and consumers. Connect is a framework that is already part of Kafka that really can make it simple to use pieces that have previously been built to start your streaming journey. These pieces are called connectors, and they have been developed to work reliably with other data sources.
+
+The easiest option to run and test Connect on your local machine is to run it in standalone mode.
+
+In the folder where you installed Kafka, you should locate the following files: ``connect-standalone.properties`` and ``connect-file-source.properties`` under the config directory. Peeking inside the ``connect-standalone.properties`` file, you should see some configuration keys and values that should look familiar from some of the properties you used to make your own Java clients.
+
+We are taking data from one data source and into Kafka, and we will treat data as being sourced from that file. Using the file, ``connect-file-source.properties``, included with your Kafka installation as an example template, let’s create our file called ``alert-source.properties``:
+
+```properties
+name=alert-source
+connector.class=FileStreamSource #1
+tasks.max=1                      #2
+file=alert.txt                   #3
+topic=alert-connect              #4
+```
+
+1) The class that we are delegating the work of interacting with our source file.
+2) For standalone mode, 1 is a valid value to test our setup.
+3) This is the file that will be monitored for changes.
+4) The topic property is the name of the topic where this data will be sent.
+
+This file defines the configuration that is needed to define the file name of interest, ``alert.txt``, and that we want the data to be sent to the specific topic named ``alert-connect``. With configuration and not code, we can get data into Kafka from any file! Since reading from a file is a common task, we can leverage the pre-built classes provided. In this case, the class is ``FileStreamSource``.
+
+The file name of ``alert.txt`` will be monitored for changes for new messages. We have chosen 1 for the value of ``tasks.max`` since we only really need one task for our connector and are not worried about parallelism.
+
+Now that we have done the needed configuration, we’ll need to start Connect and send in our configuration.
+
+```shell
+bin/connect-standalone.sh config/connect-standalone.properties alert-source.properties
+```
+
+Moving over to another terminal window, we will create a text file named ``alert.txt`` in the directory in which we started the Connect service. We can add a couple of lines of text to this file using a text editor.
+
+Now we can use the console consumer command to verify that Connect is doing its job. Let’s open another terminal, and consume from the ``alert-connect`` topic.
+
+```shell
+bin/kafka-console-consumer.sh \
+--bootstrap-server localhost:9092 \
+--topic alert-connect --from-beginning
+```
+
+Before moving to another connector type, let’s quickly talk about the sink connector and how it can carry Kafka’s messages back out to another file. Since the destination (or sink) for this data will be another file, we are interested in looking at the file ``connect-file-sink.properties``.
+
+Notice the small difference in the configuration as the new outcome is writing to a file rather than reading from a file as we did before. ``FileStreamSink`` is declared to define this new role as a sink. The topic ``alert-connect`` will be the source of our data in this scenario.
+
+```properties
+name=alert-sink                 
+connector.class=FileStreamSink  #1
+tasks.max=1                     #2
+file=alert-sink.txt             #3
+topics=alert-connect            #4
+```
+
+1) This is an available out of the box class to which we are delegating the work of  interacting with our file.
+2) For standalone mode, 1 is a valid value to test our setup.
+3) This is the destination file for any messages that make it to our Kafka topic
+4) The topic property is the name of the topic that the data will come from.
+
+```shell
+bin/connect-standalone.sh config/connect-standalone.properties \
+alert-source.properties alert-sink.properties
+```
+
+The end result should be data flowing from a file into Kafka and back out to a separate destination file.
+
+### 3.1.4 Connect for our Invoices
+
+Connect allows those with in-depth knowledge of creating custom connectors and share them with others to help those of us that may not be the experts in those systems.
+
+To discover connectors that the community and vendors have developed, check out Confluent Hub confluent.io/hub - an app store for connectors.
+
+To start using Connect in our manufacturing example, we will look at using an existing source connector that will stream table updates to a Kafka topic from a local database.
+
+Again, our goal is not to change the entire data processing architecture at once. We are going to show how we would start bringing in updates from a database table-based application and develop our new application in parallel while letting the other system exist as-is. Our first step is to set up a database for our local examples. For ease of use and to get started quickly, we’ll be using SQLite.
+
+For ease of development, we are going to be using connectors from Confluent for the SQLite example.
+
+To create a database, we just run the following from the command line: ``sqlite3 kafkatest.db``. In this database, we will run the following to create the ``invoices`` table and insert some test data. As we design our table, it is helpful to think of how we will capture changes into Kafka. Most use-cases will not require us to capture the entire database but just changes after the initial load. A timestamp, sequence number, or ID could help us determine what data has changed and needs to be sent to Kafka.
+
+```sql
+CREATE TABLE invoices(
+    id INT PRIMARY KEY NOT NULL,
+    title TEXT NOT NULL,
+    details CHAR(50),
+    billedamt REAL,
+    modified TIMESTAMP DEFAULT (STRFTIME('%s', 'now')) NOT NULL
+);
+INSERT INTO invoices (id,title,details,billedamt) VALUES (1, 'book', 'Franz Kafka', 500.00 );
+```
+
+By copying the pre-built ``etc/kafka-connect-jdbc/source-quickstart-sqlite.properties`` file to ``kafkatest-sqlite.properties`` and then after making slight changes to our database table name, we can see how additional inserts and updates to the rows will cause messages to be sent into Kafka.
+
+```shell
+bin/confluent local start
+# OR
+bin/connect-standalone etc/schema-registry/connect-avro-standalone.properties \
+etc/kafka-connect-jdbc/kafkatest-sqlite.properties
+```
+
+## 3.2 Sensor Event Design
+
+Since there are no existing connectors for our start-of-the-art sensors, we can directly interact with their event system through custom producers. This ability to hook into and write our producers to send data into Kafka is the context in which we will look at the following requirements.
+
+### 3.2.1 Existing issues
+
+#### DEALING WITH DATA SILOS
+
+The shift from most traditional data thinking is to make the data available to everyone in its raw source. If you have access to the data as it comes in, you do not have to worry about the application API exposing it in their specific formats or after custom transformations have been done.
+
+#### RECOVERABILITY
+
+One of the excellent perks of a distributed system like Kafka is that failure is an expected condition, planned for and handled.
+
+*Note*. Talks about same stuff. Nothing of practical use.
+
+#### WHEN SHOULD DATA BE TRANSFORMED
+
+One of the most common tasks for engineers that have worked with data for any amount of time is one in which data is taken from one location, transformed, and then loaded into a different system. Extract, transform, and load (ETL) is a common term for this work.
+
+Just keep in mind that hardware, software, and logic can and will fail in distributed computing, so it’s always great to get data into Kafka first, which gives you the ability to replay data if any of those failures occur.
+
+### 3.2.2 Why Kafka is a right fit
+
+*Note*.
+This has been talked about already.
+
+### 3.2.3 Thought starters on our design
+
+#### Past Kafka Version History Milestones
+
+* 2.0.0 - ACLS with prefix support, host-name verification default for SSL
+* 1.0.0 - Java 9 Support, JBOD disk failure improvements
+* 0.11.0 - Admin API
+* 0.10.2 - Improved client compatibility
+
+The following questions are intended to make us think about how we want to process our data. These preferences will impact various parts of our design, but our main focus is just on figuring out the structure.
+
+* **Is it okay to lose any messages in the system?** For example, is one missed event about a mortgage payment going to ruin your customer’s day and their trust in your business?
+* **Does your data need to be grouped in any way?** Are the events correlated with other events that are coming in? For example, are we going to be taking in address changes? In that case, we might want to associate the various address changes with the customer whose address is changing.
+* **Do you need data delivered in exact order?** What if a message gets delivered in an order other than when it occurred? For example, if you get an order canceled notice before the actual order.
+* **Do you only want the last value of a specific item?** Or is the history of that item important? Do you care about the history of how your data has evolved?
+* **How many consumers are we going to have?** Will they all be independent of each other, or will they need to maintain some sort of order when reading the messages?
+
+### 3.2.4 User data requirements
+
+### 3.2.5 High-Level Plan for applying our questions
+
+Our new architecture will need to provide a couple of specific key features.
+
+* We want to make sure that only users with access were able to perform actions against the sensors. 
+* We should not lose messages as our audit would not be complete without all the events. 
+* In this case, we do not need any grouping key. 
+* Each event can be treated as independent. 
+* The order does not matter inside our audit topic, as each message will have a timestamp in the data itself. Our primary concern is that all the data is there to process.
+
+**As a side note, Kafka itself does allow messages to be sorted by time, and your message payload can include time as well.**
+
+#### Audit Checklist
+
+| Kafka Feature | Concern? |
+| ------------- | ------------- |
+| Message Loss  | X  |
+| Grouping  |   |
+| Ordering  |   |
+| Last value only |   |
+| Independent Consumer  | X  |
+
+The alert trend of statuses requirement deals with the the alert of each process in the bike’s system, with a goal of spotting trends. So, it might be helpful to group this data using a key. We have not addressed the term **'key'** in-depth, **but it can be thought of as a way to group related events.**
+
+#### Alert Trending Checklist
+
+| Kafka Feature | Concern? |
+| ------------- | ------------- |
+| Message Loss  |   |
+| Grouping  | X  |
+| Ordering  |   |
+| Last value only |   |
+| Independent Consumer  | X  |
+
+#### Alert Checklist
+
+| Kafka Feature | Concern? |
+| ------------- | ------------- |
+| Message Loss  |   |
+| Grouping  | X  |
+| Ordering  |   |
+| Last value only | X  |
+| Independent Consumer  |  |
+
+### 3.2.6 Reviewing our blueprint
+
+One of the last things to think about is how we want to keep these groups of data organized. Logically, the groups of data can be thought of in the following manner:
+
+* audit data 
+* alert trend data 
+* alert data
+
+## 3.3 Data Format
+
+If you look at the Kafka documentation, you may have noticed references to another serialization system called Apache Avro™. Avro provides schema definition support as well as storage of schemas in Avro files. Let’s take a closer look at why this format is commonly used in Kafka.
+
+### 3.3.1 Schemas for Context
+
+One of the significant gains of using Kafka is that the producers and consumers are not tied directly to each other. Further, Kafka does not care about the content of the data or do any validation by default. Kafka understands how to quickly move bytes and lets us have the freedom to put whatever data you need into the system.
+
+One of the significant gains of using Kafka is that the producers and consumers are not tied directly to each other. Further, Kafka does not care about the content of the data or do any validation by default. Kafka understands how to quickly move bytes and lets us have the freedom to put whatever data you need into the system. However, there is likely a need for each process or application to understand the context of what that data means and what format is in use. By using a schema, we provide a way for our applications to understand the structure and intent of the data.
+
+```json
+{
+  "type": "record",                     //1
+  "name": "libraryCheckout",
+  "namespace": "org.kafkainaction",
+  "fields": [
+    {
+      "name": "materialName",
+      "type": "string",
+      "default": ""
+    },
+    {
+      "name": "daysOverDue",            //2
+      "type": "int",                    //3
+      "default": 0                      //4
+    },
+    {
+      "name": "checkoutDate",
+      "type": "int",
+      "logicalType": "date",
+      "default": "-1"
+    },
+    {
+      "name": "borrower",
+      "type": {
+        "type": "record",
+        "name": "borrowerDetails",
+        "fields": [
+          {
+            "name": "cardNumber",
+            "type": "string",
+            "default": "NONE"
+          },
+          {
+            "name": "residentZipCode",
+            "type": "string",
+            "default": "NONE"
+          }
+        ]
+      },
+      "default": {}
+    }
+  ]
+}
+```
+
+1) JSON-defined Avro schema
+2) Direct mapping to a field name
+3) Field with name, type, and default define
+4) Default value provided
+
+### 3.3.2 Usage of Avro
+
+Now that we have discussed some of the advantages of using a schema, why would we look at Avro? First of all, Avro always is serialized with its schema. While not a schema itself, Avro supports schemas when reading and writing data and can apply rules to handle schemas that can change over time. Also, if you have ever seen JSON, it is pretty easy to understand Avro. Besides the data itself, the schema language itself is defined in JSON as well. The ease of readability does not have the same storage impacts of JSON, however. A binary representation is used for efficient storage. The interesting point is that Avro data is serialized with its schema. If the schema changes, you can still process data.
+
+Clients are the ones who gain the benefit of dealing with Avro.
+
+Let’s get started with how we will use Avro by adding it to our as ``pom.xml``.
+
+```xml
+<dependency>
+    <groupId>org.apache.avro</groupId>
+    <artifactId>avro</artifactId>
+    <version>${avro.version}</version>
+</dependency>
+```
+
+Since we are already modifying the pom file, let’s go ahead and include a plugin that will generate the Java source code for our schema definitions. As a side note, you can also generate the sources from a standalone java jar titled ``avro-tools`` if you do not want to use a Maven plugin.
+
+```xml
+<plugin>
+    <groupId>org.apache.avro</groupId>
+    <artifactId>avro-maven-plugin</artifactId>
+    <version>${avro.version}</version>
+    <executions>
+        <execution>
+            <phase>generate-sources</phase>
+            <goals>
+                <goal>schema</goal>
+            </goals>
+            <configuration>
+                <sourceDirectory>${project.basedir}/src/main/resources/</sourceDirectory>
+                <outputDirectory>${project.basedir}/src/main/java/</outputDirectory>
+            </configuration>
+        </execution>
+    </executions>
+</plugin>
+```
+
+Let’s start defining our schema by thinking about the data types we will be using, beginning with our alert status scenario. To start, we’ll create a new file named alert.avsc with a text editor.
+
+Alert will be the name of the Java class we will interact with after the generation of source code from this file.
+
+```json
+{
+  "namespace": "org.kafkainaction",   //1
+  "type": "record",
+  "name": "Alert",                    //2
+  "fields": [                         //3
+    {
+      "name": "sensor_id",
+      "type": "long",
+      "doc": "The unique id that identifies the sensor"
+    },
+    {
+      "name": "time",
+      "type": "long",
+      "doc": "Time the alert was generated as UTC milliseconds from the epoch"
+    },
+    {
+      "name": "status",
+      "type": {
+        "type": "enum",
+        "name": "AlertStatus",
+        "symbols": [
+          "Critical",
+          "Major",
+          "Minor",
+          "Warning"
+        ]
+      },
+      "doc": "The allowed values that our sensors will use to emit current status"
+    }
+  ]
+}
+```
+
+1) Namespace determines the generated package
+2) Alert will be the name of the created Java class
+3) The fields defining data types and documentation notes
+
+**One thing to note is that "doc" is not a required part of the definition.**
+
+Now that we have the schema defined let’s run the Maven build to see what we are working with - ``mvn generate-sources`` or ``mvn install`` can generate the sources in our project. This should give us a couple of generated classes: ``org.kafkainaction.Alert.java`` and ``org.kafkainaction.AlertStatus.java`` we can now use in our examples.
+
+While we could always create our own serializer for Avro, we already have an excellent example provided by Confluent. Access to those existing classes is accomplished by adding the kafka-avro-serializer dependency to our build.
+
+```xml
+<dependency>
+    <groupId>io.confluent</groupId>
+    <artifactId>kafka-avro-serializer</artifactId>
+    <version>${confluent.version}</version>
+</dependency>
+```
+
+This is needed to avoid having to create our own Avro serializer and deserializer for the keys and values of our events.
+
+With the build setup and our Avro object ready to use, let’s take our example producer from the last chapter HelloWorldProducer, and slightly modify the class to use Avro.
+
+Notice the use of ``io.confluent.kafka.serializers.KafkaAvroSerializer`` as the value of the property ``value.serializer``. This will handle the Alert object that we create and send to our new avrotest topic. Before, we could use a string serializer, but with Avro, we need to define a specific value serializer to tell the client how to deal with our data. The use of ``Alert``, rather than a string, shows how we can utilize types in our applications as long as we can serialize them. This example also makes use of the Schema Registry. We will cover more details of the Schema Registry in chapter 11, but at this point, it is helpful to know that the property ``schema.registry.url`` points to the URL of our registry. **This registry can have a versioned history of schemas and helps us manage schema evolution.**
+
+```java
+public class HelloWorldProducer {
+    private static final Logger log = LoggerFactory.getLogger(HelloWorldProducer.class);
+    
+    public static void main(String[] args) {
+        var producerProperties = new Properties();
+        producerProperties.put("bootstrap.servers", "localhost:9092,localhost:9093,localhost:9094");
+        producerProperties.put("key.serializer", "org.apache.kafka.common.serialization.LongSerializer");
+        producerProperties.put("value.serializer", "io.confluent.kafka.serializers.KafkaAvroSerializer");
+        producerProperties.put("schema.registry.url", "http://localhost:8081");
+        try (Producer<Long, Alert> producer = new KafkaProducer<>(producerProperties)) {
+            var alert = new Alert(12345L, Instant.now().toEpochMilli(), Critical);
+            log.info("Alert -> {}", alert);
+            var producerRecord = new ProducerRecord<Long, Alert>("avrotest", alert.getSensorId(), alert);
+            producer.send(producerRecord);
+        }
+    }
+}
+```
+
+Now that we have produced messages using Alert, the other changes would be on the consumption side of the messages. For a consumer to get the values produced to our new topic, it will have to use a value deserializer, in this case, ``KafkaAvroDeserializer``.
+
+```java
+public class HelloWorldConsumer {
+    final static Logger log = LoggerFactory.getLogger(HelloWorldConsumer.class);
+    private volatile boolean keepConsuming = true;
+    
+    public static void main(String[] args) {
+        var props = new Properties();
+        props.put("bootstrap.servers", "localhost:9092");
+        props.put("group.id", "helloconsumer");
+        props.put("enable.auto.commit", "true");
+        props.put("auto.commit.interval.ms", "1000");
+        props.put("key.deserializer", "org.apache.kafka.common.serialization.LongDeserializer");
+        props.put("value.deserializer", "io.confluent.kafka.serializers.KafkaAvroDeserializer");
+        props.put("schema.registry.url", "http://localhost:8081");
+        var helloWorldConsumer = new HelloWorldConsumer();
+        helloWorldConsumer.consume(props);
+        Runtime.getRuntime().addShutdownHook(new Thread(helloWorldConsumer::shutdown));
+    }
+    private void consume(Properties props) {
+        try (var consumer = new KafkaConsumer<Long, Alert>(props)) {
+            consumer.subscribe(Collections.singletonList("avrotest"));
+            while (keepConsuming) {
+                ConsumerRecords<Long, Alert> records = consumer.poll(Duration.ofMillis(100));
+                for (var record : records) {
+                    log.info("[Consumer Record] offset = {}, key = {}, value = {}", record.offset(), record.key(), record.value());
+                }
+            }
+        }
+    }
+    private void shutdown() {
+        keepConsuming = false;
+    }
+}
+```
+
+## 3.4 Summary
+
+* Designing a Kafka solution first involves understanding our data. These details include how we need to handle data loss, ordering of messages, and latency in our use-cases.
+* The need to group data will determine whether we will key the messages in Kafka.
+* Leveraging Avro schemas definitions can not only help us generate code but can also help us handle data changes in the future. These schemas can be used with our own custom Kafka clients.
+* Kafka Connect provides existing connectors to write to and from various data sources. To implement a solution moving data into or out of Kafka, searching the existing source and sink connectors available can help us quickly get started with the Kafka ecosystem.
+
+# Chapter 4. Producers: sourcing data
