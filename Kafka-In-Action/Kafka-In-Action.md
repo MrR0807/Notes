@@ -836,3 +836,125 @@ public class HelloWorldConsumer {
 * Kafka Connect provides existing connectors to write to and from various data sources. To implement a solution moving data into or out of Kafka, searching the existing source and sink connectors available can help us quickly get started with the Kafka ecosystem.
 
 # Chapter 4. Producers: sourcing data
+
+## 4.1 Introducing the Producer
+
+*Note*. Nothing of interesting.
+
+### 4.1.1 Key Producer Write Path
+
+While it took relatively few lines of code to send a message as seen in Chapter 2, the Java client producer write process is doing various tasks behind the scenes.
+
+Calling ``send()`` in our code puts some impressive machinery into motion. The Sender class provides the plumbing to work with the RecordAccumulator to send requests to the Kafka brokers from a producer. The sender’s job includes fetching metadata about the cluster itself. Since producers only write to the replica leader of the partition they are assigned, the metadata helps the producer find out which actual broker to write to since the producer record might only have been given a topic name without any other details. This is nice because the end-user of the producer does not have to make a separate call to get that information. **The end-user needs to have at least one running broker to connect to, and the Java client library can figure out the rest.**
+
+Continuing with the write path flow, we can see that the record accumulator’s job is to accumulate the messages into batches. These batches are grouped by broker and partition. Why did I just mention the word batch? Isn’t that a bad word when discussing stream processing?
+
+Collecting messages is really about improving throughput. If each message was sent one at a time, we would see significantly slower throughput. Another option for improving throughput is to compress messages. If compression for the messages is used, along with batching, the full batch is compressed. This likely would allow for a higher compression ratio than one message at a time.
+
+**If one message in the batch fails during delivery, then the entire batch fails for that partition.**
+
+Since this distributed system is designed to account for transient errors, like a network blip, the logic for retries is built-in already. However, **if the ordering of the messages is essential**, then besides setting the retries to a non-zero number, we will also need to set the ``max.in.flight.requests.per.connection`` value to 1 and set acks (the number of brokers that send acknowledgments back) to **all** to provide the best situation for making sure your producer’s messages arrive in the order you intend.
+
+Another option to be aware of is using an idempotent producer. In effect, the desire is for a producer to only write a message once. The term idempotent is referring to how sending the same message multiple times will only result in the message being written once. These settings can also be set with the configuration property ``enable.idempotence=true``.
+
+Despite being able to have more than one in-flight request, the safest method to keep the order of your messages (in addition to the exactly-once delivery) is to set it at 1.
+
+**Another item to note is that the idempotent delivery is for the lifetime of a producer. If we have another producer sourcing the same data or even a restart of that producer code, we might see duplicate messages on your topic.**
+
+## 4.2 Important Options
+
+Recent versions of the producer have over 50 properties that we could choose to set. **One way to deal with all of the producer configuration key names is to use the constants provided in the java class ``ProducerConfig`` when developing producer code.**
+
+### 4.2.1 Producer Options
+
+**Important Producer Configuration**
+
+| Key  | Purpose |
+| ------------- | ------------- |
+| acks  | Number of replica acknowledgments producer requires before success is considered  |
+| bootstrap.servers  | One or many Kafka brokers to connect for startup  |
+| value.serializer | The class that is being used for serialization of the value  |
+| key.serializer  | The class that is being used for serialization of the key  |
+| compression.type  | The compression type (if any) used to compress messages  |
+
+
+The Kafka documentation has a helpful way of letting us know which options might have the most impact. Look for the IMPORTANCE label of High in the documentation listed at kafka.apache.org/documentation/\#producerconfigs.
+
+### 4.2.2 Configuring the Broker list
+
+By connecting to this one broker, the client is able to discover the metadata it needs, which includes data about other brokers in the cluster as well. It is a good idea to send a list rather than one in case one of the servers is down or under maintenance and unavailable.
+
+### 4.2.3 How to go Fast (or Safer)
+
+We can wait in our code for the result of a producer send request, but we also have the option of handling success or failure asynchronously with callbacks or ``Futures``. If we want to go faster and not wait for a reply, we can still handle the results at a later time with our own custom logic.
+
+Another configuration property that will apply to our scenarios is the ``acks`` key, which stands for acknowledgments. **This controls how many acknowledgments the producer needs to receive from the partition leader’s followers before it returns a complete request.** The valid values for this property are **'all,' -1, 1, and 0**.
+
+**Setting this value to 0 will probably get us the lowest latency, but at the cost of durability.** Guarantees are not made if any broker received the message, and retries are not attempted. As a sample use-case, say that we have a web tracking platform that collects the clicks on a page and sends these events to Kafka. In this situation, it might not be a big deal to lose a single link press event or hover event. If it is lost, there is no real business impact.
+
+**Setting this value to 1 will involve the receiver of the message, the leader replica of the specific partition, sending confirmation back to the producer.** The producer client would wait for that acknowledgment. Setting the value to 1 will mean that, at least, the leader replica has received the message. **However, the followers might not have copied the message before a failure brings down the leader.** If that situation occurs before a copy was made, then the message would never appear on the replica followers for that partition.
+
+**Values all or -1 are the strongest available option.** T**his value means that a partition leader replica waits on the entire list of its in-sync replicas (ISRs) to acknowledge it has received the message.** While this is better for durability, it is easy to see that it won’t the quickest due to the dependencies it has on other brokers. In many cases, it is worth paying the performance price in order to prevent data loss. **With many brokers in a cluster, it is important to be aware of the number of brokers the leader will have to wait on.** The broker that takes the longest to reply will be the determining factor for how long it takes for the producer to receive a success message.
+
+### 4.2.4 Timestamps
+
+Recent versions of the producer record will have a timestamp on the events you send. A user can either pass the time into the constructor as a Java type long when sending a ProducerRecord Java object or the current system time will be used. The actual time that is used in the message can stay this value or can be a broker timestamp that occurs when the message is logged. Setting the topic configuration ``message.timestamp.type`` to ``CreateTime`` will use the time set by the client, whereas setting it to ``LogAppendTime`` will use the broker time.
+
+As always, timestamps can be tricky. **For example we might get a record with an earlier timestamp than that of a record before it. This can happen in cases where a failure occurred and a different message with a later timestamp was committed before the retry of the first record completed.** The data will be ordered in the log by offsets and not by timestamp. While reading timestamped data is often thought of as a consumer client concern, it is also a producer concern since the producer takes the first steps to ensure message ordering. As discussed earlier, this is also why ``max.in.flight.requests.per.connection`` is important to consider whether you want to allow retries or many inflight requests at a time. If a retry happens and other requests succeeded on their first attempt, earlier messages might be added after those later ones.
+
+### 4.2.5 Adding compression to our messages
+
+One of the topics that we discussed briefly above, when talking about message batches, was compression. Google Snappy, GNU gzip, lz4, zstd (developed at FacebookTM), and none are all options that can be used and are set with the configuration key ``compression.type``.
+
+Compression is done at the batch level. Size and rate of the data should be considered when deciding whether or not to use compression. **Small messages being compressed do not necessarily make sense in all cases. In addition, if you have low traffic, compression might not provide significant benefits.**
+
+### 4.2.6 Custom Serializer
+
+```java
+public class Alert implements Serializable {
+	private final int alertId;
+	private String stageId;
+	private final String alertLevel;
+	private final String alertMessage;
+	
+	public Alert(int alertId, String stageId, String alertLevel, String alertMessage) {
+		this.alertId = alertId;
+		this.stageId = stageId;
+		this.alertLevel = alertLevel;
+		this.alertMessage = alertMessage;
+	}
+	public int getAlertId() {
+		return alertId;
+	}
+	public String getStageId() {
+		return stageId;
+	}
+	public void setStageId(String stageId) {
+		this.stageId = stageId;
+	}
+	public String getAlertLevel() {
+		return alertLevel;
+	}
+	public String getAlertMessage() {
+		return alertMessage;
+	} 
+}
+```
+
+```java
+public class AlertKeySerde implements Serializer<Alert>, Deserializer<Alert> {
+  public byte[] serialize(String topic, Alert key) {
+    if (key == null) {
+      return null;
+    }
+    return key.getStageId().getBytes(StandardCharsets.UTF_8);
+  }
+  public Alert deserialize(String topic, byte[] value) {
+    //We will leave this part for later
+    return null;
+  }
+  //... 
+}
+```
+
+88
