@@ -1235,3 +1235,79 @@ a1.sinks.k1.kafka.producer.compression.type = snappy
 One important thing to note is that Kafka broker and client versions do not always have to match. If you are running a broker that is at Kafka version 1.0 and the Java producer client you are using is at 0.10 (using these versions as an example since they were the first to handle this mismatch!), the broker will handle this upgrade in the message version. **However, because you can, it does not mean you should do it in all cases.**
 
 # Chapter 5. Consumers: unlocking data
+
+## 5.1 Introducing the Consumer
+
+Why is it important to know that the consumer is subscribing to topics (pulling messages) and not being pushed to instead? The power of processing control shifts to the consumer in this situation.
+
+**Consumers themselves control the rate of consumption.**
+
+```java
+public class WebClickConsumer {
+  
+	final static Logger log = LoggerFactory.getLogger(WebClickConsumer.class);
+	private volatile boolean keepConsuming = true;
+  
+	public static void main(String[] args) {
+		Properties props = new Properties();
+    
+		props.put("bootstrap.servers", "localhost:9092,localhost:9093,,localhost:9094");
+		props.put("group.id", "webconsumer");                                                               //1
+		props.put("enable.auto.commit", "true");
+		props.put("auto.commit.interval.ms", "1000");
+		props.put("key.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");          //2
+		props.put("value.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
+		
+		WebClickConsumer webClickConsumer = new WebClickConsumer();
+		webClickConsumer.consume(props);
+		Runtime.getRuntime().addShutdownHook(new Thread(webClickConsumer::shutdown));
+  }
+  
+  private void consume(Properties props) {
+    
+		try (KafkaConsumer<String, String> consumer = new KafkaConsumer<>(props)) {                         //3
+			consumer.subscribe(Arrays.asList("webclicks"));                                                 //4
+			
+            while (keepConsuming) {                                                                         //5
+				ConsumerRecords<String, String> records = consumer.poll(Duration.ofMillis(500));
+				for (ConsumerRecord<String, String> record : records) {
+					log.info("[Consumer Record] offset = {}, key = {}, value = {}", record.offset(), record.key(), record.value());
+					log.info("value = {}", Double.parseDouble(record.value()) * 1.543);
+				}
+			} 
+		}
+	}
+  
+	private void shutdown() {
+		keepConsuming = false;
+	} 
+}
+```
+
+1) ``group.id`` defined and will be discussed with consumer groups. 
+2) Deserializers for the key and values defined.
+3) Properties are passed into the KafkaConsumer constructor. 
+4) Subscribe to one topic: ``webclicks``.
+5) The logic polls in an infinite loop for records that will come from the topic.
+
+LinkedIn’s use-case of user activity events. Let’s say that we have a specific formula that uses the time a user spends on the page as well as the number of interactions they had on the page that is sent as a value to a topic to project future click rates with a new promotion. Imagine we run the consumer and process all of the messages on the topic and are happy with our application of the formula (in this case multiplying by a magic number).
+
+After generating a value for every message in the topic we find out that our modeling formula wasn’t correct! So what should we do now? Attempt to recalculate the data we have from our end-results (assuming the correction would be harder than in this example) and then apply a new formula? This is where we could use our knowledge of consumer behavior in Kafka to rather replay the messages we already processed.
+
+**By having that raw data retained, we do not have to worry about trying to recreate that original data.** Developer mistakes, application logic mistakes, and even dependent application failures have a chance to be corrected because the data is not removed from our topics once it is consumed.
+
+## 5.2 Important Consumer Options
+
+You will notice a couple of properties that are related to the ones that were important for the producer clients as well. For one, ee always need to know the brokers we can attempt to connect to on the startup of the client. One minor gotcha is to make sure that you are using the deserializers for the key and values that match the serializers you produced the message with.
+
+| Key  | Purpose |
+| ------------- | ------------- |
+| bootstrap.servers  | One or many Kafka brokers to connect on startup  |
+| value.deserializer  | The class that is being used for deserialization of the value  |
+| key.deserializer  | The class that is being used for deserialization of the key  |
+| group.id  | A name that will be used to join a consumer group  |
+| client.id  | An id used for being able to identify a client (will use in chapter 10)  |
+| heartbeat.interval.ms  | Interval for consumer’s pings to the group coordinator  |
+
+### 5.2.1 Understanding Tracking Offsets
+
