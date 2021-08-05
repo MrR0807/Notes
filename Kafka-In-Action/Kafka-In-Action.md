@@ -957,4 +957,281 @@ public class AlertKeySerde implements Serializer<Alert>, Deserializer<Alert> {
 }
 ```
 
-88
+## 4.1 Introducing the Producer
+
+*Note*. Nothing of interesting.
+
+### 4.1.1 Key Producer Write Path
+
+While it took relatively few lines of code to send a message as seen in Chapter 2, the Java client producer write process is doing various tasks behind the scenes.
+
+Calling ``send()`` in our code puts some impressive machinery into motion. The Sender class provides the plumbing to work with the RecordAccumulator to send requests to the Kafka brokers from a producer. The sender’s job includes fetching metadata about the cluster itself. Since producers only write to the replica leader of the partition they are assigned, the metadata helps the producer find out which actual broker to write to since the producer record might only have been given a topic name without any other details. This is nice because the end-user of the producer does not have to make a separate call to get that information. **The end-user needs to have at least one running broker to connect to, and the Java client library can figure out the rest.**
+
+Continuing with the write path flow, we can see that the record accumulator’s job is to accumulate the messages into batches. These batches are grouped by broker and partition. Why did I just mention the word batch? Isn’t that a bad word when discussing stream processing?
+
+Collecting messages is really about improving throughput. If each message was sent one at a time, we would see significantly slower throughput. Another option for improving throughput is to compress messages. If compression for the messages is used, along with batching, the full batch is compressed. This likely would allow for a higher compression ratio than one message at a time.
+
+**If one message in the batch fails during delivery, then the entire batch fails for that partition.**
+
+Since this distributed system is designed to account for transient errors, like a network blip, the logic for retries is built-in already. However, **if the ordering of the messages is essential**, then besides setting the retries to a non-zero number, we will also need to set the ``max.in.flight.requests.per.connection`` value to 1 and set acks (the number of brokers that send acknowledgments back) to **all** to provide the best situation for making sure your producer’s messages arrive in the order you intend.
+
+Another option to be aware of is using an idempotent producer. In effect, the desire is for a producer to only write a message once. The term idempotent is referring to how sending the same message multiple times will only result in the message being written once. These settings can also be set with the configuration property ``enable.idempotence=true``.
+
+Despite being able to have more than one in-flight request, the safest method to keep the order of your messages (in addition to the exactly-once delivery) is to set it at 1.
+
+**Another item to note is that the idempotent delivery is for the lifetime of a producer. If we have another producer sourcing the same data or even a restart of that producer code, we might see duplicate messages on your topic.**
+
+## 4.2 Important Options
+
+Recent versions of the producer have over 50 properties that we could choose to set. **One way to deal with all of the producer configuration key names is to use the constants provided in the java class ``ProducerConfig`` when developing producer code.**
+
+### 4.2.1 Producer Options
+
+**Important Producer Configuration**
+
+| Key  | Purpose |
+| ------------- | ------------- |
+| acks  | Number of replica acknowledgments producer requires before success is considered  |
+| bootstrap.servers  | One or many Kafka brokers to connect for startup  |
+| value.serializer | The class that is being used for serialization of the value  |
+| key.serializer  | The class that is being used for serialization of the key  |
+| compression.type  | The compression type (if any) used to compress messages  |
+
+
+The Kafka documentation has a helpful way of letting us know which options might have the most impact. Look for the IMPORTANCE label of High in the documentation listed at kafka.apache.org/documentation/\#producerconfigs.
+
+### 4.2.2 Configuring the Broker list
+
+By connecting to this one broker, the client is able to discover the metadata it needs, which includes data about other brokers in the cluster as well. It is a good idea to send a list rather than one in case one of the servers is down or under maintenance and unavailable.
+
+### 4.2.3 How to go Fast (or Safer)
+
+We can wait in our code for the result of a producer send request, but we also have the option of handling success or failure asynchronously with callbacks or ``Futures``. If we want to go faster and not wait for a reply, we can still handle the results at a later time with our own custom logic.
+
+Another configuration property that will apply to our scenarios is the ``acks`` key, which stands for acknowledgments. **This controls how many acknowledgments the producer needs to receive from the partition leader’s followers before it returns a complete request.** The valid values for this property are **'all,' -1, 1, and 0**.
+
+**Setting this value to 0 will probably get us the lowest latency, but at the cost of durability.** Guarantees are not made if any broker received the message, and retries are not attempted. As a sample use-case, say that we have a web tracking platform that collects the clicks on a page and sends these events to Kafka. In this situation, it might not be a big deal to lose a single link press event or hover event. If it is lost, there is no real business impact.
+
+**Setting this value to 1 will involve the receiver of the message, the leader replica of the specific partition, sending confirmation back to the producer.** The producer client would wait for that acknowledgment. Setting the value to 1 will mean that, at least, the leader replica has received the message. **However, the followers might not have copied the message before a failure brings down the leader.** If that situation occurs before a copy was made, then the message would never appear on the replica followers for that partition.
+
+**Values all or -1 are the strongest available option.** T**his value means that a partition leader replica waits on the entire list of its in-sync replicas (ISRs) to acknowledge it has received the message.** While this is better for durability, it is easy to see that it won’t the quickest due to the dependencies it has on other brokers. In many cases, it is worth paying the performance price in order to prevent data loss. **With many brokers in a cluster, it is important to be aware of the number of brokers the leader will have to wait on.** The broker that takes the longest to reply will be the determining factor for how long it takes for the producer to receive a success message.
+
+### 4.2.4 Timestamps
+
+Recent versions of the producer record will have a timestamp on the events you send. A user can either pass the time into the constructor as a Java type long when sending a ProducerRecord Java object or the current system time will be used. The actual time that is used in the message can stay this value or can be a broker timestamp that occurs when the message is logged. Setting the topic configuration ``message.timestamp.type`` to ``CreateTime`` will use the time set by the client, whereas setting it to ``LogAppendTime`` will use the broker time.
+
+As always, timestamps can be tricky. **For example we might get a record with an earlier timestamp than that of a record before it. This can happen in cases where a failure occurred and a different message with a later timestamp was committed before the retry of the first record completed.** The data will be ordered in the log by offsets and not by timestamp. While reading timestamped data is often thought of as a consumer client concern, it is also a producer concern since the producer takes the first steps to ensure message ordering. As discussed earlier, this is also why ``max.in.flight.requests.per.connection`` is important to consider whether you want to allow retries or many inflight requests at a time. If a retry happens and other requests succeeded on their first attempt, earlier messages might be added after those later ones.
+
+### 4.2.5 Adding compression to our messages
+
+One of the topics that we discussed briefly above, when talking about message batches, was compression. Google Snappy, GNU gzip, lz4, zstd (developed at FacebookTM), and none are all options that can be used and are set with the configuration key ``compression.type``.
+
+Compression is done at the batch level. Size and rate of the data should be considered when deciding whether or not to use compression. **Small messages being compressed do not necessarily make sense in all cases. In addition, if you have low traffic, compression might not provide significant benefits.**
+
+### 4.2.6 Custom Serializer
+
+```java
+public class Alert implements Serializable {
+	private final int alertId;
+	private String stageId;
+	private final String alertLevel;
+	private final String alertMessage;
+	
+	public Alert(int alertId, String stageId, String alertLevel, String alertMessage) {
+		this.alertId = alertId;
+		this.stageId = stageId;
+		this.alertLevel = alertLevel;
+		this.alertMessage = alertMessage;
+	}
+	public int getAlertId() {
+		return alertId;
+	}
+	public String getStageId() {
+		return stageId;
+	}
+	public void setStageId(String stageId) {
+		this.stageId = stageId;
+	}
+	public String getAlertLevel() {
+		return alertLevel;
+	}
+	public String getAlertMessage() {
+		return alertMessage;
+	} 
+}
+```
+
+```java
+public class AlertKeySerde implements Serializer<Alert>, Deserializer<Alert> {
+  public byte[] serialize(String topic, Alert key) {
+    if (key == null) {
+      return null;
+    }
+    return key.getStageId().getBytes(StandardCharsets.UTF_8);
+  }
+  public Alert deserialize(String topic, byte[] value) {
+    //We will leave this part for later
+    return null;
+  }
+  //... 
+}
+```
+
+This example is straightforward since the focus is on the technique of using a Serde. Other options of Serdes that are often used are JSON and Avro implementations.
+
+Serde - it means that the serializer and deserializer are both handled by the same implementation of that interface.
+
+### 4.2.7 Producer Interceptor
+
+One of the other options when using the producer is creating producer interceptors. They were introduced in KIP-42 whose main goal was to help support measurement and monitoring. 
+
+Kafka also reports various internal metrics using Oracle JMXTM that can be used if monitoring is the main concern.
+
+**If you do create an interceptor, remember to set the producer config interceptor.classes.**
+
+### 4.2.8 Our own partition code
+
+So far, in our examples of writing to Kafka, the data has been directed to a topic, and no additional metadata has been provided from the client. Since the topics are made up of partitions that sit on the brokers, Kafka has provided a default way to decide where to send a message to a specific partition. **The default for a message with no key (which has been used in the examples so far) was a round-robin assignment strategy prior to Apache Kafka version 2.4. Versions after 2.4 changed no key assignments to use a sticky partition strategy in which messages were batched to the same partition until the batch was full, and a new partition was randomly assigned.** If a key is present, then the key is used to create a hashed value. That hash is then used to determine a specific partition. **However, sometimes we have some specific ways we want our data to be partitioned. One way to take control of this is to write our own custom partitioner class.**
+
+The client has the ability to control what partition it writes, too, by configuring a custom partitioner. This can be one way to load balance the data over the partitions. This might come into the picture if we have specific keys that we want to be treated in a special way. Let’s look at an example for our sensor use-case.
+
+Some sensors' information might be more important than others, i.e., they might be on the critical path of our e-bike that could cause downtime if not addressed. Let’s say we have four levels of alerts: Critical, Major, Minor, and Warning. We could create a partitioner that would place the different levels in different partitions. Our consumer clients could always make sure to read the critical alerts before processing the others and have their own service-level agreements (SLA) based on the alert level.
+
+```java
+public class AlertLevelPartitioner implements Partitioner {
+  
+	public int partition(final String topic, final Object objectKey, final byte[] keyBytes,
+                         final Object value, final byte[] valueBytes, final Cluster cluster) {
+    
+        final List<PartitionInfo> partitionMetaList = cluster.availablePartitionsForTopic(topic);
+        final int criticalPartition = 0;
+        final String key = ((Alert) objectKey).getAlertLevel(); //1
+        return key.contains("CRITICAL") ? criticalPartition : Math.abs(key.hashCode()) % partitionMetaList.size(); //2
+    }
+//... 
+}
+```
+
+1) We are casting the value to a String to check the value.
+2) Critical alerts should end up on partition 0. Other alerts locations will be based on the key’s hashcode.
+
+By implementing the Partitioner interface, we can use the partition method to send back the specific partition we would have our producer write to.
+
+```java
+Properties props = new Properties();
+//...
+props.put("partitioner.class", "org.kafkainaction.partitioner.AlertLevelPartitioner");
+```
+
+## 4.3 Generating data for our requirements
+
+Let’s start with the audit checklist that we designed in Chapter 3 for use with Kafka in an e-bike factory. One requirement was that there was no need to correlate (or group together) any events. Another requirement was to make sure we don’t lose any messages.
+
+```java
+Properties producerProperties = new Properties();
+producerProperties.put("bootstrap.servers", "localhost:9092,localhost:9093,localhost:9094");
+producerProperties.put("acks", "all");          //1
+producerProperties.put("retries", "3");         //2
+producerProperties.put("max.in.flight.requests.per.connection", "1");
+```
+
+1) We are using ``acks=all`` to get the strongest guarantee we can.
+2) We are letting the client do retries for us in cases of failure, so we don’t have to implement our own failure logic.
+
+Since we do not have to correlate (group) any events together, we are not using a key for these messages. However, there is an essential piece of code that we do want to change in order to wait for the result before moving on to other codes. This means waiting for the response to complete synchronously. **The ``get`` method is how we are waiting for the result to come back before moving on in the code.**
+
+```java
+RecordMetadata result = producer.send(producerRecord).get();
+log.info("offset = {}, topic = {}, timestamp = {}}, result.offset(), result.topic(), result.timestamp());
+```
+
+Waiting on the response directly in a synchronous way ensures that the code is handling each record’s results as they come back before another message is sent. The focus is on delivering the messages without loss over speed.
+
+Another goal of our design for the factory was to capture the alert trend status of our stages and track their alerts over time. Since we care about the information for each stage (and not all sensors at a time), it might be helpful to think of how we are going to group these events. **In this case, since each stage id will be unique, it makes sense that we can use that id as a key.**
+
+```java
+public class AlertTrendingProducer {
+  
+	private static final Logger log = LoggerFactory.getLogger(AlertTrendingProducer.class);
+  
+	public static void main(String[] args) throws InterruptedException, ExecutionException {
+    Properties producerProperties = new Properties();
+    producerProperties.put("bootstrap.servers", "localhost:9092,localhost:9093,localhost:9094");
+    producerProperties.put("key.serializer", "org.kafkainaction.serde.AlertKeySerde");                                                //1
+    producerProperties.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
+    
+    try (Producer<Alert, String> producer = new KafkaProducer<>(producerProperties)) {
+    	Alert alert = new Alert(0, "Stage 0", "CRITICAL", "Stage 0 stopped");
+    	ProducerRecord<Alert, String> producerRecord = new ProducerRecord<>("kinaction_alerttrend", alert, alert.getAlertMessage());  //2
+    	RecordMetadata result = producer.send(producerRecord).get();
+    	log.info("offset = {}, topic = {}, timestamp = {}", result.offset(), result.topic(), result.timestamp());
+    } 
+  }
+}
+```
+
+1) We need to tell our producer client how to serialize our custom Alert object into a key.
+2) Instead of null for the 2nd parameter, we put the actual object we wish to used to help populate the key.
+
+If we use the default hashing of the key partition assigner, the same key should produce the same partition assignment, and nothing will need to be changed. In other words, the same stage ids (the keys) will be grouped together just by using the correct key. We will keep an eye on the distribution of the size of the partitions to note if they become uneven in the future, but we will go with this for the time being.
+
+Our last requirement was to have any alerts quickly processed to let operators know about any critical outages. We do want to group by the stage id in this case as well. One reason is that we can tell if that sensor was failed or recovered (any state change) by looking at only the last event for that stage id. We do not care about the history of the status checks, only the current scenario. In this case, we also want to partition our alerts.
+
+The intention is for us to have the data available in a specific partition so those that process the data would have access to the critical alerts specifically and could go after other alerts (in other partitions) when those were handled.
+
+```java
+public class AlertProducer {
+  
+	public static void main(String[] args) {
+		Properties producerProperties = new Properties();
+		producerProperties.put("bootstrap.servers", "localhost:9092,localhost:9093");
+		producerProperties.put("key.serializer", "org.kafkainaction.serde.AlertKeySerde");                                          //1
+		producerProperties.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
+		producerProperties.put("partitioner.class", "org.kafkainaction.partitioner.AlertLevelPartitioner");                         //2
+		try (Producer<Alert, String> producer = new KafkaProducer<>(producerProperties)) {
+			Alert alert = new Alert(1, "Stage 1", "CRITICAL", "Stage 1 stopped");
+			ProducerRecord<Alert, String> producerRecord = new ProducerRecord<>("kinaction_alert", alert, alert.getAlertMessage()); //3
+			producer.send(producerRecord, new AlertCallback());
+        }
+    } 
+}
+```
+
+1) We are reusing our custom Alert key serializer.
+2) We are using the property ``partitioner.class`` to set our custom partitioner class we created above.
+3) This is the first time we have used a callback to handle the completion or failure of an asynchronous send call.
+
+One addition we see above is how we are adding a callback to run on completion. While we said that we are 100% concerned with message failures from time to time due to the frequency o events, we want to make sure that we do not see a high failure rate that could be a hint at our application-related errors.
+
+```java
+public class AlertCallback implements Callback {
+  
+	private static final Logger log = LoggerFactory.getLogger(AlertCallback.class);
+  
+	public void onCompletion(RecordMetadata metadata, Exception exception) {
+		if (exception != null) {
+			log.error("Error sending message:", exception);
+		} else {
+			log.info("Message sent: offset = {}, topic = {}, timestamp = {}", metadata.offset(), metadata.topic(), metadata.timestamp());
+		}
+	}
+}
+```
+
+While we will focus on small sample examples in most of our material, I think that it is helpful to look at how a producer is used in a real project as well. As mentioned earlier, Apache Flume can be used alongside Kafka to provide various data features. When Kafka is used as a sink, Flume places data into Kafka.
+
+Flume Sing Configuration:
+
+```properties
+a1.sinks.k1.kafka.topic = helloworld
+a1.sinks.k1.kafka.bootstrap.servers = localhost:9092
+a1.sinks.k1.kafka.producer.acks = 1
+a1.sinks.k1.kafka.producer.linger.ms = 1
+a1.sinks.k1.kafka.producer.compression.type = snappy
+```
+
+### 4.3.1 Client and Broker Versions
+
+One important thing to note is that Kafka broker and client versions do not always have to match. If you are running a broker that is at Kafka version 1.0 and the Java producer client you are using is at 0.10 (using these versions as an example since they were the first to handle this mismatch!), the broker will handle this upgrade in the message version. **However, because you can, it does not mean you should do it in all cases.**
+
+# Chapter 5. Consumers: unlocking data
