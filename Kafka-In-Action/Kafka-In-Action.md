@@ -324,6 +324,7 @@ public class HelloWorldConsumer {
   private volatile boolean keepConsuming = true;
 
   public static void main(String[] args) {
+  	
     Properties props = new Properties();  //<1>
     props.put("bootstrap.servers", "localhost:9092,localhost:9093,localhost:9094");
     props.put("group.id", "helloconsumer");
@@ -981,12 +982,12 @@ Some sensors' information might be more important than others, i.e., they might 
 public class AlertLevelPartitioner implements Partitioner {
   
 	public int partition(final String topic, final Object objectKey, final byte[] keyBytes,
-                         final Object value, final byte[] valueBytes, final Cluster cluster) {
+                             final Object value, final byte[] valueBytes, final Cluster cluster) {
     
-        final List<PartitionInfo> partitionMetaList = cluster.availablePartitionsForTopic(topic);
-        final int criticalPartition = 0;
-        final String key = ((Alert) objectKey).getAlertLevel(); //1
-        return key.contains("CRITICAL") ? criticalPartition : Math.abs(key.hashCode()) % partitionMetaList.size(); //2
+          final List<PartitionInfo> partitionMetaList = cluster.availablePartitionsForTopic(topic);
+          final int criticalPartition = 0;
+          final String key = ((Alert) objectKey).getAlertLevel(); //1
+          return key.contains("CRITICAL") ? criticalPartition : Math.abs(key.hashCode()) % partitionMetaList.size(); //2
     }
 //... 
 }
@@ -1032,16 +1033,16 @@ Another goal of our design for the factory was to capture the alert trend status
 ```java
 public class AlertTrendingProducer {
   
-	private static final Logger log = LoggerFactory.getLogger(AlertTrendingProducer.class);
+    private static final Logger log = LoggerFactory.getLogger(AlertTrendingProducer.class);
   
-	public static void main(String[] args) throws InterruptedException, ExecutionException {
-    Properties producerProperties = new Properties();
-    producerProperties.put("bootstrap.servers", "localhost:9092,localhost:9093,localhost:9094");
-    producerProperties.put("key.serializer", "org.kafkainaction.serde.AlertKeySerde");                                                //1
-    producerProperties.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
+    public static void main(String[] args) throws InterruptedException, ExecutionException {
+    	Properties producerProperties = new Properties();
+    	producerProperties.put("bootstrap.servers", "localhost:9092,localhost:9093,localhost:9094");
+    	producerProperties.put("key.serializer", "org.kafkainaction.serde.AlertKeySerde");                                            //1
+    	producerProperties.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
     
     try (Producer<Alert, String> producer = new KafkaProducer<>(producerProperties)) {
-    	Alert alert = new Alert(0, "Stage 0", "CRITICAL", "Stage 0 stopped");
+        Alert alert = new Alert(0, "Stage 0", "CRITICAL", "Stage 0 stopped");
     	ProducerRecord<Alert, String> producerRecord = new ProducerRecord<>("kinaction_alerttrend", alert, alert.getAlertMessage());  //2
     	RecordMetadata result = producer.send(producerRecord).get();
     	log.info("offset = {}, topic = {}, timestamp = {}", result.offset(), result.topic(), result.timestamp());
@@ -1062,16 +1063,16 @@ The intention is for us to have the data available in a specific partition so th
 ```java
 public class AlertProducer {
   
-	public static void main(String[] args) {
-		Properties producerProperties = new Properties();
-		producerProperties.put("bootstrap.servers", "localhost:9092,localhost:9093");
-		producerProperties.put("key.serializer", "org.kafkainaction.serde.AlertKeySerde");                                          //1
-		producerProperties.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
-		producerProperties.put("partitioner.class", "org.kafkainaction.partitioner.AlertLevelPartitioner");                         //2
-		try (Producer<Alert, String> producer = new KafkaProducer<>(producerProperties)) {
-			Alert alert = new Alert(1, "Stage 1", "CRITICAL", "Stage 1 stopped");
-			ProducerRecord<Alert, String> producerRecord = new ProducerRecord<>("kinaction_alert", alert, alert.getAlertMessage()); //3
-			producer.send(producerRecord, new AlertCallback());
+  public static void main(String[] args) {
+    Properties producerProperties = new Properties();
+    producerProperties.put("bootstrap.servers", "localhost:9092,localhost:9093");
+    producerProperties.put("key.serializer", "org.kafkainaction.serde.AlertKeySerde");                                          //1
+    producerProperties.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
+    producerProperties.put("partitioner.class", "org.kafkainaction.partitioner.AlertLevelPartitioner");                         //2
+    try (Producer<Alert, String> producer = new KafkaProducer<>(producerProperties)) {
+      Alert alert = new Alert(1, "Stage 1", "CRITICAL", "Stage 1 stopped");
+      ProducerRecord<Alert, String> producerRecord = new ProducerRecord<>("kinaction_alert", alert, alert.getAlertMessage()); //3
+      producer.send(producerRecord, new AlertCallback());
         }
     } 
 }
@@ -1086,15 +1087,15 @@ One addition we see above is how we are adding a callback to run on completion. 
 ```java
 public class AlertCallback implements Callback {
   
-	private static final Logger log = LoggerFactory.getLogger(AlertCallback.class);
+  private static final Logger log = LoggerFactory.getLogger(AlertCallback.class);
   
-	public void onCompletion(RecordMetadata metadata, Exception exception) {
-		if (exception != null) {
-			log.error("Error sending message:", exception);
-		} else {
-			log.info("Message sent: offset = {}, topic = {}, timestamp = {}", metadata.offset(), metadata.topic(), metadata.timestamp());
-		}
-	}
+  public void onCompletion(RecordMetadata metadata, Exception exception) {
+    if (exception != null) {
+      log.error("Error sending message:", exception);
+    } else {
+      log.info("Message sent: offset = {}, topic = {}, timestamp = {}", metadata.offset(), metadata.topic(), metadata.timestamp());
+    }
+  }
 }
 ```
 
