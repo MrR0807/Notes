@@ -1311,3 +1311,216 @@ You will notice a couple of properties that are related to the ones that were im
 
 ### 5.2.1 Understanding Tracking Offsets
 
+One of the items that we have only talked about in passing so far is the concept of offsets. Offsets used as an index position in the log that the consumer sends to the broker to let it know what messages it wants to consume and from where. If you think back to our console consumer example, we used the flag . This sets the consumer’s --from-beginning configuration parameter auto.offset.reset to earliest behind the scenes. With that configuration, you should see all the records on that topic for the partitions you are connected to-even if they were sent before you started up the console consumer.
+
+**If you didn’t add that option, the default is latest.**
+
+In this case, you will not see any messages from the producer unless you send them after you start the consumer.
+
+Consumers usually read from the consumer’s partition leader replica. Follower replicas are used in the case of failure, after a new replica assumes leadership, but are not actively serving consumer fetch requests.
+
+As a side note, **if you do need to fetch from a follower replica due to an issue like network latency concerns - like having a cluster that stretches across data-centers, KIP-392 introduced this ability in version 2.4.0.**
+
+Partitions play a very important role in how we can process messages. While the topic is a logical name for what your consumers are interested in, they will read from the leader replicas of the partitions that they are assigned to. But how do consumers figure out what partition to connect to? And not just what partition, but where the leader exists for that partition? For each group of consumers, a specific broker will take on the role of being a group coordinator. The consumer client will talk to this coordinator in order to get a partition assignment along with other details it needs in order to consume messages.
+
+**To be clear, in the instance where there are more partitions than consumers, consumers will handle more than one partition if needed.**
+
+Since the number of partitions determines the amount of parallel consumers you can have, some might ask why you don’t always choose a large number like having 500 partitions. This quest for higher throughput is not free. This is why you will need to choose what best matches the shape of your data flow. **One key consideration is that many partitions might increase end-to-end latency.** If milliseconds count in your application, you might not be able to wait until a partition is replicated between brokers. **This replication is key to having in-sync replicas and is done before a message is available to be delivered to a consumer. You would also need to make sure that you watch the memory usage of your consumers. If you do not have a 1-to-1 mapping of partitions to a consumers, each consumer’s memory requirements may increase as it is assigned more partitions.**
+
+We have addressed the consumer running in an infinite loop, but what if you do want to stop a consumer, what is the correct way?
+
+The proper way includes calling a close method on the consumer. This proper shutdown method allows the group coordinator to receive notification about membership of the group being changed due to the client leaving rather than determining this from timeouts or errors from that consumer as it disappears.
+
+By calling the public method shutdown, a different class can flip the boolean and stop our consumer from polling for new records.
+
+```java
+public class StopConsumer implements Runnable {
+
+    private final KafkaConsumer<String, String> consumer;
+    private final AtomicBoolean stopping = new AtomicBoolean(false);
+
+    ...
+
+    public StopConsumer(KafkaConsumer<String, String> consumer) {
+        this.consumer = consumer;
+    }
+
+    public void run() {
+        try {
+            consumer.subscribe(Arrays.asList("webclicks"));
+            while (!stopping.get()) {
+                ConsumerRecords<String, String> records = consumer.poll(Duration.ofMillis(100));
+                ...
+            }
+        } catch (WakeupException e) {
+            if (!stopping.get()) throw e;
+        } finally {
+            consumer.close();
+        }
+    }
+    public void shutdown() {
+        stopping.set(true);
+        consumer.wakeup();
+    }
+}
+```
+
+If your consumer process does not shutdown correctly, Kafka should still be informed of a down consumer by using a heartbeat. If no heartbeat occurs within a specific time, the coordinator will consider the client to be gone and reassign that client’s partitions to the remaining active consumers.
+
+## 5.3 Consumer Groups
+
+Probably the most important reason is that scaling is impacted by either adding more or less consumers to a group. Consumers that are not part of the same group do not share the same coordination of offset knowledge.
+
+```java
+Properties props = new Properties();
+props.put("group.id", "testgroup");
+```
+
+An example of a group that would be named testgroup. If you instead had made up a new group.id (like a random GUID) it means that you are going to be starting as a new consumer with no stored offsets and with no other consumers in your group
+
+**If you join an existing group (or one that had offsets stored already), your consumer will be able to share work with others or even be able to resume where it left off reading from any previous runs.**
+
+It is often the case that you will have many consumers reading from the same topic. An important detail to decide on if you need a new group id is whether your consumers are working as part of one application or as separate logic flows. Why is this important? Think of two use cases for data that came from a human resources system. One team is wondering about the number of hires from specific states, and the other team is more interested in the data for the impact on travel budgets for interviews. So would anyone on the first team care about what the other team was doing or would either of them want to consume only a portion of the messages? Likely not! So how can we keep this separation? The answer is by making each application have its own specific group.id. Each consumer that uses the same group.id as another consumer will be considered to be working together to consume the partitions and offsets of the topic as one logical application.
+
+*Note.*
+
+**Can multiple Kafka consumers read same message from the partition?**
+
+It depends on Group ID. Suppose you have a topic with 12 partitions. If you have 2 Kafka consumers with the same Group Id, they will both read 6 partitions, meaning they will read different set of partitions = different set of messages. If you have 4 Kafka cosnumers with the same Group Id, each of them will all read three different partitions etc.
+
+But when you set different Group Id, the situation changes. If you have two Kafka consumers with different Group Id they will read all 12 partitions without any interference between each other. Meaning both consumers will read the exact same set of messages independently. If you have four Kafka consumers with different Group Id they will all read all partitions etc.
+
+## 5.4 The Need for Offsets
+
+While we are going through our usage patterns so far, we have not talked too much about how we keep track of what each client has read. Let’s briefly talk about how some message brokers handle messages in other systems. In some systems, consumers do not track what they have read, they pull the message, and then it will not exist on a queue anymore after it has been acknowledged. This works well for a single message that needs to have exactly one application process it. Some systems will use topics in order to publish the message to all those that are subscribers. And often, future subscribers will have missed this message entirely since they were not actively part of that receiver list when the event happened.
+
+In systems where the message would be consumed and not available for more than one consumer, this is needed for separate applications to each get a copy.
+
+![chapter-5-figure-5.PNG](pictures/chapter-5-figure-5.PNG)
+
+You can imagine the copies grow as an event becomes a popular source of information. Rather than have entire copies of the queue (besides those for replication/failover), Kafka can serve multiple applications from the same partition leader replica.
+
+In addition, since many applications could be reading the same topic, it is important that the offsets and partitions are tied-back and specific to a certain consumer group. The **key coordinates to let your consumer clients work together is a unique blend of the following: group, topic, and partition number.**
+
+### 5.4.1 Group Coordinator
+
+**There is usually one broker that takes over the important job of working with offset commits for a specific consumer group.** The offset commit can be thought of the last message consumed by a specific member of that consumer group. These duties are handled by the GroupCoordinator which helps with being an offset manager.
+
+For example, a consumer that is part of the marketing consumer group and is assigned partition 0 would be ready to read offset 3 next.
+
+Figure 5.7 shows a scenario where the same partitions of interest exist on 3 separate brokers for 2 different consumer groups, marketing and ad sales. The consumers in each group will get their own copy of the data from the partitions on each broker. They do not work together unless they are part of the same group.
+
+![chapter-5-figure-7.PNG](pictures/chapter-5-figure-7.PNG)
+
+One of the neat things about being a part of a consumer group is that when a consumer fails or leaves a group, the partitions that it was reading are re-assigned. An existing consumer will take the place of reading a partition that was once being read by the consumer that dropped out of the group.
+
+One way a consumer can drop out of a group membership is by failing to send a heartbeat to the GroupCoordinator. This heartbeat is the way that the consumer communicates with the coordinator to let it know it is still replying in a timely fashion and working away.
+
+One way for this is to stop the consumer client by either termination of the process or failure due to a fatal exception. If the client isn’t running, it will not be sending messages back to the group coordinator. **Another common issue is the time that your client code could be using to process the last batch of messages (long running code that takes seconds or minutes) before another poll loop.**
+
+*Note*.
+
+**Make sure that heartbeat and how long it takes to process message does not conflict.**
+
+Consumer groups also help when new consumer clients are being added. Take an example of one consumer client reading from a topic made up of 2 partitions. Adding a second consumer client should result in each consumer processing one partition. **If more consumers are present, then those consumers without assignments will be sitting idle.**
+
+### 5.4.2 Partition Assignment Strategy
+
+The property is what determines which ``partition.assignment.strategy`` partitions are assigned to each consumer.
+
+There are three different strategies:
+* Range - This assigner uses a single topic to find the number of partitions (ordered by number) and then divides by the number of consumers. If the division is not even, then the first consumers (using alphabetical order) will get the remaining partitions. Note, if you have a topic and partition numbers that often cause partitions to be assigned unevenly, you might see some consumers taking a larger number of partitions over time. Make sure that you see a spread of partitions that your consumers can handle and consider switching the assignment strategy if some consumer clients used up all their resources while others are fine. Figure 5.9 shows how the first of 3 clients will grab 3 out of 8 total partitions and will end up with more partitions than the last client. 
+* Round Robin - This strategy is most easily shown by a consumer group that all subscribe to all the same topics. The partitions will be uniformly distributed in that the largest difference between assignments should be one partition. Figure 5.9 shows an example of 3 clients part of the same consumer group assigned in a round-robin fashion for one topic made of 8 partitions. Like dealing cards around a table, the first consumer gets the first partition, the second consumer the second, and so on until the partitions run out. 
+* Sticky - This is a strategy that was added in version 0.11.0. The driver is to not only try and distribute topic partitions as evenly as possible but also to have partitions stay with their existing consumer clients when possible. Allowing partition assignments to stay with the same consumers could help speed up a rebalance which could occur during any consumer group changes. Allowing certain consumers to stick to their existing partition assignment rather than make potentially every consumer change assignments is the goal.
+
+![chapter-5-figure-9.PNG](pictures/chapter-5-figure-9.PNG)
+
+You can also create your own strategy. ``AbstractPartitionAssignor`` is an abstract class that does some of the work to help implement your own logic.
+
+### 5.4.3 Manual Partition Assignment
+
+If the assignment of partitions is important to your applications, then you will want to look at how to specify specific partitions in your client code. To implement manual assignment, you would call ``assign`` where you had previously called ``subscribe``.
+
+``TopicPartition`` objects are used to help your code tell Kafka what specific partitions you are interested in for a topic. Passing the TopicPartition objects created to the ``assign`` method takes the place of allowing a consumer to be at the discretion of a group coordinator.
+
+```java
+consumer.assign(List.of(new TopicPartition(TOPIC_NAME, 1), new TopicPartition(TOPIC_NAME, 2)));
+
+while (keepConsuming) {
+    var records = consumer.poll(Duration.ofMillis(100));
+    for (ConsumerRecord<String, String> record : records) {
+        log.info("offset = {}, key = {}, value = {}", record.offset(), record.key(),record.value());
+        log.info("value = {}", Integer.getInteger(record.value()) * 1.543);
+    }
+}
+```
+
+Due to this assignment decision, it is important to note that each consumer acts on its own and does not coordinate with other consumers in a group. Sharing a group id with another consumer does not give this consumer any benefits like we have seen in examples when a consumer fails. In addition, if you add a partition that your consumer should know about, the consumer client will have to assign itself to see those messages from the new partition, your client won’t learn automatically about and consume any new partitions. **Make sure that you know the responsibilities of managing your own consumers when you reach for this feature.**
+
+## 5.5 Auto or Manual Commit of Offsets
+
+One option is to use is ``enable.auto.commit=true`` which is the default for consumer clients.
+
+Offsets are committed on your behalf on a recurring interval: ``auto.commit.interval.ms``. One of the nicest parts of this option is that you do not make any other calls to commit the offsets that you have consumed. At-least-once delivery is related to automatic commits since Kafka brokers will resend messages again if they were never not automatically acknowledged due to a consumer client failure. But what sort of trouble could we get into? If we are processing messages that we got from our last poll, say in a separate application thread, the automatic commit offset could be marked as being read even if you do not actually have everything done with those specific offsets. What if we had a message fail in our processing that we would need to retry? With our next poll, we could be getting the next set of offsets after what was already committed as being consumed. It is possible and easy to lose messages that look like they have been consumed despite not being processed by your consumer logic.
+
+When looking at what you commit, notice that timing might not be perfect. If you do not call a commit method on a consumer with metadata specifically noting your specific offset to commit, you might have some undefined behavior based on the timing of polls, expired timers, or even your own threading logic. **If you need to be sure to commit a record at a specific time as you process it, or a specific offset in general, you should make sure that you send the offset metadata into the commit method.**
+
+Let’s explore this topic more and talk about using manual commits enabled by: ``enable.auto.commit=false``. At-least-once delivery guarantees can be achieved with this pattern.
+
+As you get a message, let’s stay that you poll a message at offset 100. During processing, the consumer stops because of an error. Since the code never actually committed offset 100, the next time a consumer of that same group starts reading from that partition, it will get the message at offset 100 again. So by delivering the message twice, the client was able to complete the task without missing the message. **On the flip side, you did get the message twice!** If for some reason your processing actually worked and you achieved a successful write, your code will have to handle the fact that you might have duplicates.
+
+Let’s look at some of the code that we would use to manually commit our offsets. **As we did with a producer when we sent a message, we can also commit offsets in a synchronous manner or asynchronous.**
+
+```java
+while (keepConsuming) {
+    var records = consumer.poll(Duration.ofMillis(100));
+    for (var record : records) {
+        log.info("offset = {}, key = {}, value = {}",record.offset(), record.key(), record.value());
+    }
+    consumer.commitSync();
+}
+```
+
+Also, note that the commit is taking place outside of the loop that goes through all of the returned records. Since no parameters are passed in, the call to commitSync will not commit each record one by one, as the looping logic processed each record. **Rather, the entire set of record offsets returned from the last will be committed.**
+
+CommitAsync is the path to manually commit without blocking your next iteration. One of the options that you can use in this method call is the ability to send in a callback.
+
+```java
+while (keepConsuming) {
+    ConsumerRecords<String, String> records = consumer.poll(Duration.ofMillis(100));
+    for (ConsumerRecord<String, String> record : records) {
+        log.info("[Consumer Record] offset = {}, key = {}, value = {}", record.offset(), record.key(), record.value()); 
+    }
+    consumer.commitAsync(callback);
+}
+```
+
+To implement your own callback you need to use the interface: ``OffsetCommitCallback``.
+
+```java
+public static void commitOffset(long offset,
+                                int partition,
+                                String topic,
+                                KafkaConsumer<String, String> consumer) {
+    OffsetAndMetadata offsetMeta = new OffsetAndMetadata(offset + 1, "");
+    Map<TopicPartition, OffsetAndMetadata> offsetMap = new HashMap<>();
+    offsetMap.put(new TopicPartition(topic, partition), offsetMeta);
+    consumer.commitAsync(offsetMap, (map, e) -> {
+        if (e != null) {
+            for (TopicPartition key : map.keySet()) {
+                log.info("Commit failed: topic {}, partition {}, offset {}", key.topic(),
+                        key.partition(), map.get(key).offset());
+            }
+        } else {
+            for (TopicPartition key : map.keySet()) {
+                log.info("OK: topic {}, partition {}, offset {}", key.topic(), key.partition(),
+                        map.get(key).offset());
+            }
+        }
+    });
+}
+```
+
+Shows how to create an asynchronous commit with a callback by implementing the OffsetCommitCallback interface. This instance allows us to have log messages to determine our success or failure even though our code is not waiting for a response before moving on to the next instruction.
+
+Why would you want to choose synchronous or asynchronous commit patterns? For one, you need to keep in mind that your latency will be higher if you are waiting for a blocking call. This time factor might be worth it if your requirements include needs for data consistency. What does consistency mean in this instance? It really is a question of how you need to process your data. Do you need to wait to process your messages in order before committing the offsets that have been processed even in the case of failures? If a failure occurred before a commit, does your logic handle reprocessing messages that your application might have seen before but did not mark as committed to Kafka?
