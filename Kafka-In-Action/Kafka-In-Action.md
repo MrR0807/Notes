@@ -1406,3 +1406,159 @@ Shows how to create an asynchronous commit with a callback by implementing the O
 
 Why would you want to choose synchronous or asynchronous commit patterns? For one, you need to keep in mind that your latency will be higher if you are waiting for a blocking call. This time factor might be worth it if your requirements include needs for data consistency. What does consistency mean in this instance? It really is a question of how you need to process your data. Do you need to wait to process your messages in order before committing the offsets that have been processed even in the case of failures? If a failure occurred before a commit, does your logic handle reprocessing messages that your application might have seen before but did not mark as committed to Kafka?
 
+## 5.6 Reading From a Compacted Topic
+
+Consumers should be aware if they are reading from a compacted topic. Chapter 7 will go further into how these topics work to, in effect, **update records that have the same key value. In short, the partition log is compacted by Kafka on a background process and records with the same key can be removed except for the last one.** If you do not need a history of messages, but rather just the last value, you might wonder how this concept works with an immutable log that only adds records to the end. At this point, the biggest gotcha for consumers that might cause an error is that when reading records, consumers might still get multiple entries for a single key! How is this possible? Since compaction runs on the log files that are on-disk, compaction might not see every message that exists in memory during cleanup. Clients will need to be able to handle this case where there is not only one value per key. Please have logic in place to handle duplicate keys and, if needed, ignore all but the last value.
+
+## 5.7 Reading for a Specific Offset
+
+While there is no lookup of a message by a key option in Kafka, it is possible to seek to a specific offset. Thinking about our log of messages being an ever-increasing array with each one message having an index, we have a couple of options:
+* starting from the beginning;
+* going to the end;
+* starting at a given offset;
+* finding offsets based on times.
+
+### 5.7.1 Start at the beginning
+
+The important configuration to note for this behavior is to set to earliest . Another technique ``auto.offset.reset`` that can be used is to run the same logic but use a different group id.
+
+```java
+Properties props = new Properties();
+props.put("group.id", UUID.randomUUID().toString());
+props.put("auto.offset.reset", "earliest");
+```
+
+Also, the Java client consumer has the following method available: ``seekToBeginning``. This is yet another way to achieve the same result as the code.
+
+### 5.7.2 Going to the end
+
+Using a UUID isn’t necessary except for testing when you want to make sure that you don’t find a consumer offset from before and will instead default to the latest offset Kafka has for your subscriptions.
+
+```java
+Properties props = new Properties();
+props.put("group.id", UUID.randomUUID().toString());
+props.put("auto.offset.reset", "latest");
+```
+
+The Java client consumer also has the following method available: ``seekToEnd``. This is another way to achieve the same result as the configuration.
+
+### 5.7.3 Seek to an Offset
+
+Kafka also gives you the ability to find any offset and go directly to it. The seek action sets a specific offset that will be used by the next poll on the consumer. **The topic and partition are needed as the coordinates for giving your consumer the information it needs to set that offset.**
+
+Shows an example of seeking to the offset number 5000 for a single topic and partition combination. A ``TopicPartition`` object is used to provide the topic name and partition of interest which is partition one in this example. The ``seek`` method takes the topic information to set up the provided offset as the starting place of the next poll of the consumer.
+
+```java
+long offset = 5000L;
+TopicPartition partitionOne = new TopicPartition(topicName, 1);
+consumer.seek(topicPartition, offset);
+```
+
+### 5.7.4 Offsets For Times
+
+One of the trickier offset search methods is ``offsetsForTimes``. This method allows you to send a map of topics and partitions as well as a timestamp for each in order to get a map back of the offset and timestamp for those topics and partitions given. This can be used in situations where a logical offset is not known, but a timestamp is known. For example, if you have an exception that was logged related to an event, you might be able to use a consumer to determine the data that was processed around your specific timestamp.
+
+Shows, we have the ability to retrieve the offset and timestamps per a topic/partition when we map each to a timestamp. After we get our map of metadata returned from the ``offsetsForTimes`` call, we then can seek directly to the offset we are interested in by seeking to the offset returned for each respective key.
+
+One thing to be aware of is that the offset returned is the first message with a timestamp that makes your criteria. However, due to the producer resending messages on failures or variations in when timestamps are added (by consumers, perhaps), this timestamp is not an official order.
+
+## 5.8 Reading Concerns
+
+One thing that we have talked about is that the consumer is in the driver’s seat about when data comes to your application. However, let’s picture a common scenario. We had a minor outage but bought back all of our consumers with new code changes. Due to the amount of messages we missed, we suddenly see our first poll bring back a huge amount of data. Is there a way that we could have controlled this being dumped into our consumer application memory? ``fetch.max.bytes`` is one property that will help us avoid too many surprises. The value is meant to set the max amount of bytes per request.
+
+However, the consumer might make parallel fetch calls at the same time from different partitions and impact the true total on your client.
+
+## 5.9 Retrieving data for our factory requirements
+
+Let’s try to use this information we gathered about how consumers work to see if we can start working on our own solutions designed in chapter 3 for use with Kafka in our e-bike factory: but from the consumer client perspective in this chapter.
+
+One requirement was that there was no need to correlate (or group together) any events across the individual events. This means that there are no concerns on the order or need to read from specific partitions, any consumer reading any partition should be good. Also, another one of the requirements was to not lose any messages. One safe way to make sure that our logic is executed for each audit event is to manually commit the offset per record after it is consumed. To control the commit as part of the code: ``enable.auto.commit`` will be set to false.
+
+An example of leveraging a synchronous commit after each record is processed for the Audit feature. Details of the next offset to consume in relation to the topic and partition of the offset that was just consumed is sent as a part of each loop through the records. Note that it might seem odd to add 1 to the current offset, but this offset sent to your broker is supposed to be the offset of the next message that will be consumed. The method ``commitSync`` is called and passed the offSet map containing the offset of the record that was just processed.
+
+```java
+    props.put("enable.auto.commit", "false");
+    
+    try (KafkaConsumer<String, String> consumer = new KafkaConsumer<>(props)) {
+        consumer.subscribe(List.of("kinaction_audit"));
+        while (keepConsuming) {
+            var records = consumer.poll(Duration.ofMillis(100));
+            for (ConsumerRecord<String, String> record : records) {
+                log.info("offset = {}, key = {}, value = {}",
+                        record.offset(), record.key(), record.value());
+                OffsetAndMetadata offsetMeta = new OffsetAndMetadata(record.offset() + 1, "");      //1
+                Map<TopicPartition, OffsetAndMetadata> offsetMap = new HashMap<>();
+                offsetMap.put(new TopicPartition("audit", record.partition()), offsetMeta);         //2
+                consumer.commitSync(offsetMap);                                                     //3
+            }
+        }
+    }
+```
+
+1) Adding 1 to the current offset determines the next offset that will be read.
+2) The offset map allows for a topic and partition key to be related to a specific offset.
+3) ``commitSync`` called to commit the offsets processed.
+
+Another goal of the design for our e-bike factory was to capture our stage alert status and track the stage alert trend over time. Even though we know our records have a key that is the stage id, there is no need to consume a group at a time or worry about the order. Since message loss isn’t a huge concern, allowing auto commit of messages is good enough in this situation.
+
+```java
+props.put("enable.auto.commit", "true");
+props.put("key.deserializer", "org.kafkainaction.serde.AlertKeySerde");
+props.put("value.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
+KafkaConsumer<Alert, String> consumer = new KafkaConsumer<Alert, String>(props);
+consumer.subscribe(Arrays.asList("kinaction_alerttrend"));
+while (true) {
+    ConsumerRecords<Alert, String> records = consumer.poll(Duration.ofMillis(100));
+    for (ConsumerRecord<Alert, String> record : records) {
+        log.info("offset = {}, key = {}, value = {}", record.offset(), record.key().getStageId(), record.value());
+    }
+}
+```
+
+The last requirement was to have any alerts quickly processed to let operators know about any critical issues. Since the producer used a custom, we will ``Partitioner`` assign a consumer directly to that same partition to alert on critical issues. Since a delay in case of other alerts is not desirable, the commit will be for each offset in an asynchronous manner.
+
+*Note*.
+
+Trade-offs: latency vs. data consistency
+
+* If you have to ensure the data consistency, choose ``commitSync()`` because it will make sure that, before doing any further actions, you will know whether the offset commit is successful or failed. But because it is sync and blocking, you will spend more time on waiting for the commit to be finished, which leads to high latency.
+* If you are ok of certain data inconsistency and want to have low latency, choose ``commitAsync()`` because it will not wait to be finished. Instead, it will just send out the commit request and handle the response from Kafka (success or failure) later, and meanwhile, your code will continue executing.
+
+Consumer client logic focused on critical alerts assigning themselves to the specific topic and partition that would have been used when producing alerts when the custom partitioner class ``AlertLevelPartitioner`` was used. In this case, it was partition number 0. The consumer assigns itself the partition rather than subscribing to the topic. For each record that comes back from the consumer poll, an asynchronous commit will be used with a callback. A commit of the next offset to consume will be sent to the broker and should not block the consumer from processing the next record. The asynchronous commit method is sent the topic and partition mapping to offset information as well as a callback to run. This ability to handle any issues with a callback at a later time helps make sure that other records can be processed quickly.
+
+```java
+props.put("enable.auto.commit", "false");
+KafkaConsumer<Alert, String> consumer = new KafkaConsumer<Alert, String>(props);
+TopicPartition partitionZero = new TopicPartition(kinaction_alert", 0);
+consumer.assign(Arrays.asList(partitionZero));
+
+while (true) {
+    ConsumerRecords<Alert, String> records = consumer.poll(Duration.ofMillis(100));
+    for (ConsumerRecord<Alert, String> record : records) {
+        log.info("offset = {}, key = {}, value = {}",
+                record.offset(), record.key().getStageId(), record.value());
+        commitOffset(record.offset(), record.partition(), topicName, consumer);
+    }
+}
+...
+public static void commitOffset(long offset,int part, String topic,
+                                KafkaConsumer<Alert, String> consumer) {
+    OffsetAndMetadata offsetMeta = new OffsetAndMetadata(offset + 1, "");
+    Map<TopicPartition, OffsetAndMetadata> offsetMap = new HashMap<TopicPartition, OffsetAndMetadata>();
+    offsetMap.put(new TopicPartition(topic, part), offsetMeta);
+    OffsetCommitCallback callback = new OffsetCommitCallback() {
+    ...
+    };
+    consumer.commitAsync(offsetMap, callback);
+}
+```
+
+## 5.10 Summary
+
+* Consumer clients provide developers a way to get data out of Kafka. As with producer clients, consumer clients have a large number of configuration options available for clients to set rather than custom coding being needed.
+* Consumer groups allow more than one client to work as a group to process records. By grouping together, clients can process data in parallel. Kafka coordinates changes on the groups behalf such as clients joining or dropping from the group dynamically.
+* Offsets represent the position of a record in regards to a commit log that exists on a broker. By using offsets, consumers can control where they want to start reading data. This offset can even be a previous offset that it has already seen (ability to replay records again).
+* Consumers can read data in a synchronous or an asynchronous manner. If asynchronous methods are used, the consumer can leverage code in callbacks to run logic once data is received.
+
+# Chapter 6. Brokers
+
