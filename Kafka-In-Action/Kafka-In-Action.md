@@ -1562,3 +1562,207 @@ public static void commitOffset(long offset,int part, String topic,
 
 # Chapter 6. Brokers
 
+## 6.1 Introducing the Broker
+
+Being a broker in Kafka means being a part of a cluster of machines - brokers work together with other brokers to form the core of the system.
+
+Rack awareness - knowing which physical server rack a machine is hosted on. Kafka has a rack awareness feature that will make replicas for a partition exist physically on separate racks. This is important since if all of the servers that make up our cluster are on the same rack, and the entire rack is offline due to a power or network issue, it would be the same as if we had lost our entire data center.
+
+When seting up our own Kafka cluster, it is important to know that we have another cluster to be aware of: ZooKeeper.
+
+## 6.2 Role of ZooKeeper
+
+At this point, ZooKeeper is a key part of how the brokers work and is a requirement for Kafka to run.
+
+Since ZooKeeper needs to have a quorum (a minimum number) in order to elect leaders and reach a decision, this cluster is indeed important for our brokers. ZooKeeper itself holds information on the brokers that are in the cluster. This list should be a current membership list and can change over time. How do brokers join this list? When a broker starts, it will have a unique id that will be listed on ZooKeeper. This id can either be created with the configuration ``broker.id`` or ``broker.id.generation.enable=true``. Nodes can leave the group as well.
+
+ZooKeeper also helps Kafka make decisions - like electing a new controller. **The controller is a single broker in a cluster that takes on additional responsibilities** and will be covered in more depth later in this chapter. Any broker could become the controller, but only one, and it’s important that all of the brokers know who the controller is. ZooKeeper helps the brokers by coordinating this assignment and notification.
+
+With all of this interaction with the brokers, it is very important that we have ZooKeeper running when starting our brokers. **The health of the ZooKeeper cluster will impact the health of our Kafka brokers.**
+
+Certain frameworks versions you use may also still provide a means of connecting our client application with our Zookeeper cluster due to legacy needs. **Avoid direct dependencies on ZooKeeper.**
+
+Using the Kafka tool which is located in the folder ``zookeeper-shell.sh`` bin of our Kafka installation, we can connect to a ZooKeeper host in our cluster and look at how data is stored. Looking at the path ``/brokers/topics`` we will see a list of the topics that we have created. At this point, we should have the ``kinaction_helloworld`` topic in the list. We might also see the topic ``__consumer_offsets`` which is created once we use a consumer client with our cluster. That topic is one that we did not need to create, it is a private topic used internally by Kafka. This topic stores the committed offsets for each topic and partition by consumer group id. Knowing about these internal topics helps to avoid surprises when we see topics in our cluster that we didn’t create.
+
+```shell
+bin/zookeeper-shell.sh localhost:2181 #Connect to local ZooKeeper instance
+ls /brokers/topics                    #List all the topics with ls command
+# OR
+#Using the kafka-topics command connect to ZooKeeper as well to provide the same information
+bin/kafka-topics.sh --list --bootstrap-server localhost:9092
+```
+
+Note that we can also use a different Kafka tool, ``kafka-topics.sh`` to see the list of topics as well and get the same results! Both commands connect to ZooKeeper for their data but do so with a different command interface!
+
+It is important when reading anything about ZooKeeper and Kafka to note that KIP-500: Replace ZooKeeper with a Self-Managed Metadata Quorum is currently in progress at the time of publication.
+
+Even when ZooKeeper is no longer helping to power Kafka, we might need to work with clusters that have not migrated yet.
+
+## 6.3 The Job of a Kafka broker
+
+Being a Kafka broker means being able to coordinate with the other brokers as well as talking to ZooKeeper. In testing, or working with proof-of-concept clusters, we might have only one broker node. However, in production, we will almost always have multiple brokers.
+
+## 6.4 Settings at the Broker Level
+
+Recall the setup steps to create our first brokers from Appendix A, we modified a file titled ``server.properties``. This file is a common way to pass a specific configuration to a broker instance and was passed as a command-line argument to the broker startup shell script. As with the producer and consumer configuration, look for the IMPORTANCE label of High in the documentation listed at ``kafka.apache.org/documentation/#brokerconfigs``. The ``broker.id`` configuration property should always be set to an integer value that will be unique in the cluster.
+
+One of the clearest and most important examples of a default would be the property: ``default.replication.factor``. This configuration property controls the number of replicas that will be used when a topic is created without the option itself set. So let’s say that we want 3 copies of the data as a default. However, let’s say that we have other topics whose data is less important in a recovery situation. To make this more concrete, let’s think of a website that handles traffic for an online bakery. The order information from customers is considered by the owners to be important enough to have multiple copies. They probably wouldn’t want to mess up someone’s wedding cake details! However, the section of their website that handles chat history might not be worth attempting to recover in a failure. Kafka allows us to do both reliable and not-as-reliable structures for our topics.
+
+Let’s do an example of what happens when we have only one copy of our data and the broker it is on goes down. Make sure that our local test Kafka is cluster running with three nodes and create a topic with a ``replication.factor`` of 1.
+
+```shell
+bin/kafka-topics.sh --create \
+--bootstrap-server localhost:9092 \
+--replication-factor 1 \
+--partitions 1 \
+--topic kinaction_one_replica
+
+bin/kafka-topics.sh --describe --bootstrap-server localhost:9092 \
+--topic kinaction_one_replica
+
+Topic: one-replica PartitionCount: 1 ReplicationFactor: 1 Configs:
+Topic: kinaction_one_replica Partition: 0 Leader: 2 Replicas: 2 Isr: 2
+```
+
+We see that there is only one value in the fields: Partition, Leader, Replicas, and In-Sync Replicas (ISR) and that the broker will be the same id value. This means that the entire topic depends on that one broker being up and working. If we terminated the broker with id 2 in this example and then tried to consume a message from that topic, we would get a message like the following: ``1 partitions have leader brokers without a matching listener``. Since there were no replica copies for the partition of the topic, there is no easy way to keep producing or consuming to that topic without recovery of that broker.
+
+### 6.4.1 Kafka’s Other Logs: Application Logs
+
+As with most applications, Kafka provides logs for letting us know what is going on inside of the application.
+
+When we start a broker, the application log directory is in the Kafka base installation directory under the folder ``logs/``. We can change this location by editing the ``config/log4j.properties`` file and the value for ``kafka.logs.dir``.
+
+### 6.4.2 Server Log
+
+**The server log, ``server.log`` is where we would look if there is a startup error or an exception that terminates the broker.** It seems to be the most natural place to look first for any issues. Look or use the grep command for the heading ``KafkaConfig`` values. This is helpful since many errors and unexpected behaviors can be traced back to configuration issues on startup.
+
+**Also, it is often a good idea to have these logs on a different disk altogether than the one that stores our message logs.**
+
+Something else to mention in regards to these logs is that they are located on each broker. **They are not aggregated by default into one location.**
+
+## 6.5 Controllers Duties
+
+As we discussed in Chapter 2, each partition will have a single leader replica. A leader replica will reside on a single broker at any given time. A broker can host the leader replica of multiple partitions, and any broker in a cluster can host leader replicas, but only one broker in the cluster will act as the controller. The role of the controller is to manage the state of partitions and replicas for the entire cluster. The controller also will perform other administrative actions like partition reassignment, creating topics, deleting topics, and creating partitions.
+
+*Note.*
+
+**There is only one controller. Even if cluster consists of 100 brokers - only one controller.**
+
+The controller leverages ZooKeeper to detect restarts and failures in the cluster as a whole. If a broker is restarted, the controller will send the leader information as well as the In-Sync Replica (ISR) information for the broker re-joining the cluster. For a broker failure, the controller will select a new leader and update the ISR. These values will be persisted to ZooKeeper. In order to maintain broker coordination, it also sends the new leader and ISR changes to all other brokers in the cluster. **While a broker is serving as the controller, it can still perform its traditional broker role as well.**
+
+When the controller broker fails, the cluster can recover due to having the data in ZooKeeper, however there is a higher operational cost to restarting the controller, as this kicks off the controller election process. **So, when we consider a rolling upgrade of a cluster, shutting down and restarting one broker at a time, it is best to do the controller last.**
+
+To figure out which broker is the current controller, we can use the zookeeper-shell script to look up the id of the broker.
+
+```shell
+bin/zookeeper-shell.sh localhost:2181
+get /controller
+```
+
+There will also be a controller log file with the name: ``controller.log`` that serves as an application log on broker 0 in this case. This will be important when we are looking at broker actions and failures. The ``state-change.log`` is also useful as it records the decisions that the controller logic completed.
+
+## 6.6 Partition Replica Leaders and their role
+
+As a quick refresher, **topics are made up of partitions. Partitions can have replicas for fault tolerance. Also, partitions are written on the disks of the Kafka brokers. One of the replicas of the partition will have the job of being the leader. The leader is in charge of handling the writes for that partition from external producer clients. Since this leader is the only one with the newly written data, it also has the job of being the source of data for the replica followers. The In-Sync Replicas (ISR) list is maintained by the leader.** Thus, it knows which replicas are caught up and have seen all the current messages. The replicas will act as consumers of the leader partition and will fetch the messages. Similar to how external consumers have offset metadata about which messages have been read, metadata is also present with replication offset checkpointing to track which records have been copied to the followers.
+
+Three brokers with ISR = [3,2,1] means that the 3rd broker is a leader and the remaining ones are followers.6.7 In-Sync Replicas (ISRs) Defined
+
+## 6.7 In-Sync Replicas (ISRs) Defined
+
+One of the details to note with Kafka is that **replicas do not heal themselves by default. If you lose a broker on which one of your copies of a partition existed, Kafka does not currently create a new copy. So an important item to look at when monitoring the health of our system might be how many of our ISRs are indeed matching our desired number.**
+
+**It is also important to note that if a replica starts to get too far behind in copying messages from the leader, it might be removed from the list of in-sync replicas (ISRs). The leader will notice if a follower is taking too long and will drop it from its list of followers.**
+
+## 6.8 Unclean Leader Election
+
+An important tradeoff to consider is the importance of uptime vs the need to keep our data from being lost. What if we have no in-sync-replicas but lost our lead replica due to a failure? **When is true, the controller will select a leader ``unclean.leader.election.enable`` for a partition even if it is not up-to-date, and the system will keep running.** The problem with this is that data could be lost since none of the replicas had all of the data at the time of the leader’s failure. While data loss might not be okay for payment transactions, it might be okay for a web analytics engine to miss a hover event on a couple of pages. **The ``unclean.leader.election.enable`` setting is cluster-wide, but can be overridden at the topic level.**
+
+## 6.9 Metrics from Kafka
+
+Kafka, written for the Java virtual machine (JVM), uses Java Management Extensions (JMX) to enable us to peek into the Kafka process.
+
+We’ll use Prometheus to extract and store the Kafka metrics data. Then we’ll send that data to Grafana to produce helpful graphical views.
+
+For the Kafka exporter, let’s work with a tool available at github.com/danielqsj/kafka_exporter. I prefer the simplicity of this tool since we can just run it and give it one (or a list) of Kafka servers to watch and it might work well for your use-cases as well. Notice that we will get many client and broker specific metrics since there are quite a few options that we might want to monitor. However, this is not a complete list of the metrics available to us.
+
+As noted, the Kafka exporter we are using does not expose every JMX metric. To get more JMX metrics, we can set the ``JMX_PORT`` variable when starting our Kafka processes.
+
+```shell
+JMX_PORT=9990 bin/kafka-server-start.sh config/server0.properties
+```
+
+If we already have a broker running and do not have this port exposed, we will need to restart the broker to affect this change.
+
+### 6.9.1 Cluster Maintenance
+
+Another decision to think about is whether you want one giant cluster for your entire enterprise or one per product team. Some organizations, like LinkedIn where Kafka was created, have 60 brokers (if not more) as part of one production cluster (and multiple other clusters as well). Other teams prefer to keep smaller clusters that power their smaller product suites. There are many ways to handle a production cluster and both methods listed above can work.
+
+### 6.9.2 Adding a Broker
+
+To add a Kafka broker to our cluster, we just start-up a new Kafka broker with a unique id. That is pretty much it! But, there is something to be aware of in this situation. The new broker will not be assigned any partitions. Any topic partitions that were created before this new broker was added would still exist on the brokers that existed at the time of their creation. Topic partitions are not moved automatically. If we are okay with the new broker only handling new topics, then we don’t need to do anything else. However, if we do want to change the existing layout, we can use the tool: ``kafka-reassign-partitions``. This script is located in the bin directory of our Kafka installation.
+
+### 6.9.3 Upgrading your Cluster
+
+One technique that can be used to avoid downtime for our Kafka applications is the rolling restart.
+
+One very important broker configuration property is ``controlled.shutdown.enable``. Setting this to true will enable the transfer of partition leadership before a broker shuts down. Another setting to be aware of is ``min.insync.replicas``. Since Kafka does not automatically create a new partition replica on a different broker, we could be short one partition from our in-sync-replica total during broker downtime. If we start with 3 replicas and remove a broker that hosts one of those replicas, a minimum replica number of 3 will result in clients not being able to continue until the broker rejoins and syncs up.
+
+**As a reminder, another good practice is to identify which broker is serving as the controller in our cluster and let it be the last server upgraded.**
+
+### 6.9.4 Upgrading your clients
+
+Clients can usually be upgraded after all of the Kafka brokers in a cluster have already been upgraded.
+
+There is also the option to use newer clients without worrying about the broker version.
+
+### 6.9.5 Backups
+
+Kafka does not have a backup strategy like one would use for a database. We don’t take a snapshot or disk backup per se. Since Kafka logs exist on disk, why not just copy the entire partition directories? While nothing is stopping us from doing this, one concern is making a copy of the data directories. To do an accurate copy without missing data, we would probably have to stop the broker before performing the copy. If we wanted a complete copy of a topic with more than one partition, we could be talking about multiple brokers. Rather than performing manual copies and coordinating across brokers, one of preferred option is for a cluster to be backed by a second cluster. Between the two clusters, events are then replicated between topics. One of the earliest tools that you might have seen in production settings is called MirrorMaker. The basic architecture of MirrorMaker logically sits between two separate clusters.
+
+While MirrorMaker is still a popular option, a newer version of this tool called MirrorMaker 2.0 was released with Kafka version 2.4.0. In the directory of the Kafka install directory, we bin will find the shell script named ``kafka-mirror-maker`` as well as the new MirrorMaker 2.0 script named ``connect-mirror-maker``.
+
+**Where the first version of MirrorMaker used consumer and producer clients, version 2.0 leverages the Kafka Connect framework instead.** The framework is reflected in the script name itself connect-mirror-maker. Another difference from the previous version of the tool, is that a configuration file holds the information needed for replication rather than command line arguments.
+
+## 6.10 A Note on Stateful Systems
+
+One of the ongoing trends for many technology companies is the drive to move applications and infrastructure to the cloud. Kafka is an application that definitely works with stateful data stores.
+
+There are some great resources including Confluent’s site on using the Kubernetes Confluent Operator API (www.confluent.io/confluent-operator/) as well as Docker images available to do what you need. Another interesting option is Strimzi ( github.com/strimzi/strimzi-kafka-operator) if you are looking at running your cluster on Kubernetes or OpenShift.
+
+The purpose of the StatefulSet is to manage the Kafka pods and help guarantee ordering and a persistent identity for each pod. **So if the pod that hosts a broker (the JVM process) with id 0 fails, a new pod will be created with that identity (not a random id) and will be able to attach to the same persistent storage volume as before.** Since these volumes hold the messages of the Kafka partitions, the data is maintained. This statefulness helps overcome the sometimes short lives of containers. Each ZooKeeper node would also be in its own pod and part of its own StatefulSet.
+
+## 6.11 Exercise
+
+Since it can be hard to apply some of our new learning in a hands-on manner and since this chapter is heavier on commands than code, it might be helpful to have a quick exercise to explore a different way to discover the metric under-replicated partitions. Besides using something like a Grafana dashboard to see this data, what command-line options can we use to discover this information?
+
+Let’s say that we want to confirm the health of one of our topics named ``kinaction_replica_test`` that we created with each partition having 3 replicas. We would want to make sure we have 3 brokers listed in the ISR list in case there is ever a broker failure. What command should we run to look at that topic and see the current status?
+
+```shell
+$ bin/kafka-topics.sh --describe --bootstrap-server localhost:9092 \
+--topic kinaction_replica_test
+Topic:kinaction_replica_test PartitionCount:1 ReplicationFactor:3 Configs:
+Topic: kinaction_replica_test Partition: 0 Leader: 0 Replicas: 1,0,2 Isr: 0,2
+```
+
+Notice that the ReplicationFactor is 3 and the Replicas list shows 3 broker ids as well. However, the ISR list only shows 2 values when it should show 3!
+
+While we noticed the issue by looking at the details of the command output, we could have also used the ``--under-replicated-partitions`` flag to see any issues quickly!
+
+```shell
+bin/kafka-topics.sh --bootstrap-server localhost:9092 \
+--describe --under-replicated-partitions
+Topic: kinaction_replica_test Partition: 0 Leader: 0 Replicas: 1,0,2 Isr: 0,2
+```
+
+We can run this command to display issues across topics and to quickly find issues on our cluster.
+
+## 6.12 Summary
+
+* Brokers are the centerpiece of Kafka and provide the logic with which external clients interface with our applications. More than one broker makes up a cluster to help provide not only scale but also reliability.
+* ZooKeeper (or the Kafka Raft Metadata mode) is leveraged in order to provide agreement in a distributed cluster. One example is to elect a new controller between multiple available brokers.
+* Configuration can be set at the broker level to help manage your cluster. This can help set reasonable defaults that your clients can override for specific options.
+* Replicas allow for a number of copies of data to span across a cluster. This helps in the event a broker fails and can not be reached. In-Sync Replicas (ISRs) are those that are current and up-to-date with the leader’s data and can take over leadership for a partition without data loss.
+* JMX can be used to help produce graphs to visually monitor a cluster or alert on potential issues.
+* Mirror Maker (now at version 2.0) is an option to provide a backup strategy across different clusters for those looking to make sure their data is highly available.
+
+# Chapter 7. Topics and partitions
