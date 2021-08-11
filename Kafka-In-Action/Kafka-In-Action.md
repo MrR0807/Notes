@@ -1766,3 +1766,196 @@ We can run this command to display issues across topics and to quickly find issu
 * Mirror Maker (now at version 2.0) is an option to provide a backup strategy across different clusters for those looking to make sure their data is highly available.
 
 # Chapter 7. Topics and partitions
+
+## 7.1 Topics
+
+To quickly refresh our memory, it is important to know that a topic is more of a logical concept rather than a physical structure. It does not usually exist on only one broker. Most applications consuming Kafka data will view that data as being in a single topic: no other details are needed for them to subscribe. However, behind the topic name are one or more partitions which actually hold the data. The logs that are written to the broker filesystems that make up a topic are the result of Kafka writing the data in the cluster.
+
+Let’s say that our company is selling reservations for a training class using a web-based application that sends events of user actions into our Kafka cluster. Our overall application process could generate a number of events. For example, there would be an event for the initial search on location, one for the specific training being selected by the customer, and a third for payment being received. Should the producing applications send all of this data to a single topic or several topics? Should we decide that each message is a specific type of event and should remain separated in different topics? There are tradeoffs with each approach and some things to consider that will help us determine the best approach to take in each situation.
+
+We see topic design as a two-step process:
+* The first being for the events I have, **do they belong in 1 topic or more than one.** 
+* Second, **for each topic, what is the number of partitions I should use?**
+
+While we can set a default number to be used in topic creation, in most cases we should consider the usage of the topic and the data it will hold. We should have a reason to pick a specific number of partitions and Jun Rao has a fantastic article on the Confluent blog about this every subject titled: "How to choose the number of topics/partitions in a Kafka cluster?"
+
+Let’s take a look at a checklist of items to think about in general and in this scenario.
+
+### Data correctness
+
+**First off, data correctness is at the top of most data concerns in real-world designs. In regards to topics, this would involve making sure that events that must be ordered end up in the same partition (and thus the same topic).**
+
+While events can likely be placed in an order based on an event timestamp by your consumers, it will be more trouble (and error-prone) to handle cross-topic event coordination than it is worth.
+
+If we are using keyed messages and need them in order, we will very much care about partitions and any future changes to those partitions. With our three example events above, it might be helpful **to place the events with a message key including the customer id for the actual 'booked' and 'paid' events in three separate topics.** These events are customer-specific and it would be helpful to make sure that payment of a booking occurs for that specific customer. The search events themselves, however, may not be of interest or need to be ordered for a specific customer if our analytics team is looking for the most popular searched cities rather than customer information.
+
+### Volume of messages of interest per consumer
+
+Next we should consider the volume of messages of interest per consumer. For the training system above, let’s look at the number of events when we consider the topic placement. The search events themselves would far outnumber the other events. Let’s say that a training location near a large city gets 50,000 searches a day but only has room for 100 students. Traffic on most days produces 50,000 search events and less than 100 actual 'booked' training events. Would the Billing team have an application that would want to subscribe to a generic event topic in which it used or cared about less than 1% of the total messages? Most of the consumer’s time would be, in effect, filtering out the mass of events to process only a select few.
+
+### How much data you will be trying to process
+
+Another point to consider is how much data we will be processing. Will the number of messages require multiple consumers to be running in order to process within the time constraints required by our applications? If so, we have to be aware of how the number of consumers in a group is limited by the partitions in our topic. It is easier at this point to create more partitions than you think you might require. Having more capacity for consumers to grow, will allow us to increase in volume without having to deal with re-partitioning data.
+
+However, more partitions require more open file handles for example. Also, having more brokers to migrate, in case of a broker failure, could be a headache in the future.
+
+**Another thing to consider when deciding on the number of partitions for a topic, is that reducing that number is not currently supported.** There may be ways to do it, but it is definitely not advised.
+
+### 7.1.1 Topic Creation Options
+
+We need to make sure we dig into the basic parameters: ``bootstrap-server,`` ``topic``, ``partitions``, and ``replication-factor``.
+
+Defaults might be a good catch-all to make sure topics are created with certain levels of failover (like a minimum of 3 replicas) **but our preference is to be intentional.**
+
+Another important decision to make at creation time is if you ever want to delete a topic. Kafka requires us to configure the option ``delete.topic.enable``. If this is set to 'true' we will be able to successfully delete the topic and it will be removed.
+
+As we think of a name to represent our data, there are a couple of rules that might help us avoid random problems later:
+* **Avoid trying to use spaces.** 
+* **Avoid creating topics with two underscores.** Kafka managed internal topic names starting with two underscores like __schemas.
+
+**Another option that is good to take care of at the broker level is to set ``auto.create.topics.enable`` to false.** Doing this makes sure that we are creating topics on purpose and not by a producer sending a message to a topic name that was mistyped and never actually existed (before a message was attempted).
+
+*Note.*
+
+If you need to alter topic which has messages already, then it's easier just to create a new topic and migrate old consumers/producers to it, rather than trying to change existing.
+
+### 7.1.2 Replication Factors
+
+**For practical purposes, we should plan on having less than or equal to the number of replicas than the total number of brokers.** In fact, attempting to create a topic with the number of replicas being greater than the total number of brokers will result in an error.
+
+## 7.2 Partitions
+
+From a consumer standpoint, each partition is an immutable log of messages. It should only grow and append messages to our data store.
+
+### 7.2.1 Partition Location
+
+One thing that might be helpful is to look at how the data is stored on our brokers. To start, let’s peek at the configuration value for log.dirs. Under that directory, we should be able to see a subfolder that is named with a topic name and a partition number. If we pick one of those folders and look inside, we will see a couple of different files with the extensions:
+* ``index``
+* ``log``
+* ``timeindex``
+
+```shell
+/tmp/kafka-logs-0/kinaction_topic-1
+|- 0000000000000000000.index
+|- 0000000000000000000.log
+|- 0000000000000000000.timeindex
+\- leader-epoch-checkpoint
+```
+
+Sharp-eyed readers might see the files named leader-epoch-checkpoint and maybe even those with a .snapshot extension (not shown). In general, leader-epoch-checkpoint is related to leader failures and replicas.
+
+**The files with the log extension are where our data payload will be stored.**
+
+Kafka is built for speed, it uses the index file to store a mapping between the logical message offset and a physical position inside the index file. Having the index for Kafka to find a message quickly and then directly read from a position in the log file makes it easy to see how Kafka can still serve consumers looking for specific offsets quickly. The timeindex file works similarly, however, using a timestamp rather than an offset value.
+
+One thing that we have not talked about before is that partitions are made up of segments. In essence, this means that on a physical disk, a partition is not one single file, but rather split into segments. Segments are a key part of helping messages be removed based on retention policies.
+
+An active segment will be the file to which new messages are currently being written.
+
+Older segments will be managed by Kafka in various ways that the active segment will not be: this includes being managed for retention based on the size of the messages or time configuration or eligible for topic compaction.
+
+### 7.2.2 Viewing Segments
+
+Let’s try to take a peek at a log file to see the messages we have produced to the topic so far. If we open it in a text editor, we will not see those messages in a human-readable format. Kafka includes a script, in the ``/bin`` directory, called ``kafka-dump-log.sh`` which we can leverage to look at those log segments.
+
+```shell
+bin/kafka-dump-log.sh --print-data-log --files /tmp/kafka-logs-0/kinaction_test-1/00000000000000000000.log
+```
+
+Assuming the command is successful, we should see a list of messages with offsets as well as other related metadata like compression codecs used.
+
+![chapter-7-figure-7.png](pictures/chapter-7-figure-7.png)
+
+## 7.3 More Topic and Partition Maintenance
+
+### 7.3.1 Removing a Topic
+
+As previously noted, shouldn't delete topics, but rather migrate off. To delete a topic:
+
+```shell
+ bin/kafka-topics.sh --bootstrap-server localhost:9092 --delete --topic kinaction_topic
+```
+
+### 7.3.2 Reelect Leaders
+
+As a reminder from our partition discussion earlier, each partition has a leader that handles all client-related data needs. The other replicas are only followers that do not talk to clients. When topics are first created, the cluster tries to spread these leaders evenly among the brokers to split some of the leaders' workload evenly.
+
+The 'preferred' leader will not change for the topic as it will always be considered the replica that is first in the ISR list even across broker failures. The script ``kafka-leader-election.sh`` can be used in this scenario to help bring leadership back to replicas.
+
+```shell
+ bin/kafka-leader-election.sh --bootstrap-server localhost:9092    \
+  --election-type preferred --partition 1 \
+  --topic kinaction_test
+```
+
+### 7.3.3 EmbeddedKafkaCluster
+
+With all of the options we have changed with partitions, it might be nice to test them as well. What if we could spin up a Kafka cluster without having a real production-ready cluster handy? Kafka Streams provides an integration utility class called ```EmbeddedKafkaCluster``` that serves as middle ground between mock objects and a full-blown cluster. This class provides an in-memory Kafka cluster. While built with Kafka Streams in mind, we can leverage it in our testing of Kafka clients. An example below is setup like the tests found in Kafka Streams in Action by William P. Bejeck Jr. That title and his following book, Event Streaming with Kafka Streams and ksqlDB, show more in-depth testing examples that we recommend checking out including his suggestion of using Testcontainers.
+
+```java
+@ClassRule
+public static final EmbeddedKafkaCluster embeddedKafkaCluster = new EmbeddedKafkaCluster(BROKER_NUMBER);
+private Properties producerConfig;
+private Properties consumerConfig;
+
+@Before
+public void setUpBeforeClass() throws Exception {
+    embeddedKafkaCluster.createTopic(TOPIC, PARTITION_NUMBER, REPLICATION_NUMBER);
+    producerConfig = TestUtils.producerConfig(embeddedKafkaCluster.bootstrapServers(),
+            AlertKeySerde.class,
+            StringSerializer.class);
+    consumerConfig = TestUtils.consumerConfig(embeddedKafkaCluster.bootstrapServers(),
+            AlertKeySerde.class,
+            StringDeserializer.class);
+}
+
+@Test
+public void testAlertPartitioner() throws InterruptedException {
+    AlertProducer alertProducer =  new AlertProducer();
+    try {
+        alertProducer.sendMessage(producerConfig);
+    } catch (Exception ex) {
+        fail("Made producer call with EmbeddedKafkaCluster should not throw exception" <linearrow /> + ex.getMessage());
+    }
+    AlertConsumer alertConsumer = new AlertConsumer();
+    ConsumerRecords<Alert, String> records = alertConsumer.getAlertMessages(consumerConfig);
+    TopicPartition partition = new TopicPartition(TOPIC, 0);
+    List<ConsumerRecord<Alert, String>> results = records.records(partition);
+    assertEquals(0, results.get(0).partition());
+}
+```
+
+Since this cluster is temporary, another key point is to make sure that the producer and consumer clients know how to point to this in-memory cluster. To discover those endpoints, the method ``bootstrapServers()`` can be used to provide the configuration needed to the clients.
+
+### 7.3.4 Kafka Testcontainers
+
+If you find that you are having to create and tear-down your infrastructure, one option that could be used (especially for integration testing) is to use Testcontainers ( www.testcontainers.org/modules/kafka/).
+
+## 7.4 Topic Compaction
+
+To make it clear, topic compaction is different from the retention of existing segment log files when compared to a regular topic. With compaction, the goal is not to expire messages but rather to make sure that the latest value for a key exists and not maintain any previous state. As just referenced, **compaction depends on a key being part of the messages and not being null.** Otherwise, the whole concept fails if there is no 'key' to update a value for in practice. ``cleanup.policy=compact`` is the topic level configuration option we use to create a compacted topic. This is different from the default configuration value that was set to 'delete' before our override.
+
+One of the easiest comparisons for how a compacted topic presents data can be seen in how a database table updates an existing field rather than appending more data. Let’s say that we want to keep a current membership status for an online membership. A user can only be in one state at a time, either a 'Basic' or 'Gold' membership. At first, the user enrolled for the 'Basic' plan but over time ungraded to the 'Gold' plan for more features. While this is still an event that Kafka stores, in our case we only want the most recent membership level for a specific customer (our key).
+
+![chapter-7-figure-8.png](pictures/chapter-7-figure-8.png)
+
+After compaction is done on the example topic, the latest Customer 0 update is all that exists in the topic. A message with offset 2 replaced the old value of 'Basic' (message offset 0) for Customer 0 with 'Gold'. Customer 1 has a current value of 'Basic' since the latest key specific offset of 100 updated the previous offset 1 'Gold' state. Since Customer 2 only had one event, that event carried over to the compacted topic without any changes. **Another interesting thing to consider is that compaction can appear to cause missing offsets.** In effect, this is the end result of messages with the same key replacing an earlier message.
+
+### 7.4.1 Compaction Cleaning
+
+When a topic is marked for compaction, a single log can be seen in a couple of different states: clean or dirty. Clean is the term for the messages that have been through compaction before. Duplicate values for each key should have been reduced to just one value. The dirty messages are those that have not yet been through compaction. Multiple values might still exist for this message for a specific key until all messages are cleaned.
+
+### 7.4.2 Compaction Record Removal
+
+Even though we have the notion of an immutable stream of events, there is a time when updating a value for a customer might include a removal of that value. Following our subscriber level scenario above, what if the customer decides to remove their account? **By sending an event with the customer key and a null message value, Kafka will keep this last message for a certain time period. The message is considered a 'tombstone'.**
+
+## 7.5 Summary
+
+* Topics are a logical concept rather than a physical structure. To understand the behavior of the topic, a consumer of that topic needs to know about the number of partitions, and the replication factors in play as well.
+* The replication factor determines how many copies (of each partition) you want to have in case of failures.
+* Partitions makeup topics and are the basic unit for parallel processing of data inside a topic. Log-file segments are written in partition directories and are managed by the broker.
+* Reelecting leaders and deleting topics are maintenance that need to be completed with thought about how clients could be impacted by these changes.
+* Integration testing can be used to test certain parition logic.
+* Topic compaction is a way to provide a view of the latest value of a specific record. Remember, topic compaction is different from the expiration process of data.
+
+# Chapter 8. Kafka storage
