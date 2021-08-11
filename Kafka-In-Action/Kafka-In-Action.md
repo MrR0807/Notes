@@ -2081,3 +2081,183 @@ Kafka applications will likely use the StatefulSet API in order to maintain the 
 
 # Chapter 9. Management: tools and logging
 
+The best way to keep a cluster moving along is to understand the data that is flowing through it, and to monitor that activity at runtime.
+
+## 9.1 Administration clients
+
+So far, we have performed most of our cluster management activities with the command line tools that come with Kafka. However, there are some helpful options we can use to branch out from these provided scripts.
+
+### 9.1.1 Administration in code with AdminClient
+
+One useful tool to look at is the AdminClient. Although the Kafka shell scripts are great to have at hand for quick access or one-off tasks, there are situations, such as automation, where the Java AdminClient really shines. The AdminClient is in the same kafka-clients.jar that we used for the Producer and Consumer clients. It can be pulled into a Maven project (see the pom.xml from Chapter 2) or it can be found in the ``share/`` or ``libs/`` directory of the Kafka installation.
+
+Let’s look at how we could execute a command we have completed before, to create a new topic, but this time with the AdminClient.
+
+```shell
+bin/kafka-topics.sh --bootstrap-server localhost:9092 \
+  --create --topic kinaction_selfserviceTopic --partitions 2 \
+  --replication-factor 2
+```
+
+Though this command-line example works fine, we don’t want to be called every time someone needs a new topic in our dev environment. Instead, we’ll create a self-service portal that other devlopers can use to create new topics on our development cluster.
+
+In this example, we could add logic to make sure that naming conventions for topics fit a certain pattern if we had such a business requirement. This could be a way to maintain more control over our cluster rather than users working from the command-line tools. To start, we need to create a ``NewTopic`` class.
+
+Once we have this information, we can leverage the ``AdminClient`` object to complete the work. The ``AdminClient`` takes a ``Properties`` object that contains the same properties we’ve used with other clients, like ``bootstrap.servers`` and ``client.id``. Note that the class ``AdminClientConfig`` holds constants for configuration values such as ``BOOTSTRAP_SERVERS_CONFIG`` as a helper for those names. Then we’ll call the method createTopics on the client.
+
+```java
+NewTopic requestedTopic = new NewTopic("kinaction_selfserviceTopic", 2,2);
+AdminClient client = AdminClient.create(props);
+CreateTopicsResult topicResult = client.createTopics(Collections.singleton(requestedTopic));
+
+// topicResult.values().get("kinaction_selfserviceTopic").get();
+```
+
+At this time there is no synchronous API, but we can make a synchronous call by using the ``get()`` function.
+
+Because this API is still evolving, the following list of tasks that can be accomplished with the ``AdminClient``:
+
+* alter config 
+* create/delete/list ACLS 
+* create partitions 
+* create/delete/list topics 
+* describe/list consumer groups 
+* describe the cluster
+
+### 9.1.2 Kafkacat
+
+Kafkacat (github.com/edenhill/kafkacat) is a very handy tool to have on your workstation, especially when connecting remotely to your clusters. At this time, it focuses on being a producer and consumer client that can also give you metadata about your cluster. If you ever wanted to quickly work with a topic and didn’t have the entire Kafka tools downloaded to your current machine, this executable will help you avoid the need to have those shell or bat scripts!
+
+### 9.1.3 Confluent REST Proxy API
+
+This proxy is a separate application that would likely be hosted on its own server for production usage.
+
+![chapter-9-figure-2.png](pictures/chapter-9-figure-2.png)
+
+To test out how to leverage the REST proxy, let’s start it up. For this to work, we will need to already have ZooKeeper and Kafka instances running before we start the proxy:
+
+```shell
+bin/kafka-rest-start.sh etc/kafka-rest/kafka-rest.properties
+```
+
+Since we’re already familiar with listing topics, let’s look at how that can be done with the REST proxy, using a command like curl to hit an HTTP endpoint.
+
+```shell
+curl -X GET -H "Accept: application/vnd.kafka.v2+json" localhost:8082/topics
+// Output:
+["__confluent.support.metrics","_confluent-metrics","_schemas","kinaction_alert"]
+```
+
+## 9.2 Running Kafka as a systemd Service
+
+One decision we need to make, concerning running Kafka, is how to perform starts and restarts of our brokers. Those who are used to managing servers as a Linux-based service with a tool like Puppet (puppet.com/), may be familiar with installing service unit files and would likely leverage that knowledge to create running instances. For those not familiar with systemd, it initializes and maintains components throughout the system. One common way to define Zookeeper and Kafka are as unit files that are used by systemd.
+
+An example service unit file that would start a ZooKeeper service when the server starts. It will also restart after an abnormal exit. In practice, this means something like a kill -9 command against the PID of this process would trigger a restart of the process.
+
+```shell
+[Unit]
+After=network.target
+[Service]
+Type=simple
+ExecStart=/usr/kafka/bin/zookeeper-server-start.sh
+ <linearrow /> /usr/kafka/config/zookeeper.properties #1
+ExecStop=/usr/kafka/bin/zookeeper-server-stop.sh      #2
+Restart=on-abnormal                                   #3
+[Install]
+WantedBy=multi-user.target
+```
+
+1) ExecStart captures the start command that will be run and should be similar to what we manually ran so far to start ZooKeeper
+2) ExecStop captures how to property shut down the ZooKeeper instance
+3) The Restart condition would run ExecStart if an error condition caused the process to fail
+
+More on how to use systemd Services.
+
+## 9.3 Logging
+
+The logs addressed in this section are not the events and messages from Kafka servers, but the output of the operation of Kafka itself. And we can not forget about Zookeeper either!
+
+### 9.3.1 Kafka application logs
+
+While we might be used to one log file for an entire application, Kafka has multiple log files that we might be interested in or need for troubleshooting. Due to multiple files, we might have to look at modifying different log4j appenders to maintain the necessary views of our operations.
+
+By default, the server logs will continue being added to the directory as new logs are produced. No logs are removed - and this might be the preferred behavior if these files are needed for auditing or troubleshooting. However, if we do want to control the number and size, **the easiest way is to update the file ``log4j.properties`` before we start the broker server.**
+
+```properties
+log4j.appender.kafkaAppender.MaxFileSize=500KB              #1
+log4j.appender.kafkaAppender.MaxBackupIndex=10              #2
+```
+
+1) This settings helps define the size of the file in order to determine when to create a new log file.
+2) This value helps set the number of older files to keep. This might be helpful if you want more than just the current log if needed for troubleshooting.
+
+Note that modifying the kafkaAppender changes only how the server.log file is treated. If we want to apply different file sizes and backup file numbers for various Kafka-related files, we can use the appender to log file name table to know which appenders to update.
+
+Note that the appender name in the left column will be the logging key which will affect how the log files on the right will be stored on the brokers
+
+| Appender Name  | Log File Name |
+| ------------- | ------------- |
+| kafkaAppender  | server.log  |
+| stateChangeAppender  | state-change.log  |
+| requestAppender  | kafka-request.log  |
+| cleanerAppender  | log-cleaner.log  |
+| controllerAppender  | controller.log  |
+| authorizerAppender  | kafka-authorizer.log  |
+
+Changes to log4j.properties require the broker to be restarted, so it is best to determine our logging requirements before starting our brokers for the first time if possible.
+
+As we look at managing our logs, it is important to consider where the logs are being sent. **Feeding error logs from Kafka into the same Kafka instance is something to avoid.**
+
+### 9.3.2 Zookeeper logs
+
+Not interested.
+
+## 9.4 Firewall
+
+Depending on network configuration, we might need to serve clients that exist inside the network or those out of the network where the Kafka brokers are set up.
+
+Kafka brokers can listen on multiple ports. For example, the default for a plain text port is 9092. An SSL port can also be set up on that same host at 9093. Both of these ports might need to be open depending on how clients are connecting to our brokers.
+
+In addition, Zookeeper ports include 2181 for client connections. Port 2888 is used by follower Zookeeper nodes to connect to the leader Zookeeper node and port 3888 is also used between Zookeeper nodes to communicate.
+
+### 9.4.1 Advertised listeners
+
+One error when connecting that often appears like a firewall issue is when using the listeners and advertised.listeners properties. Clients will have to use the correct hostname to connect if given - so it will need to be reachable however the rules are setup.
+
+Let’s imagine we are connecting to a broker and can get a connection when the client starts up, but not when it attempts to consume messages? How could we have this behavior that appears inconsistent? Remember that whenever a client starts up, it connects to any broker to get metadata about which broker to connect to. **The first initial connection from the client uses the information that is located in the Kafka ``listeners`` configuration. What it gives back to the client to connect to next is the data in Kafka ``advertised.listeners``. This makes it so the client might be connecting to a different host to do its work.**
+
+``inter.broker.listener.name`` is also an important setting to look at that will determine how the brokers connect across the cluster to each other. If the brokers cannot reach each other, replicas will fail and the cluster will not be in a good state, to say the least!
+
+**For an excellent explanation of advertised listeners check out the article by Robin Moffatt titled "Kafka Listeners – Explained".**
+
+## 9.5 Metrics
+
+### 9.5.1 JMX Console
+
+It is possible to use a GUI to explore the exposed metrics and get an idea of what is available. VisualVM (visualvm.github.io/), is one example.
+
+**When installing VisualVM, be sure to go through the additional step of installing the MBeans browser. We can do this by going to the menu bar Tools → Plugins.**
+
+As noted in Chapter 6, we must have a JMX_PORT defined for each broker we want to connect to. **This can be done with an environment variable in the terminal like so: ``export JMX_PORT=1099``**. It is interesting to note that if you have ZooKeeper running on the same server as your broker, its configuration might rely on this same property. **Make sure that you scope it correctly to be separate for each broker as well as each ZooKeeper node.**
+
+KAFKA_JMX_OPTS is also another option to look at for connecting remotely to Kafka brokers. Make sure to note the correct port and hostname. The following example uses port 1099 and the localhost as the hostname.
+
+```shell
+KAFKA_JMX_OPTS="-Djava.rmi.server.hostname=127.0.0.1        #1
+  -Dcom.sun.management.jmxremote.local.only=false           #2
+  -Dcom.sun.management.jmxremote.rmi.port=1099              #3
+  -Dcom.sun.management.jmxremote.authenticate=false         #4
+  -Dcom.sun.management.jmxremote.ssl=false"                 #4
+```
+
+1) Setting the hostname for the RMI server to be localhost
+2) Allowing remote connections
+3) The port we are exposing for JMX
+4) Turning off authenticate and SSL checks
+
+### 9.5.2 Broker alerts
+
+Because Kafka brokers are built as part of a cluster, some problems might be hard to spot without keeping an eye on the specific data points. Let’s look at some metrics that might mean action is needed to help restore a cluster.
+
+Confluent Platform suggestions alerting on the following top three values to start with. I also included ``OfflinePartitionsCount`` as that is a metric I find useful and recommend.
+
