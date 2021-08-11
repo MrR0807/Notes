@@ -1959,3 +1959,125 @@ Even though we have the notion of an immutable stream of events, there is a time
 * Topic compaction is a way to provide a view of the latest value of a specific record. Remember, topic compaction is different from the expiration process of data.
 
 # Chapter 8. Kafka storage
+
+So far we have thought of our data as moving into and out of Kafka for brief periods of time. Another decision to analyze is where our data should live longer term. When you think of databases like MySQL or MongoDB, you may not always think about if or how that data is expiring. Rather, you know that the data is likely going to exist for the majority of your application’s entire lifetime. In comparison, Kafka storage logically sits somewhere between the long-term storage solutions of a database and the transient storage of a message broker.
+
+Let’s look at a couple of options for storing and moving data in our environment.
+
+## 8.1 How Long to Store Data
+
+**Currently, the default retention for data in Kafka topics is seven days but this can be easily configured by time or data size.** However, can Kafka hold data itself for a period of years? One real-world example is how the New York Times uses Kafka.
+
+The content in their cluster is in a single partition that was less than 100GB at the time of writing. If you recall from our discussion in Chapter 7 about partitions you know that all of this data will exist on a single broker drive (as will any replica copies exist on their own drives) as partitions are not split between brokers. Since storage is considered to be relatively cheap and the capacity of modern hard drives is way beyond hundreds of gigabytes, most companies would not have any size issues with keeping that data around.
+
+How do we configure retention for brokers? The main considerations are the size of the logs and the length of time the data exists.
+
+| Key  | Purpose |
+| ------------- | ------------- |
+| log.retention.bytes  | The largest size in bytes threshold for deleting  |
+| log.retention.ms  | The length in milliseconds a log will be maintained before being deleted  |
+| log.retention.minutes  | Length before deletion in minutes. log.retention.ms is used if both are set  |
+| log.retention.hours  | Length before deletion in hours. log.retention.ms and log.retention.minutes would be used before this value if either of those were set  |
+
+**How do we disable log retention limits and allow them to stay 'forever'? By setting both log.retention.bytes and log.retention.ms to -1 we can effectively turn off data deletion.**
+
+Another thing to consider is how we may get similar retention for the latest values by using keyed events with a compacted topic. While data can still be removed during compaction cleaning, the most recent keyed messages will always be in the log.
+
+## 8.2 Data Movement
+
+### 8.2.1 Keeping the original event
+
+One thing that I would like to note is my preference for event formats inside of Kafka. While open for debate and your use-case requirements, **my preference is to store messages in the original format in a topic.** Why keep the original message and not format it right away before placing it into a topic? For one, having the original message makes it easier to go back and start over if you messed up your transform logic. Instead of having to try to figure out how to fix our mistake on the altered data, you can always just go back to the original data and start again.
+
+### 8.2.2 Moving away from a batch mindset
+
+Nothing of interest.
+
+## 8.3 Tools
+
+Data movement is a key to many systems, Kafka included. While you can stay inside the open-source Kafka and Confluent offerings like Connect, which was discussed in chapter 3, there are other tools that might fit your infrastructure or are already available in your tool suite.
+
+### 8.3.1 Apache Flume
+
+Flume can provide an easier path for getting data into a cluster and relies more on configuration than custom code.
+
+Information on Flume. Not interested.
+
+### 8.3.2 Debezium
+
+Debezium (debezium.io) describes itself as a distributed platform that helps turn databases into event streams. In other words, updates to our database can be treated as events! If you have a database background (or not!) you may have heard of the term change data capture (CDC). As the name implies, **the data changes can be tracked and used to react to that change.** At the time of writing this chapter, MySQL, MongoDB, and PostgresSQL servers were supported with more systems slated to be added.
+
+### 8.3.3 Secor
+
+Secor (github.com/pinterest/secor) is an interesting project that has been around since 2014 from Pinterest that aims to help persist Kafka log data to a variety of storage options including S3 and Google Cloud Storage.
+
+## 8.4 Bringing data back into Kafka
+
+Say data lived out its normal lifespan in Kafka and was archived in S3. When a new application logic change required that older data be reprocessed, we did not have to create a client to read from both S3 and Kafka. Rather, using a tool like Kafka Connect, we were able to load that data from S3 back into Kafka.
+
+### 8.4.1 Tiered Storage
+
+A newer option from Confluent Platform version 6.0.0 on, is called Tiered Storage.
+
+In this model, local storage is still the broker itself and remote storage is introduced for data that is older (and stored in a remote location) and controlled by time configuration (``confluent.tier.local.hotset.ms``).
+
+## 8.5 Architectures with Kafka
+
+Let’s take a peek at a couple of architectures that could be powered by Kafka (and to be fair other streaming platforms). This will help us get a different perspective on how we might design systems for our customers.
+
+### 8.5.1 Lambda Architecture
+
+Not interested.
+
+### 8.5.2 Kappa Architecture
+
+Not interested.
+
+## 8.6 Multiple Cluster setups
+
+In this section, we are going to talk about scaling by adding clusters rather than by adding brokers alone.
+
+### 8.6.1 Scaling by adding Clusters
+
+Usually, the first things to scale would be the resources inside your existing cluster. The number of brokers is usually the first option and makes a straight-forward path to growth. However, Netflix’s MultiCluster strategy is a captivating take on how to scale Kafka clusters.
+
+Instead of using the broker number as the way to scale the cluster, they found they could scale by adding clusters themselves! They found that **it might make sense for event producers to talk to one Kafka cluster and have those events moved to other Kafka clusters for consumption.** In this setup, consumers would be reading messages from a Kafka cluster that is entirely different from the ingestion cluster.
+
+As per their scenario, the amount of data going into the cluster was not a problem. **However, once they had multiple consumers pulling that data out at the same time, they saw a specific bottleneck for their network bandwidth.** Even with 1 or 10 Gigabit Ethernet (GbE) data center networks, the rate of data and the number of bytes out can add up quickly.
+
+![chapter-8-figure-7.png](pictures/chapter-8-figure-7.png)
+
+Imagine a scenario (we’ll assume generous network data amounts for ease of understanding) where we have producers that are sending about a gigabyte (GB) of data per second to one cluster. If we have six different consumers, we would be sending 6 copies of that 1 GB of data for around 7 GB per second (again let’s not worry about exact numbers). We do not have much more room on a 10 GbE network.
+
+### 8.6.2 Data over Two Regions
+
+Another important item to consider is the distance we have between our application’s consumers and the data in our cluster. Data that is local to our applications will take much less time to load than would data pulled from the other side of the country if we only had a single cluster as our source. Let’s look at one of the most common cluster setups that we have worked with: the Active-Active region setup.
+
+In an Active-Active model each data-center has its own cluster. End-users of the clusters usually connect to the data center cluster that is closest to them unless there is an outage or failure scenario. The clusters have data replicated between them for both clusters to use no matter where the data originated using MirrorMaker or something similar like Confluent Replicator. A service-level agreement (SLA) might also drive us to pursue this option.
+
+## 8.7 Cloud and Container-Based Storage Options
+
+With AWS being a popular cloud deployment option, let’s focus on a specific example even though these points would be similar for persistent disk solutions on other cloud providers.
+
+### 8.7.1 Amazon Elastic Block Store
+
+In regards to AWS, some users might be tempted to use local instance storage only when planning out their cluster. Since Kafka was built to handle broker failures, the cluster more than likely would be able to recover on newly created broker instances as long as the cluster was otherwise healthy. This solution is straightforward for the most part, you start a new broker node and the cluster will work on gathering data for its partitions from the other brokers. This usually cheaper storage option might be worth the impact of the network traffic increase and any time delays for retrieving data vs other options.
+
+However, Elastic Block Store (EBS) could be a safer option for our use-case. In case you are not familiar with the EBS service, it provides persistent block storage that helps data remain even in the case of a compute instance failure. Besides the fact that you can reassign the EBS volume to a new instance, the broker would only have to recover from messages that were missed during downtime vs the entire data partitions having to be replicated to that node. Amazon also offers instances that are optimized for writing Kafka logs: ie that are built for sequential I/O that is used in writing log files.
+
+### 8.7.2 Kubernetes Clusters
+
+Dealing with a containerized environment, we might run into similar challenges as we would in the cloud. If we hit a poorly configured memory limit on our broker, we might find ourselves on an entirely new node without our data unless we have the data persisted correctly! Unless we are in a sandbox environment in which we can lose data, **persistent volume claims will be needed by our brokers to make sure that our data will survive any restarts, failures, or moves.**
+
+Kafka applications will likely use the StatefulSet API in order to maintain the identity of each broker across failures or pod moves. This static identity also helps us claim the same persistent volumes that were used before our pod was down.
+
+## 8.8 Summary
+
+* Data retention should be driven by business needs. Decisions to weigh include the cost of storage and the growth rate of that data over time.
+* Size and time are the basic parameters for defining how long data is retained on disk.
+* Long-term storage of data outside of Kafka, like in S3, is an option for data that might need to be retained for long periods. Data can be reintroduced by producing the data into a cluster at a later time if needed.
+* The ability of Kafka to handle data quickly and also replay data can enable architectures such as the Lambda and Kappa architectures.
+* Cloud and containers workloads often involve short-lived broker instances. Data that needs to be persisted requires a plan for making sure newly created or recovered instances can utilize that data across instances.
+
+# Chapter 9. Management: tools and logging
+
