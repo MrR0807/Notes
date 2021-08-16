@@ -2261,3 +2261,388 @@ Because Kafka brokers are built as part of a cluster, some problems might be har
 
 Confluent Platform suggestions alerting on the following top three values to start with. I also included ``OfflinePartitionsCount`` as that is a metric I find useful and recommend.
 
+``UnderMinIsrPartitionCount`` is located at ``kafka.server:type=ReplicaManager,name=UnderMinIsrPartitionCount``. **Any value greater than zero is a cause of concern.** This total is the number of partitions less than the number required for the minimum ISR.
+
+``UnderReplicatedPartitions`` is located at ``kafka.server:type=ReplicaManager,name=UnderReplicatedPartitions``. **This is again the number of partitions and this metric being greater than 0 is an issue.** We are not getting the number of replica copies that we expect and we can also handle fewer failure scenarios.
+
+``UnderMinIsr`` is located at ``kafka.cluster:type=Partition,topic={topic},name=UnderMinIsr,partition={partition}``. This is again related to the amount of ISRs being less than the minimum number. **For example, if we have three replicas and we need acknowledgment from all before our produce request is satisfied, we will not have any messages written to the topic partition.**
+
+``OfflinePartitionsCount`` is located at ``kafka.controller:type=KafkaController,name=OfflinePartitionsCount``. Because clients read and write to a leader partition on a broker - there always needs to be a leader for clients to be successful. If the number of offline partitions is greater than 0, the ability to read and write to that partition is compromised.
+
+### 9.5.3 Client alerts
+
+``record-error-rate`` is located at ``kafka.producer:type=producer-metrics,client-id={YOUR_ID_HERE},name=record-error-rate``. The ideal value of this attribute is zero. This is an average for the number of messages that failed per second for producer clients
+
+``records-lag-max`` is located at ``kafka.consumer:type=consumer-fetch-manager-metrics,client-id={YOUR_ID_HERE},name=records-lag-max``. This value is the maximum number of records for a given partition in which the consumer is behind the producer. If we notice an increasing value over time, we might consider alerting on this.
+
+### 9.5.4 Burrow
+
+Although we can usually rely on Kafka being fast for event delivery, there can be times when a specific consumer client gets behind in pulling current messages. Even if a client does not stop or fail on its own, sometimes it might just have more messages to process than its normal workload. **Subtracting the highest offset for a partition and the offset that the consumer client is currently processing is called consumer lag.**
+
+Burrow (github.com/linkedin/Burrow) is a tool that provides consumer lag checking and seems to have been developed with a thoughtful mindset toward its subject. I was introduced to this tool in the hallways of a Kafka Summmit conference and was excited right away to learn more. I say thoughtful because Burrow’s code shows the marks of experienced operators that have worked with Kafka enough to be able to automate more meaning behind this metric. One such issue that is addressed is that the lag metric itself would be driven by and impacted by the consumer client that was doing its own reporting.
+
+## 9.6 Tracing with Interceptors
+
+What if we wanted to trace a single message through the system?
+
+Let’s talk about a simple but straightforward model that might work for our requirements. Let’s say that we have a producer in which each event has a unique ID. Because each message is important, we do not want to miss any of these events. With one client, the business logic runs as normal and consumes the messages from the topic. It makes sense to log to a database or flat file the ID of the event that was processed. A separate consumer, let’s call it an auditing consumer in this instance, would fetch data from the same topic and make sure that there were no IDs missing from the processed entries of the first application. Though this process can work well, it does require adding logic to our application, and so might not be the best choice.
+
+**In practice, the interceptor that we define is a way to add logic to the producer, consumer, or both by hooking into the normal flow of our clients, intercepting the record, and adding our custom data before it moves along its normal path.**
+
+### 9.6.1 Producer interceptor
+
+The order that we list the classes is important as that is the order in which logic will run. The first interceptor gets the record from the producer client. If the interceptor modified that record, note that it might not be the exact same as the first interceptor received.
+
+Let’s start with looking at the Java interface ``ProducerInterceptor``.
+
+Implementing the interface ``ProducerInterceptor`` allows us to hook into the producer’s interceptor life-cycle. The logic in the ``onSend`` method will be called by the send from the normal producer client we have used so far. For our example, we are going to add a header called 'traceId'.
+
+```java
+class AlertProducerMetricsInterceptor implements ProducerInterceptor<Alert, String> {
+
+	final static Logger log = LoggerFactory.getLogger(AlertProducerMetricsInterceptor.class);
+
+	public ProducerRecord<Alert, String> onSend(ProducerRecord<Alert, String> record) {
+		Headers headers = record.headers();
+		String traceId = UUID.randomUUID().toString();
+		headers.add("traceId", traceId.getBytes());
+		log.info("Created traceId: {}", traceId);
+		return record;
+	}
+	
+	//onAcknowledgement will be called when a record is acknowledged or an error occurs
+	public void onAcknowledgement(RecordMetadata metadata, Exception exception) {
+		if (exception != null) {
+			log.info("producer send exception " + exception.getMessage());
+		} else {
+			log.info("ack'ed topic = {}, partition = {}, offset = {}",
+					metadata.topic(), metadata.partition(), metadata.offset());
+		} }
+	// rest of the code omitted
+}
+```
+
+We also have to modify our existing AlertProducer class to register the new interceptor. The property name interceptor.classes will need to be added to the producer configuration.
+
+```java
+Properties props = new Properties();
+...
+props.put("interceptor.classes","org.kafkainaction.producer.AlertProducerMetricsInterceptor");
+Producer<Alert, String> producer = new KafkaProducer<>(props);
+```
+
+### 9.6.2 Consumer Interceptor
+
+```java
+public class AlertConsumerMetricsInterceptor implements ConsumerInterceptor<Alert, String> {
+	
+	public ConsumerRecords<Alert, String> onConsume(ConsumerRecords<Alert, String> records) {
+		if (records.isEmpty()) {
+			return records;
+		} else {
+			for (ConsumerRecord<Alert, String> record : records) {
+				Headers headers = record.headers();
+				for (Header header : headers) {
+					if ("traceId".equals(header.key())) {
+						log.info("TraceId is: " + new String(header.value()));
+					} 
+				}
+			} 
+		}
+		return records;
+	}
+}
+```
+
+```java
+Properties props = new Properties();
+...
+props.put("group.id", "alertinterceptor");
+props.put("interceptor.classes", "org.kafkainaction.consumer.AlertConsumerMetricsInterceptor");
+```
+
+### 9.6.3 Overriding Clients
+
+If we control the source code for clients that other developers will use, we can also subclass an existing client or create our own that implements the Kafka Producer/Consumer interfaces. The Brave (github.com/openzipkin/brave) project has an example of one such client that adds tracing data at the time of writing. For those not familiar with Brave, it is a library meant to help add instrumentation for distributed tracing. It has the ability to send this data to something like a Zipkin (zipkin.io/) server, which can handle the collection and search of this data. Take a peek at the TracingConsumer class (``github.com/openzipkin/brave/blob/master/instrumentation/kafka-clients/src/main/java/brave/kafka/clients/TracingConsumer.java``) for a real-world example of tracing with Kafka.
+
+Developers wanting to consume messages with the custom logic will use an instance of CustomConsumer which includes a reference to a regular consumer client named kafkaConsumer in this example. The custom logic functionality will be added to provide our needed behavior while still interacting with the traditional client. This code is an example of yet another way to provide tracing for Kafka messages.
+
+```java
+final class CustomConsumer<K, V> implements Consumer<K, V> {
+...
+  final Consumer<K, V> kafkaConsumer;
+  @Override
+  public ConsumerRecords<K, V> poll(final Duration timeout) {
+    //Custom logic here
+    return kafkaConsumer.poll(timeout);  // Normal Kafka consumer used as normal
+  }
+... }
+```
+
+## 9.7 General monitoring tools
+
+### 9.7.1 CMAK / Kafka Manager
+
+Cluster Manager for Apache Kafka (CMAK) (``github.com/yahoo/CMAK``), once known as Kafka Manager, is an interesting project that focuses on managing Kafka as well as being a UI for various administrative activities. One key feature is the ability to manage multiple clusters. When we look at the commands that we have run so far, we have been looking at one cluster. These commands can be harder to scale the more clusters we are running at once.
+
+### 9.7.2 Cruise Control
+
+Some of the most interesting features are how Cruise Control watches our cluster and can generate suggestions on rebalances based on workloads.
+
+### 9.7.3 Confluent Control Center
+
+Confluent Control Center (docs.confluent.io/current/control-center/index.html) is another web-based tool that can help us monitor and manage our clusters.
+
+### 9.7.4 General monitoring needs
+
+A couple of core operating system monitoring needs appear in order to provide a solid foundation for Kafka to run on.
+
+File handles are something to be aware of. This number will include open file handles that Kafka has on our system. There will be a filehandle for each log file on the broker. In other words, the number can add up quickly. When installing Kafka, it is wise to adjust the file descriptors limits. **While entering a large number more than 100,000 is not unheard of, we still might want an alert when that number is almost gone.**
+
+We will want to make sure that we do not have unnecessary swapping of RAM. Kafka likes to be fast! Swapping can affect performance of the brokers, and the less that occurs, the better.
+
+## 9.8 Summary
+
+* Besides the shell scripts that are packaged with Kafka, an administration client also exists to provide API access to important tasks such as creating a topic.
+* Tools such as Kafkacat and the Confluent REST Proxy API also allow ways for developers to interact with the cluster.
+* While Kafka leverages a log for client data at its core, there are still various logs specific to the operation of the broker that should be maintained. Managing these logs (and ZooKeeper logs) should be addressed to provide details for troubleshooting or auditing when needed.
+* Understanding advertised listeners can help determine behavior that at first appears inconsistent for client connections. Listeners alone might not determine how clients connect.
+* Kafka uses JMX for metrics. You can see metrics from clients (producers and consumers) as well as from the brokers.
+* Producer and consumer interceptors can be used to implement crosscutting concerns. One such example would be adding tracing ids for message delivery monitoring.
+
+# Chapter 10. Protecting Kafka
+
+## 10.1 Security Basics
+
+### 10.1.1 Encryption with SSL
+
+So far all of our brokers have supported plain text. In effect, there has been no authentication or encryption over the network. Knowing these facts, it might make more sense when reviewing one of the broker server configuration values. If you look at the current ``server.properties`` file, you will find an entry like the following: ``listeners=PLAINTEXT:localhost//:9092``. That listener is in effect providing a mapping of a protocol to a specific port on the broker. Since the brokers support multiple ports, this will allow us to keep the PLAINTEXT port up and running as we test adding SSL, or other protocols, on a new port.
+
+Setting up SSL between the brokers in our cluster and our clients is one place to start. No extra servers or directories are needed. No client coding changes should be required as the changes will be configuration driven.
+
+### 10.1.2 SSL Between Brokers and Clients
+
+Let’s walk through the process and see what we are going to need to accomplish in order to get our cluster updated with this SSL/TLS:
+* Create a key per broker
+* Create a certificate per broker
+* Use a certificate authority (CA) to sign each broker’s certificate
+* Add the CA to the client truststore
+* Sign each cluster certificate and import that back into its keystore with the CA cert
+* Make sure that clients and the broker have their properties updated to use their new truststores
+
+The term broker0 is included in some file names to suggest that this is only for one specific broker - not one that is meant for every broker.
+
+```shell
+keytool -genkey -noprompt \
+  -alias localhost \
+  -dname "CN=kia.manning.com, OU=TEST, O=MASQUERADE, L=Portland, S=Or, C=US" \
+  -keystore kafka.broker0.keystore.jks \
+  -keyalg RSA \
+  -storepass masquerade \
+  -keypass masquerade \
+  -validity 999
+```
+
+Since we have a key that in a way identifies our broker, we need something to signal that we don’t just have any certificate issued by a random user. One way to verify our certificates is by signing them with a CA.
+
+In our examples, we are going to be our own CA to avoid any need of verifying our identity to a third-party. Our next step is to create our own CA.
+
+```shell
+openssl req -new -x509 -keyout cakey.crt -out ca.crt \
+  -days 999 -subj '/CN=localhost/OU=TEST/O=MASQUERADE/L=Portland/S=Or/C=US' \
+  -passin pass:masquerade -passout pass:masquerade
+```
+
+Now that we have generated our CA, we will use it to sign our certificates for our brokers that we have already made.
+
+```shell
+#Adding our CA to the trusted broker0 truststore
+keytool -keystore kafka.broker0.truststore.jks \
+-alias CA -import -file ca.crt  \
+-keypass masquerade -storepass masquerade
+
+#We extract the key from the broker0 keystore we created earlier
+keytool -keystore kafka.broker0.keystore.jks \
+-alias localhost -certreq -file cert-file \
+-storepass masquerade -noprompt
+
+#We use the CA to sign this broker0 key
+openssl x509 -req -CA ca.crt -CAkey cakey.crt \
+-in cert-file -out signed.crt -days 999 \
+-CAcreateserial -passin pass:masquerade
+
+#We import the CA certificate into our broker0 keystore
+keytool -keystore kafka.broker0.keystore.jks \
+-alias CA -import -file ca.crt \
+-storepass masquerade -noprompt
+
+#We import the signed certificate into the broker broker0 keystore as well
+keytool -keystore kafka.broker0.keystore.jks \
+-alias localhost -import -file signed.crt \
+-storepass masquerade -noprompt
+
+#Adding our CA to the client truststore
+keytool -keystore kafka.client.truststore.jks \
+-alias CA -import -file ca.crt  \
+-keypass masquerade -storepass masquerade
+```
+
+As part of our changes, we need to update the ``server.properties`` configuration file on each broker as well (broker0 shown only):
+
+```properties
+listeners=PLAINTEXT://localhost:9092,SSL://localhost:9093
+ssl.truststore.location=/var/ssl/private/kafka.broker0.truststore.jks
+ssl.truststore.password=masquerade
+ssl.keystore.location=/var/ssl/private/kafka.broker0.keystore.jks
+ssl.keystore.password=masquerade
+ssl.key.password=masquerade
+```
+
+Changes are also needed for our clients:
+
+```properties
+security.protocol=SSL
+ssl.truststore.location=/var/private/ssl/client.truststore.jks
+ssl.truststore.password=masquerade
+```
+
+One of the simplest ways to check our SSL setup is to quickly use the console producers and consumer clients to connect to a topic on our SSL port 9093:
+
+```shell
+bin/kafka-console-producer.sh --bootstrap-server localhost:9093 \
+  --topic kinaction_test_ssl \
+  --producer.config custom-ssl.properties
+bin/kafka-console-consumer.sh --bootstrap-server localhost:9093 \
+  --topic kinaction_test_ssl \
+  --consumer.config custom-ssl.properties
+```
+
+### 10.1.3 SSL Between Brokers
+
+Another detail to research is since we also have our brokers talking to each other, we might want to determine if we need to use SSL for those interactions. ``security.inter.broker.protocol = SSL`` should be used in the server properties if we do not want to continue using plaintext for communication between brokers as well as a potential port change.
+
+## 10.2 Simple Authentication and Security Layer (SASL)
+
+### 10.2.1 Kerberos
+
+Read when required.
+
+### 10.2.2 HTTP Basic Auth
+
+Read when required.
+
+## 10.3 Authorization in Kafka
+
+### 10.3.1 Access Control Lists
+
+As we quickly reviewed, authorization is the process that controls what a user can do. One way to do that is with Access Control Lists (ACLs).
+
+Kafka designed their authorizer to be pluggable to allow users to make their own logic if desired. Kafka does have a class SimpleAclAuthorizer that we will use in our example. With this authorizer, ACLs are stored in ZooKeeper. Brokers asynchronously get this information and cache this metadata in order to make subsequent processing quicker.
+
+```properties
+authorizer.class.name=kafka.security.auth.SimpleAclAuthorizer
+super.users=User:Franz
+```
+
+The Kafka Authorizer CLI tool is included with the other Kafka scripts in our install. ``kafka-acls.sh`` allows us to add, delete, or list current ACLs. An important item to note is that once we configure an Authorizer, ACLs will need to be set or only those considered super users will have access.
+
+Let’s figure out how to make only Team Clueful have access to produce and consume from their own topic: clueful_secrets.
+
+For brevity, we will have 2 users in our example team, Franz and Hemingway.
+
+```shell
+bin/kafka-acls.sh --authorizer-properties \
+  --bootstrap-server localhost:9092 --add \
+  --allow-principal User:Franz --allow-principal User:Hemingway \
+  --operation Read --operation Write --topic clueful_secrets
+```
+
+### 10.3.2 Role-based access control
+
+Role-based access control (RBAC) is an option that the Confluent Platform supports. RBAC is a way to control access based on roles. Users are then assigned to their role according to their needs such as a job duty. Instead of granting each and every user permissions, with RBAC, you manage the privileges assigned to predefined roles.
+
+RBAC can be used as a layer on top of ACLs that we discussed earlier. One of the biggest reasons to consider both RBAC and ACLS is if you need more granular access control in certain areas. While a user might be able to access a resource like a topic due to RBAC, you could still use an ACL to deny access to specific members of that group.
+
+## 10.4 ZooKeeper
+
+We will need to set the value zookeeper.set.acl to true per broker:
+
+```properties
+zookeeper.set.acl=true
+```
+
+Without this setting (or set to false), ACLs would not be created. Note that these ACLs are ZooKeeper specific, not the ACLs we talked about earlier which applied to Kafka resources only.
+
+### 10.4.1 Kerberos Setup
+
+Read when required.
+
+## 10.5 Quotas
+
+Let’s say that users of our web application start to notice that they don’t have any issues with trying over and over to request data. While this is often a good thing for end-users who want to be able to use a service as much as they want without their progress being limited, the cluster might need some protection from users who might use that to their advantage. In our instance, since we made it so the data was locked down to members of our team only, some users have thought of a way to try to prevent others from using the system. In effect, they are trying to use a distributed denial-of-service (DDoS) attack against our system.
+
+We can use quotas to prevent this behavior. One detail to know is that quotas are defined on a per-broker basis. **The cluster does not look across each broker to calculate a total, so a per-broker definition is needed.**
+
+Also, by default, quotas are unlimited.
+
+To set our own custom quotas, we need to know how to identify the "who" to limit and the limit we want to set. Whether or not we have security impacts what options we have for defining who we are limiting. Without security, we are able to use the ``client.id`` property. With security enabled, we can also add the user, and thus, any user and ``client.id`` combinations as well.
+
+There are a couple of types of quotas that we can look at defining for our clients: 
+* network bandwidth;
+* request rate quotas.
+
+### 10.5.1 Network Bandwidth Quota
+
+**Network bandwidth is measured by the number of bytes per second.**
+
+Each user in our competition uses a client id that is specific to their team for any producer or consumer requests from their clients.
+
+We are going to limit the clients using the client id ``clueful`` by setting a ``producer_byte_rate`` and a ``consumer_byte_rate``.
+
+```shell
+bin/kafka-configs.sh  --bootstrap-server localhost:9092 --alter \
+  --add-config 'producer_byte_rate=1048576,consumer_byte_rate=5242880' \
+  --entity-type clients --entity-name clueful
+```
+
+The ``add-config`` parameter is used to set both the producer and consumer rate. The ``entity-name`` applies the rule to our specific clients clueful.
+
+As is often the case, we might need to list our current quotas as well as delete them if they are no longer needed. All of these commands can be completed by sending different arguments to the ``kafka-configs.sh`` script.
+
+```shell
+bin/kafka-configs.sh  --bootstrap-server localhost:9092 \
+  --describe \
+  --entity-type clients --entity-name clueful
+bin/kafka-configs.sh  --bootstrap-server localhost:9092 --alter \
+  --delete-config 'producer_byte_rate,consumer_byte_rate' \
+  --entity-type clients --entity-name clueful
+```
+
+As we start to add quotas we might end up with more than one quota applied to a client. We will need to be aware of the precedence in which various quotas are applied. While it might seem like the most restrictive (lowest bytes allowed) of the quotas would be applied, that is not always the case. The following is the order in which quotas are applied with the highest precedence listed at the top
+* User and client.id provided quotas
+* User quotas
+* Client.id quotas
+
+**For example, if a user named Franz had a user quota limit of 10 MB and a client.id limit of 1 MB, the consumer he used would be allowed 10 MB per second due to the User-defined quota having higher precedence.**
+
+### 10.5.2 Request Rate Quotas
+
+The other quota to examine is on request rate. Why the need for a second quota? While a DDoS attack is often thought of as a network issue, clients making lots of connections could still overwhelm the broker by making CPU-intensive requests (anything related to SSL or message compressed/decompression are good examples). Consumer clients that poll continuously with a setting of ``fetch.max.wait.ms=0`` are also a concern that can be addressed with this quota.
+
+The simplest way to think about this quota is that it represents the total percentage of CPU that a group of related clients is allowed to use.
+
+To set this quota, we use the same entity types and ``add-config`` options as we did with our other quotas. The biggest difference is setting the configuration for ``request_percentage``. A formula that we can use is the number of I/O threads (num.io.threads) + the number of network threads (num.network.threads) * 100% and was listed in the KIP-124 - Request rate quotas wiki.
+
+## 10.6 Data at Rest
+
+Another thing to consider is whether you need to encrypt the data that Kafka writes to disk. By default, Kafka does not encrypt the events it adds to the log.
+
+## 10.7 Summary
+
+* PLAINTEXT, while fine for prototypes, needs to be evaluated before production usage. SSL can help protect your data between clients and brokers and even between brokers.
+* Kerberos can be used to provide a principal identity and might allow you to leverage existing Kerberos environments that exist in an infrastructure already.
+* Access control lists (ACLs) help define which users have specific operations granted. Role-based access control (RBAC) is also an option that the Confluent Platform supports.
+* Quotas can be used with network bandwidth and request rate limits to protect the available resources of a cluster. These quotas can be changed and fine-tuned to allow for normal workloads and peak demand over time.
+
+# Chapter 11. Schema registry
+
