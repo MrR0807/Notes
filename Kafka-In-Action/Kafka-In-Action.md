@@ -2646,3 +2646,223 @@ Another thing to consider is whether you need to encrypt the data that Kafka wri
 
 # Chapter 11. Schema registry
 
+## 11.1 Schema Registry
+
+Let’s dive into what the schema registry provides for us.
+
+First, it might be helpful to start with a comparison of schemas and how they compare with APIs. APIs can act as a contract between two different applications to determine how both sides will interact. Schemas can be thought of similarly, except as the contract for our producer and consumer clients.
+
+The schema registry stores our named schemas and allows us to maintain multiple versions. This is somewhat analogous to the Docker registry, which stores and distributes Docker images. Why is this storage needed? Producers and consumers are not tied together, but they still need a way to discover the schema involved in the data from all clients. Also, by having a remotely hosted registry, users do not have to run their copy locally or attempt to build their own based on a list of schemas.
+
+While schemas can provide a contract for applications, we can also leverage them to prevent breaking changes. Why should we care about data that is moving fast throughout our system? **Kafka’s storage and retention capabilities make it so that consumers can go back to process older messages. These messages might be from months ago, and our consumers would need to handle these various versions of the data.**
+
+Another added benefit of using a registry is that the schemas do not have to be stored with every message. **In other words, we could avoid using a registry by adding the entire schema itself with every message we receive. By not doing this, however, we can save significant memory and disk space.** The same schemas are usually used by many messages, and the desire is not to replicate the storage.
+
+### 11.1.1 Installing Schema Registry
+
+The Schema Registry is a community software offering under the Data Compatibility section of the Confluent Platform and does not currently require a commercial license at this time. The registry itself uses Kafka as its storage layer. Just as with offset storage, the topic is named with an underscore, in this case _schemas, and is considered an internal topic.
+
+![chapter-11-figure-5.png](pictures/chapter-11-figure-5.png)
+
+When thinking about production usage, the schema registry should be hosted on a separate server from your brokers.
+
+### 11.1.2 Registry configuration
+
+Similar to the other components of Kafka, you can set several configuration parameters in a file. If you have installed Kafka on your disk, you can see the defaults located at etc/schema-registry/schema-registry.properties.
+
+For the registry to be successful, it will need to know which topic to store its schemas in and how to work with your specific Kafka cluster.
+
+```shell
+listeners=http://localhost:8081           #Serve our registry at
+kafkastore.connection.url=localhost:2181  #Pointing to our Kafka bootstrap server
+kafkastore.topic=_schemas                 #Default topic for schema storage is used - but we could change it if needed
+debug=true                                #Debug flag can be flipped to get or remove extra error information
+```
+
+Let’s go ahead and start up the schema registry.
+
+```shell
+bin/schema-registry-start.sh \
+  ./etc/schema-registry/schema-registry.properties
+```
+
+## 11.2 Defining a schema
+
+In our context, a schema defines the structure of the data. We will be using Avro for our schemas as we did in earlier chapters. It is important to note that there is no rule that the topic name matches the schema name. Another term you might see in documentation is **subject**. **The subject is the name with which the schema registry uses to refer to a specific schema.**
+
+Practically, I like to think of the subject as a generic bucket. When you update a schema, the same subject is still used, but a new version and ID are created for your specific schema. Compatibility checks are also scoped to the subject level. **As for naming the subject, the default is to use the topic name as the start of the subject name.**
+
+Let’s look at an example of a topic and its related subject for an application using a topic named ``clues``.
+
+Our messages will use a schema named ``Evidence``. In our schema registry, we would have a subject called ``clues-value`` as we use the default of basing the name off of our current topic name. If we are using a schema for the message key as well, we would also have a subject called ``clues-key``. Notice that the key and value are treated as different subjects. Why is this needed? It ensures that we can independently version and change our schemas since the key and value are serialized separately.
+
+### 11.2.1 A new schema
+
+Avro schema for our Alert class that we were using in chapter 3:
+
+```json
+{
+  "namespace": "org.kafkainaction",
+  "type": "record",
+  "name": "Alert", //The name of Java class we will interact with
+  "fields": [
+     {"name": "sensor_id",  "type": "long", "doc":"The unique id that identifies the sensor"},
+     {"name": "time", "type": "long", "doc":"Time the alert was generated as UTC milliseconds from the epoch"},
+     {"name":"status", "type": {
+          "type":"enum", 
+          "name":"alert_status", 
+          "symbols":["Critical","Major","Minor","Warning"]
+        }, 
+     "doc":"The allowed values that our sensors will use to emit current status"}
+ ]
+}
+```
+
+## 11.3 Schema features
+
+The Confluent Schema Registry contains two important components:
+* A REST API (and the underlying application) for storing and fetching schemas.
+* Client libraries for retrieving and managing a local cache of schemas.
+
+### 11.3.1 REST API
+
+The REST API is there to help us manage the following resources related to our schemas in general:
+* Schemas - The ability to retrieve a schema by ID is provided.
+* Subjects - Schemas are registered under a specified subject. We can create, retrieve, and delete versions as well as subjects themselves.
+* Compatibility - The ability to test schemas for compatibility is presented with the resource.
+* Config - Provides the ability to retrieve and update the global and subject-level configuration for our cluster.
+
+To confirm the registry is started, we are going to submit a GET against the REST API.
+
+```shell
+curl -X GET http://localhost:8081/config
+```
+
+Also, we should add a ``Content-Type`` header - ``application/vnd.schemaregistry.v1+json``.
+
+### 11.3.2 Client library
+
+Let’s say that we have a producer that is configured to use an Avro serializer for our messages. The code within the serializer itself calls out to the registry to find the schema it needs. In the case where the schema exists, the client acquires an ID from the registry. Any messages that use that same schema will store the message and the ID together. **Caching is involved for already seen schemas, so our clients do not have to connect to the registry for every message.**
+
+We should already have a registry started locally, so now we need to configure our producer client to use it. With our use case from chapter 3, we had created a schema for an Alert that would be the value of our message. The ``value.serializer`` property needs to be set to use the KafkaAvroSerializer in our case. This class knows how to serialize the custom object using the registry.
+
+```java
+...
+props.put("key.serializer","org.apache.kafka.common.serialization.LongSerializer");
+props.put("value.serializer","io.confluent.kafka.serializers.KafkaAvroSerializer");
+props.put("schema.registry.url", "http://localhost:8081");
+
+Producer<Long, Alert> producer = new KafkaProducer<Long, Alert>(props);
+Alert alert = new Alert();
+alert.setSensorId(12345L);
+alert.setTime(Calendar.getInstance().getTimeInMillis());
+alert.setStatus(alert_status.Critical);
+log.info(alert.toString());
+
+//Notice the generic is now Alert instead of a string.
+ProducerRecord<Long, Alert> producerRecord = new ProducerRecord<Long, Alert>("avrotest", alert.getSensorId(), alert);
+
+producer.send(producerRecord);
+```
+
+On the consumer side, the client will perform a lookup using the ID stored with the message against the registry. The client can again cache the schema to avoid repeated calls to the schema registry. Once the client has successfully found the schema, it can now deserialize the messages it reads. Let’s look at using the same schema we produced to a topic and retrieve it with a consumer to see if we can get that value back without error
+
+```java
+props.put("key.deserializer","org.apache.kafka.common.serialization.LongDeserializer");
+props.put("value.deserializer", "io.confluent.kafka.serializers.KafkaAvroDeserializer");
+props.put("schema.registry.url", "http://localhost:8081");
+props.put(KafkaAvroDeserializerConfig.SPECIFIC_AVRO_READER_CONFIG, true);
+
+KafkaConsumer<Long, Alert> consumer = new KafkaConsumer<Long, Alert>(props);
+
+consumer.subscribe(List.of("avrotest"));
+
+while (keepConsuming) {
+  ConsumerRecords<Long, Alert> records = consumer.poll(Duration.ofMillis(100));
+    for (ConsumerRecord<Long, Alert>  record : records) {
+      log.info("Alert Content = {}, record.value().toString());
+} }
+```
+
+## 11.4 Compatibility rules
+
+One important thing to decide is what compatibility strategy we plan to support. These compatibility rules are here to help guide our schemas as they change over time. While it may seem like a large number of types available, it is nice to know that, in general, **those marked as transitive follow the same rules as those without that suffix. However, the non-transitive types are only checked against the last version of the schema, whereas transitive types are checked against all previous versions.** The only type that stands out is the NONE type. Since compatibility is not really checked and all changes are accepted, you are in a situation where you could have incompatible changes.
+
+| Compatibility Type  | Changes allowed | Check against which schemas | Upgrade first |
+| ------------- | ------------- | ------------- | ------------- |
+| BACKWARD  | Delete fields; Add optional fields  | Last version  | Consumers  |
+| BACKWARD_TRANSITIVE  | Delete fields; Add optional fields  | All previous versions  | Consumers  |
+| FORWARD  | Add fields; Delete optional fields | Last version  | Producers  |
+| FORWARD_TRANSITIVE  | Add fields; Delete optional fields | All previous versions  | Producers  |
+| FULL  | Add optional fields; Delete optional fields | Last version  | Any order  |
+| FULL_TRANSITIVE  | Add optional fields; Delete optional fields | All previous versions  | Any order  |
+| NONE  | All changes are accepted | Compatibility checking disabled  | Depends  |
+
+Let’s look at how we can change our schema for Alert to maintain backward compatibility.
+
+```json
+{"namespace": "org.kafkainaction",
+ "type": "record",
+ "name": "Alert",
+ "fields": [
+     {"name": "sensor_id",  "type": "long", "doc":"The unique id that identifies the sensor"},
+     {"name": "time", "type": "long", "doc":"Time the alert was generated as UTC milliseconds from the epoch"},
+     {"name":"status", "type":{"type":"enum", "name":"alert_status", "symbols":["Critical","Major","Minor","Warning"]},
+     "doc":"The allowed values that our sensors will use to emit current status"},
+    {"name": "recovery_details", "type": "string", "default": "Analyst recovery needed"} //Added new field
+] }
+```
+
+### 11.4.1 Validate schema modifications
+
+To check and validate our schema changes, we have a couple of options: 
+* Use the REST API Compatibility resource endpoints.
+* For JVM-based applications, using a Maven plugin.
+
+Let’s look at an example REST call that will help us check our compatibility for a schema change
+
+```shell
+curl -X POST -H "Content-Type: application/vnd.schemaregistry.v1+json" \
+  --data '{"schema": "{\"type\": \"string\"}"}' \
+  http://localhost:8081/compatibility/subjects/topics-value/versions/latest
+
+{"is_compatible":true}
+```
+
+We can also use a Maven plugin if we are willing to use Maven:
+
+```xml
+<plugin>
+    <groupId>io.confluent</groupId>
+    <artifactId>kafka-schema-registry-maven-plugin</artifactId>
+    <version>6.1.1</version>
+    <configuration>
+        <schemaRegistryUrls>
+            <param>http://localhost:8081</param>
+        </schemaRegistryUrls>
+        <subjects>
+            <Topics-key>src/main/avro/Topics-Key.avsc</Topics-key>
+            <Topics-value>src/main/avro/Topics-Value.avsc</Topics-value>
+        </subjects>
+    </configuration>
+    <goals>
+        <goal>test-compatibility</goal>
+    </goals>
+</plugin>
+```
+
+## 11.5 Alternative to a Schema Registry
+
+Since not all projects start with schemas or with data changes in mind, there are some simple steps that we can take to work around data format changes. One such option is to produce data on a different topic with a breaking change. After consumers have consumed the old format, they can be updated if needed and then start to read from another topic.
+
+## 11.6 Summary
+
+* Kafka has many features and can be used for simple use cases all the way up to being the central system of an enterprise.
+* Schemas can be thought of as APIs or contracts for our data. APIs can change over time, and schemas help version those changes.
+* The Schema Registry, a separate component from Kafka, provides a way to store and retrieve schemas.
+* Avro provides data serialization by leveraging schemas that can be created in a JSON format.
+* As schemas change, compatibility rules help users know whether the changes are BACKWARD or FORWARD (to name a few examples) compatible.
+* If schemas are not an option, different topics can be used to handle different versions of data.
+
+# Chapter 12. Stream processing with Kafka Streams and ksqlDB
+
