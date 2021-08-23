@@ -2866,3 +2866,272 @@ Since not all projects start with schemas or with data changes in mind, there ar
 
 # Chapter 12. Stream processing with Kafka Streams and ksqlDB
 
+This chapter introduces a simple banking application - the processing of funds movement in and out of the accounts.
+
+In our application, we will implement a Kafka Streams topology to process transaction requests submitted to the transaction-request topic *atomically*.
+
+Our business requirement states that we must check whether the funds are sufficient for every request received before updating the account’s balance being processed. As per requirements, our application can’t process two transactions simultaneously for the same account. This would create a race condition in which we cannot guarantee we can enforce the balance check before withdrawing funds. We will leverage Kafka’s inter-partition ordering guaranties to implement serializable (ordered) processing of transactions for a particular account.
+
+We will have a data generator program that writes simulated transaction requests to the Kafka topic with a key equal to the transaction’s account number. Therefore, we can ensure all transactions will be processed by a single instance of our Transaction Service, no matter how many applications are concurrently running. Kafka Streams won’t commit any message offset until it completes our business logic of managing a transaction request.
+
+Let’s introduce the Processor API by implementing a transformer component from Kafka Streams. This utility allows us to process events one by one while interacting with a State Store – another element of Kafka Streams that helps us persist our account balance in a local instance of an embedded database - RocksDB.
+
+Next, we will demonstrate how to load reference account details into an account topic using ksqlDB’s INSERT INTO statement - an alternative way to produce data to Kafka topics. Finally, we will write a second Stream Processor to generate a detailed transaction statement enriched with account details. Rather than creating another Kafka Streams application, we will leverage ksqlDB to declare a stream processor that will enrich our transactional data in real-time with our referential data coming from the account topic. This section aims to show how we can use an SQL-like query language to create stream processors (with similar functionality to Kafka Streams) without compiling and running any code.
+
+## 12.1 Kafka Streams
+
+Kafka Streams is a library and not a standalone cluster.
+
+Kafka Streams is different from some frameworks that use micro-batches (a small group of records together). **The Streams API performs per-record (or per message) processing.** You don’t want to wait for a batch to form or delay that work if you’re concerned about your system reacting to the events as soon as they are received.
+
+As we consider how to implement our applications, one of the first questions that come to mind is choosing a producer/consumer client over using the Kafka Streams library. Although the Producer API is excellent for taking precise control of how your data gets to Kafka, and the Consumer API for consuming events, sometimes you might not want to implement every aspect of the stream processing framework yourself. Instead of using lower-level APIs for stream processing, we want to use an abstraction layer that will allow us to work with our topics more efficiently.
+
+**Kafka Streams might be a perfect option if our requirements include data transformations, with potentially complex logic, consuming and producing data back into Kafka.** Streams offer a choice between a functional DSL (domain-specific language) and the more imperative Processor API. Let’s take a look at starting to use the Kafka Streams DSL.
+
+### 12.1.1 KStreams API DSL
+
+The first API that we’re going to look at is the KStreams API. Kafka Streams is a data processing system designed around the concept of a graph - one that **doesn’t have any cycles in it. It has starting node and an ending node. Data flows from the start node to the end node.** This graph has nodes, or processors, along the way to process and transform data. Let’s take a look at a scenario where we can model a data processing process as a graph.
+
+We have an application that gets transactions from a payment system. At the beginning of our graph, we have to have a source for this data. Since we’re using Kafka as a source of data, a Kafka topic will be our starting point.
+
+This transaction request event is needed to update the balance for a particular account. The results of the transaction processor will go into two Kafka topics - successful transactions will land in "transactions-success" and unsuccessful transactions in "transaction-failure."
+
+We use the ``StreamsBuilder`` object in order to create a stream from the Kafka topic ``transaction-request``. ``transaction-request`` will be the source of our data and the logical starting point of our processing.
+
+```java
+StreamsBuilder builder = new StreamsBuilder()
+KStream<String, Transaction> transactionStream =builder.stream("transaction-request",Consumed.with(stringSerde, transactionRequestAvroSerde));
+
+final KStream<String, TransactionResult> resultStream = transactionStream.transformValues(() -> new TransactionTransformer());
+resultStream
+    .filter(TransactionProcessor::success)
+    .to(this.transactionSuccessTopicName, Produced.with(Serdes.String(), transactionResultAvroSerde));
+
+resultStream
+    .filterNot(TransactionProcessor::success)
+    .to(this.transactionFailedTopicName, Produced.with(Serdes.String(), transactionResultAvroSerde));
+
+KafkaStreams kafkaStreams = new KafkaStreams(builder.build(), props);
+//This is meant to continue in the same way we have consumer clients poll in an infinite loop.
+kafkaStreams.start();
+Thread.sleep(000);
+kafkaStreams.close();
+```
+
+Let’s look at another practical example. Imagine we simply want to log transaction requests in the console without processing them.
+
+```java
+KStream<String, Transaction> transactionStream = builder.stream("transaction-request", Consumed.with(stringSerde, transactionRequestAvroSerde));
+    
+transactionStream.print(Printed.<String, Transaction>toSysOut().withLabel("transactions logger"));
+
+KafkaStreams kafkaStreams = new KafkaStreams(builder.build(), props);
+
+//Doing a cleanup of the local data store ensures that we’re running without past state.
+kafkaStreams.cleanUp();
+kafkaStreams.start();
+
+// Note: In real applications you would register a shutdown hook
+// that would trigger the call to `app.close()` rather than
+// using the sleep-then-close example we show here.
+Thread.sleep(1000);
+kafkaStreams.close();
+```
+
+This flow is so simple that we just write out the prices to the console, although it could have been an API call to send an SMS or email. **Notice the added call to ``cleanup`` before starting the application. This method provides a way to remove the local state stores for our application. Just remember to only do this before the start or after closing the application.**
+
+### 12.1.2 KTable API
+
+*Note*. Doesn't explain well. Better explanation is in official documentation:
+
+A KTable is an abstraction of a changelog stream, where each data record represents an update. More precisely, the value in a data record is interpreted as an “UPDATE” of the last value for the same record key, if any (if a corresponding key doesn’t exist yet, the update will be considered an INSERT). Using the table analogy, a data record in a changelog stream is interpreted as an UPSERT aka INSERT/UPDATE because any existing row with the same key is overwritten. Also, null values are interpreted in a special way: a record with a null value represents a “DELETE” or tombstone for the record’s key.  To illustrate, let’s imagine the following two data records are being sent to the stream:
+
+```shell
+("alice", 1) --> ("alice", 3)
+```
+
+If your stream processing application were to sum the values per user, it would return 3 for alice. Why? Because the second data record would be considered an update of the previous record. Compare this behavior of KTable with the illustration for KStream above, which would return 4 for alice.
+
+```java
+StreamsBuilder builder = new StreamsBuilder();
+KTable<String, Transaction> transactionStream = builder.stream("transaction-request",
+                Consumed.with(stringSerde, transactionRequestAvroSerde),
+                Materialized.as("latest-transactions"));
+KafkaStreams kafkaStreams = new KafkaStreams(builder.build(), props);
+```
+
+### 12.1.3 GlobalKTable API
+
+Although similar to KTable, the GlobalKTable is populated with data from all partitions of a topic.
+
+The idea of a global table is to make the data available to our application regardless of which partition it is mapped to.
+
+```java
+...
+StreamsBuilder builder = new StreamsBuilder();
+final KStream<String, MailingNotif> notifiers = builder.stream("mailingNotif");
+final GlobalKTable<String, Customer> customers = builder.globalTable("customers");
+
+lists
+    .join(customers, (mailingNotifID, mailing) -> mailing.getCustomerId(), mailing, customer) -> new Email(mailing, customer))
+    .peek((key, email) -> emailService.sendMessage(email));
+
+KafkaStreams kafkaStreams = new KafkaStreams(builder.build(), props);
+kafkaStreams.cleanUp();
+kafkaStreams.start();
+Thread.sleep(1000);
+kafkaStreams.close();
+```
+
+### 12.1.4 Processor API
+
+It’s important to note that when reviewing code for another streaming application or even looking at getting into lower abstraction levels in our own logic, we might run into examples from the Processor API. This is considered not as easy to use as the DSL discussed in the previous sections—but at the benefit of giving us more options and power over our logic.
+
+```java
+import static org.apache.kafka.streams.Topology.AutoOffsetReset.LATEST;
+public static void main(String[] args) throws Exception {
+//...
+final Serde<String> stringSerde = Serdes.String();
+Deserializer<String> stringDeserializer = stringSerde.deserializer();
+Serializer<String> stringSerializer = stringSerde.serializer();
+
+Topology topology = new Topology(); //Start with Topology object to create our flow
+//Setting offset to LATEST,  
+topology = topology.addSource(LATEST, 
+        "input",                //This is the name of the node that we can refer to in later steps.
+        stringDeserializer,     //This is a deserializer for our key
+        stringDeserializer,     //This is the deserializer for our value
+        "input-topic");         //This is the Kafka topic that we will read from to start
+}
+```
+
+In the example, we’re naming the node as ``input`` and reading from the topic ``input-topic``. Our next step is to add a processing node.
+
+```java
+topology = topology.addProcessor("testProcessor",   //This is the name we’re giving to our new processor node
+  () -> new TestProcessor(),                        //This is used to create a processor instance from a ProcessorSupplier.
+  "input");                                         //This can be one or a list of nodes that will send data to this node.
+```
+
+The sink is where we place our data at the end of processing. The topic name and the key and value serializers should be familiar from our earlier work with producer clients. As we did with the other parts of the topology, we define testProcessor as one of the nodes from which we will get data in our flow.
+
+Shows how we define two separate sinks to complete our topology.
+
+```java
+topology = topology.addSink("Output-Sink1",         //We’re adding a sink node name
+  "sink-topic1",                                    //This is the name of the output topic we plan to use
+  stringSerializer,                                 //This is a serializer for our key
+  stringSerializer,                                 //This is a serializer for our value
+  "testProcessor");                                 //This is the node that will feed us data to write to the sink
+
+topology = topology.addSink("Output-Sink2",         //We add a second sink to our topology
+  "sink-topic2",
+  stringSerializer,
+  stringSerializer,
+  "testProcessor");
+
+KafkaStreams kafkaStreams = new KafkaStreams(topology, props);
+kafkaStreams.cleanUp();
+kafkaStreams.start();
+Thread.sleep(1000);
+kafkaStreams.close();
+```
+
+Our ``TestProcessor`` enables us to forward the flow, including the key and value, to the sink named ``Output-Sink2``.
+
+```java
+public class TestProcessor extends AbstractProcessor<String, String> {
+    @Override
+    public void process(String key, String value) {
+      context().forward(key, value, To.child("Output-Sink2"));
+    } 
+}
+```
+
+### 12.1.5 Kafka Streams Architecture
+
+While our example application only used a single instance, streaming applications can scale by increasing the number of threads and deploying more than one instance.
+
+As with the number of instances of a consumer in the same consumer group, our application’s parallelism is related to the number of partitions in its source topic. **For example, if our starting input topic has eight partitions, we would plan to scale to eight instances of our application. Unless we wanted to have an instance ready in case of failure, we wouldn’t have more instances because they wouldn’t take any traffic.**
+
+**Kafka Streams supports at-least-once and exactly-once processing semantics.**
+
+If your application logic depends on exactly-once semantics, having your Kafka Streams application within the walls of the Kafka ecosystem helps ensure this possibility. Streams API can treat retrieving topic data, updating the stores, and writing to another topic as one atomic operation, external systems cannot.
+
+As a reminder, with ``at-least-once`` delivery, it is crucial to note that although data should not be lost, you might have to prepare for the situation where your messages are processed more than once. **At the time of writing, ``at-least-once`` delivery is the default mode, so make sure you’re okay with addressing duplicate data in your application logic.**
+
+## 12.2 ksqlDB: An event streaming database
+
+ksqlDB (ksqldb.io) is an event streaming database. ksqlDB exposes the power of Kafka to anyone who has ever used SQL.
+
+Let’s dig into the types of queries that ksqlDB supports.
+
+### 12.2.1 Queries
+
+Pull queries fit well when used in a synchronous flow like request-and-response patterns. We can ask for the current state of the view that has been materialized by events that have arrived. The query returns a response and is considered completed.
+
+Push queries, on the other hand, fit in well when used in asynchronous patterns. In effect, we subscribe much like we did when using a consumer client. As new events arrive, our code can respond with the necessary actions. The connection stays alive and accepts changes over time. The term ``EMIT CHANGES`` is used in our SQL statement to reflect a push query.
+
+### 12.2.2 Local development
+
+Though I’ve tried to avoid bringing in extra technologies besides Kafka proper, the easiest way to go with ksqlDB local is with Confluent’s Docker images. Located at ksqldb.io/quickstart.html, you can download images that include a complete Kafka setup or just ksqldb-server and ksqldb-cli.
+
+Now, you should be able to use the ksqldb-cli to create an interactive session with your command terminal to your ksql server.
+
+```shell
+docker exec -it ksqldb-cli ksql http://ksqldb-server:8088
+> SET 'auto.offset.reset'='earliest'; #Set offset reset policy to earlies allows ksqlDB to process data already available in Kafka topics.
+```
+
+Here is an example of a situation where we can start to discover ksqlDB with an extension of our transaction processor. We’ll learn how, using existing data from processed transactions, we can generate a statement report. The statement report will include extended (or enriched) information about the transaction’s account. We will achieve this by joining successful transactions with account data. Let’s start with creating a stream of a successful transaction from Kafka’s topic.
+
+```sql
+CREATE STREAM TRANSACTION_SUCCESS (
+  numkey string KEY,                                        --1
+  transaction STRUCT<guid STRING, account STRING,
+                    amount DECIMAL(9, 2), type STRING,
+                    currency STRING, country STRING>,       --2
+  funds STRUCT<account STRING,
+               balance DECIMAL(9, 2)>,
+  success boolean,
+  errorType STRING
+) WITH (
+  KAFKA_TOPIC='transaction-success',                        --3
+  VALUE_FORMAT='avro');                                     --4
+```
+
+1) We need to tell ksqlDB about the record key.
+2) ksqlDB supports work with nested data. In our Kafka Streams example, we used a nested type Transaction in the TransactionResult class. Using the STRUCT keyword, we define a structure of nested type.
+3) using the KAFKA_TOPIC attribute of the WITH clause, we can specify which topic to read data from.
+4) ksqlDB integrates with Confluent Schema Registry and natively supports schemas in Avro, Protobuf, JSON, and JSON-Schema formats. Using Schema Registry integration, ksqlDB, in many cases, can use schemas to infer or discover stream or table structure.
+
+As mentioned, we need to use comprehensive information about accounts. In contrast to the history of successful transactions, we are not interested in a complete history of account information changes. We need to have a lookup of accounts by account id. For that purpose, we can use TABLE in ksqlDB.
+
+```sql
+CREATE TABLE ACCOUNT (number INT PRIMARY KEY)               -- We need to choose a primary key for our table. The account number field will be used as a key.
+WITH (KAFKA_TOPIC = 'account', VALUE_FORMAT='avro');        -- Using Avro schema, ksqDB can learn about fields of the account table.
+```
+
+```sql
+CREATE STREAM TRANSACTION_STATEMENT AS
+    SELECT *
+    FROM TRANSACTION_SUCCESS
+    LEFT JOIN ACCOUNT
+        ON TRANSACTION_SUCCESS.numkey = ACCOUNT.numkey
+    EMIT CHANGES;
+```
+
+Despite the SQL statement looking similar to SQL statements you may have run in the past, I want to draw your attention to a small but mighty difference. The use of ``EMIT CHANGES`` creates what we had previously discussed as a **push query**. Instead of returning to our command prompt, this stream will be running in the background! To test our query, we need a new instance of the ``ksqldb-cli`` to insert data into our stream to continue producing test transactions. The Kafka Streams application will process those transactions. In case of success, the Kafka Streams processor will write the result to transaction-success topic, where it will be picked up by ksqlDB and used in TRANSACTION_SUCCESS and TRANSACTION_STATEMENT streams.
+
+### 12.2.3 ksqlDB architecture
+
+Not interested.
+
+## 12.3 Going further
+
+## 12.4 Summary
+
+* Kafka Streams provides stream processing in applications with per-record (or per message) processing. It is an abstraction layer over the producer and consumer clients.
+* Kafka Streams offers a choice between a functional DSL (domain-specific language) and the more imperative Processor API. Streams can be modeled as a topology using the Kafka Streams DSLs.
+* ksqlDB is an event streaming database that exposes the power of Kafka to those who already know SQL. ksqlDB queries run continuously and can help us quickly prototype streaming applications.
+* Kafka Improvement Proposals are a great way to see what changes are being requested and implemented in future Kafka versions.
