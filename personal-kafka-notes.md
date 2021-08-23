@@ -1,3 +1,38 @@
+# Broker Properties
+
+## High
+
+* advertised.host.name
+* advertised.listeners
+* advertised.port
+* auto.create.topics.enable
+* auto.leader.rebalance.enable
+* background.threads
+* broker.id
+* compression.type
+* control.plane.listener.name
+* delete.topic.enable
+* host.name
+* leader.imbalance.check.interval.seconds
+* leader.imbalance.per.broker.percentage
+* listeners
+* log.dir
+* log.dirs
+* log.flush.interval.messages
+* log.flush.interval.ms
+* log.flush.offset.checkpoint.interval.ms
+* log.flush.scheduler.interval.ms
+* log.flush.start.offset.checkpoint.interval.ms
+* log.retention.bytes
+* log.retention.hours
+* log.retention.minutes
+* log.retention.ms
+* log.roll.hours
+* log.roll.jitter.hours
+* log.roll.jitter.ms
+
+TODO
+
 # Kafka Producer Properties
 
 ## High
