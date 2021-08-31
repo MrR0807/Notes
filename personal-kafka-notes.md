@@ -221,3 +221,12 @@ TODO
 * ssl.keymanager.algorithm
 * ssl.secure.random.implementation
 * ssl.trustmanager.algorithm
+
+----------------------------------------------------------------------------------------------------
+
+Sending large files:
+
+Consumer side: ``fetch.message.max.bytes`` 
+Broker side: ``replica.fetch.max.bytes``
+Broker side: ``message.max.bytes``
+Broker side (per topic): ``max.message.bytes``
