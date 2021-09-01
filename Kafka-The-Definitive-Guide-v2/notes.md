@@ -281,7 +281,7 @@ There are only two requirements in the broker configuration to allow multiple Ka
 * The first is that all brokers must have the same configuration for the ``zookeeper.connect`` parameter. This specifies the Zookeeper ensemble and path where the cluster stores metadata.
 * The second requirement is that all brokers in the cluster must have a unique value for the ``broker.id`` parameter. **If two brokers attempt to join the same cluster with the same ``broker.id``, the second broker will log an error and fail to start.**
 
-## OS Tuning`
+## OS Tuning
 
 Too low level for now.
 
