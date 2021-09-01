@@ -265,3 +265,38 @@ A single Kafka server works well for local development work, or for a proof-of- 
 
 ### How Many Brokers?
 
+The appropriate size for a Kafka cluster is determined by several factors. Typically the size of your cluster will be bound on the following key areas: 
+* Disk Capacity 
+* Replica Capacity per broker 
+* CPU Capacity 
+* Network Capacity
+
+The first factor to consider is how much disk capacity is required for retaining messages and how much storage is available on a single broker. If the cluster is required to retain 10 TB of data and a single broker can store 2 TB, then the minimum cluster size is five brokers. In addition, using replication will increase the storage requirements by at least 100%, depending on the replication factor.
+
+**Currently, in a well configured environment, it is recommended to not have more than 14,000 partitions per broker and 1 million replicas per cluster.**
+
+## Broker Configuration
+
+There are only two requirements in the broker configuration to allow multiple Kafka brokers to join a single cluster:
+* The first is that all brokers must have the same configuration for the ``zookeeper.connect`` parameter. This specifies the Zookeeper ensemble and path where the cluster stores metadata.
+* The second requirement is that all brokers in the cluster must have a unique value for the ``broker.id`` parameter. **If two brokers attempt to join the same cluster with the same ``broker.id``, the second broker will log an error and fail to start.**
+
+## OS Tuning`
+
+Too low level for now.
+
+## Production Concerns
+
+### Garbage Collector Options
+
+### Datacenter Layout
+
+### Colocating Applications on Zookeeper
+
+**Self-Note**.
+
+Most of this information will soon be irrelevant due to migration off Zookeeper.
+
+# Chapter 3. Kafka Producers: Writing Messages to Kafka
+
+
