@@ -299,4 +299,74 @@ Most of this information will soon be irrelevant due to migration off Zookeeper.
 
 # Chapter 3. Kafka Producers: Writing Messages to Kafka
 
+## Producer Overview
 
+**The different requirements will influence the way you use the producer API to write messages to Kafka and the configuration you use.**
+
+While the producer API is very simple, there is a bit more that goes on under the hood of the producer when we send data. Figure 3-1 shows the main steps involved in sending data to Kafka.
+
+![chapter-3-figure-1.png](pictures/chapter-3-figure-1.png)
+
+We start producing messages to Kafka by creating a ``ProducerRecord``, which must include the topic we want to send the record to and a value. Optionally, we can also specify a key and/or a partition. Once we send the ``ProducerRecord``, the first thing the producer will do is serialize the key and value objects to ByteArrays so they can be sent over the network.
+
+Next, the data is sent to a partitioner. If we specified a partition in the ``ProducerRecord``, the partitioner doesn’t do anything and simply returns the partition we specified. If we didn’t, the partitioner will choose a partition for us, **usually based on the ``ProducerRecord`` key.** Once a partition is selected, the producer knows which topic and partition the record will go to. It then adds the record to a batch of records that will also be sent to the same topic and partition. **A separate thread is responsible for sending those batches of records to the appropriate Kafka brokers.**
+
+When the broker receives the messages, it sends back a response. **If the messages were successfully written to Kafka, it will return a ``RecordMetadata`` object with the topic, partition, and the offset of the record within the partition. If the broker failed to write the messages, it will return an error.** When the producer receives an error, it may retry sending the message a few more times before giving up and returning an error.
+
+## Constructing a Kafka Producer
+
+A Kafka producer has three mandatory properties.
+
+### bootstrap.servers
+
+List of ``host:port`` pairs of brokers that the producer will use to establish initial connection to the Kafka cluster. This list doesn’t need to include all brokers, since the producer will get more information after the initial connection. **But it is recommended to include at least two.**
+
+### key.serializer
+
+Name of a class that will be used to serialize the keys of the records we will produce to Kafka. Kafka brokers expect byte arrays as keys and values of messages.
+
+**``key.serializer`` should be set to a name of a class that implements the ``org.apache.kafka.common.serialization.Serializer`` interface.** The producer will use this class to serialize the key object to a byte array.
+
+The Kafka client package includes ``ByteArraySerializer``, ``StringSerializer``, and ``IntegerSerializer``.
+
+### value.serializer
+
+Name of a class that will be used to serialize the values of the records we will produce to Kafka. The same way you set ``key.serializer``.
+
+The following code snippet shows how to create a new producer by setting just the mandatory parameters and using defaults for everything else:
+
+```java
+Properties kafkaProps = new Properties();
+kafkaProps.put("bootstrap.servers", "broker1:9092,broker2:9092");
+kafkaProps.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer");
+kafkaProps.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
+var producer = new KafkaProducer<String, String>(kafkaProps);
+```
+
+Once we instantiate a producer, it is time to start sending messages. **There are three primary methods of sending messages**:
+* **Fire-and-forget** - We send a message to the server and don’t really care if it arrives successfully or not. In case of non-retryable errors or timeout, messages will get lost and the application will not get any information or exceptions about this.
+* **Synchronous send** - We send a message with ``send()`` method returns a ``Future`` object, and we use ``get()`` to wait on the future and see if the ``send()`` was successful or not.
+* **Asynchronous send** - We call the ``send()`` method with a callback function, which gets triggered when it receives a response from the Kafka broker.
+
+**While all the examples in this chapter are single threaded, a producer object can be used by multiple threads to send messages.**
+
+## Sending a Message to Kafka
+
+The simplest way to send a message is as follows:
+
+```java
+var record = new ProducerRecord<String, String>("CustomerCountry", "Precision Products", "France");
+try {
+    producer.send(record);
+} catch (Exception e) {
+    e.printStackTrace();
+}
+```
+
+The producer accepts ``ProducerRecord`` objects, so we start by creating one. Here we use one that requires the name of the topic we are sending data to, which is always a string, and the key and value we are sending to Kafka, which in this case are also strings. **The types of the key and value must match our key serializer and value serializer objects.**
+
+We use the producer object ``send()`` method to send the ``ProducerRecord``. **The message will be placed in a buffer and will be sent to the broker in a separate thread.** The ``send()`` method returns a Java ``Future`` object with ``RecordMetadata``, but since we simply ignore the returned value, we have no way of knowing whether the message was sent successfully or not.
+
+While we ignore errors that may occur while sending messages to Kafka brokers or in the brokers themselves, we may still get an exception if the producer encountered errors before sending the message to Kafka. Those can be a ``SerializationException`` when it fails to serialize the message, a ``BufferExhaustedException`` or ``TimeoutException`` if the buffer is full, or an ``InterruptException`` if the sending thread was interrupted.
+
+### Sending a Message Synchronously
