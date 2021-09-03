@@ -370,3 +370,135 @@ We use the producer object ``send()`` method to send the ``ProducerRecord``. **T
 While we ignore errors that may occur while sending messages to Kafka brokers or in the brokers themselves, we may still get an exception if the producer encountered errors before sending the message to Kafka. Those can be a ``SerializationException`` when it fails to serialize the message, a ``BufferExhaustedException`` or ``TimeoutException`` if the buffer is full, or an ``InterruptException`` if the sending thread was interrupted.
 
 ### Sending a Message Synchronously
+
+Sending a message synchronously is simple but still allows the producer to catch exceptions when Kafka responds to the produce request with an error, or when send retries were exhausted. The main tradeoff involved is performance. **Depending on how busy the Kafka cluster is, brokers can take anywhere from 2ms to few seconds to respond to produce requests.** If you send messages synchronously, the sending thread will spend this time waiting and doing nothing else.
+
+This leads to very poor performance and as a result, **synchronous sends are not used in production applications (but are very common in code examples).** The simplest way to send a message synchronously is as follows:
+
+```java
+ProducerRecord<String, String> record = new ProducerRecord<>("CustomerCountry", "Precision Products", "France");
+try {
+    producer.send(record).get();
+} catch (Exception e) {
+    e.printStackTrace();
+}
+```
+
+``KafkaProducer`` has two types of errors:
+* Retriable errors are those that can be resolved by sending the message again. For example, a connection error can be resolved because the connection may get reestablished. A “not leader for partition” error can be resolved when a new leader is elected for the partition and the client metadata is refreshed. **KafkaProducer can be configured to retry those errors automatically, so the application code will get retriable exceptions only when the number of retries was exhausted and the error was not resolved.**
+* Non-retriable errors. Some errors will not be resolved by retrying. For example, “message size too large.” In those cases, ``KafkaProducer`` will not attempt a retry and will return the exception immediately.
+
+### Sending a Message Asynchronously
+
+Suppose the network roundtrip time between our application and the Kafka cluster is 10ms. If we wait for a reply after sending each message, sending 100 messages will take around 1 second. On the other hand, if we just send all our messages and not wait for any replies, then sending 100 messages will barely take any time at all.
+
+In order to send messages asynchronously and still handle error scenarios, the producer supports adding a callback when sending a record. Here is an example of how we use a callback:
+
+```java
+private class DemoProducerCallback implements Callback {
+    @Override
+    public void onCompletion(RecordMetadata recordMetadata, Exception e) {
+        if (e != null) {
+            e.printStackTrace();
+        }
+} }
+
+ProducerRecord<String, String> record = new ProducerRecord<>("CustomerCountry", "Biomedical Materials", "USA");
+producer.send(record, new DemoProducerCallback());
+```
+
+To use callbacks, you need a class that implements the ``org.apache.kafka.clients.producer.Callback`` interface, which has a single function — ``onCompletion()``.
+
+If Kafka returned an error, ``onCompletion()`` will have a non-null exception. Here we “handle” it by printing, but production code will probably have more robust error handling functions.
+
+**The callbacks execute in the producer’s main thread.** This guarantees that when we send two messages to the same partition one after another, their callbacks will be executed in the same order that we sent them. But it also means that the callback should be reasonably fast, to avoid delaying the producer and preventing other messages from being sent. **If you want to perform a blocking operation in the callback, it is recommended to use another thread and perform the operation concurrently.**
+
+## Configuring Producers
+
+Some of the parameters have a significant impact on memory use, performance, and reliability of the producers. We will review those here.
+
+### client.id
+
+A logical identifier for the client and the application it is used in. This can be any string, and will be used by the brokers to identify messages sent from the client. It is used in logging and metrics, and for quotas.
+
+**Choosing a good client name will make troubleshooting much easier.**
+
+### acks
+
+The acks parameter controls how many partition replicas must receive the record before the producer can consider the write successful. **By default, Kafka will respond that the record was written successfully after the leader received the record (Release 3.0 of Apache Kafka is expected to change this default).** This option has a significant impact on the durability of written messages, and depending on your use-case, the default may not be the best choice.
+* **acks=0**, the producer will not wait for a reply from the broker before assuming the message was sent successfully. This means that if something went wrong and the broker did not receive the message, the producer will not know about it and the message will be lost.
+* **acks=1**, the producer will receive a success response from the broker the moment the leader replica received the message. If the message can’t be written to the leader (e.g., if the leader crashed and a new leader was not elected yet), the producer will receive an error response and can retry sending the message, avoiding potential loss of data. The message can still get lost if the leader crashes and a replica without this message gets elected as the new leader (via **unclean leader election**). In this case, throughput depends on whether we send messages synchronously or asynchronously. If our client code waits for a reply from the server (by calling the get() method of the Future object returned when sending a message) it will obviously increase latency significantly (at least by a network roundtrip). If the client uses callbacks, latency will be hidden, but throughput will be limited by the number of in-flight messages (i.e., how many messages the producer will send before receiving replies from the server).
+* **acks=all**, the producer will receive a success response from the broker once all in-sync replicas received the message. This is the safest mode since you can make sure more than one broker has the message and that the message will survive even in the case of crash.
+
+You will see that with lower and less reliable acks configuration, the producer will be able to send records faster. **This means that you trade off reliability for producer latency.** However, **end to end latency** is measured from the time a record was produced until it is available for consumers to read and **is identical for all three options.** The reason is that, in order to maintain consistency, Kafka will not allow consumers to read records until they were written to all in-sync replicas. Therefore, if you care about end-to-end latency, rather than just the producer latency, there is no trade-off to make: **You will get the same end-to-end latency if you choose the most reliable option.**
+
+**Self-Note**. Therefore, if you want to impact end-to-end latency, you'd have to reduce in-sync replicas count.
+
+### Message Delivery Time
+
+The producer has multiple configuration parameters that interact to control one of the behaviors that are of most interest to developers: **How long will it take until a call to ``send()`` will succeed or fail.** This is the time we are willing to spend until Kafka responds successfully, or until we are willing to give up and admit defeat.
+
+Since **Apache Kafka 2.1**, we divide the time spent sending a ``ProduceRecord`` into two time intervals that are handled separately: 
+* Time until an async call to ``send()`` returns - during this interval the thread that called ``send()`` will be blocked. 
+* From the time an async call to ``send()`` returned successfully until the callback is triggered (with success or failure). This is also from the point a ``ProduceRecord`` was placed in a batch for sending, until Kafka responds with success, non-retriable failure, or we run out of time allocated for sending.
+
+The flow of data within the producer and how the different configuration parameters affect each other can be summarized in a diagram:
+
+![chapter-3-fiture-2.png](pictures/chapter-3-fiture-2.png)
+
+#### max.block.ms
+
+This parameter controls how long the producer will block when calling ``send()`` and when explicitly requesting metadata via ``partitionsFor()``. Those methods block when the producer’s send buffer is full or when metadata is not available. **When ``max.block.ms`` is reached, a timeout exception is thrown.**
+
+### delivery.timout.ms
+
+This configuration will limit the amount of time spent from the point a record is ready for sending (``send()`` returned successfully and the record is placed in a batch) until either the broker responds or we give up, including time spent on retries. As you can see in Figure 3-2, this time should be greater than ``linger.ms`` and ``request.time out``. If you try to create a producer with inconsistent timeout configuration, you will get an exception. Messages can be successfully sent much faster than ``delivery.timeout.ms`` and typically will. **This configuration is an upper bound.**
+
+If the producer exceeds ``delivery.timeout.ms`` while retrying, **the callback will be called with the exception that corresponds to the error that the broker returned before retrying.** 
+If ``delivery.timeout.ms`` is exceeded while the record batch was still waiting to be sent, **the callback will be called with a timeout exception.**
+
+**You can configure the delivery timeout to the maximum time you’ll want to wait for a message to be sent - typically few minutes, and then leave the default number of retries (virtually infinite). With this configuration, the producer will keep retrying for as long as it has time to keep trying (or until it succeeds). This is a much more reasonable way to think about retries. Our normal process for tuning retries is: “In case of a broker crash, it typically takes leader election 30 seconds to complete, so lets keep retrying for 120s just to be on the safe side.” Instead of converting this mental dialog to number of retries and time between retries, you just configure deliver.timeout.ms to 120s.**
+
+#### request.timeout.ms
+
+This parameter control how long the producer will wait for a reply from the server when sending data. **Note that this is the time spent waiting on each produce request before giving up - it does not include retries, time spent before sending, etc.** If the timeout is reached without reply, the producer will either retry sending or complete the callback with a TimeoutException.
+
+#### retries and retry.backoff.ms
+
+When the producer receives an error message from the server, the error could be transient (e.g., a lack of leader for a partition). In this case, the value of the retries parameter will control how many times the producer will retry sending the message before giving up and notifying the client of an issue. **By default, the producer will wait 100ms between retries, but you can control this using the ``retry.backoff.ms parameter``.**
+
+**We recommend against using these parameters in current version of Kafka.** **Instead**, test how long it takes to recover from a crashed broker (i.e., how long until all partitions get new leaders) and **set ``delivery.timeout.ms``** such that the total amount of time spent retrying will be longer than the time it takes the Kafka cluster to recover from the crash — otherwise, the producer will give up too soon.
+
+In general, because the producer handles retries for you, there is no point in handling retries within your own application logic. **You will want to focus your efforts on handling nonretriable errors or cases where retry attempts were exhausted.**
+
+#### linger.ms
+
+``linger.ms`` controls the amount of time to wait for additional messages before sending the current batch. **KafkaProducer sends a batch of messages either when the current batch is full or when the ``linger.ms`` limit is reached. By default, the producer will send messages as soon as there is a sender thread available to send them, even if there’s just one message in the batch.** By setting ``linger.ms`` higher than 0, we instruct the producer to wait a few milliseconds to add additional messages to the batch before sending it to the brokers. This increases latency a little and significantly increases throughput - the overhead per message is much lower and compression, if enabled, is much better.
+
+#### buffer.memory
+
+This sets the amount of memory the producer will use to buffer messages waiting to be sent to brokers. If messages are sent by the application faster than they can be delivered to the server, the producer may run out of space and additional ``send()`` calls will block for ``max.block.ms`` and wait for space to free up, before throwing an exception.
+
+#### compression.type
+
+By default, messages are sent uncompressed. This parameter can be set to ``snappy``, ``gzip``, ``lz4`` or ``zstd``, in which case the corresponding compression algorithms will be used to compress the data before sending it to the brokers.
+
+#### batch.size
+
+When multiple records are sent to the same partition, the producer will batch them together. **This parameter controls the amount of memory in bytes (not messages!) that will be used for each batch.** When the batch is full, all the messages in the batch will be sent. **However, this does not mean that the producer will wait for the batch to become full.** The producer will send half-full batches and even batches with just a single message in them. **Therefore, setting the batch size too large will not cause delays in sending messages; it will just use more memory for the batches.** Setting the batch size too small will add some overhead because the producer will need to send messages more frequently.
+
+#### max.in.flight.requests.per.connection
+
+This controls how many messages the producer will send to the server without receiving responses. Setting this high can increase memory usage while improving throughput, but setting it too high can reduce throughput as batching becomes less efficient.
+
+**Experiments show that in a single-DC environment, the throughput is maximized with only 2 in-flight requests, however the default value is 5 and shows similar performance.**
+
+**Ordering Guarantees**
+
+Setting the retries parameter to nonzero and the ``max.in.flight.requests.per.connection`` to more than one means that it is possible that the broker will fail to write the first batch of messages, succeed to write the second (which was already in-flight), and then retry the first batch and succeed, thereby reversing the order. Since we want at least two in-flight requests for performance reasons and a high number of retries for reliability reasons, **the best solution is to ``set enable.idempotence=true`` - this guarantees message ordering with up to 5 in-flight requests and also guarantees that retries will not introduce duplicates.**
+
+#### max.request.size
+
+This setting controls the size of a produce request sent by the producer. It caps both the size of the largest message that can be sent and the number of messages that the producer can send in one request. **For example, with a default maximum request size of 1 MB, the largest message you can send is 1 MB or the producer can batch 1,024 messages of size 1 KB each into one request. In addition, the broker has its own limit on the size of the largest message it will accept (``message.max.bytes``). It is usually a good idea to have these configurations match, so the producer will not attempt to send messages of a size that will be rejected by the broker.**
+
+#### receive.buffer.bytes and send.buffer.bytes
