@@ -450,7 +450,7 @@ The flow of data within the producer and how the different configuration paramet
 
 This parameter controls how long the producer will block when calling ``send()`` and when explicitly requesting metadata via ``partitionsFor()``. Those methods block when the producer’s send buffer is full or when metadata is not available. **When ``max.block.ms`` is reached, a timeout exception is thrown.**
 
-### delivery.timout.ms
+#### delivery.timout.ms
 
 This configuration will limit the amount of time spent from the point a record is ready for sending (``send()`` returned successfully and the record is placed in a batch) until either the broker responds or we give up, including time spent on retries. As you can see in Figure 3-2, this time should be greater than ``linger.ms`` and ``request.time out``. If you try to create a producer with inconsistent timeout configuration, you will get an exception. Messages can be successfully sent much faster than ``delivery.timeout.ms`` and typically will. **This configuration is an upper bound.**
 
@@ -475,19 +475,19 @@ In general, because the producer handles retries for you, there is no point in h
 
 ``linger.ms`` controls the amount of time to wait for additional messages before sending the current batch. **KafkaProducer sends a batch of messages either when the current batch is full or when the ``linger.ms`` limit is reached. By default, the producer will send messages as soon as there is a sender thread available to send them, even if there’s just one message in the batch.** By setting ``linger.ms`` higher than 0, we instruct the producer to wait a few milliseconds to add additional messages to the batch before sending it to the brokers. This increases latency a little and significantly increases throughput - the overhead per message is much lower and compression, if enabled, is much better.
 
-#### buffer.memory
+### buffer.memory
 
 This sets the amount of memory the producer will use to buffer messages waiting to be sent to brokers. If messages are sent by the application faster than they can be delivered to the server, the producer may run out of space and additional ``send()`` calls will block for ``max.block.ms`` and wait for space to free up, before throwing an exception.
 
-#### compression.type
+### compression.type
 
 By default, messages are sent uncompressed. This parameter can be set to ``snappy``, ``gzip``, ``lz4`` or ``zstd``, in which case the corresponding compression algorithms will be used to compress the data before sending it to the brokers.
 
-#### batch.size
+### batch.size
 
 When multiple records are sent to the same partition, the producer will batch them together. **This parameter controls the amount of memory in bytes (not messages!) that will be used for each batch.** When the batch is full, all the messages in the batch will be sent. **However, this does not mean that the producer will wait for the batch to become full.** The producer will send half-full batches and even batches with just a single message in them. **Therefore, setting the batch size too large will not cause delays in sending messages; it will just use more memory for the batches.** Setting the batch size too small will add some overhead because the producer will need to send messages more frequently.
 
-#### max.in.flight.requests.per.connection
+### max.in.flight.requests.per.connection
 
 This controls how many messages the producer will send to the server without receiving responses. Setting this high can increase memory usage while improving throughput, but setting it too high can reduce throughput as batching becomes less efficient.
 
@@ -497,8 +497,187 @@ This controls how many messages the producer will send to the server without rec
 
 Setting the retries parameter to nonzero and the ``max.in.flight.requests.per.connection`` to more than one means that it is possible that the broker will fail to write the first batch of messages, succeed to write the second (which was already in-flight), and then retry the first batch and succeed, thereby reversing the order. Since we want at least two in-flight requests for performance reasons and a high number of retries for reliability reasons, **the best solution is to ``set enable.idempotence=true`` - this guarantees message ordering with up to 5 in-flight requests and also guarantees that retries will not introduce duplicates.**
 
-#### max.request.size
+### max.request.size
 
 This setting controls the size of a produce request sent by the producer. It caps both the size of the largest message that can be sent and the number of messages that the producer can send in one request. **For example, with a default maximum request size of 1 MB, the largest message you can send is 1 MB or the producer can batch 1,024 messages of size 1 KB each into one request. In addition, the broker has its own limit on the size of the largest message it will accept (``message.max.bytes``). It is usually a good idea to have these configurations match, so the producer will not attempt to send messages of a size that will be rejected by the broker.**
 
-#### receive.buffer.bytes and send.buffer.bytes
+### receive.buffer.bytes and send.buffer.bytes
+
+These are the sizes of the TCP send and receive buffers used by the sockets when writing and reading data. If these are set to -1, the OS defaults will be used. **It is a good idea to increase those when producers or consumers communicate with brokers in a different datacenter because those network links typically have higher latency and lower bandwidth.**
+
+### enable.idempotence
+
+Starting in version 0.11, Kafka supports exactly once semantics. Exactly once is a fairly large topic and we’ll dedicate an entire chapter to it, but **idempotent producer is a simple and highly beneficial part of it.**
+
+Suppose that you configure your producer to maximize reliability - ``acks=all`` and decently large ``delivery.timeout.ms`` to allow sufficient retries. All to make sure each message will be written to Kafka at least once. In some cases, this means that messages will be written to Kafka more than once. For example, imagine that a broker received a record from the producer, wrote it to local disk and the record was successfully replicated to other brokers, but then first broker crashed before sending a response back to the producer. The producer will wait until it reaches request.time out.ms and then retry. The retry will go to the new leader, that already has a copy of this record, since the previous write was replicated successfully. You now have a duplicate record.
+
+If you wish to avoid this, you can set ``enable.idempotence=true``. When idempotent producer is enabled, the producer will attach a sequence number to each record it sends. If the broker receives records with the same sequence number within a 5 message window, it will reject the second copy and the producer will receive the harmless ``DuplicateSequenceException``.
+
+**Enabling idempotence requires ``max.in.flight.requests.per.connection`` to be less than or equal to 5, retries to be greater than 0 (either directly or via ``delivery.timeout.ms``) and ``acks=all``. If incompatible values are set, a ``ConfigException`` will be thrown.**
+
+## Serializers
+
+### Custom Serializers
+
+We recommend using existing serializers and deserializers such as JSON, Apache Avro, Thrift, or Protobuf.
+
+### Serializing Using Apache Avro
+
+Avro data is described in a language-independent schema. The schema is usually described in JSON and the serialization is usually to binary files, although serializing to JSON is also supported. **Avro assumes that the schema is present when reading and writing files, usually by embedding the schema in the files themselves.**
+
+**One of the most interesting features of Avro, and what makes it a good fit for use in a messaging system like Kafka, is that when the application that is writing messages switches to a new schema, the applications reading the data can continue processing messages without requiring any change or update.**
+
+However, there are two caveats to this scenario:
+* The schema used for writing the data and the schema expected by the reading application must be compatible. The Avro documentation includes compatibility rules. 
+* The deserializer will need access to the schema that was used when writing the data, even when it is different than the schema expected by the application that accesses the data. In Avro files, the writing schema is included in the file itself, but there is a better way to handle this for Kafka messages. We will look at that next.
+
+### Using Avro Records with Kafka
+
+Unlike Avro files, where storing the entire schema in the data file is associated with a fairly reasonable overhead, **storing the entire schema in each record will usually more than double the record size.** However, Avro still requires the entire schema to be present when reading the record, so we need to locate the schema elsewhere. To achieve this, we follow a common architecture pattern and use a **Schema Registry**. The Schema Registry is not part of Apache Kafka but there are several open source options to choose from. We’ll use the Confluent Schema Registry for this example.
+
+The idea is to store all the schemas used to write data to Kafka in the registry. Then we simply store the identifier for the schema in the record we produce to Kafka. The consumers can then use the identifier to pull the record out of the schema registry and deserialize the data. The key is that all this work—storing the schema in the registry and pulling it up when required—is done in the serializers and deserializers.
+
+```java
+Properties props = new Properties();
+props.put("bootstrap.servers", "localhost:9092");
+props.put("key.serializer", "io.confluent.kafka.serializers.KafkaAvroSerializer");
+props.put("value.serializer", "io.confluent.kafka.serializers.KafkaAvroSerializer");
+props.put("schema.registry.url", schemaUrl);
+
+String topic = "customerContacts";
+
+Producer<String, Customer> producer = new KafkaProducer<>(props);
+    
+// We keep producing new events until someone ctrl-c
+while (true) {
+    Customer customer = CustomerGenerator.getNext();
+    System.out.println("Generated customer " + customer.toString());
+    ProducerRecord<String, Customer> record = new ProducerRecord<>(topic, customer.getName(), customer);
+    producer.send(record);
+}
+```
+
+## Partitions
+
+In previous examples, the ``ProducerRecord`` objects we created included a topic name, key, and value. Kafka messages are key-value pairs and while it is possible to create a ``ProducerRecord`` with just a topic and a value, with the key set to null by default, most applications produce records with keys. Keys serve two goals: 
+* they are additional information that gets stored with the message, 
+* they are also used to decide which one of the topic partitions the message will be written to.
+
+**All messages with the same key will go to the same partition.**
+
+To create a key-value record, you simply create a ProducerRecord as follows:
+
+```java
+ProducerRecord<String, String> record = new ProducerRecord<>("CustomerCountry", "Laboratory Equipment", "USA");
+```
+
+When creating messages with a null key, you can simply leave the key out:
+
+```java
+ProducerRecord<String, String> record = new ProducerRecord<>("CustomerCountry", "USA");
+```
+
+When the key is null and the default partitioner is used, **the record will be sent to one of the available partitions of the topic at random. A round-robin algorithm will be used to balance the messages among the partitions. Starting in Apache Kafka 2.4 producer, the round-robin algorithm used in the default partitioner when handling null keys is sticky. This means that it will fill a batch of messages sent to a single partition before switching to a different random partition.** This allows sending the same number of messages to Kafka in fewer requests - leading to lower latency and reduced CPU utilization on the broker.
+
+If a key exists and the default partitioner is used, Kafka will hash the key (using its own hash algorithm, so hash values will not change when Java is upgraded), and use the result to map the message to a specific partition. Since it is important that a key is always mapped to the same partition, **we use all the partitions in the topic to calculate the mapping—not just the available partitions. This means that if a specific partition is unavailable when you write data to it, you might get an error.**
+
+In addition to the default partitioner, Apache Kafka clients also provide ``RoundRobinPartitioner`` and ``UniformStickyPartitioner``. These provide random partition assignment and sticky random partition assignment even when messages have keys. **These are useful when keys are important for the consuming application (for example, there are ETL applications that use the key from Kafka records as primary key when loading data from Kafka to a relational database), but the workload may be skewed, so a single key may have disproportional large workload.** Using the ``UniformStickyPartitioner`` will result in an even distribution of workload across all partitions.
+
+When the default partitioner is used, the mapping of keys to partitions is consistent only as long as the number of partitions in a topic does not change. So as long as the number of partitions is constant, you can be sure that, for example, records regarding user 045189 will always get written to partition 34.
+
+However, the moment you add new partitions to the topic, this is no longer guaranteed—the old records will stay in partition 34 while new records will get written to a different partition. **When partitioning keys is important, the easiest solution is to create topics with sufficient partitions and never add partitions.**
+
+### Implementing a custom partitioning strategy
+
+Here is an example of a custom partitioner:
+
+```java
+import org.apache.kafka.clients.producer.Partitioner;
+import org.apache.kafka.common.Cluster;
+import org.apache.kafka.common.PartitionInfo;
+import org.apache.kafka.common.record.InvalidRecordException;
+import org.apache.kafka.common.utils.Utils;
+    
+public class BananaPartitioner implements Partitioner {
+    
+    public void configure(Map<String, ?> configs) {}
+    
+    public int partition(String topic, Object key, byte[] keyBytes,
+                         Object value, byte[] valueBytes,
+                         Cluster cluster) {
+        
+    	List<PartitionInfo> partitions = cluster.partitionsForTopic(topic);
+        int numPartitions = partitions.size();
+        
+        if ((keyBytes == null) || (!(key instanceOf String))) {
+            throw new InvalidRecordException("We expect all messages to have customer name as key");
+		}
+        if (((String) key).equals("Banana")) {
+            return numPartitions - 1; // Banana will always go to last partition
+		}
+        // Other records will get hashed to the rest of the partitions
+        return (Math.abs(Utils.murmur2(keyBytes)) % (numPartitions - 1));
+    }
+    public void close() {}
+}
+```
+
+## Headers
+
+Records can, in addition to key and value, also include headers. Record headers give you the ability to add some metadata about the Kafka record, without adding any extra information to the key/value pair of the record itself. **Headers are often used for lineage, to indicate the source of the data in the record and for routing or tracing messages based on header information without having to parse the message itself (perhaps the message is encrypted and the router doesn’t have permissions to access the data).**
+
+Headers are implemented as an ordered collection of key/value pairs. **The keys are always a ``String``, and the values can be any serialized object - just like the message value.**
+
+```java
+ProducerRecord<String, String> record = new ProducerRecord<>("CustomerCountry", "Precision Products", "France");
+record.headers().add("privacy-level", "YOLO".getBytes(StandardCharsets.UTF_8));
+```
+
+## Interceptors
+
+Kafka’s ``ProducerInterceptor`` interceptor includes two key methods:
+* ``ProducerRecord<K, V> onSend(ProducerRecord<K, V> record)`` - this method will be called before the produced record is sent to Kafka, indeed before it is even serialized. When overriding this method, you can capture information about the sent record and even modify it. Just be sure to return a valid ``ProducerRecord`` from this method. The record that this method returns will be serialized and sent to Kafka. 
+* ``void onAcknowledgement(RecordMetadata metadata, Exception exception)`` - this method will be called if and when Kafka responds with an acknowledgement for a send. The method does not allow modifying the response from Kafka, but you can capture information about the response.
+
+**Common use-cases for producer interceptors include capturing monitoring and tracing information, enhancing the message with standard headers - especially for lineage tracking purposes and redacting sensitive information.**
+
+**It is tempting to use a producer interceptor to encrypt messages before they are sent to Kafka. However, if you configured compression (highly recommended!), messages will be compressed after they are intercepted. If the interceptor encrypts the messages, the compression step will attempt to compress encrypted messages. Encrypted messages do not compress well, if at all, which makes the compression futile.**
+
+To use the interceptor above with ``kafka-console-producer`` - an example application that ships with Apache Kafka, follow 3 simple steps: 
+* Add jar to classpath: ``export CLASSPATH=$CLASSPATH:~./target/ CountProducerInterceptor-1.0-SNAPSHOT.jar`` 
+* Create a config file that includes: ``interceptor.classes=com.shapira.examples.interceptors.CountProducerInterceptor counting.interceptor.window.size.ms=10000`` 
+* Run the application as you normally would, but make sure to include the configuration that you created in the previous step: ``bin/kafka-console-producer.sh --broker-list localhost:9092 --topic interceptor-test -- producer.config producer.config``
+
+## Quotas and Throttling
+
+Kafka brokers have the ability to limit the rate in which messages are produced and consumed. This is done via the quota mechanism. Kafka has three quota types: 
+* produce;
+* consume;
+* request. 
+
+Produce and Consume quotas limit the rate at which clients can send and receive data, measured in bytes per second. Request quota limit the percentage of time client requests can spend on the request handler and network handler threads.Quotas can be applied to all clients by setting default quotas, specific client-ids, specific users (as identified by their KafkaPrincipal) or both. User-specific quotas are only meaningful in clusters where security is configured and clients authenticate.
+
+Quotas can be applied to all clients by setting default quotas, specific client-ids, specific users (as identified by their KafkaPrincipal) or both. **User-specific quotas are only meaningful in clusters where security is configured and clients authenticate.**
+
+The default produce and consume quotas that are applied to all clients are part of the Kafka broker configuration file. For example, to limit each producer to send no more than 2 megabytes per second on average, add the following configuration to the broker configuration file: ``quota.producer.default=2M``.
+
+
+**While not recommended**, you can also configure specific quotas for certain clients that override the default quotas in the broker configuration file. To allow clientA to producer 4 megabytes a second and clientB 10 megabytes a second, you can use the following: ``quota.producer.override="clientA:4M,clientB:10M"``
+
+Quotas that are specified in Kafka’s configuration file are static, and you can only modify them by changing the configuration and then restarting all the brokers. Since new clients can arrive at any time, this is very inconvenient. **Therefore the usual method of applying quotas to specific clients is through dynamic configuration that can be set using ``kafka-config.sh`` or the ``AdminClient`` API.**
+
+```shell
+#Limiting clientC (identified by client-id) to produce only 1024 bytes per second
+bin/kafka-configs  --bootstrap-server localhost:9092 --alter --add-config 'producer_byte_rate=1024' --entity-name clientC --entity-type clients
+
+#Limiting user1 (identified by authenticated principal) to produce only 1024 bytes per second and consume only 2048 bytes per second.
+bin/kafka-configs  --bootstrap-server localhost:9092 --alter --add-config 'producer_byte_rate=1024,consumer_byte_rate=2048' --entity-name user1 --entity-type users
+
+#Limiting all users to consume only 2048 bytes per second, except users with more specific override. This is the way to dynamically modify the default quota.
+bin/kafka-configs  --bootstrap-server localhost:9092 --alter --add-config 'consumer_byte_rate=2048' --entity-type users
+```
+
+When a client reaches its quota, the broker will start throttling the client’s requests, to prevent it from exceeding the quota. This means that the broker will delay responses to client requests, in most clients this will automatically reduce the request rate (since the number of in-flight requests is limited), and bring the client traffic down to a level allowed by the quota. To protect the broker from misbehaved clients sending additional requests while being throttled, the broker will also mute the communication channel with the client for the period of time needed to achieve compliance with the quota.
+
+# Chapter 4. Kafka Consumers: Reading Data from Kafka
+
