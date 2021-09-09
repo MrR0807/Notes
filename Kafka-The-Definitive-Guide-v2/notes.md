@@ -681,3 +681,128 @@ When a client reaches its quota, the broker will start throttling the client’s
 
 # Chapter 4. Kafka Consumers: Reading Data from Kafka
 
+## Kafka Consumer Concepts
+
+In order to understand how to read data from Kafka, you first need to understand its **consumers and consumer groups.** The following sections cover those concepts.
+
+### Consumers and Consumer Groups
+
+Kafka consumers are typically part of a **consumer group**. When multiple consumers are subscribed to a topic and belong to the same consumer group, each consumer in the group will receive messages from a different subset of the partitions in the topic.
+
+Let’s take topic T1 with four partitions. Now suppose we created a new consumer, C1, which is the only consumer in group G1, and use it to subscribe to topic T1. Consumer C1 will get all messages from all four T1 partitions.
+
+![chapter-4-figure-1.png](pictures/chapter-4-figure-1.png)
+
+If we add another consumer, C2, to group G1, each consumer will only get messages from two partitions. Perhaps messages from partition 0 and 2 go to C1 and messages from partitions 1 and 3 go to consumer C2.
+
+![chapter-4-figure-2.png](pictures/chapter-4-figure-2.png)
+
+If G1 has four consumers, then each will read messages from a single partition.
+
+![chapter-4-figure-3.png](pictures/chapter-4-figure-3.png)
+
+If we add more consumers to a single group with a single topic than we have partitions, some of the consumers will be idle and get no messages at all.
+
+![chapter-4-figure-4.png](pictures/chapter-4-figure-4.png)
+
+This is a good reason to create topics with a large number of partitions — it allows adding more consumers when the load increases. **Keep in mind that there is no point in adding more consumers than you have partitions in a topic — some of the consumers will just be idle.**
+
+In addition to adding consumers in order to scale a single application, it is very common to have multiple applications that need to read data from the same topic. **To make sure an application gets all the messages in a topic, ensure the application has its own consumer group.**
+
+![chapter-4-figure-5.png](pictures/chapter-4-figure-5.png)
+
+### Consumer Groups and Partition Rebalance
+
+As we saw in the previous section, consumers in a consumer group share ownership of the partitions in the topics they subscribe to. When we add a new consumer to the group, it starts consuming messages from partitions previously consumed by another consumer. The same thing happens when a consumer shuts down or crashes; it leaves the group, and the partitions it used to consume will be consumed by one of the remaining consumers.
+
+**Moving partition ownership from one consumer to another is called a rebalance.** In normal course of events they can be fairly undesirable.
+
+There are two types of rebalances, depending on the partition assignment strategy that the consumer group uses:
+* Eager Rebalances;
+* Cooperative Rebalances.
+
+**Eager Rebalances**
+
+During an eager rebalance all consumers stop consuming, give up their ownership of all partitions, rejoin the consumer group and get a brand-new partition assignment. This is essentially a short window of unavailability of the entire consumer group. The length of the window depends on the size of the consumer group as well as on several configuration parameters.
+
+![chapter-4-figure-6.png](pictures/chapter-4-figure-6.png)
+
+**Cooperative Rebalances**
+
+Cooperative rebalances (also called “incremental rebalances”) typically involve reassigning only a small subset of the partitions from one consumer to another, and allowing consumers to continue processing records from all the partitions that are not reassigned. This is achieved by rebalancing in two or more phases - initially the consumer group leader informs all the consumers that they will lose ownership of a subset of their partitions, the consumers stop consuming from these partitions and give up their ownership in them. At the second phase, the consumer group leader assigns these now orphaned partitions to their new owners. This incremental approach may take a few iterations until a stable partition assignment is achieved, but it avoids the complete “stop the world” unavailability that occurs with the eager approach. This is especially important in large consumer groups where rebalances can take significant amount of time.
+
+![chapter-4-figure-7.png](pictures/chapter-4-figure-7.png)
+
+The way consumers maintain membership in a consumer group and ownership of the partitions assigned to them is by sending **heartbeats** to a Kafka broker designated as the group coordinator (this broker can be different for different consumer groups). The heartbeats are sent by a background thread of the consumer.
+
+When closing a consumer cleanly, the consumer will notify the group coordinator that it is leaving, and the group coordinator will trigger a rebalance immediately, reducing the gap in processing. Differently from crashed consumer where coordinator has to wait for hearbeat timeout.
+
+### Static Group Membership
+
+By default, the identity of a consumer as a member of its consumer group is transient. When consumers leave a consumer group, the partitions that were assigned to the consumer are revoked, and when it re-joins, it is assigned a new member ID and new set of partitions through the rebalance protocol.
+
+Unless you configure a consumer with a unique ``group.instance.id``, which makes the consumer a static member of the group. When a consumer first joins a consumer group as a static member of the group, it is assigned a set of partitions according to the partition assignment strategy the group is using, as normal. However, when this consumer shuts down, it does not automatically leave the group - it remains a member of the group until its session times out. When the consumer re- joins the group, it is recognized with its static identity and is re-assigned the same partitions it previously held.
+
+**If two consumers join the same group with the same ``group.instance.id``, the second consumer will get an error saying that a consumer with this ID already exists.**
+
+It is important to remember that the partitions owned by each consumer will not get reassigned when a consumer is restarted. For a certain duration, no consumer will consume messages from these partitions and when the consumer finally starts back up, it will lag behind the latest messages in these partitions. **You should be confident that the consumer that owns this partitions will be able to catch up with the lag after the restart.**
+
+**It is important to note that static members of consumer groups do not leave the group proactively when they shut down, and detecting when they are “really gone” depends on ``session.timeout.ms configuration``**. You’ll want to set it high enough to avoid triggering rebalances on a simple application restart, but low enough to allow automatic re-assignment of their partitions when there is more significant downtime, in order to avoid large gaps in processing these partitions.
+
+## Creating a Kafka Consumer
+
+To start we just need to use the three mandatory properties: ``bootstrap.servers``, ``key.deserializer``, and ``value.deserializer``.
+
+There is a fourth property, which is not strictly mandatory, but for now we will pretend it is. The property is ``group.id`` and it specifies the consumer group the ``KafkaConsumer`` instance belongs to. **While it is possible to create consumers that do not belong to any consumer group**, this is uncommon, so for most of the chapter we will assume the consumer is part of a group.
+
+```java
+Properties props = new Properties();
+props.put("bootstrap.servers", "broker1:9092,broker2:9092");
+props.put("group.id", "CountryCounter");
+props.put("key.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
+props.put("value.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
+KafkaConsumer<String, String> consumer = new KafkaConsumer<String, String>(props);
+```
+
+## Subscribing to Topics
+
+Once we create a consumer, the next step is to subscribe to one or more topics.
+
+```java
+consumer.subscribe(Collections.singletonList("customerCountries"));
+```
+
+**It is also possible to call ``subscribe`` with a regular expression.** The expression can match multiple topic names, and if someone creates a new topic with a name that matches, a rebalance will happen almost immediately and the consumers will start consuming from the new topic.
+
+## The Poll Loop
+
+At the heart of the consumer API is a simple loop for polling the server for more data. The main body of a consumer will look as follows:
+
+```java
+Duration timeout = Duration.ofMillis(100);
+while (true) {
+    ConsumerRecords<String, String> records = consumer.poll(timeout);
+    for (ConsumerRecord<String, String> record : records) {
+        System.out.printf("topic = %s, partition = %d, offset = %d, customer = %s, country = %s\n", 
+            record.topic(), record.partition(), record.offset(), record.key(), record.value());
+        Integer updatedCount = 1;
+        if (custCountryMap.containsKey(record.value())) {
+            updatedCount = custCountryMap.get(record.value()) + 1;
+        }
+        custCountryMap.put(record.value(), updatedCount);
+        JSONObject json = new JSONObject(custCountryMap);
+        System.out.println(json.toString());
+    }
+}
+```
+
+The ``poll`` loop does a lot more than just get data. The first time you call ``poll()`` with a new consumer, it is responsible for finding the ``GroupCoordinator``, joining the consumer group, and receiving a partition assignment. If a rebalance is triggered, it will be handled inside the ``poll`` loop as well, including related callbacks.
+
+Keep in mind that if ``poll()`` is not invoked for longer than ``max.poll.interval.ms``, the consumer will be considered dead and evicted from the consumer group, so **avoid doing anything that can block for unpredictable intervals inside the poll loop.**
+
+**Thread Safety**
+
+You can’t have multiple consumers that belong to the same group in one thread and you can’t have multiple threads safely use the same consumer. **One consumer per thread is the rule.** To run multiple consumers in the same group in one application, you will need to run each in its own thread. It is useful to wrap the consumer logic in its own object and then use Java’s ``ExecutorService`` to start multiple threads each with its own consumer. The Confluent blog has a [tutorial](https://www.confluent.io/blog/tutorial-getting-started-with-the-new-apache-kafka-0-9-consumer-client/) that shows how to do just that.
+
+Another approach can be to have one consumer populate a queue of events and have multiple worker threads perform work from this queue. You can see an example of this pattern in this [blog post](https://www.confluent.io/blog/kafka-consumer-multi-threaded-messaging/).
+
