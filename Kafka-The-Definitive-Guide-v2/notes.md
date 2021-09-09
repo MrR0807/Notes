@@ -806,3 +806,238 @@ You can’t have multiple consumers that belong to the same group in one thread 
 
 Another approach can be to have one consumer populate a queue of events and have multiple worker threads perform work from this queue. You can see an example of this pattern in this [blog post](https://www.confluent.io/blog/kafka-consumer-multi-threaded-messaging/).
 
+## Configuring Consumers
+
+Most of the parameters have reasonable defaults and do not require modification, but some have implications on the performance and availability of the consumers. Let’s take a look at some of the more important properties.
+
+### fetch.min.bytes
+
+This property allows a consumer to specify the minimum amount of data that it wants to receive from the broker when fetching records, **by default one byte. If a broker receives a request for records from a consumer but the new records amount to fewer bytes than ``fetch.min.bytes``, the broker will wait until more messages are available before sending the records back to the consumer.** This reduces the load on both the consumer and the broker as they have to handle fewer back-and-forth messages in cases where the topics don’t have much new activity (or for lower activity hours of the day). You will want to set this parameter higher than the default if the consumer is using too much CPU when there isn’t much data available, or reduce load on the brokers when you have large number of consumers.
+
+### fetch.max.wait.ms
+
+By setting ``fetch.min.bytes``, you tell Kafka to wait until it has enough data to send before responding to the consumer. **``fetch.max.wait.ms`` lets you control how long to wait. By default, Kafka will wait up to 500 ms.** This results in up to 500 ms of extra latency in case there is not enough data flowing to the Kafka topic to satisfy the minimum amount of data to return. If you want to limit the potential latency (usually due to SLAs controlling the maximum latency of the application), you can set fetch.max.wait.ms to a lower value. **If you set ``fetch.max.wait.ms`` to 100 ms and ``fetch.min.bytes`` to 1 MB, Kafka will receive a fetch request from the consumer and will respond with data either when it has 1 MB of data to return or after 100 ms, whichever happens first.**
+
+### fetch.max.bytes
+
+This property lets you specify the maximum bytes that Kafka will return whenever the consumer polls a broker (50MB by default).
+
+### max.poll.records
+
+This property controls the maximum number of records that a single call to poll() will return.
+
+### max.partition.fetch.bytes
+
+This property controls the maximum number of bytes the server will return per partition (1 MB by default). When ``KafkaConsumer.poll()`` returns ``ConsumerRecords``, the record object will use at most ``max.partition.fetch.bytes`` per partition assigned to the consumer.
+
+**We highly recommend using fetch.max.bytes instead, unless you have special reasons to try and process similar amounts of data from each partition.**
+
+### session.timeout.ms and heartbeat.interval.ms
+
+The amount of time a consumer can be out of contact with the brokers while still considered alive **defaults to 10 seconds.** If more than ``session.timeout.ms`` passes without the consumer sending a heartbeat to the group coordinator, it is considered dead and the group coordinator will trigger a rebalance of the consumer group to allocate partitions from the dead consumer to the other consumers in the group. This property is closely related to ``heartbeat.interval.ms``.
+
+``heartbeat.interval.ms`` controls how frequently the KafkaConsumer will send a heartbeat to the group coordinator, whereas ``session.timeout.ms`` controls how long a consumer can go without sending a heartbeat. Therefore, those two properties are typically modified together — ``heartbeat.interval.ms`` must be lower than ``session.timeout.ms``, and **is usually set to one-third of the timeout value.** So if ``session.timeout.ms`` is 3 seconds, ``heartbeat.interval.ms`` should be 1 second.
+
+### max.poll.interval.ms
+
+**This property lets you set the length of time during which the consumer can go without polling before it is considered dead.** As mentioned earlier, heartbeats and session timeouts are the main mechanism by which Kafka detects dead consumers and takes their partitions away. However, we also mentioned that heartbeats are sent by a background thread. **There is a possibility that the main thread consuming from Kafka is deadlocked, but the background thread is still sending heartbeats.** This means that records from partitions owned by this consumer are not being processed. The easiest way to know whether the consumer is still processing records is to check whether it is asking for more records. However, the intervals between requests for more records are difficult to predict and depend on the amount of available data, the type of processing done by the consumer and sometimes on the latency of additional services. Therefore, the interval between calls to ``poll()`` are used as a failsafe or backstop. It has to be an interval large enough that will very rarely be reached by a healthy consumer, but low enough to avoid significant impact from a hanging consumer. **The default value is 5 minutes.**
+
+### default.api.timeout.ms
+
+This is the timeout that will apply to (almost) all API calls made by the consumer **when you don’t specify an explicit timeout while calling the API.** The default is 1 minute.
+
+### request.timeout.ms
+
+This is the maximum amount of time the consumer will wait for a response from the broker. If the broker does not respond within this time, the client will assume the broker will not respond at all, **close the connection and attempt to reconnect. This configuration defaults to 30s and it is recommended not to lower it.**
+
+### auto.offset.reset
+
+This property controls the behavior of the consumer when it starts reading a partition for which it doesn’t have a committed offset or if the committed offset it has is invalid (usually because the consumer was down for so long that the record with that offset was already aged out of the broker). **The default is “latest”**.  The alternative is “earliest”.
+
+### enable.auto.commit
+
+This parameter controls whether the consumer will commit offsets automatically, and **defaults to true.** Set it to false if you prefer to control when offsets are committed.
+
+### partition.assignment.strategy
+
+A ``PartitionAssignor`` is a class that, given consumers and topics they subscribed to, decides which partitions will be assigned to which consumer.
+
+By default, Kafka has the following assignment strategies:
+* **Range**. Assigns to each consumer a consecutive subset of partitions from each topic it subscribes to. So if consumers C1 and C2 are subscribed to two topics, T1 and T2, and each of the topics has three partitions, then C1 will be assigned partitions 0 and 1 from topics T1 and T2, while C2 will be assigned partition 2 from those topics. Because each topic has an uneven number of partitions and the assignment is done for each topic independently, the first consumer ends up with more partitions than the second.
+* **RoundRobin**. Takes all the partitions from all subscribed topics and assigns them to consumers sequentially, one by one. If C1 and C2 described previously used RoundRobin assignment, C1 would have partitions 0 and 2 from topic T1 and partition 1 from topic T2. C2 would have partition 1 from topic T1 and partitions 0 and 2 from topic T2. Or doing it in steps - firstly partition 0 of T1 is assigned to C1, then partition 1 of T1 assigned to C2, then P2T1 to C1, P0T2C2, P1T2C1, P2T2C2.
+* **Sticky**. The sticky assignor has two goals, the first is to have an assignment that is as balanced as possible, and the second is that in case of a rebalance, it will leave as many assignments as possible in place, minimizing the overhead associated with moving partition assignments from one broker to another.
+* **Cooperative Sticky**. **This assignment strategy is only feasible if the Kafka cluster that the consumer group is consuming from has inter-broker protocol version 2.4 or above**, which enables incremental cooperative rebalances and not just the older greedy stop-the-world rebalances. This assignment strategy is identical to that of the Sticky Assignor but supports cooperative rebalances in which consumers can continue consuming from the partitions that are not reassigned.
+
+### client.id
+
+This can be any string, and will be used by the brokers to identify messages sent from the client. It is used in logging and metrics, and for quotas.
+
+### client.rack
+
+By default consumers will fetch messages from the leader replica of each partition. However, when the cluster spans multiple datacenters or multiple cloud availability zones, there are advantages both in performance and in cost to fetching messages from a replica that is located in the same zone as the consumer. To enable fetching from closest replica, you need to set client.rack configuration and identify the zone in which the client is located. Then you can configure the brokers to replace the default replica.selector.class with org.apache.kafka.common.replica.RackA wareReplicaSelector.
+
+### group.instance.id
+
+This can be any string and is used to provide a consumer with static group membership.
+
+### receive.buffer.bytes and send.buffer.bytes
+
+These are the sizes of the TCP send and receive buffers used by the sockets when writing and reading data. If these are set to -1, the OS defaults will be used. **It can be a good idea to increase those when producers or consumers communicate with brokers in a different datacenter, because those network links typically have higher latency and lower bandwidth.**
+
+### offsets.retention.minutes
+
+**This is a broker configuration**, but it is important to be aware of it due to its impact on consumer behavior. As long as a consumer group has active members (i.e members that are actively maintaining membership in the group by sending heartbeats), the last offset committed by the group for each partition will be retained by Kafka, so it can be retrieved in case of reassignment or restart. **However, once a group becomes empty, Kafka will only retain its committed offsets to the duration set by this configuration - 7 days by default. Once the offsets are deleted, if the group becomes active again it will behave like a brand new consumer group - with no memory of anything it consumed in the past.**
+
+## Commits and Offsets
+
+We call the action of updating the current position in the partition a **commit.**
+
+As long as all your consumers are up, running, and churning away, this will have no impact. However, if a consumer crashes or a new consumer joins the consumer group, this will trigger a rebalance. After a rebalance, each consumer may be assigned a new set of partitions than the one it processed before. In order to know where to pick up the work, the consumer will read the latest committed offset of each partition and continue from there.
+
+If the committed offset is smaller than the offset of the last message the client processed, the messages between the last processed offset and the committed offset will be **processed twice.**
+
+If the committed offset is larger than the offset of the last message the client actually processed, all messages between the last processed offset and the committed offset will be **missed** by the consumer group.
+
+### Automatic Commit
+
+The easiest way to commit offsets is to allow the consumer to do it for you. If you configure ``enable.auto.commit=true``, then every five seconds the consumer will commit the largest offset your client received from ``poll()``. **The five-second interval is the default and is controlled by setting ``auto.commit.interval.ms``.** Just like everything else in the consumer, the automatic commits are driven by the poll loop. Whenever you poll, the consumer checks if it is time to commit, and if it is, it will commit the offsets it returned in the last poll.
+
+**Automatic commits are convenient, but they don’t give developers enough control to avoid duplicate messages.**
+
+### Commit Current Offset
+
+By setting ``enable.auto.commit=false``, offsets will only be committed when the application explicitly chooses to do so. The simplest and most reliable of the commit APIs is ``commitSync()``. This API will commit the latest offset returned by ``poll()`` and return once the offset is committed, throwing an exception if commit fails for some reason.
+
+It is important to remember that ``commitSync()`` will commit the latest offset returned by ``poll()``, so make sure you call ``commitSync()`` after you are done processing all the records in the collection.
+
+Here is how we would use ``commitSync`` to commit offsets after we finished processing the latest batch of messages:
+
+```java
+Duration timeout = Duration.ofMillis(100);
+while (true) {
+ConsumerRecords<String, String> records = consumer.poll(timeout);
+    for (ConsumerRecord<String, String> record : records) {
+        System.out.printf("topic = %s, partition = %d, offset = %d, customer = %s, country = %s\n",
+            record.topic(), record.partition(), record.offset(), record.key(), record.value());
+    } try {
+        consumer.commitSync();
+    } catch (CommitFailedException e) {
+        log.error("commit failed", e)
+    }
+}
+```
+
+### Asynchronous Commit
+
+One drawback of manual commit is that the application is blocked until the broker responds to the commit request. This will limit the throughput of the application. Throughput can be improved by committing less frequently, **but then we are increasing the number of potential duplicates that a rebalance will create.**
+
+Another option is the asynchronous commit API. Instead of waiting for the broker to respond to a commit, **we just send the request and continue on**:
+
+```java
+Duration timeout = Duration.ofMillis(100);
+while (true) {
+    ConsumerRecords<String, String> records = consumer.poll(timeout);
+    for (ConsumerRecord<String, String> record : records) {
+        System.out.printf("topic = %s, partition = %s, offset = %d, customer = %s, country = %s\n",
+            record.topic(), record.partition(), record.offset(), record.key(), record.value());
+    }
+    consumer.commitAsync();
+}
+```
+
+**The drawback is that while commitSync() will retry the commit until it either succeeds or encounters a nonretriable failure, commitAsync() will not retry.**
+
+The reason it does not retry is that by the time commitAsync() receives a response from the server, there may have been a later commit that was already successful.
+
+It is common to use the callback to log commit errors or to count them in a metric, but if you want to use the callback for retries, **you need to be aware of the problem with commit order**:
+
+```java
+Duration timeout = Duration.ofMillis(100);
+
+while (true) {
+    ConsumerRecords<String, String> records = consumer.poll(timeout);
+    for (ConsumerRecord<String, String> record : records) {
+        System.out.printf("topic = %s, partition = %s, offset = %d, customer = %s, country = %s\n",
+        record.topic(), record.partition(), record.offset(), record.key(), record.value());
+    }
+    consumer.commitAsync(new OffsetCommitCallback() {
+        public void onComplete(Map<TopicPartition, OffsetAndMetadata> offsets, Exception e) {
+            if (e != null)
+                log.error("Commit failed for offsets {}", offsets, e);
+        } 
+    });
+}
+```
+
+**Retrying Async Commits**
+
+A simple pattern to get commit order right for asynchronous retries is to use a monotonically increasing sequence number. Increase the sequence number every time you commit and add the sequence number at the time of the commit to the commitAsync callback. When you’re getting ready to send a retry, check if the commit sequence number the callback got is equal to the instance variable; if it is, there was no newer commit and it is safe to retry. If the instance sequence number is higher, don’t retry because a newer commit was already sent.
+
+### Combining Synchronous and Asynchronous Commits
+
+Normally, occasional failures to commit without retrying are not a huge problem because if the problem is temporary, the following commit will be successful. **But if we know that this is the last commit before we close the consumer, or before a rebalance, we want to make extra sure that the commit succeeds.**
+
+Therefore, a common pattern is to combine ``commitAsync()`` with ``commitSync()`` just before shutdown. Here is how it works (we will discuss how to commit just before rebalance when we get to the section about rebalance listeners):
+
+```java
+Duration timeout = Duration.ofMillis(100);
+try {
+    while (true) {
+        ConsumerRecords<String, String> records = consumer.poll(timeout);
+        for (ConsumerRecord<String, String> record : records) {
+            System.out.printf("topic = %s, partition = %s, offset = %d, customer = %s, country = %s\n",
+                record.topic(), record.partition(), record.offset(), record.key(), record.value());
+        }
+        consumer.commitAsync();
+    }
+} catch (Exception e) {
+    log.error("Unexpected error", e);
+} finally {
+    try {
+        consumer.commitSync();
+    } finally {
+        consumer.close();
+    } 
+}
+```
+
+While everything is fine, we use ``commitAsync``. It is faster, and if one commit fails, the next commit will serve as a retry. But if we are closing, there is no “next commit.” We call ``commitSync()``, because it will retry until it succeeds or suffers unrecoverable failure.
+
+### Commit Specified Offset
+
+Committing the latest offset only allows you to commit as often as you finish processing batches. But what if you want to commit more frequently than that? What if ``poll()`` returns a huge batch and you want to commit offsets in the middle of the batch to avoid having to process all those rows again if a rebalance occurs? You can’t just call ``commitSync()`` or ``commitAsync()`` — this will commit the last offset returned, which you didn’t get to process yet.
+
+Fortunately, the consumer API allows you to call ``commitSync()`` and ``commitAsync()`` and pass a map of partitions and offsets that you wish to commit. If you are in the middle of processing a batch of records, and the last message you got from partition 3 in topic “customers” has offset 5000, you can call ``commitSync()`` to commit offset 5001 for partition 3 in topic “customers.” Since your consumer may be consuming more than a single partition, you will need to track offsets on all of them, which adds complexity to your code.
+
+Here is what a commit of specific offsets looks like:
+
+```java
+private Map<TopicPartition, OffsetAndMetadata> currentOffsets = new HashMap<>();
+private int count = 0;
+...
+
+Duration timeout = Duration.ofMillis(100);
+
+while (true) {
+    ConsumerRecords<String, String> records = consumer.poll(timeout);
+    for (ConsumerRecord<String, String> record : records) {
+        System.out.printf("topic = %s, partition = %s, offset = %d, customer = %s, country = %s\n",
+        record.topic(), record.partition(), record.offset(), record.key(), record.value());
+        //1
+        currentOffsets.put(new TopicPartition(record.topic(), record.partition()), new OffsetAndMetadata(record.offset() + 1, "no metadata"));
+        //2
+        if (count % 1000 == 0) {
+		//3    
+        	consumer.commitAsync(currentOffsets, null);
+		}
+        count++; 
+    }
+}
+```
+
+1) After reading each record, we update the offsets map with the offset of the next message we expect to process. The committed offset should always be the offset of the next message that your application will read. This is where we’ll start reading next time we start.
+2) Here, we decide to commit current offsets every 1,000 records. In your application, you can commit based on time or perhaps content of the records.
+3) I chose to call ``commitAsync()``, but ``commitSync()`` is also completely valid here. Of course, when committing specific offsets you still need to perform all the error handling we’ve seen in previous sections.
+
+## Rebalance Listeners
+
