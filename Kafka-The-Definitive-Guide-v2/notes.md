@@ -1029,7 +1029,7 @@ while (true) {
         if (count % 1000 == 0) {
 		//3    
         	consumer.commitAsync(currentOffsets, null);
-		}
+	}
         count++; 
     }
 }
