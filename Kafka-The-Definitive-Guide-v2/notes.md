@@ -1062,47 +1062,47 @@ This example will show how to use ``onPartitionsRevoked()`` to commit offsets be
 ```java
 private Map<TopicPartition, OffsetAndMetadata> currentOffsets = new HashMap<>();
 Duration timeout = Duration.ofMillis(100);
-    
+
 private class HandleRebalance implements ConsumerRebalanceListener {
-	
+
 	//In this example we don’t need to do anything when we get a new partition; we’ll just start consuming messages.
-	public void onPartitionsAssigned(Collection<TopicPartition> partitions) {}
-    
-    //However, when we are about to lose a partition due to rebalancing, we need to commit offsets. 
-    //Note that we are committing the latest offsets we’ve processed, not the latest offsets in the batch we are still processing. 
-    //This is because a partition could get revoked while we are still in the middle of a batch. 
-    //We are committing offsets for all partitions, not just the partitions we are about to lose — because the offsets are for events that were already processed, there is no harm in that.
-    //And we are using commitSync() to make sure the offsets are committed before the rebalance proceeds.
-    public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
+	public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
+	}
+
+	//However, when we are about to lose a partition due to rebalancing, we need to commit offsets. 
+	//Note that we are committing the latest offsets we’ve processed, not the latest offsets in the batch we are still processing. 
+	//This is because a partition could get revoked while we are still in the middle of a batch. 
+	//We are committing offsets for all partitions, not just the partitions we are about to lose — because the offsets are for events that were already  processed, there is no harm in that.
+	//And we are using commitSync() to make sure the offsets are committed before the rebalance proceeds.
+	public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
 		System.out.println("Lost partitions in rebalance. " + "Committing current offsets:" + currentOffsets);
 		consumer.commitSync(currentOffsets);
-	} 
+	}
 }
+
 try {
 	//Pass the ConsumerRebalanceListener to the sub scribe() method so it will get invoked by the consumer.
 	consumer.subscribe(topics, new HandleRebalance());
-	
+
 	while (true) {
 		ConsumerRecords<String, String> records = consumer.poll(timeout);
 		for (ConsumerRecord<String, String> record : records) {
-			System.out.printf("topic = %s, partition = %s, offset = %d, customer = %s, country = %s\n",
-            record.topic(), record.partition(), record.offset(), record.key(), record.value());
-		
-			currentOffsets.put(new TopicPartition(record.topic(), record.partition()), new OffsetAndMetadata(record.offset()+1, null));
+			System.out.printf("topic = %s, partition = %s, offset = %d, customer = %s, country = %s\n", record.topic(), record.partition(), record.offset(), record.key(), record.value());
+			currentOffsets.put(new TopicPartition(record.topic(), record.partition()), new OffsetAndMetadata(record.offset() + 1, null));
 		}
 		consumer.commitAsync(currentOffsets, null);
-    }
-} catch (WakeupException e) {
+	}
+} catch(WakeupException e) {
 	// ignore, we're closing
-} catch (Exception e) {
+} catch(Exception e) {
 	log.error("Unexpected error", e);
 } finally {
-    try {
-       consumer.commitSync(currentOffsets);
-    } finally {
+	try {
+		consumer.commitSync(currentOffsets);
+	} finally {
 		consumer.close();
 		System.out.println("Closed consumer and we are done");
-    }
+	}
 }
 ```
 
@@ -1224,12 +1224,13 @@ It should be obvious that the serializer used to produce events to Kafka must ma
         this.customerName = name;
     }
 
-	public int getID() {
-		return customerID;
-	}
-	public String getName() {
-		return customerName;
-	}
+    public int getID() {
+	return customerID;
+    }
+    
+    public String getName() {
+ 	return customerName;
+    }
 }
 ```
 
