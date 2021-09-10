@@ -1041,3 +1041,323 @@ while (true) {
 
 ## Rebalance Listeners
 
+As we mentioned in the previous section about committing offsets, a consumer will want to do some cleanup work before exiting and also before partition rebalancing.
+
+If you know your consumer is about to lose ownership of a partition, you will want to commit offsets of the last event you’ve processed. Perhaps you also need to close file handles, database connections, and such.
+
+The consumer API allows you to run your own code when partitions are added or removed from the consumer. You do this by passing a ```ConsumerRebalanceListener``` when calling the ``subscribe()`` method we discussed previously. ``ConsumerRebalanceListener`` has two methods you can implement:
+* ``public void onPartitionsAssigned(Collection<TopicPartition> partitions)``. Called after partitions have been reassigned to the consumer, but before the consumer starts consuming messages. This is where you prepare or load any state that you want to use with the partition, seek to the correct offsets if needed or similar.
+* ``public void onPartitionsRevoked(Collection<TopicPartition> partitions)``. Called when the consumer has to give up partitions that it previously owned - either as a result of a rebalance or when the consumer is being closed. In the common case, when an eager rebalancing algorithm is used, this method is invoked before the rebalancing starts and after the consumer stopped consuming messages. If a cooperative rebalacing algorithm is used, this method is invoked at the end of the rebalance, **with just the subset of partitions that the consumer has to give up. This is where you want to commit offsets, so whoever gets this partition next will know where to start.**
+* ``public void onPartitionsLost(Collection<TopicPartition> partitions)``. Only called when cooperative rebalancing algorithm is used, and only in exceptional cases where the partitions were assigned to other consumers without first being revoked by the rebalance algorithm (in normal cases, ``onPartitionsRevoked()`` will be called). This is where you clean-up any state or resources that are used with these partitions. Note that this has to be done carefully - the new owner of the partitions may have already saved its own state and you’ll need to avoid conflicts. **Note that if you don’t implement this method, ``onPartitionsRevoked()`` will be called instead.**
+
+**If you use a cooperative rebalancing algorithm note that:**
+* ``onPartitionsAssigned()`` will be invoked on every rebalance, as a way of notifying the consumer that a rebalance happened. However, if there are no new partitions assigned to the consumer, it will be called with an empty collection. 
+* ``onPartitionsRevoked()`` will be invoked in normal rebalancing conditions, but only if the consumer gave up the ownership of partitions. It will not be called with an empty collection. 
+* ``onPartitionsLost()`` will be invoked in exceptional rebalancing conditions and the partitions in the collection will already have new owners by the time the method is invoked.
+
+**If you implemented all three methods, you are guaranteed that during a normal rebalance onPartitionsAssigned() will be called by the new owner of the partitions that are reassigned only after the previous owner completed onPartitionsRevoked() and gave up its ownership.**
+
+This example will show how to use ``onPartitionsRevoked()`` to commit offsets before losing ownership of a partition.
+
+```java
+private Map<TopicPartition, OffsetAndMetadata> currentOffsets = new HashMap<>();
+Duration timeout = Duration.ofMillis(100);
+    
+private class HandleRebalance implements ConsumerRebalanceListener {
+	
+	//In this example we don’t need to do anything when we get a new partition; we’ll just start consuming messages.
+	public void onPartitionsAssigned(Collection<TopicPartition> partitions) {}
+    
+    //However, when we are about to lose a partition due to rebalancing, we need to commit offsets. 
+    //Note that we are committing the latest offsets we’ve processed, not the latest offsets in the batch we are still processing. 
+    //This is because a partition could get revoked while we are still in the middle of a batch. 
+    //We are committing offsets for all partitions, not just the partitions we are about to lose — because the offsets are for events that were already processed, there is no harm in that.
+    //And we are using commitSync() to make sure the offsets are committed before the rebalance proceeds.
+    public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
+		System.out.println("Lost partitions in rebalance. " + "Committing current offsets:" + currentOffsets);
+		consumer.commitSync(currentOffsets);
+	} 
+}
+try {
+	//Pass the ConsumerRebalanceListener to the sub scribe() method so it will get invoked by the consumer.
+	consumer.subscribe(topics, new HandleRebalance());
+	
+	while (true) {
+		ConsumerRecords<String, String> records = consumer.poll(timeout);
+		for (ConsumerRecord<String, String> record : records) {
+			System.out.printf("topic = %s, partition = %s, offset = %d, customer = %s, country = %s\n",
+            record.topic(), record.partition(), record.offset(), record.key(), record.value());
+		
+			currentOffsets.put(new TopicPartition(record.topic(), record.partition()), new OffsetAndMetadata(record.offset()+1, null));
+		}
+		consumer.commitAsync(currentOffsets, null);
+    }
+} catch (WakeupException e) {
+	// ignore, we're closing
+} catch (Exception e) {
+	log.error("Unexpected error", e);
+} finally {
+    try {
+       consumer.commitSync(currentOffsets);
+    } finally {
+		consumer.close();
+		System.out.println("Closed consumer and we are done");
+    }
+}
+```
+
+## Consuming Records with Specific Offsets
+
+If you want to start reading all messages from the beginning of the partition, or you want to skip all the way to the end of the partition and start consuming only new messages, there are APIs specifically for that: ``seekToBeginning(Collection<Topic Partition> tp)`` and ``seekToEnd(Collection<TopicPartition> tp)``.
+
+Think about this common scenario: Your application is reading events from Kafka (perhaps a clickstream of users in a website), processes the data (perhaps remove records that indicate clicks from automated programs rather than users), and then stores the results in a database, NoSQL store, or Hadoop. Suppose that we really don’t want to lose any data, nor do we want to store the same results in the database twice.
+
+In these cases, the consumer loop may look a bit like this:
+
+```java
+Duration timeout = Duration.ofMillis(100);
+while (true) {
+    ConsumerRecords<String, String> records = consumer.poll(timeout);
+    for (ConsumerRecord<String, String> record : records) {
+        currentOffsets.put(new TopicPartition(record.topic(), record.partition()), record.offset());
+        processRecord(record);
+        storeRecordInDB(record);
+        consumer.commitAsync(currentOffsets);
+} 
+```
+
+In this example, we are very paranoid, so we commit offsets after processing each record. **However, there is still a chance that our application will crash after the record was stored in the database but before we committed offsets, causing the record to be processed again and the database to contain duplicates.**
+
+This could be avoided if there was a way to store both the record and the offset in one atomic action. Either both the record and the offset are committed, or neither of them are committed.
+
+But what if we wrote both the record and the offset to the database, in one transaction? Then we’ll know that either we are done with the record and the offset is committed or we are not and the record will be reprocessed.
+
+Now the only problem is if the offset is stored in a database and not in Kafka, how will our consumer know where to start reading when it is assigned a partition? This is exactly what seek() can be used for. When the consumer starts or when new partitions are assigned, it can look up the offset in the database and seek() to that location.
+
+Here is a skeleton example of how this may work. We use ``ConsumerRebalanceLister`` and ``seek()`` to make sure we start processing at the offsets stored in the database:
+
+```java
+Duration timeout = Duration.ofMillis(100);
+public class SaveOffsetsOnRebalance implements ConsumerRebalanceListener {
+    public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
+        commitDBTransaction(); //1
+    }
+    public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
+        for(TopicPartition partition: partitions)
+            consumer.seek(partition, getOffsetFromDB(partition)); //2
+    } 
+}
+consumer.subscribe(topics, new SaveOffsetOnRebalance(consumer));
+while (true) {
+    ConsumerRecords<String, String> records = consumer.poll(timeout);
+    for (ConsumerRecord<String, String> record : records) {
+        processRecord(record);
+        storeRecordInDB(record);
+        storeOffsetInDB(record.topic(), record.partition(), record.offset()); //3
+    }
+    commitDBTransaction();
+}
+```
+
+1) We use an imaginary method here to commit the transaction in the database. The idea here is that the database records and offsets will be inserted to the database as we process the records, and we just need to commit the transactions when we are about to lose the partition to make sure this information is persisted.
+2) We also have an imaginary method to fetch the offsets from the database, and then we ``seek()`` to those records when we get ownership of new partitions. Since this method will always get called on any partitions that we own, before we start fetching from it, placing ``seek()`` in this method guarantees that we’ll start reading from the correct location.
+3) Another imaginary method: this time we update a table storing the offsets in our database. Here we assume that updating records is fast, so we do an update on every record, but commits are slow, so we only commit at the end of the batch. However, this can be optimized in different ways.
+
+**There are many different ways to implement exactly-once semantics by storing offsets and data in an external store, but all of them will need to use the ConsumerRebalance Listener and seek() to make sure offsets are stored in time and that the consumer starts reading messages from the correct location.**
+
+## But How Do We Exit?
+
+When you decide to exit the poll loop, you will need another thread to call ``consumer.wakeup()``. If you are running the consumer loop in the main thread, this can be done from ``ShutdownHook``. **Note that ``consumer.wakeup()`` is the only consumer method that is safe to call from a different thread.** Calling wakeup will cause ``poll()`` to exit with ``WakeupException``, or if ``consumer.wakeup()`` was called while the thread was not waiting on poll, the exception will be thrown on the next iteration when ``poll()`` is called. The ``WakeupException`` doesn’t need to be handled, but before exiting the thread, you must call ``consumer.close()``. Closing the consumer will commit offsets if needed and will send the group coordinator a message that the consumer is leaving the group. The consumer coordinator will trigger rebalancing immediately and you won’t need to wait for the session to time out before partitions from the consumer you are closing will be assigned to another consumer in the group.
+
+Here is what the exit code will look like if the consumer is running in the main application thread.
+
+```java
+Runtime.getRuntime().addShutdownHook(new Thread() {
+    public void run() {
+        System.out.println("Starting exit...");
+        consumer.wakeup();
+        try {
+            mainThread.join();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+} });
+
+...
+Duration timeout = Duration.ofMillis(100);
+try {
+    // looping until ctrl-c, the shutdown hook will cleanup on exit
+    while (true) {
+        ConsumerRecords<String, String> records = movingAvg.consumer.poll(timeout);
+        System.out.println(System.currentTimeMillis() + "--  waiting for data...");
+        for (ConsumerRecord<String, String> record : records) {
+            System.out.printf("offset = %d, key = %s, value = %s\n", record.offset(), record.key(), record.value());
+        }
+        for (TopicPartition tp: consumer.assignment()) {
+            System.out.println("Committing offset at position:" + consumer.position(tp));
+        }
+        movingAvg.consumer.commitSync();
+    }
+} catch (WakeupException e) {
+    // ignore for shutdown
+} finally {
+    consumer.close();
+    System.out.println("Closed consumer and we are done");
+}
+```
+
+## Deserializers
+
+We will now look at how to create custom deserializers for your own objects and how to use Avro and its deserializers.
+
+It should be obvious that the serializer used to produce events to Kafka must match the deserializer that will be used when consuming events.
+
+### Custom deserializers
+
+```java
+ public class Customer {
+    private int customerID;
+    private String customerName;
+    
+    public Customer(int ID, String name) {
+        this.customerID = ID;
+        this.customerName = name;
+    }
+
+	public int getID() {
+		return customerID;
+	}
+	public String getName() {
+		return customerName;
+	}
+}
+```
+
+The custom deserializer will look as follows:
+
+```java
+import org.apache.kafka.common.errors.SerializationException;
+import java.nio.ByteBuffer;
+import java.util.Map;
+
+public class CustomerDeserializer implements Deserializer<Customer> {
+    
+	@Override
+    public void configure(Map configs, boolean isKey) {
+        // nothing to configure
+    }
+    
+    @Override
+    public Customer deserialize(String topic, byte[] data) {
+        int id;
+        int nameSize;
+        String name;
+        try {
+            if (data == null) return null;
+            if (data.length < 16) {
+                throw new SerializationException("Size of data received by deserializer is shorter than expected");
+			}
+            ByteBuffer buffer = ByteBuffer.wrap(data);
+            id = buffer.getInt();
+            nameSize = buffer.getInt();
+            byte[] nameBytes = new byte[nameSize];
+            buffer.get(nameBytes);
+            name = new String(nameBytes, "UTF-8");
+            return new Customer(id, name);
+        } catch (Exception e) {
+            throw new SerializationException("Error when deserializing byte[] to Customer " + e);
+        }
+	}
+    
+	@Override
+    public void close() {
+        // nothing to close
+    } 
+}
+```
+
+The consumer code that uses this serializer will look similar to this example:
+
+```java
+Duration timeout = Duration.ofMillis(100);
+Properties props = new Properties();
+props.put("bootstrap.servers", "broker1:9092,broker2:9092");
+props.put("group.id", "CountryCounter");
+props.put("key.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
+props.put("value.deserializer", CustomerDeserializer.class.getName());
+
+KafkaConsumer<String, Customer> consumer = new KafkaConsumer<>(props);
+consumer.subscribe(Collections.singletonList("customerCountries"));
+
+while (true) {
+    ConsumerRecords<String, Customer> records = consumer.poll(timeout);
+    for (ConsumerRecord<String, Customer> record : records) {
+        System.out.println("current customer Id: " + record.value().getID() + " and current customer name: " +  record.value().getName());
+    }
+    consumer.commitSync();
+}
+```
+
+**Again, it is important to note that implementing a custom serializer and deserializer is not recommended.** It tightly couples producers and consumers and is fragile and error-prone. A better solution would be to use a standard message format such as JSON, Thrift, Protobuf, or Avro.
+
+### Using Avro deserialization with Kafka consumer
+
+Let’s assume we are using the implementation of the Customer class in Avro that was shown in Chapter 3. In order to consume those objects from Kafka, you want to implement a consuming application similar to this:
+
+```java
+Duration timeout = Duration.ofMillis(100);
+Properties props = new Properties();
+props.put("bootstrap.servers", "broker1:9092,broker2:9092");
+props.put("group.id", "CountryCounter");
+props.put("key.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
+props.put("value.deserializer", "io.confluent.kafka.serializers.KafkaAvroDeserializer");
+props.put("specific.avro.reader","true");
+props.put("schema.registry.url", schemaUrl);
+String topic = "customerContacts"
+KafkaConsumer<String, Customer> consumer = new KafkaConsumer<>(props);
+consumer.subscribe(Collections.singletonList(topic));
+
+System.out.println("Reading topic:" + topic);
+while (true) {
+    ConsumerRecords<String, Customer> records = consumer.poll(timeout);
+    for (ConsumerRecord<String, Customer> record: records) {
+        System.out.println("Current customer name is: " + record.value().getName());
+    }
+    consumer.commitSync();
+}
+```
+
+## Standalone Consumer: Why and How to Use a Consumer Without a Group
+
+So far, we have discussed consumer groups, which are where partitions are assigned automatically to consumers and are rebalanced automatically when consumers are added or removed from the group. Typically, this behavior is just what you want, but in some cases you want something much simpler. Sometimes you know you have a single consumer that always needs to read data from all the partitions in a topic, or from a specific partition in a topic. In this case, there is no reason for groups or rebalances.
+
+When you know exactly which partitions the consumer should read, you don’t subscribe to a topic—instead, you assign yourself a few partitions. **A consumer can either subscribe to topics (and be part of a consumer group), or assign itself partitions, but not both at the same time.**
+
+Here is an example of how a consumer can assign itself all partitions of a specific topic and consume from them:
+
+```java
+Duration timeout = Duration.ofMillis(100);
+List<PartitionInfo> partitionInfos = null;
+//We start by asking the cluster for the partitions available in the topic. If you only plan on consuming a specific partition, you can skip this part.
+partitionInfos = consumer.partitionsFor("topic");
+
+
+if (partitionInfos != null) {
+    for (PartitionInfo partition : partitionInfos)
+        partitions.add(new TopicPartition(partition.topic(), partition.partition()));
+    //Once we know which partitions we want, we call assign() with the list.
+    consumer.assign(partitions);
+    while (true) {
+        ConsumerRecords<String, String> records = consumer.poll(timeout);
+        for (ConsumerRecord<String, String> record: records) {
+            System.out.printf("topic = %s, partition = %s, offset = %d, customer = %s, country = %s\n",
+                record.topic(), record.partition(), record.offset(), record.key(), record.value());
+        }
+        consumer.commitSync();
+    }
+}
+```
+
+Other than the lack of rebalances and the need to manually find the partitions, everything else is business as usual. **Keep in mind that if someone adds new partitions to the topic, the consumer will not be notified. You will need to handle this by checking ``consumer.partitionsFor()`` periodically** or simply by bouncing the application whenever partitions are added.
+
+# Chapter 5. Managing Apache Kafka Programmatically
