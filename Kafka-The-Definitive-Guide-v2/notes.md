@@ -1242,7 +1242,7 @@ import java.util.Map;
 
 public class CustomerDeserializer implements Deserializer<Customer> {
     
-	@Override
+    @Override
     public void configure(Map configs, boolean isKey) {
         // nothing to configure
     }
@@ -1256,7 +1256,7 @@ public class CustomerDeserializer implements Deserializer<Customer> {
             if (data == null) return null;
             if (data.length < 16) {
                 throw new SerializationException("Size of data received by deserializer is shorter than expected");
-			}
+	    }
             ByteBuffer buffer = ByteBuffer.wrap(data);
             id = buffer.getInt();
             nameSize = buffer.getInt();
@@ -1267,9 +1267,9 @@ public class CustomerDeserializer implements Deserializer<Customer> {
         } catch (Exception e) {
             throw new SerializationException("Error when deserializing byte[] to Customer " + e);
         }
-	}
+    }
     
-	@Override
+    @Override
     public void close() {
         // nothing to close
     } 
