@@ -1362,3 +1362,347 @@ if (partitionInfos != null) {
 Other than the lack of rebalances and the need to manually find the partitions, everything else is business as usual. **Keep in mind that if someone adds new partitions to the topic, the consumer will not be notified. You will need to handle this by checking ``consumer.partitionsFor()`` periodically** or simply by bouncing the application whenever partitions are added.
 
 # Chapter 5. Managing Apache Kafka Programmatically
+
+## AdminClient Overview
+
+### Asynchronous and Eventually Consistent API
+
+**Perhaps the most important thing to understand about Kafka’s ``AdminClient`` is that it is asynchronous.** Each method returns immediately after delivering a request to the cluster Controller, and each method returns one or more ``Future`` objects.
+
+Kafka’s ``AdminClient`` wraps the ``Future`` objects into ``Result`` objects, which provide methods to wait for the operation to complete and helper methods for common follow-up operations. For example, ``KafkaAdminClient.createTopics`` returns ``CreateTopicsResult`` object which lets you wait until all topics are created, lets you check each topic status individually and also lets you retrieve the configuration of a specific topic after it was created.
+
+It is possible that every broker is aware of the new state, so, for example, **a ``listTopics`` request may end up handled by a broker that is not up to date and will not contain a topic that was very recently created**. This property is also called **eventual consistency** - eventually every broker will know about every topic, but we can’t guarantee exactly when this will happen.
+
+### Options
+
+Every method in ``AdminClient`` takes as an argument an ``Options`` object that is specific to that method. For example, ``listTopics`` method takes ``ListTopicsOptions`` object as an argument and ``describeCluster`` takes ``DescribeClusterOptions`` as an argument. Those objects contain different settings for how the request will be handled by the broker. **The one setting that all ``AdminClient`` methods have is ``timeoutMs`` - this controls how long the client will wait for a response from the cluster before throwing a ``TimeoutException``.**
+
+### Flat Hierarchy
+
+**All the admin operations that are supported by the Apache Kafka protocol are implemented in ``KafkaAdminClient`` directly.** There is no object hierarchy or namespaces. This is a bit controversial as the interface can be quite large and perhaps a bit overwhelming, but the main benefit is that if you want to know how to programmatically perform any admin operation on Kafka, you have exactly one JavaDoc to search and your IDE’s autocomplete will be quite handy.
+
+### Additional Notes
+
+**All the operations that modify the cluster state - create, delete and alter, are handled by the Controller. Operations that read the cluster state - list and describe, can be handled by any broker and are directed to the least loaded broker (based on what the client knows).** This shouldn’t impact you as a user of the API, but it can be good to know - in case you are seeing unexpected behavior, you notice that some operations succeed while others fail, or if you are trying to figure out why an operation is taking too long.
+
+## AdminClient Lifecycle: Creating, Configuring and Closing
+
+In order to use Kafka’s AdminClient, the first thing you have to do is construct an instance of the AdminClient class.
+
+```java
+Properties props = new Properties();
+props.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
+AdminClient admin = AdminClient.create(props);
+// TODO: Do something useful with AdminClient
+admin.close(Duration.ofSeconds(30));
+```
+
+The only mandatory configuration is the URI for your cluster - a comma separated list of brokers to connect to.
+
+If you start an ``AdminClient``, eventually you want to close it. **It is important to remember that when you call close, there could still be some ``AdminClient`` operations in progress.** Therefore close method accepts a timeout parameter. Once you call ``close``, you can’t call any other methods and send any more requests, but the client will wait for responses until the timeout expires. After the timeout expires, the client will abort all on-going operations with timeout exception and release all resources. **Calling ``close`` without a timeout implies that you’ll wait as long as it takes for all on-going operations to complete.**
+
+### client.dns.lookup
+
+By default, Kafka validates, resolves and creates connections based on the hostname provided in bootstrap server configuration (and later in the names returned by the brokers as specified in ``advertised.listeners`` configuration). This simple model works most of the time, but fails to cover two important use-cases - use of DNS aliases, especially in bootstrap configuration, and use of a single DNS that maps to multiple IP addresses. These sound similar, but are slightly different.
+
+#### Use of DNS alias
+
+Suppose you have multiple brokers, with the following naming convention: ``broker1.hostname.com``, ``broker2.hostname.com``, etc. Rather than specifying all of them in bootstrap servers configuration, which can easily become challenging to maintain, you may want to create a single DNS alias that will map to all of them. You’ll use ``all-brokers.hostname.com`` for bootstrapping, since you don’t actually care which broker gets the initial connection from clients. This is all very convenient, except if you use SASL to authenticate. If you use SASL, the client will try to authenticate ``all-brokers.hostname.com``, but the server principal will be ``broker2.host name.com``, if the names don’t match, SASL will refuse to authenticate (the broker certificate could be a man-in-the-middle attack), and the connection will fail.
+
+**In this scenario, you’ll want to use ``client.dns.lookup=resolve_canonical_boot strap_servers_only``. With this configuration, the client will “expend” the DNS alias, and the result will be the same as if you included all the broker names the DNS alias connects to as brokers in the original bootstrap list.**
+
+#### DNS name with multiple IP addresses
+
+With modern network architectures, it is common to put all the brokers behind a proxy or a load balancer. This is especially common if you use Kubernetes, where load-balancers are necessary to allow connections from outside the Kubernetes cluster. In these cases, you don’t want the load balancers to become a single point of failure. It is therefore very common to make ``broker1.hostname.com`` point at a list of IPs, all of which resolve to load balancers, and all of them route traffic to the same broker. These IPs are also likely to change over time. By default, ``KafkaClient`` will just try to connect to the first IP that the hostname resolves. This means that if that IP becomes unavailable, the client will fail to connect, even though the broker is fully available. **It is therefore highly recommended to use ``client.dns.lookup=use_all_dns_ips`` to make sure the client doesn’t miss out on the benefits of a highly-available load balancing layer.**
+
+### request.timeout.ms
+
+This configuration limits the time that your application can spend waiting for AdminClient to respond. This includes the time spent on retrying if the client receives a retriable error.
+
+**The default value is 120 seconds**, which is quite long - but some AdminClient operations, especially consumer group management commands, can take a while to respond. **Each AdminClient method accepts an ``Options`` object, which can contain a timeout value that applies specifically to that call.**
+
+## Essential Topic Management
+
+The most common use case for Kafka’s AdminClient is topic management. This includes listing topics, describing them, creating topics and deleting them.
+
+Lets start by listing all topics in the cluster:
+
+```java
+ListTopicsResult topics = admin.listTopics();
+topics.names().get().forEach(System.out::println);
+```
+
+Note that ``admin.listTopics()`` returns ``ListTopicsResult`` object which is a thin wrapper over a collection of ``Futures``. ``topics.name()`` returns a future set of name. When we call ``get()`` on this future, the executing thread will wait until the server responds with a set of topic names, or we get a timeout exception. Once we get the list, we iterate over it to print all the topic names.
+
+Now lets try something a bit more ambitious: Check if a topic exists, and create it if it doesn’t. **One way to check if a specific topic exists is to get a list of all topics and check if the topic you need is in the list. But on a large cluster, this can be inefficient.**
+
+In addition, sometimes you want to check for more than just whether the topic exists - you want to make sure the topic has the right number of partitions and replicas.
+
+```java
+DescribeTopicsResult demoTopic = admin.describeTopics(TOPIC_LIST);                          //1
+try {
+    topicDescription = demoTopic.values().get(TOPIC_NAME).get();                            //2
+    System.out.println("Description of demo topic:" + topicDescription);
+    if (topicDescription.partitions().size() != NUM_PARTITIONS) {                           //3
+    	System.out.println("Topic has wrong number of partitions. Exiting.");
+    	System.exit(-1);
+    }
+} catch (ExecutionException e) {                                                            //4
+    // exit early for almost all exceptions
+    if (! (e.getCause() instanceof UnknownTopicOrPartitionException)) {
+        e.printStackTrace();
+        throw e; 
+    }
+    // if we are here, topic doesn't exist
+    System.out.println("Topic " + TOPIC_NAME + " does not exist. Going to create it now");
+    // Note that number of partitions and replicas are optional. If there are
+    // not specified, the defaults configured on the Kafka brokers will be used
+    CreateTopicsResult newTopic = admin.createTopics(Collections.singletonList(new NewTopic(TOPIC_NAME, NUM_PARTITIONS, REP_FACTOR))); //5
+    // Check that the topic was created correctly:
+    if (newTopic.numPartitions(TOPIC_NAME).get() != NUM_PARTITIONS) {                      //6
+        System.out.println("Topic has wrong number of partitions.");
+        System.exit(-1);
+    }
+}
+```
+
+1) To check that the topic exists with the correct configuration, we call ``describeTopics()`` with a list of topic names that we want to validate. This returns ``DescribeTopicResult`` object, which wraps a map of topic names to future descriptions.
+2) We’ve already seen that if we wait for the future to complete, using ``get()``, we can get the result we wanted, in this case a ``TopicDescription``. But there is also a possibility that the server can’t complete the request correctly - if the topic does not exist, the server can’t respond with its description. In this case the server will send back and error, and the future will complete by throwing an ``ExecutionException``. The actual error sent by the server will be the cause of the exception. Since we want to handle the case where the topic doesn’t exist, we handle these exceptions.
+3) If the topic does exist, the future completes by returning a ``TopicDescription``, which contains a list of all the partitions of the topic and for each partition which broker is the leader, a list of replicas and a list of in-sync replicas. Note that this does not include the configuration of the topic.
+4) Note that all ``AdminClient`` result objects throw ``ExecutionException`` when Kafka responds with an error. This is because ``AdminClient`` results are wrapped ``Future`` objects and those wrap exceptions. You always need to examine the cause of ``ExecutionException`` to get the error that Kafka returned.
+5) If the topic does not exist, we create a new topic. When creating a topic, you can specify just the name and use default values for all the details. You can also specify the number of partitions, number of replicas and configuration.
+6) Finally, you want to wait for topic creation to return, and perhaps validate the result. In this example, we are checking the number of partitions. Since we specified the number of partitions when we created the topic, we are fairly certain it is correct. Checking the result is more common if you relied on broker defaults when creating the topic. Note that since we are again calling ``get()`` to check the results of ``CreateTopic``, this method could throw an exception. ``TopicExistsException`` is common in this scenario and you’ll want to handle it (perhaps by describing the topic to check for correct configuration).
+
+Now that we have a topic, lets delete it:
+
+```java
+admin.deleteTopics(TOPIC_LIST).all().get();
+// Check that it is gone. Note that due to the async nature of deletes,
+// it is possible that at this point the topic still exists
+try {
+    topicDescription = demoTopic.values().get(TOPIC_NAME).get();
+    System.out.println("Topic " + TOPIC_NAME + " is still around");
+} catch (ExecutionException e) {
+    System.out.println("Topic " + TOPIC_NAME + " is gone");
+}
+```
+
+At this point the code should be quite familiar. We call the method ``deleteTopics`` with a list of topic names to delete, and we use ``get()`` to wait for this to complete.
+
+All the examples so far have used the blocking ``get()`` call on the future returned by the different ``AdminClient`` methods. **Most of the time, this is all you need - admin operations are rare and usually waiting until the operation succeeds or times out is acceptable.**
+
+There is one exception - if you are writing a server that is expected to process large number of admin requests. In this case, you don’t want to block the server threads while waiting for Kafka to respond. You want to continue accepting requests from your users, sending them to Kafka and when Kafka responds, send the response to the client. In these scenarios, the versatility of ``KafkaFuture`` becomes quite useful. Here’s a simple example.
+
+```java
+vertx.createHttpServer().requestHandler(request -> {
+    String topic = request.getParam("topic");
+    String timeout = request.getParam("timeout");
+    int timeoutMs = NumberUtils.toInt(timeout, 1000);
+    DescribeTopicsResult demoTopic = admin.describeTopics(Collections.singletonList(topic), new DescribeTopicsOptions().timeoutMs(timeoutMs));
+    //Instead of using the blocking get() call, we instead construct a function that will be called when the Future completes
+    demoTopic.values().get(topic).whenComplete(new KafkaFuture.BiConsumer<TopicDescription, Throwable>() {
+        @Override
+        public void accept(final TopicDescription topicDescription, final Throwable throwable) {
+            //If the future completes with an exception, we send the error to the HTTP client
+        	if (throwable != null) {
+              request.response().end("Error trying to describe topic " + topic + " due to " + throwable.getMessage());
+            //If the future completes successfully, we respond to the client with the topic description.
+        	} else {
+                request.response().end(topicDescription.toString());
+            } 
+        }
+    });
+}).listen(8080);
+```
+
+## Configuration management
+
+Configuration management is done by describing and updating collections of ``ConfigResource``. Config resources can be brokers, broker loggers and topics. **Checking and modifying broker and broker logging configuration is typically done via tools like ``kafka-config.sh`` or other Kafka management tools, but checking and updating topic configuration from the applications that use them is quite common.**
+
+For example, many applications rely on compacted topics for their correct operation. It makes sense that periodically those applications will check that the topic is indeed compacted and take action to correct the topic configuration if this is not the case.
+
+Here’s an example of how this is done:
+
+```java
+ConfigResource configResource = new ConfigResource(ConfigResource.Type.TOPIC, TOPIC_NAME);                          //1
+DescribeConfigsResult configsResult = admin.describeConfigs(Collections.singleton(configResource));
+Config configs = configsResult.all().get().get(configResource);
+// print non-default configs
+configs.entries().stream().filter(entry -> !entry.isDefault()).forEach(System.out::println);                        //2
+// Check if topic is compacted
+ConfigEntry compaction = new ConfigEntry(TopicConfig.CLEANUP_POLICY_CONFIG, TopicConfig.CLEANUP_POLICY_COMPACT);
+if (! configs.entries().contains(compaction)) {
+    // if topic is not compacted, compact it
+    Collection<AlterConfigOp> configOp = new ArrayList<AlterConfigOp>();
+    configOp.add(new AlterConfigOp(compaction, AlterConfigOp.OpType.SET));                                          //3
+    Map<ConfigResource, Collection<AlterConfigOp>> alterConf = new HashMap<>();
+    alterConf.put(configResource, configOp);
+    admin.incrementalAlterConfigs(alterConf).all().get();
+} else {
+    System.out.println("Topic " + TOPIC_NAME + " is compacted topic");
+}
+```
+
+1) As mentioned above, there are several types of ConfigResource, here we are checking the configuration for a specific topic. You can specify multiple different resources from different types in the same request.
+2) The result of ``describeConfigs`` is a map from each ``ConfigResource`` to a collection of configurations. Each configuration entry has ``isDefault()`` method that lets us know which configs were modified. **A topic configuration is considered non-default if a user configured the topic to have a non-default value, or if a broker level configuration was modified and the topic that was created inherited this non-default value from the broker.**
+3) There are four types of operations that modify configuration in Kafka: ``SET``, which sets the configuration value, ``DELETE`` which removes the value and resets to default, ``APPEND`` and ``SUBSTRACT`` - those apply only to configurations with List type and allows adding and removing values from the list without having to send the entire list to Kafka every time.
+
+## Consumer group management
+
+In this section, we’ll look at how you can use the AdminClient to programmatically explore and modify consumer groups and the offsets that were committed by those groups.
+
+### Exploring Consumer Groups
+
+If you want to explore and modify consumer groups, the first step would be to list them:
+
+```java
+admin.listConsumerGroups().valid().get().forEach(System.out::println);
+```
+
+Note that by using ``valid()`` method, the collection that ``get()`` will return will only contain the consumer groups that the cluster returned without errors, if any. Any errors will be completely ignored, rather than thrown as exceptions. 
+
+The ``errors()`` method can be used to get all the exceptions. If you use ``all()`` as we did in other examples, only the first error the cluster returned will be thrown as an exception. **Likely causes of such errors are authorization, where you don’t have permission to view the group, or cases when the coordinator for some of the consumer groups is not available.**
+
+If we want more information about some of the groups, we can describe them:
+
+```java
+ConsumerGroupDescription groupDescription = admin
+            .describeConsumerGroups(CONSUMER_GRP_LIST)
+            .describedGroups().get(CONSUMER_GROUP).get();
+
+System.out.println("Description of group " + CONSUMER_GROUP + ":" + groupDescription);
+```
+
+The description contains a wealth of information about the group. This includes the group members, their identifiers and hosts, the partitions assigned to them, the algorithm used for the assignment and the host of the group coordinator.
+
+One of the most important pieces of information about a consumer group is missing from this description - inevitably, we’ll want to know what was the last offset committed by the group for each partition that it is consuming, and how much it is lagging behind the latest messages in the log.
+
+We’ll take a look at how Kafka’s ``AdminClient`` allows us to retrieve this information.
+
+```java
+Map<TopicPartition, OffsetAndMetadata> offsets = admin
+        .listConsumerGroupOffsets(CONSUMER_GROUP)
+        .partitionsToOffsetAndMetadata().get();
+    
+Map<TopicPartition, OffsetSpec> requestLatestOffsets = new HashMap<>();
+for(TopicPartition tp: offsets.keySet()) {
+    requestLatestOffsets.put(tp, OffsetSpec.latest());
+}
+
+Map<TopicPartition, ListOffsetsResult.ListOffsetsResultInfo> latestOffsets = admin.listOffsets(requestLatestOffsets).all().get();
+for (Map.Entry<TopicPartition, OffsetAndMetadata> e: offsets.entrySet()) {
+    String topic = e.getKey().topic();
+    int partition =  e.getKey().partition();
+    long committedOffset = e.getValue().offset();
+    long latestOffset = latestOffsets.get(e.getKey()).offset();
+    System.out.println("Consumer group " + CONSUMER_GROUP + " has committed offset " + committedOffset
+    + " to topic " + topic + " partition " + partition + ". The latest offset in the partition is "
+    +  latestOffset + " so consumer group is " + (latestOffset - committedOffset) + " records behind");
+}
+```
+
+### Modifying consumer groups
+
+Until now, we just explored available information. AdminClient also has methods for modifying consumer groups - deleting groups, removing members, deleting committed offsets and modifying offsets. **These are commonly used by SREs who use them to build ad-hoc tooling to recover from an emergency.**
+
+From all those, modifying offsets is the most useful. Deleting offsets might seem like a simple way to get a consumer to “start from scratch”, but this really depends on the configuration of the consumer - if the consumer starts and no offsets are found, will it start from the beginning? Or jump to the latest message? **Unless we have the code for the consumer, we can’t know. Explicitly modifying the committed offsets to the earliest available offsets will force the consumer to start processing from the beginning of the topic, and essentially cause the consumer to “reset”.**
+
+**This is very useful for stateless consumers, but keep in mind that if the consumer application maintains state (and most stream processing applications maintain state), resetting the offsets and causing the consumer group to start processing from the beginning of the topic can have strange impact on the stored state.**
+
+**Also keep in mind that consumer groups don’t receive updates when offsets change in the offset topic. They only read offsets when a consumer is assigned a new partition or on startup.** To prevent you from making changes to offsets that the consumers will not know about (and will therefore override), Kafka will prevent you from modifying offsets while the consumer group is active.
+
+With all these warnings in mind, lets look at an example:
+
+```java
+Map<TopicPartition, ListOffsetsResult.ListOffsetsResultInfo> earliestOffsets = admin.listOffsets(requestEarliestOffsets).all().get();
+Map<TopicPartition, OffsetAndMetadata> resetOffsets = new HashMap<>();
+for (Map.Entry<TopicPartition, ListOffsetsResult.ListOffsetsResultInfo> e: earliestOffsets.entrySet()) {
+    resetOffsets.put(e.getKey(),new OffsetAndMetadata(e.getValue().offset()));                          //1
+}
+try {
+	admin.alterConsumerGroupOffsets(CONSUMER_GROUP, resetOffsets).all().get();                          //2
+} catch (ExecutionException e) {
+	System.out.println("Failed to update the offsets committed by group " + CONSUMER_GROUP + " with error " + e.getMessage());
+	if (e.getCause() instanceof UnknownMemberIdException) {
+		System.out.println("Check if consumer group is still active.");                                 //3
+    }
+}
+```
+
+1) ``alterConsumerGroupOffsets`` takes as an argument a map with ``OffsetAndMeta`` data values. But ``listOffsets`` returns ``ListOffsetsResultInfo``, we need to massage the results of the first method a bit, so we can use them as an argument.
+2) We are waiting on the future to complete so we can see if it completed successfully.
+3) One of the most common reasons that ``alterConsumerGroupOffsets`` will fail is when we didn’t stop the consumer group first. If the group is still active, our attempt to modify the offsets will appear to the consumer coordinator as if a client that is not a member in the group is committing an offset for that group. In this case, we’ll get ``UnknownMemberIdException``.
+
+## Cluster Metadata
+
+**It is rare that an application has to explicitly discover anything at all about the cluster to which it connected.**
+
+```java
+DescribeClusterResult cluster = admin.describeCluster();
+
+System.out.println("Connected to cluster " + cluster.clusterId().get());
+System.out.println("The brokers in the cluster are:");
+cluster.nodes().get().forEach(node -> System.out.println("    * " + node));
+System.out.println("The controller is: " + cluster.controller().get());
+```
+
+## Advanced Admin Operations
+
+**In this subsection, we’ll discuss few methods that are rarely used, and can be risky to use... but are incredibly useful when needed.**
+
+### Adding partitions to a topic
+
+Usually the number of partitions in a topic is set when a topic is created. And since each partition can have very high throughput, bumping against the capacity limits of a topic is rare. In addition, if messages in the topic have keys, then consumers can assume that all messages with the same key will always go to the same partition and will be processed in the same order by the same consumer.
+
+**Adding partitions to a topic is rarely needed and can be risky - you’ll need to check that the operation will not break any application that consumes from the topic.**
+
+You can add partitions to a collection of topics using createPartitions method. Note that if you try to expand multiple topics at once, it is possible that some of the topics will be successfully expanded while others will fail.
+
+```java
+Map<String, NewPartitions> newPartitions = new HashMap<>();
+// When expanding topics, you need to specify the total number of partitions the topic will have after the partitions are added and not the number of new partitions.
+newPartitions.put(TOPIC_NAME, NewPartitions.increaseTo(NUM_PARTITIONS+2));
+admin.createPartitions(newPartitions).all().get();
+```
+
+### Deleting records from a topic
+
+Current privacy laws mandate specific retention policies for data. Unfortunately, while Kafka has retention policies for topics, they were not implemented in a way that guarantees legal compliance. **A topic with retention policy of 30 days can have older data if all the data fits into a single segment in each partition.**
+
+``deleteRecords`` method will delete all the records with offsets older than those specified when calling the method. Remember that ``listOffsets`` method can be used to get offsets for records that were written on or immediately after a specific time. Together, these methods can be used to delete records older than any specific point in time.
+
+```java
+Map<TopicPartition, ListOffsetsResult.ListOffsetsResultInfo> olderOffsets = admin.listOffsets(requestOlderOffsets).all().get();
+Map<TopicPartition, RecordsToDelete> recordsToDelete = new HashMap<>();
+for (Map.Entry<TopicPartition, ListOffsetsResult.ListOffsetsResultInfo> e : olderOffsets.entrySet()) {
+	recordsToDelete.put(e.getKey(), RecordsToDelete.beforeOffset(e.getValue().offset()));
+}
+admin.deleteRecords(recordsToDelete).all().get();
+```
+
+### Leader Election
+
+This method allows you to trigger two different types of leader election:
+
+* **Preferred leader election**: Each partition has a replica that is designated as the “preferred leader”. It is preferred because if all partitions use their preferred leader replica as leader, the number of leaders on each broker should be balanced. By default, Kafka will check every 5 minutes if the preferred leader replica is indeed the leader, and if it isn’t but it is eligible to become the leader, it will elect the preferred leader replica as leader. If this option is turned off, or if you want this to happen faster, ``electLeader()`` method can trigger this process. 
+* **Unclean leader election**: If the leader replica of a partition becomes unavailable, and the other replicas are not eligible to become leaders (usually because they are missing data), the partition will be without leader and therefore unavailable. One way to resolve this is to trigger “unclean” leader election - which means electing a replica that is otherwise ineligible to become a leader as the leader anyway. This will cause data loss - all the events that were written to the old leader and were not replicated to the new leader will be lost. ``electLeader()`` method can also be used to trigger unclean leader elections.
+
+**The method is asynchronous, which means that even after it returns successfully, it takes a while until all brokers become aware of the new state and calls to ``describeTopics()`` can return inconsistent results.** If you trigger leader election for multiple partitions, it is possible that the operation will be successful for some partitions and will fail for others.
+
+```java
+Set<TopicPartition> electableTopics = new HashSet<>();
+electableTopics.add(new TopicPartition(TOPIC_NAME, 0));
+try {
+    admin.electLeaders(ElectionType.PREFERRED, electableTopics).all().get();                        //1
+} catch (ExecutionException e){
+	if(e.getCause()instanceof ElectionNotNeededException){
+		System.out.println("All leaders are preferred already");                                    //2
+	}
+}
+```
+
+1) We are electing the preferred leader on a single partition of a specific topic. We can specify any number of partitions and topics. If you call the command with null instead of a collection of partitions, it will trigger the election type you chose for all partitions.
+2) If the cluster is in a healthy state, the command will do nothing - preferred leader election and unclean leader election only have effect when a replica other than the preferred leader is the current leader.
+
+### Reassigning Replicas
+
