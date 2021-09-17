@@ -1810,3 +1810,64 @@ public void testNotTopic() throws ExecutionException, InterruptedException {
 ```
 
 # Chapter 6. Kafka Internals
+
+## Cluster Membership
+
+Every broker has a unique identifier that is either set in the broker configuration file or automatically generated.
+
+If you try to start another broker with the same ID, you will get an error.
+
+Even though the node representing the broker is gone when the broker is stopped, the broker ID still exists in other data structures. This way, if you completely lose a broker and start a brand new broker with the ID of the old one, it will immediately join the cluster in place of the missing broker with the same partitions and topics assigned to it.
+
+## The Controller
+
+**The controller is one of the Kafka brokers that, in addition to the usual broker functionality, is responsible for electing partition leaders. The first broker that starts in the cluster becomes the controller.**
+
+When other brokers start, they also try to become controller, but receive a “node already exists” exception, which causes them to “realize” that it already exists.
+
+When the controller broker is stopped or loses connectivity to Zookeeper, other brokers in the cluster will be notified through the Zookeeper watch that the controller is gone and will attempt to create the controller node in Zookeeper themselves.
+
+The first node to create the new controller in Zookeeper is the new controller, while the other nodes will receive a “node already exists” exception and re-create the watch on the new controller node.
+
+Each time a controller is elected, it receives a new, higher controller epoch number through a Zookeeper conditional increment operation. The brokers know the current controller epoch and if they receive a message from a controller with an older number, they know to ignore it.
+
+When the controller first comes up, it has to read the latest replica state map from Zookeeper, before it can start managing the cluster metadata and performing leader elections.
+
+When the controller notices that a broker left the cluster (by watching the relevant Zookeeper path or because it received a ``ControlledShutdownRequest`` from the broker), it knows that all the partitions that had a leader on that broker will need a new leader. It goes over all the partitions that need a new leader and determines who the new leader should be (simply the next replica in the replica list of that partition). Then it persists the new state to Zookeeper (again, using pipelined async requests to reduce latency) and then sends a LeaderAndISR request to all the brokers that contain replicas for those partitions. The request contains information on the new leader and followers for the partitions.
+
+## KRaft - Kafka’s new Raft based controller
+
+In the new architecture, the controller nodes are a Raft quorum which manages the log of metadata events. This log contains information about each change to the cluster metadata. Everything that is currently stored in ZooKeeper, such as topics, partitions, ISRs, configurations, and so on, will be stored in this log.
+
+Using the Raft algorithm, the controller nodes will elect a leader from amongst themselves, without relying on any external system. The leader of the metadata log is called the active controller. The active controller handles all RPCs made from the brokers. The follower controllers replicate the data which is written to the active controller, and serve as hot standbys if the active controller should fail. Because the controllers will now all track the latest state, controller failover will not require a lengthy reloading period where we transfer all the state to the new controller.
+
+## Replication
+
+Replication is at the heart of Kafka’s architecture.
+
+As we’ve already discussed, **data in Kafka is organized by topics. Each topic is partitioned, and each partition can have multiple replicas.**
+
+There are two types of replicas:
+* **Leader replica**. Each partition has a single replica designated as the leader. All produce requests go through the leader, in order to guarantee consistency. Clients can consume from either the lead replica or its followers.
+* **Follower replica**. All replicas for a partition that are not leaders are called followers. Followers don’t serve client requests; their only job is to replicate messages from the leader and stay up-to-date with the most recent messages the leader has. In the event that a leader replica for a partition crashes, one of the follower replicas will be promoted to become the new leader for the partition.
+
+**Another task the leader is responsible for is knowing which of the follower replicas is up-to-date with the leader.** Followers attempt to stay up-to-date by replicating all the messages from the leader as the messages arrive, but they can fail to stay in sync.
+
+A replica will request message 1, then message 2, and then message 3, and it will not request message 4 before it gets all the previous messages. This means that the leader can know that a replica got all messages up to message 3 when the replica requests message 4. By looking at the last offset requested by each replica, the leader can tell how far behind each replica is.
+
+**If a replica fails to keep up with the leader, it can no longer become the new leader in the event of failure —after all, it does not contain all the messages.**
+
+The amount of time a follower can be inactive or behind before it is considered out of sync is controlled by the ``replica.lag.time.max.ms`` configuration parameter.
+
+In addition to the current leader, each partition has a **preferred leader** — the replica that was the leader when the topic was originally created. 
+
+![chapter-6-preferred-leader.png](pictures/chapter-6-preferred-leader.png)
+
+As seen in the diagram above, all leaders replicas are distributed across brokers and replicas for the same exist on another broker. In Kafka, all read and write happens through a leader. So it’s important that leaders are spread evenly across brokers.
+
+So far we understood that during the topic creation time leader election algorithm of Kafka will take care of distributing the partition leader evenly. Now since affinity is assigned for a leader partition during creation time, but over the period of time because of certain events like broker shutdown or crashes or brokers are not able to register heartbeat, leadership gets changed and one of the followers replicas will become the leader. For example in the above diagram if broker 4 is dead then broker 3 will become the leader for partition 2 of the topic. In that case leadership is skewed. As we can see distribution of leaders is not even.
+
+The best way to identify the current preferred leader is by looking at the list of replicas for a partition. The first replica in the list is always the preferred leader.
+
+## Request Processing
+
