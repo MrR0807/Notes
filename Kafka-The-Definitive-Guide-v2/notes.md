@@ -1706,3 +1706,107 @@ try {
 
 ### Reassigning Replicas
 
+``alterPartitionReassignments`` gives you fine-grain control over the placement of every single replica for a partition. **Keep in mind that when you reassign replicas from one broker to another, it may involve copying large amounts of data from one broker to another.** Be mindful of the available network bandwidth and throttle replication using quotas if needed: quotas are broker configuration, so you can describe them and update them with ``AdminClient``.
+
+For this example, assume that we have a single broker with id 0. Our topic has several partitions, all with one replica on this broker. After adding a new broker, we want to use it to store some of the replicas of the topic. So we are going to assign each partition in the topic in a slightly different way:
+
+```java
+Map<TopicPartition, Optional<NewPartitionReassignment>> reassignment = new HashMap<>();
+//1
+reassignment.put(new TopicPartition(TOPIC_NAME, 0), Optional.of(new NewPartitionReassignment(Arrays.asList(0,1))));
+//2
+reassignment.put(new TopicPartition(TOPIC_NAME, 1), Optional.of(new NewPartitionReassignment(Arrays.asList(0))));
+//3
+reassignment.put(new TopicPartition(TOPIC_NAME, 2), Optional.of(new NewPartitionReassignment(Arrays.asList(1,0))));
+//4
+reassignment.put(new TopicPartition(TOPIC_NAME, 3), Optional.empty()); 
+try {
+	admin.alterPartitionReassignments(reassignment).all().get();
+} catch (ExecutionException e) {
+	if (e.getCause() instanceof NoReassignmentInProgressException) {
+		System.out.println("Cancelling a reassignment that didn't exist.");
+	} 
+}
+//5
+System.out.println("currently reassigning: " + admin.listPartitionReassignments().reassignments().get());
+demoTopic = admin.describeTopics(TOPIC_LIST);
+topicDescription = demoTopic.values().get(TOPIC_NAME).get();
+//6
+System.out.println("Description of demo topic:" + topicDescription);
+```
+
+1) We’ve added another replica to partition 0, placed the new replica on the new broker, but left the leader on the existing broker
+2) We didn’t add any replicas to partition 1, simply moved the one existing replica to the new broker. Since I have only one replica, it is also the leader.
+3) We’ve added another replica to partition 2 and made it the preferred leader. The next preferred leader election will switch leadership to the new replica on the new broker. The existing replica will then become a follower.
+4) There is no on-going reassignment for partition 3, but if there was, this would have cancelled it and returned the state to what it was before the reassignment operation started.
+5) We can list the on-going reassignments
+6) We can also try to print the new state, but remember that it can take a while until it shows consistent results
+
+## Testing
+
+Apache Kafka provides a test class ``MockAdminClient``, which you can initialize with any number of brokers and use to test that your applications behave correctly without having to run an actual Kafka cluster and really perform the admin operations on it. Some of the methods have very comprehensive mocking - you can create topics with ``MockAdminClient`` and a subsequent call to ``listTopics()`` will list the topics you “created”.
+
+In order to demonstrate how to test using MockAdminClient, lets start by implement‐ ing a class that is instantiated with an admin client and uses it to create topics:
+
+```java
+import java.util.List;
+import java.util.Map;
+
+public class TopicCreator {
+
+	private final AdminClient admin;
+
+	public TopicCreator(AdminClient admin) {
+		this.admin = admin;
+	}
+
+	// Example of a method that will create a topic if its name start with "test"
+	public void maybeCreateTopic(String topicName) throws ExecutionException, InterruptedException {
+		if (topicName.toLowerCase().startsWith("test")) {
+			Collection<NewTopic> topics = List.of(new NewTopic(topicName, 1, (short) 1));
+			admin.createTopics(topics);
+			// alter configs just to demonstrate a point
+			ConfigResource configResource = new ConfigResource(ConfigResource.Type.TOPIC, topicName);
+			ConfigEntry compaction = new ConfigEntry(TopicConfig.CLEANUP_POLICY_CONFIG, TopicConfig.CLEANUP_POLICY_COMPACT);
+			Collection<AlterConfigOp> configOp = List.of(new AlterConfigOp(compaction, AlterConfigOp.OpType.SET));
+			Map<ConfigResource, Collection<AlterConfigOp>> alterConf = Map.of(configResource, configOp);
+			admin.incrementalAlterConfigs(alterConf).all().get();
+		}
+	}
+}
+```
+
+We’ll start testing by instantiating our mock client:
+
+```java
+@Before
+public void setUp() {
+    Node broker = new Node(0,"localhost",9092);
+    this.admin = spy(new MockAdminClient(Collections.singletonList(broker), broker));
+    // without this, the tests will throw
+    // `java.lang.UnsupportedOperationException: Not implemented yet`
+    AlterConfigsResult emptyResult = mock(AlterConfigsResult.class);
+    doReturn(KafkaFuture.completedFuture(null)).when(emptyResult).all();
+    doReturn(emptyResult).when(admin).incrementalAlterConfigs(any());
+}
+```
+
+Now that we have a properly fake AdminClient, we can use it to test whether maybe ``maybeCreateTopic()`` method works properly:
+
+```java
+@Test
+public void testCreateTestTopic() throws ExecutionException, InterruptedException {
+    TopicCreator tc = new TopicCreator(admin);
+    tc.maybeCreateTopic("test.is.a.test.topic");
+    verify(admin, times(1)).createTopics(any());
+}
+
+@Test
+public void testNotTopic() throws ExecutionException, InterruptedException {
+    TopicCreator tc = new TopicCreator(admin);
+    tc.maybeCreateTopic("not.a.test");
+    verify(admin, never()).createTopics(any());
+}
+```
+
+# Chapter 6. Kafka Internals
