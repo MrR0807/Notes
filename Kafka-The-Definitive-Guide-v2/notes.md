@@ -1871,3 +1871,111 @@ The best way to identify the current preferred leader is by looking at the list 
 
 ## Request Processing
 
+Most of what a Kafka broker does is process requests sent to the partition leaders from clients, partition replicas, and the controller.
+
+All requests have a standard header that includes: 
+* Request type (also called API key) 
+* Request version (so the brokers can handle clients of different versions and respond accordingly) 
+* Correlation ID: a number that uniquely identifies the request and also appears in the response and in the error logs (the ID is used for troubleshooting) 
+* Client ID: used to identify the application that sent the request
+
+For each port the broker listens on, the broker runs an **acceptor** thread that creates a connection and hands it over to a **processor** thread for handling. The number of processor threads (also called **network threads**) is configurable. **The network threads are responsible for taking requests from client connections, placing them in a request queue, and picking up responses from a response queue and sending them back to clients.**
+
+Once requests are placed on the request queue, IO threads (also called request handler threads) are responsible for picking them up and processing them. The most common types of client requests are:
+* **Produce requests**. Sent by producers and contain messages the clients write to Kafka brokers. 
+* **Fetch requests**. Sent by consumers and follower replicas when they read messages from Kafka brokers. 
+* **Admin requests**. Sent by Admin clients when performing metadata operations such as creating and deleting topics.
+
+How do the clients know where to send the requests? Kafka clients use another request type called a metadata request, which includes a list of topics the client is interested in. The server response specifies which partitions exist in the topics, the replicas for each partition, and which replica is the leader. **Metadata requests can be sent to any broker because all brokers have a metadata cache that contains this information.**
+
+Clients typically cache this information and use it to direct produce and fetch requests to the correct broker for each partition. They also need to occasionally refresh this information (refresh intervals are controlled by the ``meta data.max.age.ms`` configuration parameter). In addition, if a client receives the “Not a Leader” error to one of its requests, it will refresh its metadata before trying to send the request again.
+
+### Produce Requests
+
+When the broker that contains the lead replica for a partition receives a produce request for this partition, it will start by running a few validations: 
+* Does the user sending the data have write privileges on the topic? 
+* Is the number of acks specified in the request valid (only 0, 1, and “all” are allowed)? 
+* If acks is set to all, are there enough in-sync replicas for safely writing the message? (Brokers can be configured to refuse new messages if the number of in-sync replicas falls below a configurable number
+
+Then it will write the new messages to local disk. On Linux, the messages are written to the filesystem cache and there is no guarantee about when they will be written to disk. **Kafka does not wait for the data to get persisted to disk — it relies on replication for message durability.**
+
+Once the message is written to the leader of the partition, the broker examines the acks configuration—if acks is set to 0 or 1, the broker will respond immediately; if acks is set to all, the request will be stored in a buffer called **purgatory** until the leader observes that the follower replicas replicated the message.
+
+### Fetch Requests
+
+Brokers process fetch requests in a way that is very similar to the way produce requests are handled. The client sends a request, asking the broker to send messages from a list of topics, partitions, and offsets—something like “Please send me messages starting at offset 53 in partition 0 of topic Test and messages starting at offset 64 in partition 3 of topic Test.” Clients also specify a limit to how much data the broker can return for each partition. The limit is important because clients need to allocate memory that will hold the response sent back from the broker. **Without this limit, brokers could send back replies large enough to cause clients to run out of memory.**
+
+If the offset exists, the broker will read messages from the partition, up to the limit set by the client in the request, and send the messages to the client. Kafka famously uses a zero-copy method to send the messages to the clients—this means that Kafka sends messages from the file (or more likely, the Linux filesystem cache) directly to the network channel without any intermediate buffers.
+
+Consumers can attempt to create a cached session which stores the list of partitions they are consuming from and its metadata. Once a session is created, consumers no longer need to specify all the partitions in each request and can use incremental fetch requests instead. Brokers will only include metadata in the response if there were any changes. The session cache has limited space, and Kafka prioritizes follower replicas and consumers with large set of partitions, so in some cases a session will not be created or will be evicted. In both these cases the broker will return an appropriate error to the client, and the consumer will transparently resort to full fetch requests with include all the partition metadata.
+
+### Other Requests
+
+We just discussed the most common types of requests used by Kafka clients: **Metadata**, **Produce**, and **Fetch**. The Kafka protocol currently handles 61 different request types, and more will be added. Consumers alone use 15 request types to form groups, coordinate consumption and to allow developers to manage the consumer groups.
+
+The protocol is ever-evolving — as we add more client capabilities, we need to grow the protocol to match. For example, in the past, Kafka Consumers used Apache Zookeeper to keep track of the offsets they receive from Kafka. So when a consumer is started, it can check Zookeeper for the last offset that was read from its partitions and know where to start processing. For various reasons, we decided to stop using Zookeeper for this, and instead store those offsets in a special Kafka topic.
+
+## Physical Storage
+
+**The basic storage unit of Kafka is a partition replica. Partitions cannot be split between multiple brokers and not even between multiple disks on the same broker. So the size of a partition is limited by the space available on a single mount point.**
+
+When configuring Kafka, the administrator defines a list of directories in which the partitions will be stored — this is the ``log.dirs`` parameter.
+
+### Tiered Storage
+
+The motivation is fairly straight forward - Kafka is currently used to store large amounts of data, either due to high throughput or long retention periods. This introduces the following concerns: 
+* You are limited in how much data you can store in a partition. As a result, maximum retention and partition counts aren’t driven by product requirements, but also by the limits on physical disk sizes.
+* Decision on disk and cluster size is driven by storage requirements. Clusters often end up larger than they would if latency and throughput were the main considerations, which drives up costs. 
+* The time it takes to move partitions from one broker to another, for example when expanding or shrinking the cluster, is driven by the size of the partitions. Large partitions make the cluster less elastic. These days architectures are designed toward maximum elasticity, taking advantage of flexible cloud deployment options.
+
+In the tiered storage approach, Kafka cluster is configured with two tiers of storage - local and remote. The local tier is the same as the current Kafka that uses the local disks on the Kafka brokers to store the log segments. The new remote tier uses systems, such as HDFS or S3 to store the completed log segments. Two separate retention periods are defined corresponding to each of the tiers. With remote tier enabled, the retention period for the local tier can be significantly reduced from days to few hours. The retention period for remote tier can be much longer, days, or even months.
+
+### Partition Allocation
+
+When you create a topic, Kafka first decides how to allocate the partitions between brokers. Suppose you have 6 brokers and you decide to create a topic with 10 partitions and a replication factor of 3. Kafka now has 30 partition replicas to allocate to 6 brokers. When doing the allocations, the goals are: 
+* To spread replicas evenly among brokers—in our example, to make sure we allocate 5 replicas per broker. 
+* To make sure that for each partition, each replica is on a different broker. If partition 0 has the leader on broker 2, we can place the followers on brokers 3 and 4, but not on 2 and not both on 3. 
+* If the brokers have rack information (available in Kafka release 0.10.0 and higher), then assign the replicas for each partition to different racks if possible. This ensures that an event that causes downtime for an entire rack does not cause complete unavailability for partitions.
+
+When rack awareness is taken into account, instead of picking brokers in numerical order, we prepare a rack-alternating broker list. Suppose that we know that brokers 0, 1, and 2 are on the same rack, and brokers 3, 4, and 5 are on a separate rack. Instead of picking brokers in the order of 0 to 5, we order them as 0, 3, 1, 4, 2, 5 — each broker is followed by a broker from a different rack. In this case, if the leader for partition 0 is on broker 4, the first replica will be on broker 2, which is on a completely different rack. This is great, because if the first rack goes offline, we know that we still have a surviving replica and therefore the partition is still available. This will be true for all our replicas, so we have guaranteed availability in the case of rack failure.
+
+### File Management
+
+Retention is an important concept in Kafka — Kafka does not keep data forever, nor does it wait for all consumers to read a message before deleting it.
+
+Because finding the messages that need purging in a large file and then deleting a portion of the file is both time-consuming and error-prone, **we instead split each partition into segments. By default, each segment contains either 1 GB of data or a week of data, whichever is smaller.** As a Kafka broker is writing to a partition, if the segment limit is reached, we close the file and start a new one.
+
+**The segment we are currently writing to is called an active segment. The active segment is never deleted, so if you set log retention to only store a day of data but each segment contains five days of data, you will really keep data for five days because we can’t delete the data before the segment is closed.**
+
+### File Format
+
+Each segment is stored in a single data file. Inside the file, we store Kafka messages and their offsets. The format of the data on the disk is identical to the format of the messages that we send from the producer to the broker and later from the broker to the consumers.
+
+Kafka producers always send messages in batches.
+
+Message batch headers include:
+* a magic number indicating the current version of the message format
+* The offset of the first message in the batch and difference from the offset of the last message - those are preserved even if the batch is later compacted and some messages are removed. The offset of the first message is set to 0 when the producer creates and sends the batch. The broker that first persists this batch (the partition leader) replaces this with the real offset. 
+* The timestamps of the first message and the highest timestamp in the batch in the batch. The timestamps can be set by the broker if the timestamp type is set to append time rather than create time. 
+* Size of the batch, in bytes 
+* The epoch of the leader who received the batch (this is used when truncating messages after leader election) 
+* Checksum for validating that the batch is not corrupted 
+* 16 bits indicating different attributes - compression type, timestamp type (timestamp can be set at the client or at the broker), whether the batch is part of a transaction or whether it is a control batch. 
+* Producer ID, producer epoch and the first sequence in the batch - these are all used for exactly-once guarantees 
+* And of course the set of messages that are part of the batch
+
+The records themselves also have system headers. Each record includes: 
+* Size of the record in bytes 
+* Attributes - currently there are no record level attributes, so this isn’t used 
+* The difference between the offset of the current record and the first offset in the batch 
+* The difference in milliseconds between the timestamp of this record and the first timestamp in the batch 
+* And the user payload - key, value and headers
+
+**Note that there is very little overhead to each record and most of the system information is at the batch level.**
+
+If you wish to see all this for yourself, Kafka brokers ship with the DumpLogSegment tool, which allows you to look at a partition segment in the filesystem and examine its contents. You can run the tool using: 
+```shell
+bin/kafka-run-class.sh kafka.tools.DumpLogSegments
+```
+
+### Indexes
