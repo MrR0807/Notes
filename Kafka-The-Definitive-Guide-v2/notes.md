@@ -1979,3 +1979,45 @@ bin/kafka-run-class.sh kafka.tools.DumpLogSegments
 ```
 
 ### Indexes
+
+In order to help brokers quickly locate the message for a given offset, Kafka maintains an index for each partition. The index maps offsets to segment files and positions within the file.
+
+Similarly, Kafka has a second index that maps timestamps to message offsets. This index is used when searching for messages by timestamp.
+
+Indexes are also broken into segments, so we can delete old index entries when the messages are purged. Kafka does not attempt to maintain checksums of the index. If the index becomes corrupted, it will get regenerated from the matching log segment simply by rereading the messages and recording the offsets and locations. It is also completely safe (albeit, can cause a lengthy recovery) for an administrator to delete index segments if needed—they will be regenerated automatically.
+
+### Compaction
+
+Normally, Kafka will store messages for a set amount of time and purge messages older than the retention period. However, imagine a case where you use Kafka to store shipping addresses for your customers. In that case, it makes more sense to store the last address for each customer rather than data for just the last week or year.
+
+Kafka supports such use cases by allowing the retention policy on a topic to be ``delete``, which deletes events older than retention time, to ``compact``, which only stores the most recent value for each key in the topic. Obviously, setting the policy to compact only makes sense on topics for which applications produce events that contain both a key and a value. **If the topic contains null keys, compaction will fail.**
+
+Topics can also have ``delete.and.compact`` policy which combines compaction with a retention period. Messages older than the retention period will be removed even if they are the most recent value for a key.
+
+#### How Compaction Works
+
+Each log is viewed as split into two portions
+* **Clean** - Messages that have been compacted before. This section contains only one value for each key, which is the latest value at the time of the previous compaction
+* **Dirty** - Messages that were written after the last compaction.
+
+If compaction is enabled when Kafka starts (using the awkwardly named ``log.cleaner.enabled`` configuration), each broker will start a compaction manager thread and a number of compaction threads. These are responsible for performing the compaction tasks. Each of these threads chooses the partition with the highest ratio of dirty messages to total partition size and cleans this partition.
+
+#### Deleted Events
+
+If we always keep the latest message for each key, what do we do when we really want to delete all messages for a specific key, such as if a user left our service and we are legally obligated to remove all traces of that user from our system?
+
+In order to delete a key from the system completely, not even saving the last message, the application must produce a message that contains that key and a null value. When the cleaner thread finds such a message, it will first do a normal compaction and retain only the message with the null value. It will keep this special message (known as a **tombstone**) around for a configurable amount of time.
+
+It is important to give consumers enough time to see the tombstone message, because if our consumer was down for a few hours and missed the tombstone message, it will simply not see the key when consuming and therefore not know that it was deleted from Kafka or to delete it from the database.
+
+#### When Are Topics Compacted?
+
+**In the same way that the delete policy never deletes the current active segments, the compact policy never compacts the current segment. Messages are eligble for compaction only on inactive segments.**
+
+By default, Kafka will start compacting when 50% of the topic contains dirty records. The goal is not to compact too often (since compaction can impact the read/write performance on a topic), but also not leave too many dirty records around (since they consume disk space).
+
+In addition, administrators can control the timing of compaction with two configuration parameters:
+* min.compaction.lag.ms
+* max.compaction.lag.ms
+
+# Chapter 7. Reliable Data Delivery
