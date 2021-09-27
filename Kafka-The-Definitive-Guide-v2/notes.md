@@ -2021,3 +2021,237 @@ In addition, administrators can control the timing of compaction with two config
 * max.compaction.lag.ms
 
 # Chapter 7. Reliable Data Delivery
+
+Reliability is a property of a system—not of a single component—so when we are talking about the reliability guarantees of Apache Kafka, we will need to keep the entire system and its use cases in mind.
+
+## Reliability Guarantees
+
+When we talk about reliability, we usually talk in terms of guarantees, which are the behaviors a system is guaranteed to preserve under different circumstances.
+
+Understanding the guarantees Kafka provides is critical for those seeking to build reliable applications. This understanding allows the developers of the system to figure out how it will behave under different failure conditions. So, what does Apache Kafka guarantee? 
+* Kafka provides order guarantee of messages in a partition. If message B was written after message A, using the same producer in the same partition, then Kafka guarantees that the offset of message B will be higher than message A, and that consumers will read message B after message A. 
+* Produced messages are considered “committed” when they were written to the partition on all its in-sync replicas (but not necessarily flushed to disk). Producers can choose to receive acknowledgments of sent messages when the message was fully committed, when it was written to the leader, or when it was sent over the network. 
+* Messages that are committed will not be lost as long as at least one replica remains alive. 
+* Consumers can only read messages that are committed.
+
+There are trade-offs involved in building a reliable system. 
+
+**The trade-offs usually involve how important it is to reliably and consistently store messages versus other important considerations such as availability, high throughput, low latency, and hardware costs.**
+
+## Replication
+
+Kafka’s replication mechanism, with its multiple replicas per partition, is at the core of all of Kafka’s reliability guarantees. Having a message written in multiple replicas is how Kafka provides durability of messages in the event of a crash.
+
+Each Kafka topic is broken down into partitions, which are the basic data building blocks. A partition is stored on a single disk. Kafka guarantees order of events within a partition and a partition can be either online (available) or offline (unavailable). Each partition can have multiple replicas, one of which is a designated leader. All events are produced to and consumed from the leader replica. Other replicas just need to stay in sync with the leader and replicate all the recent events on time. If the leader becomes unavailable, one of the in-sync replicas becomes the new leader.
+
+A replica is considered in-sync if it is the leader for a partition, or if it is a follower that: 
+* Has an active session with Zookeeper—meaning, it sent a heartbeat to Zookeeper in the last 6 seconds (configurable). 
+* Fetched messages from the leader in the last 10 seconds (configurable). 
+* Fetched the most recent messages from the leader in the last 10 seconds. That is, it isn’t enough that the follower is still getting messages from the leader; it must have almost no lag.
+
+**If a replica loses connection to Zookeeper, stops fetching new messages, or falls behind and can’t catch up within 10 seconds, the replica is considered out-of-sync.**
+
+## Broker Configuration
+
+There are three configuration parameters in the broker that change Kafka’s behavior regarding reliable message storage. It can be applied at the broker level (applies to all topics), or at the topic level (applies to a specific topic).
+
+### Replication Factor
+
+The topic-level configuration is ``replication.factor``. At the broker level, we control the ``default.replication.factor`` for automatically created topics.
+
+So a higher replication factor leads to higher availability, higher reliability, and fewer disasters. On the flip side, for a replication factor of N, we will need at least N brokers and we will store N copies of the data, meaning we will need N times as much disk space. **We are basically trading availability for hardware.**
+
+So how do we determine the right number of replicas for a topic? There are few key considerations:
+* Availability - The more replicas we have, the higher availability we can expect.
+* Durability - Each replica is a copy of all the data in a partition. With more copies, especially on different storage devices, the probability of losing all of them is reduced.
+* Throughput - With each additional replica, we multiply the inter-broker traffic.
+* End to End Latency - Each produced record has to be replicated to all in-sync replicas before it is available for consumers.
+* Cost - This is the most common reason for using replication factor lower than 3 for non-critical data.
+
+Placement of replicas is also very important. To protect against rack-level misfortune, we recommend placing brokers in multiple racks and using the broker.rack broker configuration parameter to configure the rack name for each broker. If rack names are configured, Kafka will make sure replicas for a partition are spread across multiple racks in order to guarantee even higher availability.
+
+### Unclean Leader Election
+
+This configuration is only available at the broker (and in practice, cluster-wide) level. The parameter name is ``unclean.leader.election.enable`` and by default it is set to false.
+
+**This is the safest option since it provides the best guarantees against data loss.**
+
+### Minimum In-Sync Replicas
+
+Both the topic and the broker-level configuration are called ``min.insync.replicas``.
+
+When we want to be sure that committed data is written to more than one replica, we need to set the minimum number of in-sync replicas to a higher value. If a topic has three replicas and we set min.insync.replicas to 2, then producers can only write to a partition in the topic if at least two out of the three replicas are in-sync.
+
+When all three replicas are in-sync, everything proceeds normally. This is also true if one of the replicas becomes unavailable. **However, if two out of three replicas are not available, the brokers will no longer accept produce requests. Instead, producers that attempt to send data will receive ``NotEnoughReplicasException``.** Consumers can continue reading existing data. In effect, with this configuation, **a single in-sync replica becomes read-only.**
+
+### Keeping Replicas In Sync
+
+As mentioned earlier, out of sync replicas decrease the overall reliability, so it is important to avoid these as much as possible. We also explained that a replica can become out of sync in one of two ways:
+* It loses connectivity to Zookeeper 
+* It fails to keep up with the leader and builds up a replication lag. 
+ 
+Kafka has two broker configurations that control the sensitivity of the cluster to these two conditions:
+* ``zookeeper.session.timeout.ms`` is the time interval during which a Kafka broker can stop sending heartbeats to Zookeeper without Zookeeper considering the broker dead and removing it from the cluster.
+* ``replica.lag.time.max.ms`` - if a replica did not fetch from the leader or did not catch up to the latest messages on the leader for longer given value, it will become out of sync.
+
+#### Persisting to disk
+
+We’ve mentioned a few times that Kafka will acknowledge messages that were not persisted to disk, depending just on the number of replicas that received the message.
+
+The idea behind this is that having 3 machines in separate Availability Zones each with a copy of the data is safer than writing the messages to disk on the leader.
+
+The configuration parameters:
+* ``flush.messages``, allows us to control the maximum number of messages not synced to disk. 
+* ``flush.ms`` allows us to control the frequency of syncing to disk.
+
+## Using Producers in a Reliable System
+
+Even if we configure the brokers in the most reliable configuration possible, the system as a whole can still accidentally lose data if we don’t configure the producers to be reliable as well. Here are two example scenarios to demonstrate this:
+
+* We configured the brokers with three replicas, and unclean leader election is disabled. So we should never lose a single message that was committed to the Kafka cluster. However, we configured the producer to send messages with acks=1. We send a message from the producer and it was written to the leader, but not yet to the in-sync replicas. The leader sent back a response to the producer saying “Message was written successfully” and immediately crashes before the data was replicated to the other replicas. The other replicas are still considered in-sync (remember that it takes a while before we declare a replica out of sync) and one of them will become the leader. **Since the message was not written to the replicas, it will be lost.** But the producing application thinks it was written successfully.
+* We configured the brokers with three replicas, and unclean leader election is disabled. We learned from our mistakes and started producing messages with acks=all. Suppose that we are attempting to write a message to Kafka, but the leader for the partition we are writing to just crashed and a new one is still getting elected. **Kafka will respond with “Leader not Available.” At this point, if the producer doesn’t handle the error correctly and doesn’t retry until the write is successful, the message may be lost.**
+
+As the examples show, there are two important things that everyone who writes applications that produce to Kafka must pay attention to: 
+* Use the correct acks configuration to match reliability requirements 
+* Handle errors correctly both in configuration and in code
+
+### Send Acknowledgments
+
+Producers can choose between three different acknowledgment modes: 
+* ``acks=0`` means that a message is considered to be written successfully to Kafka if the producer managed to send it over the network.
+* ``acks=1`` means that the leader will send either an acknowledgment or an error the moment it got the message and wrote it to the partition data file (but not necessarily synced to disk).
+* ``acks=all`` means that the leader will wait until all in-sync replicas got the message before sending back an acknowledgment or an error.
+
+### Configuring Producer Retries
+
+There are two parts to handling errors in the producer: the errors that the producers handle automatically for us and the errors that we, as developers using the producer library, must handle.
+
+The producer can handle **retriable** errors. When the producer sends messages to a broker, the broker can return either a success or an error code. Those error codes belong to two categories — **errors that can be resolved after retrying and errors that won’t be resolved.** For example, if the broker returns the error code ``LEADER_NOT_AVAILABLE``, the producer can try sending the message again — maybe a new broker was elected and the second attempt will succeed. This means that ``LEADER_NOT_AVAILABLE`` is a retriable error. On the other hand, if a broker returns an ``INVALID_CONFIG`` exception, trying the same message again will not change the configuration. This is an example of a nonretriable error.
+
+**The best approach to retries, as recommended in Chapter 3, is to leave the number of retries at its current default (MAX_INT, or effectively infinite) and use ``delivery.timout.ms`` to configure the maximum amount of time we are willing to wait until giving up on sending a message.**
+
+**Retrying to send a failed message includes a risk that both messages were successfully written to the broker, leading to duplicates.** Retries and careful error handling can guarantee that each message will be stored at **least once**, but not **exactly once**. Using ``enable.idempotence=true`` will cause the producer to include additional information in its records, which brokers will use to reject duplicate messages caused by retries.
+
+### Additional Error Handling
+
+As developers, we must still be able to handle other types of errors. These include: 
+* **Nonretriable** broker errors such as errors regarding message size, authorization errors, etc. 
+* **Errors that occur before the message was sent to the broker** — for example, serialization errors 
+* **Errors that occur when the producer exhausted all retry attempts** or when the available memory used by the producer is filled to the limit due to using all of it to store messages while retrying
+* **Timeouts**
+
+## Using Consumers in a Reliable System
+
+The only thing consumers are left to do is make sure they keep track of which messages they’ve read and which messages they haven’t.
+
+When a consumer stops, another consumer needs to know where to pick up the work — what was the last offset that the previous consumer processed before it stopped? **The “other” consumer can even be the original one after a restart.**
+
+The main way consumers can lose messages is when committing offsets for events they’ve read but didn’t completely process yet.
+
+### Important Consumer Configuration Properties for Reliable Processing
+
+There are four consumer configuration properties that are important to understand in order to configure our consumer for a desired reliability behavior.
+
+#### group.id
+
+The basic idea is that if two consumers have the same group ID and subscribe to the same topic, each will be assigned a subset of the partitions in the topic and will therefore only read a subset of the messages individually (but all the messages will be read by the group as a whole). If we need a consumer to see, on its own, every single message in the topics it is subscribed to—it will need a unique group.id.
+
+#### auto.offset.reset
+
+There are only two options here. If we choose earliest, the consumer will start from the beginning of the partition whenever it doesn’t have a valid offset. This can lead to the consumer processing a lot of messages twice, but it guarantees to minimize data loss. If we choose latest, the consumer will start at the end of the partition.
+
+#### enable.auto.commit
+
+The main drawbacks of automatic offset commits is that we have no control over the number of duplicate records the application may process because it was stopped after processing some records but before the automated commit kicked in.
+
+When the application has more complex processing, such as passing records to another thread to process in the background, there is no choice but to **use manual offset** commit since the automatic commit may commit offsets for records the consumer has read but perhaps did not process yet.
+
+#### auto.commit.interval.ms
+
+If we choose to commit offsets automatically, this configuration lets us configure how frequently they will be committed. The default is every five seconds.
+
+### Explicitly Committing Offsets in Consumers
+
+If we decide we need more control and choose to commit offsets manually, we need to be concerned about correctness and performance implications.
+
+#### Always commit offsets after events were processed
+
+#### Commit frequency is a trade-off between performance and number of duplicates in the event of a crash
+
+#### Commit the right offsets at the right time
+
+**A common pitfall when committing in the middle of the poll loop is accidentally committing the last offset read when polling and not the last offset processed. Remember that it is critical to always commit offsets for messages after they were processed.**
+
+#### Rebalances
+
+When designing an application, we need to remember that consumer rebalances will happen and we need to handle them properly.
+
+#### Consumers may need to retry
+
+In some cases, after calling poll and processing records, some records are not fully processed and will need to be processed later. For example, we may try to write records from Kafka to a database, but find that the database is not available at that moment and we need to retry later.
+
+One option, when we encounter a retriable error, is to commit the last record we processed successfully. We’ll then store the records that still need to be processed in a buffer (so the next poll won’t override them), use the ``consumer.pause()`` method to ensure that additional polls won’t return data, and keep trying to process the records.
+
+A second option is, when encountering a retriable error, to write it to a separate topic and continue. A separate consumer group can be used to handle retries from the retry topic, or one consumer can subscribe to both the main topic and to the retry topic, but pause the retry topic between retries. This pattern is similar to the dead- letter-queue system used in many messaging systems.
+
+#### Consumers may need to maintain state
+
+In some applications, we need to maintain state across multiple calls to poll.
+
+For example, if we want to calculate moving average, we’ll want to update the average after every time we poll Kafka for new events. If our process is restarted, we will need to not just start consuming from the last offset, but we’ll also need to recover the matching moving average. One way to do this is to write the latest accumulated value to a “results” topic at the same time the application is committing the offset.
+
+This means that when a thread is starting up, it can pick up the latest accumulated value when it starts and pick up right where it left off.
+
+## Validating System Reliability
+
+We recommend doing some validation first and suggest three layers of validation: validate the configuration, validate the application, and monitor the application in production.
+
+### Validating Configuration
+
+It is easy to test the broker and client configuration in isolation from the application logic, and it is recommended to do so for two reasons: 
+* It helps to test if the configuration we’ve chosen can meet our requirements. 
+* It is good exercise to reason through the expected behavior of the system.
+
+Kafka includes two important tools to help with this validation. The ``org.apache.kafka.tools`` package includes ``VerifiableProducer`` and ``VerifiableConsumer`` classes. These can run as command-line tools, or be embedded in an automated testing framework.
+
+The idea is that the verifiable producer produces a sequence of messages containing numbers from 1 to a value we choose. We can configure the verifiable producer the same way we configure our own producer, setting the right number of acks, retries, ``delivery.timeout.ms`` and rate at which the messages will be produced. When we run it, it will print success or error for each message sent to the broker, based on the acks received. The verifiable consumer performs the complementary check. It consumes events (usually those produced by the verifiable producer) and prints out the events it consumed in order. It also prints information regarding commits and rebalances.
+
+It is important to consider which tests we want to run. For example:
+* Leader election: what happens if we kill the leader? How long does it take the producer and consumer to start working as usual again? 
+* Controller election: how long does it take the system to resume after a restart of the controller? 
+* Rolling restart: can we restart the brokers one by one without losing any messages? 
+* Unclean leader election test: what happens when we kill all the replicas for a partition one by one (to make sure each goes out of sync) and then start a broker that was out of sync? What needs to happen in order to resume operations? Is this acceptable?
+
+### Validating Applications
+
+Once we are sure the broker and client configuration meet our requirements, it is time to test whether the application provides the guarantees we need. This will check things like custom error-handling code, offset commits, and rebalance listeners and similar places where the application logic interacts with Kafka’s client libraries.
+
+We recommend integration tests for the application as part of any development process and we recommend running tests under a variety of failure conditions: 
+* Clients lose connectivity to one of the brokers 
+* High latency between client and broker 
+* Disk full 
+* Hanging disk (also called “brown out”) 
+* Leader election 
+* Rolling restart of brokers 
+* Rolling restart of consumers
+* Rolling restart of producers
+
+There are many tools that can be used to introduce network and disk faults, many are excellent so we will not attempt to make specific recommendations. **Apache Kafka itself includes the Trogdor test framework for fault injection.** For each scenario, we will have expected behavior, which is what we planned on seeing when we developed the application. Then we run the test to see what actually happens. For example, when planning for a rolling restart of consumers, we planned for a short pause as consumers rebalance and then continue consumption with no more than 1,000 duplicate values. Our test will show whether the way the application commits offsets and handles rebalances actually works this way.
+
+## Monitoring Reliability in Production
+
+Kafka’s Java clients include JMX metrics that allow monitoring client-side status and events.
+
+For the producers, **the two metrics most important for reliability are error-rate and retry-rate per record (aggregated).** Keep an eye on those, **since error or retry rates going up can indicate an issue with the system.** **Also monitor the producer logs for errors that occur while sending events that are logged at WARN level, and say something along the lines of “Got error produce response with correlation id 5689 on topic-partition [topic-1,3], retrying (two attempts left). Error: ...”.** When we see events with 0 attempts left, the producer is running out of retries. In Chapter 3 we discussed how to configure ``delivery.timeout.ms`` and retries to improve the error handling in the producer and avoid running out of retries prematurely. Of course, it is always better to solve the problem that caused the errors in the first place. **ERROR level log messages on the producer are likely to indicate that sending the message failed completely either due to non-retriable error, a retriable error that ran out of retries, or a timeout.** When applicable, the exact error from the broker will be logged as well.
+
+**On the consumer side, the most important metric is consumer lag.** This metric indicates how far the consumer is from the latest message committed to the partition on the broker. Ideally, the lag would always be zero and the consumer will always read the latest message. In practice, because calling ``poll()`` returns multiple messages and then the consumer spends time processing them before fetching more messages, the lag will always fluctuate a bit. What is important is to make sure consumers do eventually catch up rather than fall farther and farther behind.
+
+In order to make sure all produced messages are consumed within a reasonable amount of time, we will need the application producing the code to record the number of events produced (usually as events per second). The consumers need to record the number of events consumed per unit or time and the lag from the time events were produced to the time they were consumed, using the event timestamp. Then we will need a system to reconcile the events per second numbers from both the producer and the consumer (to make sure no messages were lost on the way) and to make sure the interval between produce time and consume time is reasonable.
+
+In addition to monitoring clients and the end to end flow of data, Kafka brokers include metrics that indicate the rate of error responses sent from the brokers to clients. We recommend collecting:
+* ``kafka.server:type=BrokerTopicMetrics,name=FailedProduceRequestsPerSec`` 
+* ``kafka.server:type=BrokerTopicMetrics,name=FailedFetchRequestsPerSec``. 
+ 
+At times, some level of error responses is expected - for example, if we shut down a broker for maintenance and new leaders are elected on another broker, it is expected that producers will receive ``NOT_LEADER_FOR_PARTITION`` error, which will cause them to request updated metadata before continuing to produce events as usual. **Unexplained increases in failed requests should always be investigated.**
+
+# Chapter 8. Exactly Once Semantics
