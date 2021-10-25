@@ -2402,3 +2402,726 @@ To enable exactly once guarantees for a Kafka Streams application, we simply set
 
 But what if we want exactly-once guarantees without using Kafka Streams? In this case we will use transactional APIs directly. Here’s a snippet showing how this will work. There is a full example in Apache Kafka github, which includes a demo driver and a simple exactly-once processor that runs in separate threads.
 
+```java
+Properties producerProps = new Properties();
+producerProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
+producerProps.put(ProducerConfig.CLIENT_ID_CONFIG, "DemoProducer");
+//1
+producerProps.put(ProducerConfig.TRANSACTIONAL_ID_CONFIG, transactionalId);
+
+producer = new KafkaProducer<>(producerProps);
+
+Properties consumerProps = new Properties();
+consumerProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
+consumerProps.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
+//2
+props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "false");
+//3
+consumerProps.put(ConsumerConfig.ISOLATION_LEVEL_CONFIG, "read_committed");
+
+consumer = new KafkaConsumer<>(consumerProps);
+//4
+producer.initTransactions();
+//5
+consumer.subscribe(Collections.singleton(inputTopic));
+
+while (true) {
+	try {
+		ConsumerRecords<Integer, String> records = consumer.poll(Duration.ofMillis(200));
+		if (records.count() > 0) {
+			//6
+			producer.beginTransaction();
+			for (ConsumerRecord<Integer, String> record : records) {
+				//7
+				ProducerRecord<Integer, String> customizedRecord = transform(record);
+				producer.send(customizedRecord);
+			}
+			Map<TopicPartition, OffsetAndMetadata> offsets = consumerOffsets();
+			//8
+			producer.sendOffsetsToTransaction(offsets, consumer.groupMetadata());
+			//9
+			producer.commitTransaction();
+		}
+	//10
+	} catch (ProducerFencedException e) {
+		throw new KafkaException("The transactional.id %s has been claimed by another process".formatted(transactionalId));
+	} catch (KafkaException e) {
+		//11
+		producer.abortTransaction();
+		resetToLastCommittedPositions(consumer);
+	}
+}
+```
+
+1. Configuring a producer with ``transactional.id`` makes it a transactional producer - capable of producing atomic multi-partition writes. The transactional ID must be unique and long-lived. Essentially it defines an instance of the application.
+2. Consumers that are part of the transactions don’t commit their own offsets - the producer writes offsets as part of the transaction. So offset commit should be disabled.
+3. In this example the consumer reads from an input topic. We will assume that the records in the input topic were also written by a transactional producer (just for fun - there is no such requirement for the input). In order to read transactions cleanly (i.e. ignore in-flight and aborted transactions), we will set the consumer isolation level to READ_COMMITTED. **Note that the consumer will still read non-transactional writes, in addition to reading committed transactions.**
+4. The first thing a transactional producer must do is initialize. This registers the transactional ID, bumps up the epoch to guarantee that other producers with the same ID will be considered zombies, and aborts older in-flight transactions from the same transactional ID.
+5. Here we are using the subscribe consumer API, which means that partitions assigned to this instance of the application can change at any point as a result of rebalance.
+6. We consumed records, and now we want to process them and produce results. This method guarantees that everything that is produced from the time it was called, until the transaction is either committed or aborted, is part of a single atomic transaction.
+7. This is where we process the records - all our business logic goes here.
+8. As we explained earlier in the chapter, it is important to commit the offsets as part of the transaction. This guarantees that if we fail to produce results, we won’t commit the offsets for records that were not in-fact processed. This method commits offsets as part of the transaction. Note that it is important not to commit offsets in any other way - disable offset auto-commit and don’t call any of the consumer commit APIs. **Committing offsets in any other method does not provide transactional guarantees.**
+9. We produced everything we needed, we committed offsets as part of the transaction, and it is time to commit the transaction and seal the deal. Once this method returns successfully, the entire transaction has made it through and we can continue to read and process the next batch of events.
+10. If we got this exception - it means we are the zombie. Somehow our application froze or disconnected and there is a newer instance of the app with our transactional ID running. Most likely the transaction we started has already been aborted and someone else is processing those records. Nothing to do but die gracefully.
+11. If we got an error while writing a transaction, we can abort the transaction, set the consumer position back, and try again.
+
+### Transactional IDs and Fencing
+
+Choosing transactional ID for producers is important and a bit more challenging than it seems. Assigning transactional ID incorrectly can lead to either application errors or loss of exactly once guarantees. **The key requirements are that the transactional ID will be consistent for the same instance of the application between restarts, and is different for different instances of the application** - otherwise the brokers will not be able to fence off zombie instances.
+
+Let’s say that we have topic T1 with 2 partitions, t-0 and t-1. Each consumed by a separate consumer in the same group, each consumer passes records to a matching transactional producer one with transactional ID “Producer A” and the other with transactional ID “Producer B”, and they are writing output to topic T1 partitions 0 and 1 respectively.
+
+If the application instance with consumer A and producer A becomes a zombie, consumer B will start processing records from both partitions. If we require that the same transactional ID will always write to partition 0, the application will need to instantiate a new producer, with transactional ID A in order to safely write to partition 0. This is wasteful. Instead, we include the consumer group information in the transactions - transactions from producer B will show that they are from a newer generation of the consumer group, and therefore they will go through, transactions from the now zombie producer A will show an old generation of the consumer group and they will be fenced.
+
+## How Transactions Work
+
+We can use transactions by calling the APIs without understanding how they work. But having some mental model of what is going on under the hood will help us troubleshoot applications that do not behave as expected.
+
+The basic algorithm for transactions in Kafka was inspired by Chandy-Lamport snapshots, in which “marker” control messages are sent into communication channels, and consistent state is determined based on the arrival of the marker. Kafka transactions use marker messages to indicate that transactions committed or aborted across multiple partitions - when the producer decides to commit a transaction, it sends “commit” marker messages to all partitions involved in a transaction. But, what happens if the producer crashes after only writing commit messages to a subset of the partitions? Kafka transactions solve this by using two phase commit and a transaction log. At a high level, the algorithm will:
+
+1. Log the existence of an on-going transaction, including the partitions involved; 
+2. Log the intent to commit or abort - once this is logged, we are doomed to commit or abort eventually; 
+3. Write all the transaction markers to all the partitions;
+4. Log the completion of the transaction.
+
+In order to implement this basic algorithm, Kafka needed a transaction log. We use an internal topic called ``__transaction_state``.
+
+Let’s see how this algorithm works in practice by going through the inner working of the transactional API calls we’ve used in the code snippet above.
+
+Before we begin the first transaction, producers need to register themselves as transactional by calling ``initTransaction()``. This request is sent to a broker that will be the transaction coordinator for this transactional producer. Each broker is the transactional coordinator for a subset of the producers, just like each broker is the consumer group coordinator for a subset of the consumers. The transaction coordinator for each transactional ID is the leader of the partition of the transaction log the transactional ID is mapped to.
+
+The ``initTransaction()`` API registers a new transactional ID with the coordinator, or increments the epoch of an existing transactional ID in order to fence off previous producers that may have become zombies. **When the epoch is incremented, pending transactions will be aborted.**
+
+The next step, for the producer, is to call ``beginTransaction()``. This API call isn’t part of the protocol - it simply tells the producer that there is now a transaction in progress. **The transaction coordinator on the broker side is still unaware that the transaction began.** However, once the producer starts sending records, each time the producer detects that it is sending records to a new partition, it will also send ``AddPartitionsToTxnRequest`` to the broker, informing it that there is a transaction in progress for this producer, and that additional partitions are part of the transaction. This information will be recorded in the transaction log.
+
+When we are done producing results and are ready to commit, we start by committing offsets for the records we’ve processed in this transaction - this is the last step of the transaction itself. Calling ``sendOffsetsToTransaction()`` will send a request to the transaction coordinator that includes the offsets and also the consumer group ID. **The transaction coordinator will use the consumer group ID to find the group coordinator and commit the offsets as a consumer group normally would.**
+
+Now it is time to commit — or abort. Calling commitTransaction() or abortTransac tion() will send an EndTransactionRequest to the transaction coordinator. The transaction coordinator will log the commit or abort intention to the transaction log. Once this step is successful, it is the transaction coordinator’s responsibility to complete the commit (or abort) process. It writes a commit marker to all the partitions involved in the transaction, and then it writes to the transaction log that the commit completed successfully. **Note that if the transaction coordinator shuts down or crashes, after logging the intention to commit and before completing the process, a new transaction coordinator will be elected and it will pick up the intent to commit from the transaction log and will complete the process.**
+
+If a transaction is not committed or aborted within transaction.timeout.ms, the transaction coordinator will abort it automatically.
+
+## Performance of Transactions
+
+Transactions add moderate overhead to the producer. The request to register transactional ID occurs once in the producer lifecycle. Additional calls to register partitions as part of a transaction happen at most one per partition, and then each transaction sends commit request which causes an extra commit marker to be written on each partition. The transactional initialization and transaction commit requests are synchronous, no data will be sent until they complete successfully, fail or time out, which farther increases the overhead.
+
+**Note that the overhead of transactions on the producer is independent of the number of messages in a transaction. So larger number of messages per transaction will both reduce the relative overhead and reduce the number of synchronous stops - resulting in higher throughput overall.**
+
+On the consumer side, there is some overhead involved in reading commit markers. But the **key impact that transactions have on consumer performance is introduced by the fact that consumers in READ_COMMITTED mode will not return records that are part of an open transaction.** Long intervals between transaction commits mean that the consumer will need to wait longer before returning messages and as a result end-to-end latency will increase.
+
+# Chapter 9. Building Data Pipelines
+
+When people discuss building data pipelines using Apache Kafka, they are usually referring to a couple of use cases. The first is building a data pipeline where Apache Kafka is one of the two end points. For example, getting data from Kafka to S3 or getting data from MongoDB into Kafka. The second use case involves building a pipeline between two different systems but using Kafka as an intermediary. An example of this is getting data from Twitter to Elasticsearch by sending the data first from Twitter to Kafka and then from Kafka to Elasticsearch.
+
+When we added Kafka Connect to Apache Kafka in version 0.9, it was after we saw Kafka used in both use cases at LinkedIn and other large organizations. We noticed that there were specific challenges in integrating Kafka into data pipelines that every organization had to solve, and decided to add APIs to Kafka that solve some of those challenges rather than force every organization to figure them out from scratch.
+
+## Considerations When Building Data Pipelines
+
+While we can’t get into all the details on building data pipelines here, we would like to highlight some of the most important things to take into account when designing software architectures with the intent of integrating multiple systems.
+
+### Timeliness
+
+Some systems expect their data to arrive in large bulks once a day; others expect the data to arrive a few milliseconds after it is generated. Most data pipelines fit somewhere in between these two extremes. **Good data integration systems can support different timeliness requirements for different pipelines and also make the migration between different timetables easier as business requirements can change.**
+
+A useful way to look at Kafka in this context is that it acts as a giant buffer that decouples the time-sensitivity requirements between producers and consumers. Producers can write events in real-time while consumers process batches of events, or vice versa. This also makes it trivial to apply back-pressure—Kafka itself applies back-pressure on producers (by delaying acks when needed) since consumption rate is driven entirely by the consumers.
+
+### Reliability
+
+We discussed Kafka’s availability and reliability guarantees in depth in Chapter 7. As we discussed, Kafka can provide at-least-once on its own, and exactly-once when combined with an external data store that has a transactional model or unique keys. Since many of the end points are data stores that provide the right semantics for exactly-once delivery, a Kafka-based pipeline can often be implemented as exactly-once. It is worth highlighting that Kafka’s Connect APIs make it easier for connectors to build an end-to-end exactly-once pipeline by providing APIs for integrating with the external systems when handling offsets.
+
+### High and Varying Throughput
+
+The data pipelines we are building should be able to scale to very high throughputs as is often required in modern data systems. Even more importantly, they should be able to adapt if throughput suddenly increases.
+
+With Kafka acting as a buffer between producers and consumers, we no longer need to couple consumer throughput to the producer throughput. We no longer need to implement a complex back-pressure mechanism because if producer throughput exceeds that of the consumer, data will accumulate in Kafka until the consumer can catch up.
+
+Kafka also supports several types of compression, allowing users and admins to control the use of network and storage resources as the throughput requirements increase.
+
+### Data Formats
+
+Kafka itself and the Connect APIs are completely agnostic when it comes to data formats.
+
+Many sources and sinks have a schema; we can read the schema from the source with the data, store it, and use it to validate compatibility or even update the schema in the sink database. A classic example is a data pipeline from MySQL to Hive. If someone added a column in MySQL, a great pipeline will make sure the column gets added to Hive too as we are loading new data into it.
+
+### Transformations
+
+Transformations are more controversial than other requirements. There are generally two schools of building data pipelines: 
+* ETL;
+* ELT.
+
+#### ETL (Extract-Transform-Load)
+
+Means the data pipeline is responsible for making modifications to the data as it passes through. It has the perceived benefit of saving time and storage because you don’t need to store the data, modify it, and store it again. Depending on the transformations, this benefit is sometimes real but sometimes shifts the burden of computation and storage to the data pipeline itself, which may or may not be desirable. **The main drawback of this approach is that the transformations that happen to the data in the pipeline tie the hands of those who wish to process the data farther down the pipe. If the person who built the pipeline between MongoDB and MySQL decided to filter certain events or remove fields from records, all the users and applications who access the data in MySQL will only have access to partial data.**
+
+#### ELT (Extract-Load-Transform)
+
+Means the data pipeline does only minimal transformation (mostly around data type conversion), with the goal of making sure the data that arrives at the target is as similar as possible to the source data.
+
+**These are also called high-fidelity pipelines or data-lake architecture.**
+
+In these systems, the target system collects “raw data” and all required processing is done at the target system. The benefit here is that the system provides maximum flexibility to users of the target system, since they have access to all the data. These systems also tend to be easier to troubleshoot since all data processing is limited to one system rather than split between the pipeline and additional applications. **The drawback is that the transformations take CPU and storage resources at the target system.**
+
+**Kafka Connect includes Single Message Transformation feature, which transforms records while they are being copied from source to Kafka or from Kafka to target.** This includes routing messages to different topics, filtering messages, changing data types, redacting specific fields and more. More **complex transformations that involve joins and aggregations are typically done using Kafka Streams**, and we will explore those in details in a separate chapter.
+
+### Security
+
+Security is always a concern. In terms of data pipelines, the main security concerns are:
+* Can we make sure the data going through the pipe is encrypted? This is mainly a concern for data pipelines that cross datacenter boundaries. 
+* Who is allowed to make modifications to the pipelines? 
+* If the data pipeline needs to read or write from access-controlled locations, can it authenticate properly?
+
+Kafka allows encrypting data on the wire, as it is piped from sources to Kafka and from Kafka to sinks. It also supports authentication (via SASL) and authorization—so you can be sure that if a topic contains sensitive information, it can’t be piped into less secured systems by someone unauthorized. Kafka also provides an audit log to track access—unauthorized and authorized.
+
+The goal of Kafka Connect is to move data between Kafka and other data systems. In order to do that, connectors need to be able to connect to, and authenticate with, those external data systems. This means that the configuration of connectors will need to include credentials for authenticating with external data systems.
+
+These days it is not recommended to store credentials in configuration files, since this means that the configuration files have to be handled with extra care and restricted access. A common solution is to use external secret management system such as Hashicorp Vault. Kafka Connect includes support for external secret configuration.
+
+### Failure Handling
+
+It is important to plan for failure handling in advance:
+* Can we prevent faulty records from ever making it into the pipeline? 
+* Can we recover from records that cannot be parsed? 
+* Can bad records get fixed (perhaps by a human) and reprocessed? 
+* What if the bad event looks exactly like a normal event and you only discover the problem a few days later?
+
+### Coupling and Agility
+
+One of the most important goals of data pipelines is to decouple the data sources and data targets. There are multiple ways accidental coupling can happen:
+
+#### Ad-hoc pipelines
+
+Some companies end up building a custom pipeline for each pair of applications they want to connect. For example, they use Logstash to dump logs to Elasticsearch, Flume to dump logs to HDFS. This tightly couples the data pipeline to the specific end points and creates a mess of integration points.
+
+#### Loss of metadata
+
+If the data pipeline doesn’t preserve schema metadata and does not allow for schema evolution, you end up tightly coupling the software producing the data at the source and the software that uses it at the destination. Without schema information, both software products need to include information on how to parse the data and interpret it.
+
+#### Extreme processing
+
+The more agile way is to preserve as much of the raw data as possible and allow downstream apps to make their own decisions regarding data processing and aggregation.
+
+## When to Use Kafka Connect Versus Producer and Consumer
+
+**Use Kafka clients when you can modify the code of the application that you want to connect an application to and when you want to either push data into Kafka or pull data from Kafka.**
+
+**You will use Connect to connect Kafka to datastores that you did not write and whose code you cannot or will not modify. Connect will be used to pull data from the external datastore into Kafka or push data from Kafka to an external store.**
+
+## Kafka Connect
+
+Kafka Connect is a part of Apache Kafka and provides a scalable and reliable way to move data between Kafka and other datastores. It provides APIs and a runtime to develop and ``run connector plugins`` — libraries that Kafka Connect executes and which are responsible for moving the data.
+
+**Kafka Connect runs as a cluster of worker processes.**
+
+You install the connector plugins on the workers and then use a REST API to configure and manage ``connectors``, which run with a specific configuration. Connectors start additional tasks to move large amounts of data in parallel and use the available resources on the worker nodes more efficiently.
+
+**Source connector** tasks just need to read data from the source system and provide Connect data objects to the worker processes.
+
+**Sink connector** tasks get connector data objects from the workers and are responsible for writing them to the target data system.
+
+Kafka Connect uses **convertors** to support storing those data objects in Kafka in different formats—JSON format support is part of Apache Kafka, and the Confluent Schema Registry provides Avro converters.
+
+### Running Connect
+
+Kafka Connect ships with Apache Kafka, so there is no need to install it separately.
+
+For production use, especially if you are planning to use Connect to move large amounts of data or run many connectors, you should run Connect on separate servers. **In this case, install Apache Kafka on all the machines, and simply start the brokers on some servers and start Connect on other servers.**
+
+Starting a Connect worker is very similar to starting a broker—you call the start script with a properties file:
+
+```shell
+bin/connect-distributed.sh config/connect-distributed.properties
+```
+
+There are a few key configurations for Connect workers.
+
+**bootstrap.servers**
+
+A list of Kafka brokers that Connect will work with. Connectors will pipe their data either to or from those brokers.
+ 
+**group.id** 
+
+All workers with the same group ID are part of the same Connect cluster.
+ 
+**plugin.path** 
+ 
+Kafka Connect uses a pluggable architecture where connectors, converters, transformations and secret providers can be downloaded and added to the platform. In order to do this, Kafka Connect has to be able to find and load those plugins. One way to do this is to add the connectors and all their dependencies to the Kafka Connect classpath, but this can get complicated if you want to use a Connector which brings a dependency that conflict with one of Kafka’s dependencies. Kafka Connect provides an alternative in the form of plugin.path.
+
+We can configure one or more directories as locations where connectors and their dependencies can be found. For example, we can configure ``plugin.path = /opt/connectors, /home/gwenshap/connectors``. Inside this director, we will typically create a subdirectory for each connector, so in the above example, we’ll create ``/opt/connectors/jdbc`` and ``/opt/connectors/elastic``. Inside each subdirectory we’ll place the connector jar itself, and all its dependencies. If the connector ships as an uberJar and has no dependencies, it can be placed directly in plugin.path and doesn’t require a subdirectory. But note that placing dependencies in the top level path will not work.
+
+**key.converter and value.converter**
+
+Connect can handle multiple data formats stored in Kafka. The two configurations set the converter for the key and value part of the message that will be stored in Kafka.
+
+**The default is JSON format using the JSONConverter included in Apache Kafka.**
+
+Some converters include converter-specific configuration parameters. For example, JSON messages can include a schema or be schema-less. To support either, you can set ``key.converter.schemas.enable=true`` or ``false``, respectively.
+
+The same configuration can be used for the value converter by setting ``value.converter.schemas.enable`` to ``true`` or ``false``. Avro messages also contain a schema, but you need to configure the location of the Schema Registry using ``key.converter.schema.registry.url`` and ``value.converter.schema.registry.url``.
+
+**rest.host.name and rest.port**
+
+Connectors are typically configured and monitored through the REST API of Kafka Connect. You can configure the specific port for the REST API.
+
+Once the workers are up and you have a cluster, make sure it is up and running by checking the REST API:
+
+```shell
+$ curl http://localhost:8083/
+{"version":"3.0.0-SNAPSHOT","commit":"fae0784ce32a448a","kafka_cluster_id":"pfkYIGZQSXm8Ryl-vACQHdg"}
+```
+
+We can also check which connector plugins are available:
+
+```shell
+$ curl http://localhost:8083/connector-plugins
+ 
+[ 
+  {
+      "class": "org.apache.kafka.connect.file.FileStreamSourceConnector",
+      "type": "sink",
+      "version": "3.0.0-SNAPSHOT"
+  }, 
+  {
+    "class": "org.apache.kafka.connect.file.FileStreamSourceConnector",
+    "type": "source",
+    "version": "3.0.0-SNAPSHOT"
+  },
+  {
+    "class": "org.apache.kafka.connect.mirror.MirrorCheckpointConnector",
+    "type": "source",
+    "version": "1"
+  },
+  {
+    "class": "org.apache.kafka.connect.mirror.MirrorHeartbeatConnector",
+    "type": "source",
+    "version": "1"
+  },
+  {
+    "class": "org.apache.kafka.connect.mirror.MirrorSourceConnector",
+    "type": "source",
+    "version": "1"
+  }
+]
+```
+
+#### Standalone Mode
+
+In this mode, all the connectors and tasks run on the one standalone worker. It is usually easier to use Connect in standalone mode for development and trouble‐ shooting as well as in cases where connectors and tasks need to run on a specific machine (e.g., syslog connector listens on a port, so you need to know which machines it is running on).
+
+### Connector Example: File Source and File Sink
+
+This example will use the file connectors and JSON converter that are part of Apache Kafka. To follow along, make sure you have Zookeeper and Kafka up and running.
+
+To start, let’s run a distributed Connect worker. In a real production environment, you’ll want at least two or three of these running to provide high availability. In this example, I’ll only start one:
+
+```shell
+bin/connect-distributed.sh config/connect-distributed.properties &
+```
+
+Now it’s time to start a file source. As an example, we will configure it to read the Kafka configuration file—basically piping Kafka’s configuration into a Kafka topic:
+
+```shell
+echo '{"name":"load-kafka-config", "config":{"connector.class": "FileStreamSource","file":"config/server.properties","topic": "kafka-config-topic"}}' | \ 
+curl -X POST -d @- http://localhost:8083/connectors -H "Content-Type: application/json"
+
+
+{
+  "name": "load-kafka-config",
+  "config": {
+    "connector.class": "FileStreamSource",
+    "file": "config/server.properties",
+    "topic": "kafka-config-topic",
+    "name": "load-kafka-config"
+  }, 
+  "tasks": [
+    {
+      "connector": "load-kafka-config",
+      "task": 0
+    } 
+  ],
+  "type": "source"
+}
+```
+
+To create a connector, we wrote a JSON that includes a connector name, load-kafka- config, and a connector configuration map, which includes the connector class, the file we want to load, and the topic we want to load the file into.
+
+Let’s use the Kafka Console consumer to check that we have loaded the configuration into a topic:
+
+```shell
+$ bin/kafka-console-consumer.sh --bootstrap-server=localhost:9092 --topic kafka-config-topic --from-beginning
+```
+
+If all went well, you should see something along the lines of:
+
+```shell
+{"schema":{"type":"string","optional":false},"payload":"# Licensed to the Apache Software Foundation (ASF) under one or more"}
+
+<more stuff here>
+
+{"schema":{"type":"string","optional":false},"pay-load":"############################# Server Basics #############################"}
+{"schema":{"type":"string","optional":false},"payload":""}
+{"schema":{"type":"string","optional":false},"payload":"# The id of the broker. This must be set to a unique integer for each broker."}
+{"schema":{"type":"string","optional":false},"payload":"broker.id=0"}
+{"schema":{"type":"string","optional":false},"payload":""}
+<more stuff here>
+```
+
+This is literally the contents of the ``config/server.properties`` file, as it was converted to JSON line by line and placed in kafka-config-topic by our connector. Note that by default, the JSON converter places a schema in each record. In this specific case, the schema is very simple—there is only a single column, named payload of type string, and it contains a single line from the file for each record.
+
+Now let’s use the file sink converter to dump the contents of that topic into a file. The resulting file should be completely identical to the original server.properties file, as the JSON converter will convert the JSON records back into simple text lines:
+
+```shell
+echo '{"name":"dump-kafka-config", "config": {"connector.class":"FileStreamSink","file":"copy-of-server-properties","topics":"kafka-config-topic"}}' | 
+curl -X POST -d @- http://local-host:8083/connectors --header "content-Type:application/json"
+
+{"name":"dump-kafka-config","config": {"connector.class":"FileStreamSink","file":"copy-of-server-properties","topics":"kafka-config-topic","name":"dump-kafka-config"},"tasks": []}
+```
+
+Note the changes from the source configuration: the class we are using is now ``FileStreamSink`` rather than ``FileStreamSource``. We still have a file property, but now it refers to the destination file rather than the source of the records, and instead of specifying a *topic*, you specify *topics*. **Note the plurality — you can write multiple topics into one file with the sink, while the source only allows writing into one topic.**
+
+If all went well, you should have a file named copy-of-server-properties, which is com‐ pletely identical to the config/server.properties we used to populate kafka-config- topic.
+
+To delete a connector, you can run:
+
+```shell
+curl -X DELETE http://localhost:8083/connectors/dump-kafka-config
+```
+
+If you look at the Connect worker log after deleting a connector, you may see other connectors restarting some of their tasks. They are restarting in order to rebalance the remaining tasks between the workers and ensure equivalent workloads after a connector was removed.
+
+### Connector Example: MySQL to Elasticsearch
+
+Now that we have a simple example working, let’s do something more useful. Let’s take a MySQL table, stream it to a Kafka topic and from there load it to Elasticsearch and index its content.
+
+Make sure you have the connectors. There are a few options: 
+1. Download and install using Confluent Hub client.
+2. Download from Confluent Hub website (or from any other website where the connector you are interested in is hosted). 
+3. Build from source code.
+
+Now we need to load these connectors. Create a directory, such as ``/opt/connectors`` and update ``config/connect-distributed.properties`` to include ``plugin.path=/opt/connectors``.
+
+Then take the jars that were created under the target directory where you built each connector and copy each one, plus their dependencies, to appropriate subdirectories of ``plugin.path``.
+
+```shell
+mkdir /opt/connectors/jdbc
+mkdir /opt/connectors/elastic
+cp .../kafka-connect-jdbc/target/kafka-connect-jdbc-10.3.x-SNAPSHOT.jar /opt/connectors/jdbc
+cp ../kafka-connect-elasticsearch/target/kafka-connect-elasticsearch-11.1.0-SNAPSHOT.jar /opt/connectors/elastic
+cp ../kafka-connect-elasticsearch/target/kafka-connect-elasticsearch-11.1.0-SNAPSHOT-package/share/java/kafka-connect-elasticsearch/* /opt/connectors/elastic
+```
+
+In addition, since we need to connect not just to any database but specifically to MySQL, you’ll need to download and install a MySQL JDBC driver. **The driver doesn’t ship with the connector for license reasons.** You can download the driver from MySQL website and then place the jar in ``/opt/connectors/elastic``.
+
+Restart the Kafka Connect workers and check that the new connector plugins are listed:
+
+```shell
+bin/connect-distributed.sh config/connect-distributed.properties & curl http://localhost:8083/connector-plugins
+    [
+      {
+        "class": "io.confluent.connect.elasticsearch.ElasticsearchSinkConnector",
+        "type": "sink",
+        "version": "11.1.0-SNAPSHOT"
+      }, {
+        "class": "io.confluent.connect.jdbc.JdbcSinkConnector",
+        "type": "sink",
+        "version": "10.3.x-SNAPSHOT"
+      }, {
+        "class": "io.confluent.connect.jdbc.JdbcSourceConnector",
+        "type": "source",
+        "version": "10.3.x-SNAPSHOT"
+      }
+    ]
+```
+
+We can see that we now have additional connector plugins available in our Connect cluster.
+
+The next step is to create a table in MySQL that we can stream into Kafka using our JDBC connector:
+
+```shell
+mysql.server restart
+mysql --user=root
+mysql> create database test;
+Query OK, 1 row affected (0.00 sec)
+mysql> use test;
+Database changed
+mysql> create table login (username varchar(30), login_time datetime);
+Query OK, 0 rows affected (0.02 sec)
+mysql> insert into login values ('gwenshap', now());
+Query OK, 1 row affected (0.01 sec)
+mysql> insert into login values ('tpalino', now());
+Query OK, 1 row affected (0.00 sec)
+```
+
+As you can see, we created a database, a table, and inserted a few rows as an example.
+
+The next step is to configure our JDBC source connector. We can find out which configuration options are available by looking at the documentation, but we can also use the REST API to find the available configuration options:
+
+```shell
+curl -X PUT -d '{"connector.class":"JdbcSource"}' localhost:8083/
+connector-plugins/JdbcSourceConnector/config/validate/ --header "content-Type:application/json"
+    {
+      "configs": [
+        {
+            "definition": {
+                "default_value": "",
+                "dependents": [],
+                "display_name": "Timestamp Column Name",
+                "documentation": "The name of the timestamp column to use
+                to detect new or modified rows. This column may not be
+                nullable.",
+                "group": "Mode",
+                "importance": "MEDIUM",
+                "name": "timestamp.column.name",
+                "order": 3,
+                "required": false,
+                "type": "STRING",
+                "width": "MEDIUM"
+            },
+            <more stuff>
+```
+
+We basically asked the REST API to validate configuration for a connector and sent it a configuration with just the class name (this is the bare minimum configuration necessary). As a response, we got the JSON definition of all available configurations.
+
+With this information in mind, it’s time to create and configure our JDBC connector:
+
+```shell
+echo '{"name":"mysql-login-connector", "config":{"connector.class":"JdbcSource-Connector",  
+"connection.url":"jdbc:mysql://127.0.0.1:3306/test?user=root","mode":"timestamp","table.whitelist":"login", 
+"validate.non.null":false,"timestamp.column.name":"login_time","topic.pre-fix":"mysql."}}' | 
+curl -X POST -d @- http://localhost:8083/connectors --header "content-Type:application/json"
+
+{
+      "name": "mysql-login-connector",
+      "config": {
+        "connector.class": "JdbcSourceConnector",
+        "connection.url": "jdbc:mysql://127.0.0.1:3306/test?user=root",
+        "mode": "timestamp",
+        "table.whitelist": "login",
+        "validate.non.null": "false",
+        "timestamp.column.name": "login_time",
+        "topic.prefix": "mysql.",
+        "name": "mysql-login-connector"
+      },
+"tasks": [] 
+}
+```
+
+Let’s make sure it worked by reading data from the mysql.login topic:
+
+```shell
+bin/kafka-console-consumer.sh --bootstrap-server=localhost:9092 --topic mysql.login --from-beginning
+```
+
+If you get errors saying the topic doesn’t exist or you see no data, check the Connect worker logs for errors such as:
+
+```shell
+[2016-10-16 19:39:40,482] ERROR Error while starting connector mysql-login-
+    connector (org.apache.kafka.connect.runtime.WorkerConnector:108)
+    org.apache.kafka.connect.errors.ConnectException: java.sql.SQLException: Access
+    denied for user 'root;'@'localhost' (using password: NO)
+      at io.confluent.connect.jdbc.JdbcSourceConnector.start(JdbcSourceConnector.java:78)
+```
+
+Other issues can involve the existence of the driver in the classpath or permissions to read the table.
+
+If you are planning on streaming data from a relational database to Kafka, **we highly recommend using a Debezium change capture connector if one exists for your database.** In addition, the Debizium documentation is one of the best we’ve seen - in addition to documenting the connectors themselves, it covers useful design patterns and use-cases related to change data capture, especially in the context of microservices.
+
+Getting MySQL data to Kafka is useful in itself, but let’s make things more fun by writing the data to Elasticsearch.
+
+First, we start Elasticsearch and verify it is up by accessing its local port:
+
+```shell
+elasticsearch & curl http://localhost:9200/
+    {
+      "name" : "Chens-MBP",
+      "cluster_name" : "elasticsearch_gwenshap",
+      "cluster_uuid" : "X69zu3_sQNGb7zbMh7NDVw",
+      "version" : {
+         "number" : "7.5.2",
+        "build_flavor" : "default",
+        "build_type" : "tar",
+        "build_hash" : "8bec50e1e0ad29dad5653712cf3bb580cd1afcdf",
+        "build_date" : "2020-01-15T12:11:52.313576Z",
+        "build_snapshot" : false,
+        "lucene_version" : "8.3.0",
+        "minimum_wire_compatibility_version" : "6.8.0",
+        "minimum_index_compatibility_version" : "6.0.0-beta1"
+      },
+      "tagline" : "You Know, for Search"
+    }
+```
+
+Now let’s start the connector:
+
+```shell
+echo '{"name":"elastic-login-connector", "config":{"connector.class":"ElasticsearchSinkConnector","connection.url":"http://localhost:9200","type.name":"mysql-data","topics":"mysql.login","key.ignore":true}}' | 
+curl -X POST -d @- http://localhost:8083/connectors --header "content-Type:application/json"
+
+{
+      "name": "elastic-login-connector",
+      "config": {
+        "connector.class": "ElasticsearchSinkConnector",
+        "connection.url": "http://localhost:9200",
+        "type.name": "mysql-data",
+        "topics": "mysql.login",
+        "key.ignore": "true",
+        "name": "elastic-login-connector"
+      },
+      "tasks": [ {
+        "connector": "elastic-login-connector",
+        "task": 0 
+        }
+      ] 
+}
+```
+
+There are few configurations we need to explain here. 
+
+The ``connection.url`` is simply the URL of the local Elasticsearch server we configured earlier. **Each topic in Kafka will become, by default, a separate Elasticsearch index, with the same name as the topic.**
+
+Within the topic, we need to define a type for the data we are writing. We assume all the events in a topic will be of the same type, so we just hardcode ``type.name=mysql-data``. The only topic we are writing to Elasticsearch is ``mysql.login``.
+
+When we defined the table in MySQL we didn’t give it a primary key. As a result, the events in Kafka have null keys. Because the events in Kafka lack keys, we need to tell the Elasticsearch connector to use the topic name, partition ID, and offset as the key for each event. This is done by setting ``key.ignore`` configuration to ``true``.
+
+Let’s check that the index with ``mysql.login`` data was created:
+
+```shell
+curl 'localhost:9200/_cat/indices?v'
+
+health status index       uuid                     pri rep docs.count docs.deleted store.size pri.store.size 
+yellow open   mysql.login wkeyk9-bQea6NJmAFjv4hw   1   1   2          0            3.9kb      3.9kb
+```
+
+**If the index isn’t there, look for errors in the Connect worker log. Missing configura‐ tions or libraries are common causes for errors.**
+
+If all is well, we can search the index for our records:
+
+```shell
+curl -s -X "GET" "http://localhost:9200/mysql.login/_search?pretty=true"
+{
+  "took" : 40,
+  "timed_out" : false,
+  "_shards" : {
+    "total" : 1,
+    "successful" : 1,
+    "skipped" : 0,
+    "failed" : 0
+  },
+  "hits" : {
+    "total" : {
+      "value" : 2,
+      "relation" : "eq"
+    },
+    "max_score" : 1.0,
+    "hits" : [
+      {
+        "_index" : "mysql.login",
+        "_type" : "_doc",
+        "_id" : "mysql.login+0+0",
+        "_score" : 1.0,
+        "_source" : {
+          "username" : "gwenshap",
+          "login_time" : 1621699811000
+        }
+      }, {
+        "_index" : "mysql.login",
+        "_type" : "_doc",
+        "_id" : "mysql.login+0+1",
+        "_score" : 1.0,
+        "_source" : {
+          "username" : "tpalino",
+          "login_time" : 1621699816000
+        } 
+      }
+    ] 
+  }
+}
+```
+
+If you add new records to the table in MySQL, they will automatically appear in the ``mysql.login`` topic in Kafka and in the corresponding Elasticsearch index.
+
+## Single Message Transformations
+
+Copying records from MySQL to Kafka and from there to Elastic is rather useful on its own, but ETL pipelines typically involve a transformation step.
+
+**Single message transformations can be done within Kafka Connect** transforming messages while they are being copied, often without writing any code. **More complex transformation, which typically involve joins or aggregation, are typically done with the stateful Kafka Streams framework.**
+
+Apache Kafka includes the following single message transformations 
+* Cast - Change data type of a field. 
+* MaskField - Replace the contents of a field with null. This is useful for removing sensitive or PII data.
+* Filter - Drop or include all messages that match a specific condition. Built in conditions include matching on topic name, particular header or whether the message is a tomb stone (that is, has a null value). 
+* Flatten - Transform a nested data structure to a flat one. This is done by concatenating all the names of all fields in the path to a specific value. 
+* HeaderFrom - Move or copy fields from the message into the header 
+* InsertHeader - Add a static string header to each message. 
+* InsertField - Add a new field to a message, either using values from its metadata such as offset, or with a static value. 
+* RegexRouter - Change the destination topic using a regular expression and a replacement string. 
+* ReplaceField - Remove or rename a field in the message. 
+* TimestampConverter - Modify the time format of a field, for example from Unix Epoch to a String. 
+* TimestampRouter - Modify the topic based on the message timestamp. This is mostly useful in sink connectors when we want to copy messages to specific table partitions based on their timestamp and the topic field is used to find an equivalent dataset in the destination system.
+
+To learn more about Kafka Connect SMTs, you can read detailed examples of many transformations in Twelve Days of SMT blog series.
+
+As an example, lets say that we want to add a record header to each record produced by the MySQL connector we created previously. The header will indicate that the record was created by this MySQL connector, which is useful in case auditors want to examine the lineage of these records.
+
+To do this, we’ll replace the previous MySQL Connector configuration with the following:
+
+```shell
+echo '{
+      "name": "mysql-login-connector",
+      "config": {
+        "connector.class": "JdbcSourceConnector",
+        "connection.url": "jdbc:mysql://127.0.0.1:3306/test?user=root",
+        "mode": "timestamp",
+        "table.whitelist": "login",
+        "validate.non.null": "false",
+        "timestamp.column.name": "login_time",
+        "topic.prefix": "mysql.",
+        "name": "mysql-login-connector",
+        "transforms": "InsertHeader",
+        "transforms.InsertHeader.type": "org.apache.kafka.connect.transforms.InsertHeader",
+        "transforms.InsertHeader.header": "MessageSource",
+        "transforms.InsertHeader.value.literal": "mysql-login-connector"
+      }}' | 
+curl -X POST -d @- http://localhost:8083/connectors --header "content-Type:application/json"
+```
+
+Now, if you insert few more records into the MySQL table that we created in the previous example, you’ll be able to see that the new messages in ``mysql.login`` topic have headers.
+
+```shell
+bin/kafka-console-consumer.sh --bootstrap-server=localhost:9092 --topic mysql.login --from-beginning --property print.headers=true
+ 
+NO_HEADERS 
+{
+  "schema": {
+      "type":"struct",
+      "fields": [
+            {"type":"string","optional":true,"field":"username"}, 
+            {"type":"int64","optional":true,"name":"org.apache.kafka.connect.data.Timestamp","version":1,"field":"login_time"}
+        ],
+        "optional":false,
+        "name":"login"
+  },
+  "payload": {"username":"tpalino","login_time":1621699816000}
+}
+    
+MessageSource:mysql-login-connector 
+{
+  "schema": {
+      "type":"struct",
+      "fields": [
+        {"type":"string","optional":true,"field":"username"}, 
+        {"type":"int64","optional":true,"name":"org.apache.kafka.connect.data.Timestamp","version":1,"field":"login_time"}
+      ],
+      "optional":false,
+      "name":"login"
+    },
+    "payload":{"username":"rajini","login_time":1621803287000}
+} 
+```
+
+As you can see, the old records show NO_HEADERS but the new records show MessageSource:mysql-login-connector.
+
+## A Deeper Look at Connect
+
+To understand how Connect works, you need to understand three basic concepts and how they interact.
+
+As we explained earlier and demonstrated with examples, to use Connect you need to run a cluster of workers and start/stop connectors. An additional detail we did not dive into before is the handling of data by convertors — these are the components that convert MySQL rows to JSON records, which the connector wrote into Kafka.
+
