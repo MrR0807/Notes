@@ -3125,3 +3125,176 @@ To understand how Connect works, you need to understand three basic concepts and
 
 As we explained earlier and demonstrated with examples, to use Connect you need to run a cluster of workers and start/stop connectors. An additional detail we did not dive into before is the handling of data by convertors — these are the components that convert MySQL rows to JSON records, which the connector wrote into Kafka.
 
+### Connectors and tasks
+
+Connector plugins implement the connector API, which includes two parts:
+* Connectors
+* Tasks
+
+#### Connectors
+
+The connector is responsible for three important things: 
+* Determining how many tasks will run for the connector 
+* Deciding how to split the data-copying work between the tasks 
+* Getting configurations for the tasks from the workers and passing it along
+
+For example, the JDBC source connector will connect to the database, discover the existing tables to copy, and based on that decide how many tasks are needed — choosing the lower of ``tasks.max`` configuration and the number of tables. Once it decides how many tasks will run, it will generate a configuration for each task—using both the connector configuration (e.g., ``connection.url``) and a list of tables it assigns for each task to copy. The ``taskConfigs()`` method returns a list of maps (i.e., a configuration for each task we want to run).
+
+The workers are then responsible for starting the tasks and giving each one its own unique configuration so that it will copy a unique subset of tables from the database. Note that when you start the connector via the REST API, it may start on any node and subsequently the tasks it starts may also execute on any node.
+
+#### Tasks
+
+Tasks are responsible for actually getting the data in and out of Kafka. All tasks are initialized by receiving a context from the worker. Source context includes an object that allows the source task to store the offsets of source records (e.g., in the file connector, the offsets are positions in the file; in the JDBC source connector, the offsets can be primary key IDs in a table).
+
+Context for the sink connector includes methods that allow the connector to control the records it receives from Kafka—this is used for things like applying back-pressure, and retrying and storing offsets externally for exactly-once delivery.
+
+After tasks are initialized, they are started with a ``Properties`` object that contains the configuration the ``Connector`` created for the task. Once tasks are started, source tasks poll an external system and return lists of records that the worker sends to Kafka brokers. Sink tasks receive records from Kafka through the worker and are responsible for writing the records to an external system.
+
+### Workers
+
+Kafka Connect’s worker processes are the “container” processes that execute the connectors and tasks. They are responsible for handling the HTTP requests that define connectors and their configuration, as well as for storing the connector configuration, starting the connectors and their tasks, and passing the appropriate configurations along.
+
+**If a worker process is stopped or crashes, other workers in a Connect cluster will recognize that (using the heartbeats in Kafka’s consumer protocol) and reassign the connectors and tasks that ran on that worker to the remaining workers.**
+
+If a new worker joins a Connect cluster, other workers will notice that and assign connectors or tasks to it to make sure load is balanced among all workers fairly. Workers are also responsible for automatically committing offsets for both source and sink connectors and for handling retries when tasks throw errors.
+
+**The best way to understand workers is to realize that connectors and tasks are responsible for the “moving data” part of data integration, while the workers are responsible for the REST API, configuration management, reliability, high availability, scaling, and load balancing.**
+
+This separation of concerns is the main benefit of using Connect APIs versus the classic consumer/producer APIs. **Experienced developers know that writing code that reads data from Kafka and inserts it into a database takes maybe a day or two, but if you need to handle configuration, errors, REST APIs, monitoring, deployment, scaling up and down, and handling failures, it can take a few months to get everything right.**
+
+If you implement data copying with a connector, your connector plugs into workers that handle a bunch of complicated operational issues that you don’t need to worry about.
+
+### Converters and Connect’s data model
+
+The last piece of the Connect API puzzle is the connector data model and the converters. Kafka’s Connect APIs includes a data API, which includes both data objects and a schema that describes that data. For example, the JDBC source reads a column from a database and constructs a ``Connect Schema`` object based on the data types of the columns returned by the database.
+
+For each column, we store the column name and the value in that column. Every source connector does something similar — read an event from the source system and generate a pair of ``Schema`` and ``Value``.
+
+Sink connectors do the opposite — get a Schema and ``Value`` pair and use the ``Schema`` to parse the values and insert them into the target system.
+
+Though source connectors know how to generate objects based on the Data API, there is still a question of how Connect workers store these objects in Kafka. This is where the converters come in. When users configure the worker (or the connector), they choose which converter they want to use to store data in Kafka.
+
+At the moment the available choices are Avro, JSON, or strings. The JSON converter can be configured to either include a schema in the result record or not include one—so we can support both structured and semistructured data.
+
+The opposite process happens for sink connectors. When the Connect worker reads a record from Kafka, it uses the configured converter to convert the record from the format in Kafka (i.e., Avro, JSON, or string) to the Connect Data API record and then passes it to the sink connector, which inserts it into the destination system.
+
+### Offset management
+
+Offset management is one of the convenient services the workers perform for the connectors (in addition to deployment and configuration management via the REST API).
+
+For source connectors, this means that the records the connector returns to the Connect workers include a logical partition and a logical offset. Those are not Kafka partitions and Kafka offsets, but rather partitions and offsets as needed in the source system. **For example, in the file source, a partition can be a file and an offset can be a line number or character number in the file. In a JDBC source, a partition can be a database table and the offset can be an ID of a record in the table.**
+
+**One of the most important design decisions involved in writing a source connector is deciding on a good way to partition the data in the source system and to track offsets—this will impact the level of parallelism the connector can achieve and whether it can deliver at-least-once or exactly-once semantics.**
+
+When the source connector returns a list of records, which includes the source partition and offset for each record, the worker sends the records to Kafka brokers. If the brokers successfully acknowledge the records, the worker then stores the offsets of the records it sent to Kafka.
+
+Sink connectors have an opposite but similar workflow: they read Kafka records, which already have a topic, partition, and offset identifiers. Then they call the connector put() method that should store those records in the destination system. If the connector reports success, they commit the offsets they’ve given to the connector back to Kafka, using the usual consumer commit methods.
+
+## Alternatives to Kafka Connect
+
+Not interested.
+
+# Chapter 10. Cross-Cluster Data Mirroring
+
+In other use cases, the different clusters are interdependent and the administrators need to continuously copy data between the clusters. In most databases, continuously copying data between database servers is called **replication**. Since we’ve used “replication” to describe movement of data between Kafka nodes that are part of the same cluster, we’ll call copying of data between Kafka clusters **mirroring**.
+
+Apache Kafka’s built-in cross-cluster replicator is called MirrorMaker.
+
+## Use Cases of Cross-Cluster Mirroring
+
+### Regional and central clusters
+
+There are many cases when this is a requirement, but the classic example is a company that modifies prices based on supply and demand. This company can have a datacenter in each city in which it has a presence, collects information about local supply and demand, and adjusts prices accordingly. All this information will then be mirrored to a central cluster where business analysts can run company-wide reports on its revenue.
+
+### High availability (HA) and disaster recovery (DR)
+
+The applications run on just one Kafka cluster and don’t need data from other locations, but you are concerned about the possibility of the entire cluster becoming unavailable for some reason.
+
+### Regulatory compliance
+
+Companies operating in different countries may need to use different configurations and policies to conform to legal and regulatory requirements in each country. For instance, some data sets may be stored in separate clusters with strict access control, with subsets of data replicated to other clusters with wider access.
+
+### Cloud migrations
+
+Many companies these days run their business in both an on-premise datacenter and a cloud provider. Often, applications run on multiple regions of the cloud provider, for redundancy, and sometimes multiple cloud providers are used. In these cases, there is often at least one Kafka cluster in each on-premise datacenter and each cloud region. Those Kafka clusters are used by applications in each datacenter and region to transfer data efficiently between the datacenters.
+
+For example, if a new application is deployed in the cloud but requires some data that is updated by applications running in the on-premise datacenter and stored in an on-premise database, you can use Kafka Connect to capture database changes to the local Kafka cluster and then mirror these changes to the cloud Kafka cluster where the new application can use them.
+
+### Aggregation of data from edge clusters
+
+Several industries including retail, telecommunications, transportation and healthcare generate data from small devices with limited connectivity. An aggregate cluster with high availability can be used to support analytics and other use cases for data from a large number of edge clusters.
+
+## Multicluster Architectures
+
+### Some Realities of Cross-Datacenter Communication
+
+The following is a list of some things to consider when it comes to cross-datacenter communication:
+* High latencies - Latency of communication between two Kafka clusters increases as the distance and the number of network hops between the two clusters increase.
+* Limited bandwidth - Wide area networks (WANs) typically have far lower available bandwidth than what you’ll see inside a single datacenter, and the available bandwidth can vary minute to minute.
+* Higher costs - Regardless of whether you are running Kafka on-premise or in the cloud, there are higher costs to communicate between clusters.
+
+Apache Kafka’s brokers and clients were designed, developed, tested and tuned, all within a single datacenter. **We assumed low latency and high bandwidth between brokers and clients.**
+
+If we need any kind of replication between clusters and we ruled out inter-broker communication and producer-broker communication, then we must allow for **broker-consumer communication**.
+
+**Indeed, this is the safest form of cross-cluster communication** because in the event of network partition that prevents a consumer from reading data, the records remain safe inside the Kafka brokers until communications resume and consumers can read them.
+
+### Hub-and-Spokes Architecture
+
+This architecture is intended for the case where there are multiple local Kafka clusters and one central Kafka cluster.
+
+![chapter-10-figure-1.png](pictures/chapter-10-figure-1.png)
+
+There is also a simpler variation of this architecture with just two clusters—a leader and a follower.
+
+![chapter-10-figure-2.png](pictures/chapter-10-figure-2.png)
+
+This architecture is used when data is produced in multiple datacenters and some consumers need access to the entire data set.
+
+The main benefit of this architecture is that data is always produced to the local datacenter and that events from each datacenter are only mirrored once—to the central datacenter.
+
+Applications that process data from a single datacenter can be located at that datacenter. Applications that need to process data from multiple datacenters will be located at the central datacenter where all the events are mirrored.
+
+**This architecture is simple to deploy, configure, and monitor.**
+
+**The main drawbacks of this architecture are the direct results of its benefits and simplicity. Processors in one regional datacenter can’t access data in another.**
+
+Suppose that we are a large bank and have branches in multiple cities. Let’s say that we decide to store user profiles and their account history in a Kafka cluster in each city. We replicate all this information to a central cluster that is used to run the bank’s business analytics. When users connect to the bank website or visit their local branch, they are routed to send events to their local cluster and read events from the same local cluster. However, suppose that a user visits a branch in a different city. Because the user information doesn’t exist in the city he is visiting, the branch will be forced to interact with a remote cluster (not recommended) or have no way to access the user’s information (really embarrassing).
+
+### Active-Active Architecture
+
+![chapter-10-figure-3.png](pictures/chapter-10-figure-3.png)
+
+The main benefits of this architecture are the ability to serve users from a nearby datacenter, which typically has performance benefits, without sacrificing functionality due to limited availability of data.
+
+A secondary benefit is redundancy and resilience. Since every datacenter has all the functionality, if one datacenter is unavailable you can direct users to a remaining datacenter.
+
+**The main drawback of this architecture is the challenge in avoiding conflicts when data is read and updated asynchronously in multiple locations.**
+
+This includes technical challenges in mirroring events—for example, how do we make sure the same event isn’t mirrored back and forth endlessly?
+
+**But more important, maintaining data consistency between the two datacenters will be difficult.** Here are few examples of the difficulties you will encounter:
+
+* If a user sends an event to one datacenter and reads events from another datacenter, it is possible that the event they wrote hasn’t arrived the second datacenter yet. To the user, it will look like he just added a book to his wish list, clicked on the wish list, but the book isn’t there. For this reason, when this architecture is used, the developers usually **find a way to “stick” each user to a specific datacenter and make sure they use the same cluster most of the time** (unless they connect from a remote location or the datacenter becomes unavailable).
+* An event from one datacenter says user ordered book A and an event from more or less the same time at a second datacenter says that the same user ordered book B. After mirroring, both datacenters have both events and thus we can say that each datacenter has two conflicting events. Applications on both datacenters need to know how to deal with this situation. Do we pick one event as the “correct” one? If so, we need consistent rules on how to pick one so applications on both datacenters will arrive at the same conclusion. Do we decide that both are true and simply send the user two books and have another department deal with returns? Amazon used to resolve conflicts that way, but organizations dealing with stock trades, for example, can’t.
+
+**It is important to keep in mind that if you use this architecture, you will have conflicts and will need to deal with them.**
+
+**If you find ways to handle the challenges of asynchronous reads and writes to the same data set from multiple locations, then this architecture is highly recommended.**
+
+**It is the most scalable, resilient, flexible, and cost-effective option we are aware of.**
+
+Part of the challenge of active-active mirroring, especially with more than two datacenters, is that you will need mirroring tasks for each pair of datacenters and each direction.
+
+In addition, you will want to avoid loops in which the same event is mirrored back- and-forth endlessly. You can do this by giving each “logical topic” a separate topic for each datacenter and making sure to avoid replicating topics that originated in remote datacenters. For example, logical topic users will be topic SF.users in one datacenter and NYC.users in another datacenter. The mirroring processes will mirror topic SF.users from SF to NYC and topic NYC.users from NYC to SF.
+
+**Header information may also be used to avoid endless mirroring loops and to allow processing events from different datacenters separately.**
+
+### Active-Standby Architecture
+
+In some cases, the only requirement for multiple clusters is to support some kind of disaster scenario.
+
+This is often a legal requirement rather than something that the business is actually planning on doing—but you still need to be ready.
+
+![chapter-10-figure-4.png](pictures/chapter-10-figure-4.png)
+
