@@ -3298,3 +3298,204 @@ This is often a legal requirement rather than something that the business is act
 
 ![chapter-10-figure-4.png](pictures/chapter-10-figure-4.png)
 
+The benefits of this setup are simplicity in setup and the fact that it can be used in pretty much any use case. You simply install a second cluster and set up a mirroring process that streams all the events from one cluster to another. No need to worry about access to data, handling conflicts, and other architectural complexities.
+
+The disadvantages are waste of a good cluster and the fact that failover between Kafka clusters is, in fact, much harder than it looks. **The bottom line is that it is currently not possible to perform cluster failover in Kafka without either losing data or having duplicate events.** Often both. You can minimize them, but never fully eliminate them.
+
+It should be obvious that a cluster that does nothing except wait around for a disaster is a waste of resources.
+
+Let’s take a look at what is involved in a failover.
+
+#### Disaster recovery planning
+
+When planning for disaster recovery, it is important to consider two key metrics:
+* **Recovery time objective (RTO)** defines the maximum amount of time before all services must resume after a disaster.
+* **Recovery point objective (RPO)** defines the maximum amount of time for which data may be lost as a result of a disaster.
+
+#### Data loss and inconsistencies in unplanned failover
+
+Because Kafka’s various mirroring solutions are all asynchronous, the DR cluster will not have the latest messages from the primary cluster. You should always monitor how far behind the DR cluster is and never let it fall too far behind. But in a busy system you should expect the DR cluster to be a few hundred or even a few thousand messages behind the primary. If your Kafka cluster handles 1 million messages a second and the lag between the primary and the DR cluster is 5 milliseconds, your DR cluster will be 5,000 messages behind the primary in the best-case scenario.
+
+**So, prepare for unplanned failover to include some data loss.**
+
+In planned failover, you can stop the primary cluster and wait for the mirroring process to mirror the remaining messages before failing over applications to the DR cluster, thus avoiding this data loss.
+
+When unplanned failover occurs and you lose a few thousand messages, note that mirroring solutions currently don’t support transactions, which means that if some events in multiple topics are related to each other (e.g., sales and line-items), you can have some events arrive to the DR site in time for the failover and others that don’t.
+
+#### Start offset for applications after failover
+
+**One of the challenging tasks in failing over to another cluster is making sure applications know where to start consuming data.**
+
+There are several common approaches. Some are simple but can cause additional data loss or duplicate processing; others are more involved but minimize additional data loss and reprocessing.
+
+**Auto offset reset**
+
+Apache Kafka consumers have a configuration for how to behave when they don’t have a previously committed offset—they either start reading from the beginning of the partition or from the end of the partition. If you are not somehow mirroring these offsets as part of the DR plan, you need to choose one of these options. **Either start reading from the beginning of available data and handle large amounts of duplicates or skip to the end and miss an unknown (and hopefully small) number of events.**
+
+**Replicate offsets topic**
+
+If you are using Kafka consumers from version 0.9.0 and above, the consumers will commit their offsets to a special topic: ``__consumer_offsets``. **If you mirror this topic to your DR cluster, when consumers start consuming from the DR cluster they will be able to pick up their old offsets and continue from where they left off.** It is simple, but there is a long list of caveats involved.
+
+First, there is no guarantee that offsets in the primary cluster will match those in the secondary cluster. Suppose you only store data in the primary cluster for three days and you start mirroring a topic a week after it was created. In this case, the first offset available in the primary cluster may be offset 57000000 (older events were from the first 4 days and were removed already), but the first offset in the DR cluster will be 0. So, a consumer that tries to read offset 57000003 (because that’s its next event to read) from the DR cluster will fail to do this.
+
+Second, even if you started mirroring immediately when the topic was first created and both the primary and the DR topics start with 0, producer retries can cause offsets to diverge.
+
+Third, even if the offsets were perfectly preserved, because of the lag between primary and DR clusters and because mirroring solutions currently don’t support transactions, an offset committed by a Kafka consumer may arrive ahead or behind the record with this offset. A consumer that fails over may find committed offsets without matching records. Or it may find that the latest committed offset in the DR site is older than the latest committed offset in the primary site.
+
+In these cases, you need to accept some duplicates if the latest committed offset in the DR site is older than the one committed on the primary or if the offsets in the records in the DR site are ahead of the primary due to retries. You will also need to figure out how to handle cases where the latest committed offset in the DR site doesn’t have a matching record—do you start processing from the beginning of the topic, or skip to the end?
+
+**As you can see, this approach has its limitations. Still, this option lets you failover to another DR with a reduced number of duplicated or missing events compared to other approaches, while still being simple to implement.**
+
+**Time-based failover**
+
+From version 0.10.0 onwards, each message includes a timestamp indicating the time the message was sent to Kafka. From 0.10.1.0 onwards, brokers include an index and an API for looking up offsets by the timestamp. So, if you failover to the DR cluster and you know that your trouble started at 4:05 A.M., you can tell consumers to start processing data from 4:03 A.M. There will be some duplicates from those two minutes, but it is probably better than other alternatives and the behavior is much easier to explain to everyone in the company—“We failed back to 4:03 A.M.” sounds better than “We failed back to what may or may not be the latest committed offsets.” So, this is often a good compromise. The only question is: how do we tell consumers to start processing data from 4:03 A.M.?
+
+One option is to bake it right into your app. Have a user-configurable option to specify the start time for the app. If this is configured, the app can use the new APIs to fetch offset by time, seek to that time, and start consuming from the right point, committing offsets as usual.
+
+This option is great if you wrote all your applications this way in advance. But what if you didn’t? Apache Kafka provides a tool kafka-consumer-groups to reset offsets based on a range of options including timestamp-based reset which was added in 0.11.0. The consumer group should be stopped while running this type of tool and started immediately after. For example, the following command resets consumer offsets for all topics belonging to a particular group to a specific time:
+
+```shell
+ bin/kafka-consumer-groups.sh --bootstrap-server localhost:9092 --reset-offsets --all-topics --group my-group --to-datetime 2021-03-31T04:03:00.000 --execute
+```
+
+**This option is recommended in deployments which need to guarantee a level of certainty in their failover.**
+
+**Offset translation**
+
+When discussing mirroring the offsets topic, one of the biggest challenges is the fact that offsets in primary and DR clusters can diverge. In the past, some organizations chose to use an external data store, such as Apache Cassandra, to store mapping of offsets from one cluster to another. Whenever an event is produced to the DR cluster, both offsets are sent to the external data-store by the mirroring tool when offsets diverge. These days, mirroring solutions including MirrorMaker use a Kafka topic for storing offset translation metadata. Offsets are stored whenever the difference between the two offsets change. For example, if offset 495 on primary mapped to offset 500 on the DR cluster, we’ll record (495,500) in the external store or offset translation topic. If the difference changes later due to duplicates and offset 596 is mapped to 600, then we’ll record the new mapping (596,600).
+
+#### After the failover
+
+Let’s say that failover was successful. Everything is working just fine on the DR cluster. Now we need to do something with the primary cluster. Perhaps turn it into a DR.
+
+It is tempting to simply modify the mirroring processes to reverse their direction and simply start mirroring from the new primary to the old one. However, this leads to two important questions: 
+* How do we know where to start mirroring?
+* In addition, for reasons we discussed above, it is likely that your original primary will have events that the DR cluster does not.
+
+**For this reason, for scenarios where consistency and ordering guarantees are critical, the simplest solution is to first scrape the original cluster—delete all the data and committed offsets and then start mirroring from the new primary back to what is now the new DR cluster.**
+
+#### A few words on cluster discovery
+
+One of the important points to consider when planning a standby cluster is that in the event of failover, your applications will need to know how to start communicating with the failover cluster. If you hardcoded the hostnames of your primary cluster brokers in the producer and consumer properties, this will be challenging.
+
+Most organizations keep it simple and create a DNS name that usually points to the primary brokers. In case of an emergency, the DNS name can be pointed to the standby cluster.
+
+### Stretch Clusters
+
+**Stretch clusters are intended to protect the Kafka cluster from failure during a datacenter outage. This is achieved by installing a single Kafka cluster across multiple datacenters.**
+
+The advantages of this architecture are in the synchronous replication—some types of business simply require that their DR site is always 100% synchronized with the primary site.
+
+This architecture is limited in the type of disasters it protects against. It only protects from datacenter failures, not any kind of application or Kafka failures.
+
+This architecture is feasible if you can install Kafka (and Zookeeper) in at least three datacenters with high bandwidth and low latency between them. This can be done if your company owns three buildings on the same street, or—more commonly—by using three availability zones inside one region of your cloud provider.
+
+**The reason three datacenters are important is because Zookeeper requires an uneven number of nodes in a cluster and will remain available if a majority of the nodes are available.**
+
+**2.5 DC architecture**
+
+A popular model for stretch clusters is a 2.5 DC (datacenter) architecture with both Kafka and Zookeeper running in two datacenters and a third “0.5” datacenter with one Zookeeper node to provide quorum if a datacenter fails.
+
+## Apache Kafka’s MirrorMaker
+
+MirrorMaker 2.0 is the next generation multicluster mirroring solution for Apache Kafka that is based on the Kafka Connect framework and it overcomes many of the shortcomings of its predecessor.
+
+MirrorMaker uses a source connector to consume data from another Kafka cluster rather than from a database.
+
+MirrorMaker allocates partitions to tasks evenly without using Kafka’s consumer group-management protocol to avoid latency spikes due to rebalances when new topics or partitions are added.
+
+Events from each partition in the source cluster are mirrored to the same partition in the target cluster, preserving semantic partitioning and maintaining ordering of events for each partition.
+
+**In addition to data replication, MirrorMaker also supports migration of consumer offsets, topic configuration and topic ACLs, making it a complete mirroring solution for multicluster deployments.**
+
+### How to Configure
+
+MirrorMaker is highly configurable. In addition to the cluster settings to define the topology, Kafka Connect and connector settings, every configuration property of the underlying producer, consumers and admin client used by MirrorMaker can be customized.
+
+The following command starts MirrorMaker with the configuration options specified in the properties file.
+
+```shell
+bin/connect-mirror-maker.sh etc/kafka/connect-mirror-maker.properties
+```
+
+Let’s look at some of the MirrorMaker’s configuration options.
+
+#### Replication flow
+
+The following example shows the configuration options for setting up an active-standby replication flow between two datacenters in New York and London.
+
+```properties
+clusters = NYC, LON                                  # Define aliases for the clusters used in replication flows.
+NYC.bootstrap.servers = kafka.nyc.example.com:9092   # Configure bootstrap for each cluster, using the cluster alias as prefix.
+LON.bootstrap.servers = kafka.lon.example.com:9092
+NYC->LON.enabled = true                              # Enable replication flow between a pair of clusters using the prefix source->target. All configuration options for this flow use the same prefix.
+NYC->LON.topics = .*                                 # Configure the topics to be mirrored for this replication flow.
+```
+
+#### Mirror topics
+
+As shown in the example, for each replication flow, a regular expression may be specified for the topic names that will be mirrored.
+
+MirrorMaker periodically checks for new topics in the source cluster and starts mirroring these topics automatically if they match the configured patterns.
+
+If more partitions are added to the source topic, the same number of partitions are automatically added to the target topic, ensuring that events in the source topic appear in the same partitions in the same order in the target topic.
+
+#### Consumer offset migration
+
+MirrorMaker contains a utility class RemoteClusterUtils to enable consumers to seek to the last checkpointed offset in a DR cluster with offset translation when failing over from a primary cluster. Support for periodic migration of consumer offsets was added in 2.7.0 to automatically commit translated offsets to the target __consumer_offsets topic so that consumers switching to a DR cluster can restart from where they left off in the primary cluster with **no data loss and minimal duplicate processing**.
+
+#### Topic configuration and ACL migration
+
+In addition to mirroring data records, MirrorMaker may be configured to mirror topic configuration and access control lists (ACL) of the topics to retain the same behavior for the mirrored topic. The default configuration enables this migration with reasonable periodic refresh intervals that may be sufficient in most cases.
+
+Only LITERAL topic ACLs that match topics being mirrored are migrated, so if you are using PREFIXED or wildcard ACLs or alternative authorization mechanisms, you will need to configure those on the target cluster explicitly.
+
+ACLs for Topic:Write are not migrated.
+
+#### Connector tasks
+
+The configuration option tasks.max limits the maximum number of tasks that the connector associated with MirrorMaker may use.
+
+**The default is 1, but a minimum of 2 is recommended. When replicating a lot of topic partitions, higher values should be used if possible to increase parallelism.**
+
+#### Configuration prefixes
+
+MirrorMaker supports customization of configuration options for all its components including connectors, producers, consumers and admin clients.
+
+Kafka Connect and connector configs can be specified without any prefix. But since MirrorMaker configuration can include configuration for multiple clusters, prefixes can be used to specify cluster-specific configs or configs for a particular replication flow. As we saw in the example earlier, clusters are identified using aliases which are used as configuration prefix for options related to that cluster. Prefixes can be used to build a hierarchical configuration, with the more specific prefixed configuration having higher precedence that less specific or non-prefixed configuration. MirrorMaker uses the following prefixes:
+* ``{cluster}.{connector_config}`` 
+* ``{cluster}.admin.{admin_config}``
+* ``{source_cluster}.consumer.{consumer_config}`` 
+* ``{target_cluster}.producer.{producer_config}`` 
+* ``{source_cluster}->{target_cluster}.{replication_flow_config}``
+
+### Multicluster replication topology
+
+We have seen an example configuration for a simple active-standby replication flow for MirrorMaker. Now let’s look at extending the configuration to support other common architectural patterns.
+
+Active-active topology between New York and London can be configured by enabling replication flow in both directions. In this case, even though all topics from NYC are mirrored to LON and vice versa, MirrorMaker ensures that the same event isn’t constantly mirrored back and forth between the pair of clusters since remote topics use cluster alias as prefix.
+
+**It is good practice to use the same configuration file that contains the full replication topology for different MirrorMaker processes since it avoids conflicts when configs are shared using the internal configs topic in the target datacenter.**
+
+MirrorMaker processes can be started in the target datacenter using the shared configuration file by specifying the target cluster when starting the MirrorMaker process using ``--clusters`` option.
+
+```properties
+clusters = NYC, LON
+NYC.bootstrap.servers = kafka.nyc.example.com:9092
+LON.bootstrap.servers = kafka.lon.example.com:9092
+NYC->LON.enabled = true                             # Enable replication from New York to London.
+NYC->LON.topics = .*                                # Specify topics that are replicated from New York to London.
+LON->NYC.enabled = true                             # Enable replication from London to New York.
+LON->NYC.topics = .*                                # Specify topics that are replicated from London to New York.
+```
+
+More replication flows with additional source or target clusters can also be added to the topology. For example, we can extend the configuration to support fan-out from NYC to SF and LON by adding a new replication flow for SF.
+
+```properties
+clusters = NYC, LON, SF
+SF.bootstrap.servers = kafka.sf.example.com:9092
+NYC->SF.enabled = true
+NYC->SF.topics = .*
+```
+
+### Securing MirrorMaker
