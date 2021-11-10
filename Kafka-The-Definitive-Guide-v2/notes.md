@@ -3499,3 +3499,91 @@ NYC->SF.topics = .*
 ```
 
 ### Securing MirrorMaker
+
+MirrorMaker must be configured to use a secure broker listener in both source and target clusters and client-side security options for each cluster must be configured for MirrorMaker to enable it to establish authenticated connections. SSL should be used to encrypt all cross-datacenter traffic. For example, the following configuration may be used to configure credentials for MirrorMaker:
+
+```properties
+# Security protocol should match that of the broker listener corresponding to the bootstrap servers specified for the cluster. SSL or SASL_SSL is recommended.
+NYC.security.protocol=SASL_SSL
+NYC.sasl.mechanism=PLAIN
+# Credentials for MirrorMaker are specified here using JAAS configuration since SASL is used. For SSL, keystores should be specified if mutual client authentication is enabled.
+NYC.sasl.jaas.config=org.apache.kafka.common.security.plain.PlainLoginModule required username="MirrorMaker" password="MirrorMaker-password";
+```
+
+The principal associated with MirrorMaker must also be granted appropriate permissions on the source and target clusters if authorization is enabled on the clusters. ACLs must be granted for the MirrorMaker process for:
+* Topic:Read on source cluster to consume from source topics, Topic:Create and Topic:Write on target cluster to create and produce to target topics.
+* Topic:DescribeConfigs on source cluster to obtain source topic configuration, Topic:AlterConfigs on target cluster to update target topic configuration. 
+* Topic:Alter on target cluster to add partitions if new source partitions are detected. 
+* Group:Describe on source cluster obtain source consumer group metadata including offsets, Group:Read on target cluster to commit offsets for those groups in target cluster. 
+* Cluster:Describe on source cluster to obtain source topic ACLs, Clus ter:Alter on target cluster to update target topic ACLs. 
+* Topic:Create and Topic:Write permissions for internal MirrorMaker topics in the source and target clusters.
+
+## Deploying MirrorMaker in Production
+
+In the previous example, we started MirrorMaker in dedicated mode on the command line. You can start any number of these processes to form a dedicated MirrorMaker cluster that is scalable and fault-tolerant. The processes mirroring to the same cluster will find each other and balance load between them automatically.
+
+Usually when running MirrorMaker in a production environment, you will want to run MirrorMaker as a service, running in the background with ``nohup`` and redirecting its console output to a log file. The tool also has ``-daemon`` as a command-line option that should do that for you.
+
+Most companies that use MirrorMaker have their own startup scripts that also include the configuration parameters they use. Production deployment systems like Ansible, Puppet, Chef, and Salt are often used to automate deployment and manage the many configuration options. MirrorMaker may also be run inside a Docker container.
+
+**MirrorMaker is completely stateless and doesn’t require any disk storage (all the data and state is stored in Kafka itself).**
+
+**For production use, we recommend running MirrorMaker in distributed mode either as a dedicated MirrorMaker cluster or in a shared distributed Connect cluster.**
+
+**If at all possible, run MirrorMaker at the target datacenter.** So, if you are sending data from NYC to SF, MirrorMaker should run in SF and consume data across the US from NYC. The reason for this is that long-distance networks can be a bit less reliable than those inside a datacenter.
+
+**Remote consuming is safer than remote producing.**
+
+When do you have to consume locally and produce remotely? The answer is when you need to encrypt the data while it is transferred between the datacenters but you don’t need to encrypt the data inside the datacenter.
+
+**Consumers take a significant performance hit when connecting to Kafka with SSL encryption—much more so than producers.**
+
+If your cross datacenter traffic requires encryption, but local traffic does not, then you may be better off placing MirrorMaker at the source datacenter, having it consume unencrypted data locally, and then producing it to the remote datacenter through an SSL encrypted connection. **This way, the producer connects to Kafka with SSL but not the consumer, which doesn’t impact performance as much.**
+
+**Note that newer versions of Java have significantly increased SSL performance, so producing locally and consuming remotely may be a viable option even with encryption.**
+
+When deploying MirrorMaker in production, it is important to remember to monitor it as follows:
+* Kafka Connect monitoring. Kafka Connect provides a wide range of metrics to monitor different aspects like connector metrics to monitor connector status, source connector metrics to monitor throughput and worker metrics to monitor rebalance delays. Connect also provides a REST API to view and manage connectors.
+* MirrorMaker metrics monitoring. In addition to metrics from Connect, MirrorMaker adds metrics to monitor mirroring throughput and replication latency.
+* Lag monitoring. **You will definitely want to know if the target cluster is falling behind the source.** There are two ways to track this lag, and neither is perfect:
+    * Check the latest offset committed by MirrorMaker to the source Kafka cluster. You can use the kafka-consumer-groups tool to check for each partition MirrorMaker is reading— the offset of the last event in the partition, the last offset MirrorMaker committed, and the lag between them. This indicator is not 100% accurate because MirrorMaker doesn’t commit offsets all the time. It commits offsets every minute by default so you will see the lag grow for a minute and then suddenly drop.
+    * Check the latest offset read by MirrorMaker (even if it isn’t committed). The consumers embedded in MirrorMaker publish key metrics in JMX. One of them is the consumer maximum lag (over all the partitions it is consuming). This lag is also not 100% accurate because it is updated based on what the consumer read but doesn’t take into account whether the producer managed to send those messages to the destination Kafka cluster and whether they were acknowledged successfully
+  **Note that if MirrorMaker skips or drops messages, neither method will detect an issue because they just track the latest offset. Confluent Control Center is a commercial tool that monitors message counts and checksums and closes this monitoring gap.**
+* Producer and Consumer metrics monitoring. The Kafka Connect framework used by MirrorMaker contains a producer and a consumer. Both have many available metrics and we recommend collecting and tracking them.
+* Canary. If you monitor everything else, a canary isn’t strictly necessary, but we like to add it in for multiple layers of monitoring. It provides a process that, every minute, sends an event to a special topic in the source cluster and tries to read the event from the destination cluster. It also alerts you if the event takes more than an acceptable amount of time to arrive. This can mean MirrorMaker is lagging or that it isn’t around at all.
+
+## Tuning MirrorMaker
+
+If you can’t tolerate any lag, you have to size MirrorMaker with enough capacity to keep up with your top throughput. If you can tolerate some lag, you can size MirrorMaker to be 75-80% utilized 95-99% of the time. Then, expect some lag to develop when you are at peak throughput.
+
+Kafka ships with the ``kafka-performance-producer`` tool. Use it to generate load on a source cluster and then connect MirrorMaker and start mirroring this load. Test MirrorMaker with 1, 2, 4, 8, 16, 24, and 32 tasks. Watch where performance tapers off and set ``tasks.max`` just below this point. If you are consuming or producing compressed events (**recommended, since bandwidth is the main bottleneck for cross-datacenter mirroring**), MirrorMaker will have to decompress and recompress the events. This uses a lot of CPU, so keep an eye on CPU utilization as you increase the number of tasks.
+
+**In addition, you may want to separate sensitive topics—those that absolutely require low latency and where the mirror must be as close to the source as possible—to a separate MirrorMaker cluster.**
+
+If you are running MirrorMaker across datacenters, tuning the TCP stack can help to increase the effective bandwidth:
+* Increase TCP buffer size (net.core.rmem_default, net.core.rmem_max, net.core.wmem_default, net.core.wmem_max, net.core.optmem_max)
+* Enable automatic window scaling (sysctl –w net.ipv4.tcp_window_scaling=1 or add net.ipv4.tcp_window_scaling=1 to /etc/sysctl.conf) 
+* Reduce the TCP slow start time (set/proc/sys/net/ipv4/ tcp_slow_start_after_idle to 0)
+
+Note that tuning the Linux network is a large and complex topic.
+
+In addition, you may want to tune the underlying producers and consumers of MirrorMaker.
+
+If you need to tune the producer, the following configuration settings can be useful:
+* ``linger.ms`` and ``batch.size``
+* ``max.in.flight.requests.per.connection``
+
+The following consumer configurations can increase throughput for the consumer:
+* ``fetch.max.bytes``
+* ``fetch.min.bytes`` and ``fetch.max.wait.ms``
+
+## Other Cross-Cluster Mirroring Solutions
+
+### Uber uReplicator
+
+### LinkedIn Brooklin
+
+### Confluent Cross-Datacenter Mirroring Solutions
+
+# Chapter 11. Securing Kafka
+
