@@ -8,8 +8,9 @@ Books to read:
 * Java Concurrency in Practice
 * Designing Data-Intensive Applications: The Big Ideas Behind Reliable, Scalable, and Maintainable Systems
 * Java Performance: In-Depth Advice for Tuning and Programming Java 8, 11, and Beyond 2nd Edition
+* Prometheus: Up & Running
 * Algorithhms 4th Edition by Robert Sedgewick, Kevin Wayne
-* Juint in Action. Thrid Edition
+* Juint in Action. Third Edition
 * Kubernetes Native Microservices with Quarkus, and MicroProfile
 * OpenShift in Action
 * Terraform in Action
