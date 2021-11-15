@@ -3587,3 +3587,172 @@ The following consumer configurations can increase throughput for the consumer:
 
 # Chapter 11. Securing Kafka
 
+# Chapter 11. Securing Kafka
+
+## Locking Down Kafka
+
+Kafka uses a range of security procedures to establish and maintain confidentiality, integrity and availability of data: 
+1. Authentication establishes your identity and determines who you are. 
+2. Authorization determines what you are allowed to do. 
+3. Encryption protects your data from eavesdropping and tampering. 
+4. Auditing tracks what you have done or have attempted to do. 
+5. Quotas control how much resources you can utilize.
+
+To understand how to lock down a Kafka deployment, let’s first look at how data flows through a Kafka cluster.
+
+1. Alice produces a customer order record to a partition of the topic named custom erOrders. The record is sent to leader of the partition.
+2. Leader broker writes the record to its local log file.
+3. A follower broker fetches the message from the leader and writes to its local replica log file.
+4. Leader broker updates partition state in ZooKeeper to update in-sync replicas if required.
+5. Bob consumes customer order records from the topic customerOrders. Bob receives the record produced by Alice.
+6. An internal application processes all messages arriving on customerOrders to produce real-time metrics on popular products.
+
+A secure deployment must guarantee:
+* Client authenticity. When Alice establishes a client connection to the broker, the broker should authenticate the client to ensure that the message is really coming from Alice.
+* Server authenticity. Before sending a message to the leader broker, Alice’s client should verify that the connection is to the real broker.
+* Data privacy. All connections where the message flows as well as all disks where messages are stored should be encrypted or physically secured to prevent eavesdroppers from reading the data and to ensure that data cannot be stolen.
+* Data integrity. Message digests should be included for data transmitted over insecure networks to detect tampering.
+* Access control. Before writing the message to the log, the leader broker should verify that Alice is authorized to write to customerOrders. Before returning messages to Bob’s consumer, broker should verify that Bob is authorized to read from the topic. If Bob’s consumer uses group management, broker should also verify that Bob has access to the consumer group.
+* Auditability. An audit trail that shows all operations that were performed by brokers, Alice, Bob and other clients should be logged.
+* Availability. Brokers should apply quotas and limits to avoid some users hogging all the available bandwidth or overwhelming the broker with denial-of-service attacks.
+
+## Security Protocols
+
+Kafka brokers are configured with listeners on one or more endpoints and accept client connections on these listeners. Each listener can be configured with its own security settings.
+
+Kafka supports four security protocols using two standard technologies, SSL and SASL.
+* Transport Layer Security (TLS), commonly referred to by the name of its predecessor, Secure Sockets Layer (SSL) supports encryption as well as client and server authentication.
+* Simple Authentication and Security Layer (SASL) is a framework for providing authentication using different mechanisms in connection-oriented protocols.
+
+Each Kafka security protocol combines a transport layer (PLAINTEXT or SSL) with an optional authentication layer (SSL or SASL):
+* PLAINTEXT: PLAINTEXT transport layer with no authentication. Is suitable only for use within private networks for processing data that is not sensitive since no authentication or encryption is used. 
+* SSL: SSL transport layer with optional SSL client authentication. Is suitable for use in insecure networks since client and server authentication as well as encryption are supported. 
+* SASL_PLAINTEXT: PLAINTEXT transport layer with SASL client authentication. Some SASL mechanisms also support server authentication. Does not support encryption and hence is suitable only for use within private networks.
+* SASL_SSL: SSL transport layer with SASL authentication. Is suitable for use in insecure networks since client and server authentication as well as encryption are supported.
+
+The listener used for inter-broker communication can be selected by configuring ``inter.broker.listener.name`` or ``security.inter.broker.protocol``. Both server-side and client-side configuration options must be provided in the broker configuration for the security protocol used for inter-broker communication. This is because brokers need to establish client connections for that listener.
+
+The following example configures SSL for the inter-broker and internal listeners and SASL_SSL for the external listener.
+
+```properties
+listeners=EXTERNAL://:9092,INTERNAL://10.0.0.2:9093,INTERBROKER://10.0.0.2:9094
+advertised.listeners=EXTERNAL://broker1.example.com:9092,INTERNAL://broker1.local:9093,INTERBROKER://broker1.local:9094
+listener.security.protocol.map=EXTERNAL:SASL_SSL,INTERNAL:SSL,INTERBROKER:SSL
+inter.broker.listener.name=INTERBROKER
+```
+
+## Authentication
+
+Kafka uses an instance of ``KafkaPrincipal`` to represent client identity and uses this principal to grant access to resources and to allocate quotas for connections with that client identity.
+
+The ``KafkaPrincipal`` for each connection is established during authentication based on the authentication protocol.
+
+The principal ``User:ANONYMOUS`` is used for unauthenticated connections. This includes clients on PLAINTEXT listeners as well as unauthenticated clients on SSL listeners.
+
+### SSL
+
+When Kafka is configured with SSL or SASL_SSL as the security protocol for a listener, TLS is used as the secure transport layer for connections on that listener.
+
+**SSL performance. Depending on the traffic pattern, the overhead may be up to 20-30%.**
+
+####  Configuring TLS
+
+When TLS is enabled for a broker listener using SSL or SASL_SSL, brokers should be configured with a key store containing the broker’s private key and certificate and clients should be configured with a trust store containing the broker certificate or the certificate of the certificate authority (CA) that signed the broker certificate.
+
+Broker certificates should contain the broker host name as a Subject Alternative Name (SAN) extension or as the Common Name (CN) to enable clients to verify server host name.
+
+Brokers can be configured to authenticate clients connecting over listeners using SSL as the security protocol by setting the broker configuration option ``ssl.cli ent.auth=required``.
+
+If SSL is used for inter-broker communication, brokers trust stores should include the CA of the broker certificates as well as the CA of client certificates.
+
+**Example how to generate self-signed certificates can be found in the book.**
+
+#### Security Considerations
+
+**Kafka enables only the newer protocols TLSv1.2 and TLSv1.3 by default since older protocols like TLSv1.1 have known vulnerabilities.**
+
+**Host name verification is enabled by default to prevent man-in-the-middle attacks.**
+
+Since key stores containing private keys are stored on the file system by default, it is vital to limit access to key store files using file system permissions.
+
+### SASL
+
+Kafka protocol supports authentication using SASL and has built-in support for several commonly used SASL mechanisms. SASL can be combined with TLS as the transport layer to provide a secure channel with authentication and encryption.
+
+SASL authentication is performed through a sequence of server-challenges and client- responses where the SASL mechanism defines the sequence and wire format of challenges and responses. Kafka brokers support the following SASL mechanisms out-of- the box with customizable callbacks to integrate with existing security infrastructure.
+* GSSAPI: Kerberos authentication is supported using SASL/GSSAPI and can be used to integrate with Kerberos servers like Active Directory or OpenLDAP. 
+* PLAIN: User name/password authentication that is typically used with a custom server-side callback to verify passwords from an external password store. 
+* SCRAM-SHA-256 and SCRAM-SHA-512: User name/password authentication available out-of-the-box with Kafka without the need for additional password stores. 
+* OAUTHBEARER: Authentication using OAuth bearer tokens that is typically used with custom callbacks to acquire and validate tokens granted by standard OAuth servers.
+
+**Kafka uses Java Authentication and Authorization Service (JAAS) for configuration of SASL.**
+
+SASL mechanisms supported by Kafka can be customized to integrate with third party authentication servers using callback handlers.
+
+#### SASL/GSSAPI
+
+Kerberos is a widely-used network authentication protocol that uses strong cryptography to support secure mutual authentication over an insecure network.
+
+#### SASL/SCRAM
+
+#### SASL/OAUTHBEARER
+
+## Re-authentication
+
+Some security mechanisms like Kerberos and OAuth use credentials with a limited lifetime. Kafka uses a background login thread to acquire new credentials before the old ones expire, but the new credentials are used only to authenticate new connections by default.
+
+Existing connections that were authenticated with old credentials continue to process requests until disconnection occurs due to request timeout, idle timeout or network errors. Long-lived connections may continue to process requests long after the credentials used to authenticate the connections expire.
+
+Kafka brokers support re-authentication for connections authenticated using SASL using the configuration option ``connections.max.reauth.ms``. When this option is set to a positive integer, Kafka brokers determine session lifetime for SASL connections and inform clients of this lifetime during SASL handshake. Session lifetime is the lower of the remaining lifetime of the credential and ``connections.max.reauth.ms``.
+
+Any connection that doesn’t re- authenticate within this interval is terminated by the broker.
+
+## Security updates without downtime
+
+## Encryption
+
+Kafka listeners using SSL and SASL_SSL security protocols use TLS as the transport layer, providing secure encrypted channels that protect data transmitted over an insecure network.
+
+Additional measures must be taken to protect data at rest to ensure that sensitive data cannot be retrieved even by users with physical access to the disk that stores Kafka logs. **To avoid security breaches even if the disk is stolen, physical storage can be encrypted using whole disk encryption or volume encryption.**
+
+To comply with regulatory requirements, especially in Cloud deployments, it is necessary to guarantee that confidential data cannot be accessed by platform administrators or Cloud providers by any means.
+
+### End-to-End Encryption
+
+Serializers and deserializers can be integrated with an encryption library to perform encryption of the message during serialization and decryption during deserialization. Message encryption is typically performed using symmetric encryption algorithms like AES. A shared encryption key stored in a Key Management System (KMS) enables producers to encrypt the message and consumers to decrypt the message.
+
+Brokers do not require access to the encryption key and never see the unencrypted contents of the message, making this approach safe to use in Cloud environments.
+
+A digital signature may also be included in message headers to verify message integrity.
+
+**Compression of encrypted messages**
+
+It is better to disable compression in Kafka since it adds overhead without providing any additional benefit.
+
+## Authorization
+
+Kafka brokers manage access control using a customizable authorizer.
+
+Broker authenticates the client and associates a KafkaPrincipal that represents the client identity with the connection.
+
+When a request is processed, the broker verifies that the principal associated with the connection is authorized to perform that request. For example, when Alice’s producer attempts to write a new customer order record to the topic customerOrders, the broker verifies that User:Alice is authorized to write to that topic.
+
+Kafka has a built-in authorizer ``AclAuthorizer`` that can be enabled by configuring the authorizer class name as follows:
+
+```properties
+authorizer.class.name=kafka.security.authorizer.AclAuthorizer
+```
+
+### AclAuthorizer
+
+AclAuthorizer supports fine-grained access control for Kafka resources using access control lists (ACLs). ACLs are stored in ZooKeeper and cached in-memory by every broker to enable high performance lookup for authorizing requests. ACLs are loaded into the cache when the broker starts up and the cache is kept up-to-date using notifications based on a ZooKeeper watcher. Every Kafka request is authorized by verifying that the ``KafkaPrincipal`` associated with the connection has permissions to perform the requested operation on the requested resources.
+
+Each ACL binding consists of: 
+* **Resource type**: Cluster|Topic|Group|TransactionalId|DelegationToken 
+* **Pattern type**: Literal|Prefixed 
+* **Resource name**: Name of resource or prefix or the wildcard *. 
+* **Operation**: Describe|Create|Delete|Alter|Read|Write|DescribeConfigs|AlterConfigs 
+* **Permission type**: Allow|Deny, Deny has higher precedence. 
+* **Principal**: Kafka principal represented as <principalType>:<principalName>. e.g. User:Bob or Group:Sales. ACLs may use User:* to grant access to all users. 
+* **Host**: Source IP address of client connection or * if all hosts are authorized.
+
