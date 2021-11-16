@@ -3756,3 +3756,223 @@ Each ACL binding consists of:
 * **Principal**: Kafka principal represented as <principalType>:<principalName>. e.g. User:Bob or Group:Sales. ACLs may use User:* to grant access to all users. 
 * **Host**: Source IP address of client connection or * if all hosts are authorized.
 
+### AclAuthorizer
+
+AclAuthorizer supports fine-grained access control for Kafka resources using access control lists (ACLs). ACLs are stored in ZooKeeper and cached in-memory by every broker to enable high performance lookup for authorizing requests. ACLs are loaded into the cache when the broker starts up and the cache is kept up-to-date using notifications based on a ZooKeeper watcher. Every Kafka request is authorized by verifying that the ``KafkaPrincipal`` associated with the connection has permissions to perform the requested operation on the requested resources.
+
+Each ACL binding consists of: 
+* **Resource type**: Cluster|Topic|Group|TransactionalId|DelegationToken 
+* **Pattern type**: Literal|Prefixed 
+* **Resource name**: Name of resource or prefix or the wildcard *. 
+* **Operation**: Describe|Create|Delete|Alter|Read|Write|DescribeConfigs|AlterConfigs 
+* **Permission type**: Allow|Deny, Deny has higher precedence. 
+* **Principal**: Kafka principal represented as <principalType>:<principalName>. e.g. User:Bob or Group:Sales. ACLs may use User:* to grant access to all users. 
+* **Host**: Source IP address of client connection or * if all hosts are authorized.
+
+For example, an ACL may specify: ``User:Alice has Allow permission for Write to Prefixed Topic:customer from 192.168.0.1``
+
+``AclAuthorizer`` authorizes an action if there are no Deny ACLs that match the action and there is at least one Allow ACL that matches the action. Describe permission is implicitly granted if Read, Write, Alter or Delete permission is granted. Describe Configs permission is implicitly granted if ``AlterConfigs`` permission is granted.
+
+**Brokers must be granted Cluster:ClusterAction access in order to authorize controller requests and replica fetch requests.**
+
+**Producers require Topic:Write for producing to a topic. For idempotent produce without transactions, producers must also be granted Cluster:IdempotentWrite. Transactional producers require TransactionalId:Write access to the transaction id and Group:Read for consumer groups to commit offsets.**
+
+**Consumers require Topic:Read to consume from a topic and Group:Read for the consumer group if using group management or offset management.**
+
+**Administrative operations require appropriate Create, Delete, Describe, Alter, DescribeConfigs or AlterConfigs access as shown in the table below.**
+
+![chapter-11-table-11-1.png](pictures/chapter-11-table-11-1.png)
+
+![chapter-11-table-11-2.png](pictures/chapter-11-table-11-2.png)
+
+```shell
+$ bin/kafka-acls.sh --bootstrap-server localhost:9092 \ 
+--command-config admin.props --add --topic customerOrders \ 
+--producer --allow-principal User:Alice
+```
+
+By default, the ACLs command grants literal ACLs. User:Alice is granted access to write to the topic ``customerOrders``.
+
+```shell
+bin/kafka-acls.sh --bootstrap-server localhost:9092 \ 
+--command-config admin.props --add --resource-pattern-type PREFIXED \ 
+--topic customer --operation Read --allow-principal User:Bob
+```
+
+The prefixed ACL grants permission for Bob to read all topics starting with ``customer``.
+
+``AclAuthorizer`` has two configuration options to grant broad access to resources or principals in order to simplify management of ACLs, especially when adding authorization to existing clusters for the first time.
+
+```shell
+super.users=User:Carol;User:Admin
+allow.everyone.if.no.acl.found=true
+```
+
+Super users are granted access for all operations on all resources without any restrictions and cannot be denied access using Deny ACLs. If Carol’s credentials are compromised, Carol must be removed from ``super.users`` and **brokers must be restarted to apply the changes**.
+
+If ``allow.everyone.if.no.acl.found`` is enabled, all users are granted access to resources without any ACLs.
+
+**This option may be useful when enabling authorization for the first time in a cluster or during development, but is not suitable for production use since access may be granted unintentionally to new resources.**
+
+### Customizing Authorization
+
+Authorization can be customized in Kafka to implement additional restrictions or add new types of access control like role-based access control.
+
+The following custom authorizer restricts usage of some requests to the internal listener alone. For simplicity, the requests and listener name are hard-coded here.
+
+```java
+public class CustomAuthorizer extends AclAuthorizer { 
+	
+	private static final Set<Short> internalOps = Utils.mkSet(CREATE_ACLS.id, DELETE_ACLS.id);
+	private static final String internalListener = "INTERNAL";
+
+	@Override
+    public List<AuthorizationResult> authorize( AuthorizableRequestContext context, List<Action> actions) {
+		//Authorizers are given the request context with metadata that includes listener names, security protocol, 
+        // request types etc. enabling custom authorizers to add or remove restrictions based on the context.
+		if (!context.listenerName().equals(internalListener) && internalOps.contains((short) context.requestType())) 
+			return Collections.nCopies(actions.size(), DENIED); 
+		else 
+        //We reuse functionality from the built-in Kafka authorizer using the public API.
+            return super.authorize(context, actions); }
+}
+```
+
+## Security Considerations
+
+Since AclAuthorizer stores ACLs in ZooKeeper, access to ZooKeeper should be restricted. Deployments without a secure ZooKeeper can implement custom authorizers to store ACLs in a secure external database.
+
+**In large organizations with a large number of users, managing ACLs for individual resources may become very cumbersome. Reserving different resource prefixes for different departments enable the use of prefixed ACLs that minimize the number of ACLs required.** This can be combined with group or role based ACLs as shown in the example earlier to further simplify access control in large deployments.
+
+## Auditing
+
+Kafka brokers can be configured to generate comprehensive log4j logs for auditing and debugging. Logging level as well as the appenders used for logging and their configuration options can be specified in ``log4j.properties``.
+
+The logger instance ``kafka.authorizer.logger`` used for authorization logging and ``kafka.request.logger`` used for request logging can be configured independently to customize log level and retention for audit logging.
+
+## Securing ZooKeeper
+
+ZooKeeper stores Kafka metadata that is critical for maintaining availability of Kafka clusters and hence it is vital to secure ZooKeeper in addition to securing Kafka.
+
+### SASL
+
+### SSL
+
+### Authorization
+
+## Securing the Platform
+
+# Chapter 12. Administering Kafka
+
+This chapter will describe the only basic tools that are available as part of the Apache Kafka open source project.
+
+**Authorizing Admin Operations**
+
+While Apache Kafka implements authentication and authorization to control topic operations, default configurations do not restrict the use of these tools. This means that **these CLI tools can be used without any authentication required**, which will allow operations such as topic changes to be executed with no security check or audit. Always ensure access to this tooling on your deployments is restricted to administrators only to prevent unauthorized changes.
+
+## Topic Operations
+
+The ``kafka-topics.sh`` tool provides easy access to most topic operations. It allows you to create, modify, delete, and list information about topics in the cluster.
+
+To use the ``kafka-topics.sh`` command, you are required to provide the cluster connection string and port through the ``--bootstrap-server`` option.
+
+### Creating a New Topic
+
+When creating a new topic through the ``--create`` command, there are several required arguments to create a new topic in a cluster. These arguments must be provided when using this command even though some of them have may have broker-level defaults configured already.
+
+Additional arguments and configuration overrides are possible at this time as well using the ``--config`` option, but will not covered until later in the chapter. Here is a list of the three required arguments:
+* ``--topic`` The name of the topic that you wish to create.
+* ``--replication-factor`` The number of replicas of the topic to maintain within the cluster.
+* ``--partitions`` The number of partitions to create for the topic.
+
+**Good Topic Naming Practices** 
+
+**It is not recommended to use periods in topic names.** Internal metrics inside of Kafka convert period characters to underscore characters (e.g. “topic.1” becomes “topic_1” in metrics calculations), which can result in conflicts in topic names.
+**Another recommendation is to avoid using a double underscore to start your topic name.**
+
+Creating a new topic is simple. Run kafka-topics.sh as follows:
+
+```shell
+$ kafka-topics.sh --boostrap-server <connection-string>:<port> --create --topic <string>
+--replication-factor <integer> --partitions <integer>
+```
+
+For example, create a topic named “my-topic” with eight partitions that have two rep‐ licas each:
+
+```shell
+$ kafka-topics.sh --bootstrap-server localhost:9092 --create --topic my-topic --replication-factor 2 --partitions 8
+Created topic "my-topic".
+```
+
+### Listing All Topics in a Cluster
+
+The ``--list`` command can list all topics in a cluster.
+
+Here’s an example of the ``--list`` option listing all topics in the cluster:
+
+```shell
+$ kafka-topics.sh --bootstrap-server localhost:9092 --list 
+__consumer_offsets
+my-topic
+other-topic
+```
+
+### Describing Topic Details
+
+It is also possible to get detailed information on one or more topics in the cluster. The output includes the partition count, topic configuration overrides, and a listing of each partition with its replica assignments.
+
+For example, describing our recently created “my-topic” in the cluster:
+
+```shell
+$ kafka-topics.sh --boostrap-server localhost:9092 --describe --topic my-topic
+```
+
+The ``--describe`` command also has several useful options for filtering the output.
+
+For these commands we generally do not specify the --topic argument because the intention is to find all topics or partitions in a cluster that match the criteria.
+
+Here is a list of useful pairings to use:
+* ``--topics-with-overrides`` This will describe only the topics that have configurations that differ from the cluster defaults.
+* ``--exclude-internal`` The previously mentioned command will remove all topics from the list that begin with the double underscore naming convention.
+
+The following commands are used to help find topic partitions that may have problems.
+* ``--under-replicated-partitions`` This shows all partitions for where one or more of the replicas are not in-sync with the leader.
+* ``--at-min-isr-partitions`` This shows all partitions where the number of replicas, including the leader, exactly match the setting for minimum in-sync-replicas (ISR). **These topics are still available for produce or consume, but all redundancy has been lost and are at danger of becoming unavailable.**
+* ``--under-min-isr-partitions`` This will show all partitions where the number of in-sync-replicas is below the configured minumum for successful produce actions. These partitions are effectively in a Read-Only mode and cannot be produced to.
+* ``--unavailable-partitions`` This will show all topic partitions without a leader. **This is a serious situation.**
+
+### Adding Partitions
+
+Following is an example of increasing the number of partitions for a topic named “my-topic” to 16 using the --alter command, followed by a verfication that it worked:
+
+```shell
+$ kafka-topics.sh --bootstrap-server localhost:9092 --alter --topic my-topic --partitions 16
+```
+
+```shell
+$ kafka-topics.sh --bootstrap-server localhost:9092 --describe --topic my-topic
+```
+
+### Reducing Partitions
+
+**It is not possible to reduce the number of partitions for a topic.** Should you need to reduce the number of partitions it is recommended to delete the topic and recreate it or (if deletion is not possible) create a new version of the existing topic and move all produce traffic to the new topic (e.g. “my-topic-v2”).
+
+### Deleting a Topic
+
+Even a topic with no messages uses cluster resources such as disk space, open filehandles, and memory. The controller also has junk metadata that it must retain knowledge of which can hinder performance at large scale.
+
+In order to perform this action, the brokers in the cluster must have been configured with the delete.topic.enable option set to true.
+
+Topic deletion is an asynchronous operation. This means that the running this command will mark a topic for deletion, but the deletion may not happen immediately depending on the amount of data and cleanup needed.
+
+**It is highly recommended that operators not delete more than one or two topics at a time.**
+
+An example of deleting the topic named “my-topic” using the --delete argument:
+
+```shell
+$ kafka-topics.sh --bootstrap-server localhost:9092 --delete --topic my-topic
+```
+
+**You will notice there is no visible feedback that the topic deletion was completed successfully or not. You may verify deletion was successful by running the ``--list`` or ``--describe`` options to see that the topic is no longer in the cluster.**
+
+## Consumer Groups
