@@ -3587,8 +3587,6 @@ The following consumer configurations can increase throughput for the consumer:
 
 # Chapter 11. Securing Kafka
 
-# Chapter 11. Securing Kafka
-
 ## Locking Down Kafka
 
 Kafka uses a range of security procedures to establish and maintain confidentiality, integrity and availability of data: 
@@ -3742,19 +3740,6 @@ Kafka has a built-in authorizer ``AclAuthorizer`` that can be enabled by configu
 ```properties
 authorizer.class.name=kafka.security.authorizer.AclAuthorizer
 ```
-
-### AclAuthorizer
-
-AclAuthorizer supports fine-grained access control for Kafka resources using access control lists (ACLs). ACLs are stored in ZooKeeper and cached in-memory by every broker to enable high performance lookup for authorizing requests. ACLs are loaded into the cache when the broker starts up and the cache is kept up-to-date using notifications based on a ZooKeeper watcher. Every Kafka request is authorized by verifying that the ``KafkaPrincipal`` associated with the connection has permissions to perform the requested operation on the requested resources.
-
-Each ACL binding consists of: 
-* **Resource type**: Cluster|Topic|Group|TransactionalId|DelegationToken 
-* **Pattern type**: Literal|Prefixed 
-* **Resource name**: Name of resource or prefix or the wildcard *. 
-* **Operation**: Describe|Create|Delete|Alter|Read|Write|DescribeConfigs|AlterConfigs 
-* **Permission type**: Allow|Deny, Deny has higher precedence. 
-* **Principal**: Kafka principal represented as <principalType>:<principalName>. e.g. User:Bob or Group:Sales. ACLs may use User:* to grant access to all users. 
-* **Host**: Source IP address of client connection or * if all hosts are authorized.
 
 ### AclAuthorizer
 
