@@ -3961,3 +3961,187 @@ $ kafka-topics.sh --bootstrap-server localhost:9092 --delete --topic my-topic
 **You will notice there is no visible feedback that the topic deletion was completed successfully or not. You may verify deletion was successful by running the ``--list`` or ``--describe`` options to see that the topic is no longer in the cluster.**
 
 ## Consumer Groups
+
+The ``kafka-consumer-groups.sh`` tool is used to help manage and gain insight on the consumer groups that are consuming from topics in the cluster.
+
+### List and Describe Groups
+
+To list consumer groups use the ``--bootstrap-server`` and ``--list`` parameters. Ad-hoc consumers utilizing the ``kafka-consumer-groups.sh`` script will show up as ``console-consumer-<generated_id>`` in the consumer list.
+
+```shell
+$ kafka-consumer-groups.sh --bootstrap-server localhost:9092 --list console-consumer-95554
+console-consumer-9581
+my-consumer
+```
+
+For any group listed, you can get more details by changing the ``--list`` parameter to ``--describe`` and adding the ``--group`` parameter. This will list all the topics and partitions that the group is consuming from as well as additional information such as the offsets for each topic partition.
+
+For example, get consumer group details for the ad-hoc group named “my- consumer”:
+
+```shell
+kafka-consumer-groups.sh --bootstrap-server localhost:9092 --describe --group my-consumer
+```
+
+![chapter-12-table-12-1.png](pictures/chapter-12-table-12-1.png)
+
+### Delete Group
+
+Deletion of consumer groups can be performed with the ``--delete`` arguement. **This will remove the entire group including all stored offsets for all topics that the group is consuming.**
+
+**In order to perform this action, all consumers in the group should be shut down as the consumer group must not have any active members.** If you attempt to delete a group that is not empty, an error stating “The group is not empty” will be thrown and nothing will happen.
+
+It is also possible to use the same command to delete offsets for a single topic that the group is consuming without deleting the entire group by adding the ``--topic`` argument and specifying which topic offsets to delete.
+
+Here is an example of deleting the entire consumer group named “my-consumer”:
+
+```shell
+$ kafka-consumer-groups.sh --bootstrap-server localhost:9092 --delete --group my-consumer
+Deletion of requested consumer groups ('my-consumer') was successful.
+```
+
+### Offset Management
+
+In addition to displaying and deleting the offsets for a consumer group, it is also possible to retrieve the offsets and store new offsets in a batch. This is useful for resetting the offsets for a consumer when there is a problem that requires messages to be reread, or for advancing offsets and skipping past a message that the consumer is having a problem with.
+
+#### Export Offsets
+
+To export offsets from a consumer group to CSV file, the ``--reset-offsets`` argument can be utilized with the ``--dry-run`` option. This will allow us to create an export of the current offsets in a file format that can be re-used for importing or rolling back the offsets later.
+
+**Running the same command without the --dry-run option will reset the offsets completely, so be careful.**
+
+The CSV format export will be in the following configuration: ```<topic-name>,<partition-number>,<offset>```.
+
+Here is an example of exporting the offsets for the topic “my-topic” which is being consumed by the consumer group named “my-consumer” to a file named offsets.csv:
+
+```shell
+$ kafka-consumer-groups.sh --bootstrap-server localhost:9092 --export --group my-consumer --topic my-topic --reset-offsets --to-current --dry-run > offsets.csv
+$ cat offsets.csv 
+my-topic,0,8905 
+my-topic,1,8915 
+my-topic,2,9845 
+my-topic,3,8072 
+my-topic,4,8008 
+my-topic,5,8319 
+my-topic,6,8102 
+my-topic,7,12739
+```
+
+#### Import Offsets
+
+The import offset tool is the opposite of exporting. It takes the file produced by exporting offsets in the previous section and uses it to set the current offsets for the consumer group.
+
+**Stop Consumers First**
+
+**Before performing this step, it is important that all consumers in the group are stopped. They will not read the new offsets if they are written while the consumer group is active. The consumers will just overwrite the imported offsets.**
+
+In the following example, we will import the offsets for the consumer group named “my-consumer” from the file we created in the last example named offsets.csv:
+
+```shell
+$ kafka-consumer-groups.sh --bootstrap-server localhost:9092 --reset-offsets --group my-consumer --from-file offsets.csv --execute
+
+TOPIC     PARTITION  NEW-OFFSET
+my-topic  0          8905
+my-topic  1          8915
+my-topic  2          9845
+my-topic  3          8072
+my-topic  4          8008
+my-topic  5          8319
+my-topic  6          8102
+my-topic  7          12739
+```
+
+## Dynamic Configuration Changes
+
+There are plethora of configurations for topics, clients, brokers, and more that can be updated dynamically during runtime without having to shutdown or redeploy a cluster.
+
+The ``kafka-configs.sh`` is the main tool for modifying these configs.
+
+Currently there are four main categories of dynamic config changes that can be made:
+* topics
+* brokers
+* users
+* clients
+
+### Overriding Topic Configuration Defaults
+
+There are many configurations that are set by default for topics that are defined in the static broker configuration files (e.g. retention time policy). With dynamic configurations, we can override the cluster level defaults for individual topics in order to accommodate different use cases within a single cluster.
+
+Table 12-2 shows the valid configuration keys for topics which can be altered dynamically.
+
+The format of the command to change a topic configuration is:
+
+```shell
+$ kafka-configs.sh --bootstrap-server localhost:9092 
+  --alter --entity-type topics --entity-name <topic-name> 
+  --add-config <key>=<value>[,<key>=<value>...]
+```
+
+For example, setting the retention for the topic named “my-topic” to 1 hour (3,600,000 ms):
+
+```shell
+$ kafka-configs.sh --bootstrap-server localhost:9092 --alter --entity-type topics --entity-name my-topic --add-config retention.ms=3600000
+Updated config for topic: "my-topic".
+```
+
+Table 12-2 shows the valid configuration keys for topics which can be altered dynamically.
+
+![chapter-12-table-12-2.png](pictures/chapter-12-table-12-2.png)
+
+![chapter-12-table-12-22.png](pictures/chapter-12-table-12-22.png)
+
+### Overriding Client and Users Configuration Defaults
+
+For Kafka clients and users there are only a few configurations that can be overridden which are all essentially types of quotas. Two of the more common configurations to change are the bytes/sec rates allowed for producers and consumers with a specified client ID on a per-broker basis.
+
+The full list of shared configurations that can be modified for both users and clients are shown in Table 12-3.
+
+![chapter-12-table-12-3.png](pictures/chapter-12-table-12-3.png)
+
+Compatible user and client configs changes are able to be specified together for compatible configs that apply to both. Here is an example of the command to change the controller mutation rate for both a user and client in one configuration step:
+
+```shell
+kafka-configs.sh --bootstrap-server localhost:9092 
+  --alter --add-config "controller_mutations_rate=10" 
+  --entity-type clients --entity-name <client ID> 
+  --entity-type users --entity-name <user ID>
+```
+
+### Overriding Broker Configuration Defaults
+
+Broker and cluster level configs will primarily be configured statically in the cluster configuration files, but there are a plethora of configs that can be overridden during runtime without needing to redeploy Kafka.
+
+**There are over 80 overrides that can be altered with ``kafka-configs.sh`` for brokers.**
+
+A few important configs worth pointing out specifically though are:
+* ``min.insync.replicas`` Adjusts the minumum number of replicas that need to to acknowledge a write for a produce request to be successful when producers have set acks to “all” (or “-1”).
+* ``unclean.leader.election.enable`` Allows replicas to be elected as leader even if it results in data loss. This is useful for when it is permissible to have some lossy data or to turn on for short times to unstick a Kafka cluster in the event of unrecoverable data loss cannot be avoided.
+* ``max.connections`` The maximum number of connections allowed to a broker at any time. We can also use max.connections.per.ip and max.connections.per.ip.overrides for more fine-tuned throttling.
+
+### Describing Configuration Overrides
+
+All configuration overrides can be listed using the kafka-config.sh tool. This will allow you to examine the specific configuration for a topic, broker, or client.
+
+**Similar to other tools, this is done using the ``--describe`` command.**
+
+For example, in the example below we can get all the configuration overrides for the topic named “my-topic”, which we observe is only the retention time:
+
+```shell
+kafka-configs.sh --bootstrap-server localhost:9092 --describe --entity-type topics --entity-name my-topic 
+
+Configs for topics:my-topic are
+retention.ms=3600000
+```
+
+**There is not a way to dynamically discover the configuration of the brokers themselves. This means that when using this tool to discover topic or client settings in automation, the user must have separate knowledge of the cluster default configuration.**
+
+### Removing Configuration Overrides
+
+Dynamic configurations can be removed entirely, which will cause the entity to **revert back to the cluster defaults**. To delete a configuration override, use the ``--alter`` command along with the ``--delete-config`` parameter.
+
+For example, delete a configuration override for retention.ms for a topic named “my-topic”:
+
+```shell
+kafka-configs.sh --bootstrap-server localhost:9092 --alter --entity-type topics --entity-name my-topic --delete-config retention.ms
+
+Updated config for topic: "my-topic".
+```
