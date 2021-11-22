@@ -4145,3 +4145,96 @@ kafka-configs.sh --bootstrap-server localhost:9092 --alter --entity-type topics 
 
 Updated config for topic: "my-topic".
 ```
+	
+## Producing and Consuming
+
+While working with Kafka you will often find it is necessary to manually produce or consume some sample messages in order to validate what’s going on with your applications. There are two utilities provided to help with this:
+* ``kafka-console-consumer.sh``
+* ``kafka-console-producer.sh``
+
+### Console Producer
+
+The ``kakfa-console-producer.sh`` tool can be used to write messages into a Kafka topic in your cluster. By default, messages are read one per line, with a tab character separating the key and the value (if no tab character is present, the key is null).
+
+The console producer requires a minumum of two arguments are provided to know what Kafka cluster to connect to and which topic to produce to within that cluster.
+
+**When you are done producing, send an end-of-file (EOF) character to close the client. For normal terminals, this is done with a Control-D.**
+
+Below we can see an example of producing four messages to a topic named “my- topic”:
+
+```shell
+$ kafka-console-producer.sh --bootstrap-server localhost:9092 --topic my-topic 
+>Message 1
+>Test Message 2
+>Test Message 3
+>Message 4 
+>^D
+```
+
+#### Using Producer Configuration Options
+
+It is possible to pass normal producer configuration options to the console producer as well. This can be done in two ways depending on how many options you need to pass and how you prefer to do it.
+
+The first is to provide a producer configuration file by specifying ``--producer.config <config-file>``, where ``<config-file>`` is the full path to a file that contains the configuration options.
+
+The other way is to specify the options on the command line with one or more arguments of the form ``--producer-property <key>=<value>``, where ``<key>`` is the configuration option name and ``<value>`` is the value to set it to.
+
+The console producer has many command-line arguments available to use with the ``--producer-property`` option for adjusting its behavior. Some of the more useful options are:
+
+* ``--batch-size`` Specifies the number of messages sent in a single batch if they are not being sent synchronously
+* ``--timeout`` If producer is running in asynchronous mode, this provides the max amount of time waiting for the batch-size before producing to avoid long waits on low producing topics
+* ``--compression-codec <string>`` Specify the type of compression to be used when producing messages. This can be one of none, gzip, snappy, zstd, or lz4. The default value is gzip.
+* ``--sync`` Produce messages synchronously, waiting for each message to be acknowledged before sending the next one.
+
+#### Line-Reader Options
+
+The ``kafka.tools.ConsoleProducer$LineMessageReader`` class, which is responsible for reading standard input and creating producer records, also has several useful options that can be passed to the console producer using the ``--property`` command- line option:
+* ``ignore.error`` Set to “false” to throw an exception when ``parse.key`` is set to true and a key separator is not present. Defaults to true. 
+* ``parse.key`` Set to false to always set the key to null. Defaults to true. 
+* ``key.separator`` Specify the delimiter character to use between the message key and message value when reading. Defaults to a tab character.
+
+When producing messages, the LineMessageReader will split the input on the first instance of the key.separator. If there are no characters remaining after that, the value of the message will be empty. If no key separator character is present on the line, or if ``parse.key`` is false, the key will be null.
+
+### Console Consumer
+
+The ``kafka-console-consumer.sh`` tool provides a means to consume messages out of one or more topics in your Kafka cluster. The messages are printed in standard output, delimited by a new line. By default, it outputs the raw bytes in the message, without the key, with no formatting (using the DefaultFormatter).
+
+**Checking Tool Versions** 
+
+It is very important to use a consumer that is the same version as your Kafka cluster. **Older console consumers can potentially damage the cluster by interacting with the cluster or Zookeeper in incorrect ways.**
+
+As in other commands, the connection string to the cluster will be the ``--bootstrap-server`` option, however there are two options you can choose from for selecting the topics to consume. The options provided for this are:
+* ``--topic`` Specifies a single topic to consume from
+* ``--whitelist`` A regular expression matching all topics to consume from (remember to properly escape the regex so that it is not processed improperly by the shell).
+
+Only one of the above options should be selected and used. Once the console consumer has started, the tool will continue to try and consume until the shell escape command is given (in this case Control-C).
+
+Here is an example of consuming all topics from our cluster that match the prefix “my” (of which there is only one in this example, “my-topic”):
+
+```shell
+$ kafka-console-consumer.sh --bootstrap-server localhost:9092 --whitelist 'my.*' --from-beginning
+Message 1
+Test Message 2
+Test Message 3 Message 4
+^C
+```
+
+#### Using Consumer Configuration Options
+
+In addition to these basic command-line options, it is possible to pass normal consumer configuration options to the console consumer as well. This can be done in two ways depending on how many options you need to pass and how you prefer to do it.
+
+The first is to provide a consumer configuration file by specifying ``--consumer.config <config-file>``, where ``+<config-file>+`` is the full path to a file that contains the configuration options.
+
+The other way is to specify the options on the command line with one or more arguments of the form ``--consumer-property <key>=<value>, where +<key>+`` is the configuration option name and ``+<value>+`` is the value to set it to.
+
+There are a few other commonly used options for the console consumer that are helpful to know and be familiar with:
+* ``--formatter <classname>`` Specifies a message formatter class to be used to decode the messages. This defaults to kafka.tools.DefaultMessageFormatter.
+* ``--from-beginning`` Consume messages in the topic(s) specified from the oldest offset. Otherwise, consumption starts from the latest offset.
+* ``--max-messages <int>`` The maximum number of messages to consume before exiting.
+* ``--partition <int>`` Consume only from the partition with ID given.
+* ``--offset`` The offset id to consume from if provided ``(+<int>+)``. Other valid options are ``earliest`` which will consume from the beginning and ``latest`` which will start consuming from the most recent offset.
+* ``--skip-message-on-error`` Skip a message of there is an error when processing instead of halting. Useful for debugging.
+
+#### Message formatter options
+
+
