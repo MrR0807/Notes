@@ -33,6 +33,7 @@
 * How much time do you dedicate to code maintenance/code refactoring?
 * How much time do you spend reviewing code (on average)?
 * Are you using CI/CD? What are you using for CI? What are you using for CD?
+* How do I locally build the software?
 * How long would it take for change of one line to end up in Production?
 * How do you ensure high code quality? Peer code review? TDD? Sonar?
 * Do you have dedicated testers?
@@ -41,6 +42,8 @@
 * What monitoring tools do you use? Three observability pillars - logs, metrics, trace.
 * Are you documenting your project? Who is responsible for documentation?
 * How often do you test your code?
+* How do I locally test the software?
+* How does pre-production and production testing work?
 * What kind of testing frameworks do you use? Example: Mockito, Junit, Spock, TestContainers etc.
 * Black box testing vs White box testing? (Detroit vs London).
 * How do use understand Unit Testing?
@@ -50,6 +53,8 @@
 * Is this a new position (expanding) or somebody left? Why did they leave?
 * What do you like about this work?
 * What do you look for in programmers?
+* Who on the team is focusing on what?
+* What are some high-level pain points for the software?
 * Do you have a deadline?
 * How long does it take to start an application (that I'll be working on)?
 
