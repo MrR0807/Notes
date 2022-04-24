@@ -26,3 +26,7 @@ Books to read:
 * MongoDB in Action, Second Edition
 * Istio in Action
 * Rust in Action
+* Production Kubernetes: Building Successful Application Platforms
+* Go Programming Language, The (Addison-Wesley Professional Computing Series)
+* https://kube.academy/
+* kubectl: Command-Line Kubernetes in a Nutshell
