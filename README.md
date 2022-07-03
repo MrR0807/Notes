@@ -6,7 +6,7 @@ Books to read:
 * Kafka: The Definitive Guide, 2nd Edition
 * Kafka Streams in Action
 * Java Concurrency in Practice
-* Designing Data-Intensive Applications: The Big Ideas Behind Reliable, Scalable, and Maintainable Systems
+* ~~Designing Data-Intensive Applications: The Big Ideas Behind Reliable, Scalable, and Maintainable Systems~~
 * Java Performance: In-Depth Advice for Tuning and Programming Java 8, 11, and Beyond 2nd Edition
 * Prometheus: Up & Running
 * Algorithhms 4th Edition by Robert Sedgewick, Kevin Wayne
