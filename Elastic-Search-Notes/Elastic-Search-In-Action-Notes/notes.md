@@ -78,6 +78,91 @@ We can fetch the number of documents in all indices, too, by issuing a ``GET _co
 
 #### RETRIEVING A SINGLE DOCUMENT
 
+``GET <index>/_doc/<id>``
+
+``GET books/_doc/1``
+
+To fetch the original source document (no metadata):
+
+``GET books/_source/1``
+
+#### RETRIEVING MULTIPLE DOCUMENTS BY ID S
+
+```bash
+GET books/_search
+{
+  "query": {
+    "ids": {
+      "values": [1,2,3]
+    }
+  }
+}
+```
+
+#### RETRIEVING ALL DOCUMENTS
+
+```GET books/_search```
+
+Is equal to:
+
+```bash
+GET books/_search
+{
+  "query": {
+    "match_all": { }
+  }
+}
+
+```
+
+### 2.2.3 Full text queries
+
+#### SEARCHING A BOOK WRITTEN BY A SPECIFIC AUTHOR
+
+```bash
+GET books/_search
+{
+  "query": {
+    "match": {
+      "author": "Joshua"
+    }
+  }
+}
+```
+
+```bash
+GET books/_search
+{
+  "query": {
+    "prefix": {
+      "author": "josh"
+    }
+  }
+}
+```
+
+If we search for a full name like “Joshua Bloch”, we will get the books returned as expected. However, if we tweak the query with “Joshua Doe”, what do you expect? We don’t have any books written by Joshua Doe, so shouldn’t return any results right? That's not the case, we will still get the books returned written by Joshua Bloch, although there is no Joshua Doe in our author’s list. **The reason for this is that the engine is searching all books written by Joshua OR Doe.**
+
+#### SEARCHING A BOOK WITH AN EXACT AUTHOR
+
+```bash
+GET books/_search
+{
+  "query": {
+    "match": {
+      "author": { #A The author field is now having inner properties defined
+        "query": "Joshua Schildt", #B provide your query here
+        "operator": "AND" #C The AND operator (default is OR)
+      }
+    }
+  }
+}
+```
+
+
+
+
+
 
 
 
