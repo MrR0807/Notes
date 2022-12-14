@@ -3,6 +3,7 @@ Books to read:
 * ~~Spring Security in Action~~
 * ~~Gradle Effective Implementations Guide~~
 * ~~Kafka in Action~~
+* Testing Web APIs
 * Kafka: The Definitive Guide, 2nd Edition
 * Kafka Streams in Action
 * Java Concurrency in Practice
