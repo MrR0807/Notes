@@ -1676,33 +1676,391 @@ By just setting d incrementally, we can see how the results change:
 
 # SSL Kafka - Without CA
 
+There are several nuances when it comes to setting up SSL. Firstly, there are two tools for preparing Certificates (refer to Vocabulary and TLS in layman's terms for basic explanation of security concepts):
+* openssl - open source tool, which among other things, enables users to create public/private keys, certificates, signed certificates etc.
+* keytool - a certificate management utility included with Java. It allows to create keystore and truststore amongst other things.
 
+Furthermore, there are four ways how SSL/TLS can be utilised:
+* When a client imports exact certificate of the server to its trust store.
+* When a client imports certificate authority’s (CA) certificate into its trust store, which was used to sign servers certificate.
+* When both client and server exchange their respected certificates (mTLS). That means that in their respected truststores they should have each others certificates.
+* Lastly, when both client and server exchange their respected certificates (mTLS), which are signed by the same CA. That way each can have the same trust store with only CA certificate in it.
 
+In this section I will cover first scenario. Also, as previously, internal communication will be left with PLAINTEXT.
 
+## Docker Compose Yaml
 
+```yaml
+version: '3'
+services:
 
+  zookeeper:
+    image: zookeeper:3.6
+    ports:
+      - "2181:2181"
 
+  kafka:
+    image: confluentinc/cp-kafka:6.0.9
+    ports:
+      - "29092:29092"
+      - "9092:9092"
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_LISTENERS: SSL://0.0.0.0:29092, PLAINTEXT://kafka:9092
+      KAFKA_ADVERTISED_LISTENERS: SSL://localhost:29092, PLAINTEXT://kafka:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: SSL:SSL, PLAINTEXT:PLAINTEXT
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'false'
+      KAFKA_DELETE_TOPIC_ENABLE: 'true'
+      KAFKA_BROKER_ID: 0
+      # Otherwise you'll get Number of alive brokers '1' does not meet the required replication 
+      # factor '3' for the offsets topic
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
 
+      # Security settings
+      KAFKA_SSL_KEYSTORE_FILENAME: kafka-broker-identity.jks
+      KAFKA_SSL_KEYSTORE_CREDENTIALS: password.txt
+      KAFKA_SSL_KEY_CREDENTIALS: key-password.txt
+      # Turns off hostname verification
+      KAFKA_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM: " "
+      # inter.broker.listener.name must be a listener name defined in advertised.listeners
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_SSL_CLIENT_AUTH: none
+      KAFKA_SSL_KEYSTORE_TYPE: PKCS12
 
+      # To add VM options to Kafka
+      KAFKA_OPTS: "-Djavax.net.debug=ssl,handshake"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./security:/etc/kafka/secrets
+```
 
+There are several difference from SASL PLAIN Kafka or SASL SCRAM-SHA-512 Kafka:
+* As in SASL PLAIN Kafka, Kafka docker image has [several hardcoded values](https://github.com/confluentinc/cp-docker-images/blob/fec6d0a8635cea1dd860e610ac19bd3ece8ad9f4/debian/kafka/include/etc/confluent/docker/configure). One of them is `KAFKA_SSL_KEYSTORE_FILENAME`. This is the location of Kafka’s keystore.
+* `KAFKA_SSL_KEYSTORE_CREDENTIALS` self explanatory. What is not self explanatory is that password values have to be defined in file.
+* `KAFKA_SSL_KEY_CREDENTIALS` sets KeyStore’s private key password. Same as `KAFKA_SSL_KEYSTORE_CREDENTIALS`. 
+* `KAFKA_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM` is blank, because for a local setup it’s tedious process to set hostname verification.
+* `KAFKA_SSL_CLIENT_AUTH` defines whether mTLS is enabled or not. In other words, whether our application should send its certificate to Kafka. In this case we will not.
+* `KAFKA_SSL_KEYSTORE_TYPE` defines public key standards. There are many different standards, but current and latest is PKCS12. [List of PKCS](https://en.wikipedia.org/wiki/PKCS).
+* `KAFKA_OPTS: "-Djavax.net.debug=ssl,handshake"` JVM flags allows to debug SSL connection easily. With this enabled, we can inspect SSL handshakes and their status in Kafka container.
+* `volume` mounts specifically to `/etc/kafka/secrets`. Again, this is from hardcoded [Kafka docker image configuration file](https://github.com/confluentinc/cp-docker-images/blob/fec6d0a8635cea1dd860e610ac19bd3ece8ad9f4/debian/kafka/include/etc/confluent/docker/configure).  For example, KeyStore has to be placed in `KAFKA_SSL_KEYSTORE_LOCATION="/etc/kafka/secrets/$KAFKA_SSL_KEYSTORE_FILENAME"`.
 
+## Generating Certificates, Key Pairs, Keystore and Truststore
 
+### Using OpenSSL tool
 
+#### Generate Kafka’s key pair and certificate
 
+Old way, which is quite common in StackOverflow answers, is using `openssl genrsa`, however in OpenSSL documentation it’s recommended to use `genpkey`: “The use of the `genpkey` program is encouraged over the algorithm specific utilities".
 
+To generate a private/public key pair run:
 
+```shell
+openssl genpkey -out fd.key -algorithm RSA -pkeyopt rsa_keygen_bits:4096 -pass pass:secret
+```
 
+* `genpkey` - command generates a private/public key.
+* `-out` - output the key to the specified file.
+* `-algorithm` - OpenSSL supports RSA, DSA, ECDSA, and EdDSA key algorithms (asymmetrical), but not all of them are useful in practice. For example, DSA is obsolete and EdDSA is not yet widely supported. That leaves us with RSA and ECDSA algorithms to use in our certificates.
+* `-pkeyopt rsa_keygen_bits:2048` - The default key sizes might not be secure, which is why you should always explicitly configure key size. For example, the default for RSA keys used to be 512 bits, which is insecure. If you used a 512-bit key on your server today, an intruder could take your certificate and use brute force to recover your private key, after which she could impersonate your web site. Today, 2,048-bit RSA keys are considered secure. 
+* `-pass` - Using a passphrase with a key is optional, but strongly recommended. Protected keys can be safely stored, transported, and backed up. On the other hand, such keys are inconvenient, because they can’t be used without their pass phrases.
 
+Create a self signed certificate using previously generated private/public key:
 
+```shell
+openssl req -new -x509 -days 365 -key fd.key -out kafka.crt -subj '/CN=test/OU=Unknown/O=Unknown/L=Unknown/ST=Unknown/C=US' -passin pass:secret -passout pass:secret
+```
 
+* `req` - command primarily creates and processes certificate requests in PKCS#10 format. It can additionally create self signed certificates for use as root CAs for example.
+* `-new` - this option generates a new certificate request.
+* `-x509` - because we’re using this option, this option outputs a self signed certificate instead of a certificate request (certificate request will be used in SSL Kafka - With CA).
+* `-days` - how many days certificate is valid.
+* `-key` - this specifies the file to read the private key from.
+* `-out` - this specifies output file for certificate.
+* `-subj` - replaces subject field of input request with specified data and outputs modified request. Otherwise you’d be prompted by command line to enter each value separately.
+* `-passin` - the input file password source. In this case it’s private/public key password from previous step -pass pass:secret. 
+* `-passout` the output file password source. In this case it will be applied to certificate.
 
+Or instead of two commands it is possible to do it one single command. I will explain only the difference of commands between this step and previous one:
 
+```shell
+openssl req -new -x509 -newkey rsa:4096 -days 365 -keyout fd.key -out kafka.crt -subj '/CN=test/OU=Unknown/O=Unknown/L=Unknown/ST=Unknown/C=US' -passin pass:secret -passout pass:secret
+```
 
+* `-newkey` rsa:4096 - because I am generating both private/public key and certificate in one go, I have to define the key algorithm and key size.  
+* `-keyout` - again, because key was not generated with a separate step, this gives the filename to write the newly created private key to.
 
+#### Generate Kafka’s Java Keystore
 
+Private keys and certificates can be stored in a variety of formats, for example:
+* ASCII
+* PKCS7
+* PKCS8
+* PKCS12
 
+With JEP 229: Create PKCS12 Keystores by Default, all Java versions above 9, uses PKCS12 format by default. Prior to Java 9, PKCS12 are compatible, hence I need to convert the key and certificates in PEM format to PKCS12:
 
+```shell
+openssl pkcs12 -export -out keyStore.p12 -inkey fd.key -in kafka.crt -passin pass:secret -passout pass:secret
+```
 
+* `pkcs12` - command allows PKCS#12 files (sometimes referred to as PFX files) to be created and parsed.
+* `-export` - this option specifies that a PKCS#12 file will be created rather than parsed.
+* `-out` - this specifies filename to write the PKCS#12 file to.
+* `-inkey` - file to read private key from.
+* `-in` - the filename to read certificates.
+
+Now I have a private key and a certificate in correct format. Time to create a Java KeyStore. OpenSSL is not a tool for that, because it’s a Java specific file, hence I have to use keytool.
+
+```shell
+keytool -importkeystore -srckeystore keystore.p12 -srcstorepass secret -srcstoretype pkcs12 -destkeystore kafka-broker-identity.jks -deststorepass secret -destkeypass secret -deststoretype pkcs12  
+```
+
+* `-importkeystore` - command to import a single entry or all entries from a source keystore to a destination keystore.
+* `-srckeystore` - source of the keystore.
+* `-srcstorepass` - source keystore password.
+* `-srcstoretype` - type (as previously outlined there are many formats a private key and certificate can be stored). In this case it is PKCS12.
+* `-destkeystore` - destination of keystore.
+* `-deststorepass` - destination keystore password.
+* `-destkeypass` - password for the key in the keystore file. This might be confusing, but in our case, there are two passwords in action - truststore’s password and password of an entry of private key it contains. It’s best to make them [both the same](https://docs.oracle.com/en/java/javase/13/docs/specs/man/keytool.html#commands-for-importing-contents-from-another-keystore:~:text=For%20example%2C%20most%20third%2Dparty%20tools%20require%20storepass%20and%20keypass%20in%20a%20PKCS%20%2312%20keystore%20to%20be%20the%20same.%20To%20create%20a%20PKCS%2312%20keystore%20for%20these%20tools%2C%20always%20specify%20a%20%2Ddestkeypass%20that%20is%20the%20same%20as%20%2Ddeststorepass.).
+* `-deststoretype` - type, again is PKCS12 as explained previously.
+
+We can inspect newly created keystore:
+
+```shell
+keytool -keystore kafka-broker-identity.jks -storepass secret -list 
+```
+
+You should see:
+
+```shell
+Keystore type: PKCS12
+Keystore provider: SUN
+
+Your keystore contains 1 entry
+
+<date>, PrivateKeyEntry, 
+Certificate fingerprint (SHA-256): <key hashcode>
+```
+
+#### Generate Kafka Client’s Java Truststore
+
+Now it’s time to create client’s truststore. In this section’s case, it has to contain exact certificate copy of Kafka broker (server). 
+
+```shell
+keytool -importcert -file kafka.crt -alias kafkaCer -keystore client-truststore.jks -storepass truststorepass -noprompt 
+```
+
+* `-importcert` - this command is used for reading the certificate from `-file` file and storing it in the `-keystore` destination. The most confusing part about this that we’re creating truststore with `-keystore` command. However, looking from keytool’s perspective, it does not matter how we call the file - whether it’s a truststore or keystore. What matters is the content inside and how the file is used in Java applications - whether we load that file to `KeyManager` or `TrustManager` instance.
+* `-file` - input file. In this case it has to be certificate.
+* `-alias` - alias name for entry in TrustStore.
+* `-keystore` - keystore/truststore output file.
+* `-storepass` - keystore/truststore password.
+* `-noprompt` - if omitted it will prompt a questions “Trust this certificate?” and require additional command line input.
+
+### Using Keytool
+
+As noted in the beginning of the chapter, there are two tools for generating certificates. In this section, certificates will be generated using Java `keytool`. The flow is a bit different, but the end goal is the same.
+
+#### Generate Kafka’s Java Keystore
+
+Because keytool is predominately used for interactions with Java's Keystore and Truststore, generating certificate is from the other side - firstly Keystore is generated and then it is possible to extract certificate from it.
+
+```shell
+keytool -genkeypair -keystore kafka-broker-identity.jks -dname "CN=test, OU=Unknown, O=Unknown, L=Unknown, ST=Unknown, C=Unknown" -storepass secret -keypass secret -keyalg RSA -keysize 4096 -alias server -validity 3650 -deststoretype pkcs12
+```
+
+* `-genkeypair` - command generates a private/public key. Wraps the public key into an X.509 self-signed certificate, which is stored inside new Keystore.
+* `-keystore` - if you omit this part, the Keystore will be generated in user's home directory under name .keystore. Otherwise it will be generated where defined. 
+* `-dname` - replaces subject field of input request with specified data and outputs modified request. Otherwise you’d be prompted by command line to enter each value separately (similar to openssl `-subj`).
+* `-storepass` - the password of the keystore.
+* `-keypass` - password used to protect the private key of the generated key pair.
+* `-keyalg` - value specifies the algorithm to be used to generate the key pair. This is similar to openssl -algorithm. Java supports DSA, RSA, EC, RSASSA-PSS, EdDSA, Ed25519, Ed448 as per [documentation](https://docs.oracle.com/en/java/javase/17/docs/specs/man/keytool.html#:~:text=appropriate%20level%20of%20security%20strength%20as%20follows).
+* `-keysize` - value specifies the size of each key to be generated. This is similar to openssl `-pkeyopt rsa_keygen_bits:2048`. Omitting this value will use defaults.
+* `-alias` - alias name for entry in Keystore.
+* `-validity` - how many days certificate is valid. Similar to openssl `-days` flag.
+* `-deststoretype` - as previously stated private keys and certificates can be stored in a variety of formats. PKCS12 is latest standard.
+
+#### Export Kafka’s certificate
+
+As stated, the process is backwards. Once Keystore is generated, certificate can be extracted from it.
+
+```shell
+keytool -exportcert -file kafka.crt -alias server -keystore kafka-broker-identity.jks -storepass secret -rfc
+```
+
+* `-exportcert` - command reads a certificate from the Keystore that is associated with `-alias` and stores it in the `-file`. When a file is not specified, the certificate is output to stdout
+* `-file` - as stated above, stores certificate to this defined destination.
+* `-alias` - as stated above, selects key pair associated with alias.
+* `-keystore` - source of the key pair.
+* `-storepass` - the password of the keystore
+* `-rfc` - certificates are often stored using the printable encoding format defined by the Internet RFC 1421 standard, instead of their binary encoding. This certificate format, also known as Base64 encoding, makes it easy to export certificates to other applications by email or through some other mechanism. If the value is omitted, the flow will not be affected, but simply, the certificate will be stored in binary format.
+
+#### Generate Kafka Client’s Java Truststore
+
+The command below is exactly the same as in “Using OpenSSL tool” section, thus I won’t explain options.
+
+```shell
+keytool -importcert -file kafka.crt -alias kafkaCer -keystore client-truststore.jks -storepass truststorepass -noprompt
+```
+
+### Prepare generated KeyStore for Docker Compose
+
+Remember that Kafka expects specific files in specific locations:
+* `"/etc/kafka/secrets/$KAFKA_SSL_KEYSTORE_FILENAME"`
+* `"/etc/kafka/secrets/$KAFKA_SSL_KEYSTORE_CREDENTIALS"`
+* `"/etc/kafka/secrets/$KAFKA_SSL_KEY_CREDENTIALS"`
+
+This means that three files have to exists, and all of them have to be mounted into `/etc/kafka/secrets/`.
+
+```yaml
+volumes:
+  - /var/run/docker.sock:/var/run/docker.sock
+  - ./security:/etc/kafka/secrets
+```
+
+Several actions have to be done:
+
+```shell
+mkdir security &&
+mv kafka-broker-identity.jks security &&
+echo "secret" > security/password.txt &&
+echo "secret" > security/key-password.txt
+```
+
+```shell
+docker-compose up -d
+```
+
+“secret” value to both `security/password.txt` and `security/key-password.txt` are set using previous command with options `-deststorepass secret -destkeypass secret`. 
+
+In Kafka logs you should see:
+
+```shell
+===> Configuring ...
+SSL is enabled.
+===> Running preflight checks ...
+...
+...
+started (kafka.server.KafkaServer)
+```
+
+## Common Kafka Properties Settings
+
+```java
+public enum TestCommonKafkaProperties {
+
+   BOOTSTRAP_SERVERS_CONFIG("localhost:29092"),
+   SECURITY_PROTOCOL_CONFIG("SSL"),
+   SSL_TRUSTSTORE_LOCATION_CONFIG(<Absolute Path to client truststore>),
+   SSL_TRUSTSTORE_PASSWORD_CONFIG("truststorepass"),
+   SSL_ENDPOINT_IDENTIFICATION_ALGORITHM_CONFIG(" ");
+
+   private final String value;
+
+   TestCommonKafkaProperties(String value) {
+      this.value = value;
+   }
+
+   public String value() {
+      return value;
+   }
+}
+```
+
+## Admin
+
+```java
+adminClient = AdminClient.create(Map.of(
+      CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS_CONFIG.value(),
+      CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, SECURITY_PROTOCOL_CONFIG.value(),
+      SslConfigs.SSL_TRUSTSTORE_LOCATION_CONFIG, SSL_TRUSTSTORE_LOCATION_CONFIG.value(),
+      SslConfigs.SSL_TRUSTSTORE_PASSWORD_CONFIG, SSL_TRUSTSTORE_PASSWORD_CONFIG.value(),
+      SslConfigs.SSL_ENDPOINT_IDENTIFICATION_ALGORITHM_CONFIG, SSL_ENDPOINT_IDENTIFICATION_ALGORITHM_CONFIG.value()
+));
+```
+
+## Producer
+
+```java
+Map<String, Object> producerConfiguration = Map.of(
+      CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS_CONFIG.value(),
+      ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringSerializer",
+      ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringSerializer",
+      // Security configs      
+      CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, SECURITY_PROTOCOL_CONFIG.value(),
+      SslConfigs.SSL_TRUSTSTORE_LOCATION_CONFIG, SSL_TRUSTSTORE_LOCATION_CONFIG.value(),
+      SslConfigs.SSL_TRUSTSTORE_PASSWORD_CONFIG, SSL_TRUSTSTORE_PASSWORD_CONFIG.value(),
+      SslConfigs.SSL_ENDPOINT_IDENTIFICATION_ALGORITHM_CONFIG, SSL_ENDPOINT_IDENTIFICATION_ALGORITHM_CONFIG.value()
+);
+```
+
+## Consumer
+
+```java
+Map<String, Object> consumerConfiguration = Map.of(
+      CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS_CONFIG.value(),
+      ConsumerConfig.GROUP_ID_CONFIG, "groupsecurity",
+      ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringDeserializer",
+      ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringDeserializer",
+      // Security configs      
+      CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, SECURITY_PROTOCOL_CONFIG.value(),
+      SslConfigs.SSL_TRUSTSTORE_LOCATION_CONFIG, SSL_TRUSTSTORE_LOCATION_CONFIG.value(),
+      SslConfigs.SSL_TRUSTSTORE_PASSWORD_CONFIG, SSL_TRUSTSTORE_PASSWORD_CONFIG.value(),
+      SslConfigs.SSL_ENDPOINT_IDENTIFICATION_ALGORITHM_CONFIG, SSL_ENDPOINT_IDENTIFICATION_ALGORITHM_CONFIG.value()
+);
+```
+
+```shell
+**********
+topic = hello.world, partition = 1, offset = 0, customer = null, message = hello
+**********
+----------
+Closing consumer
+----------
+Deleting topic
+```
+
+## Debugging SSL
+
+As previously mentioned in Docker Compose file there is an environment variable `KAFKA_OPTS: "-Djavax.net.debug=ssl,handshake"` which enables JVM to print out logs related to SSL communication. The same command can be used in (for example IntelliJ) when running test clients. A snippet of printed communication:
+
+```shell
+ javax.net.ssl|DEBUG|F0|kafka-admin-client-thread | adminclient-1|2022-09-02 10:57:41.330 EEST|ClientHello.java:652|Produced ClientHello handshake message (
+"ClientHello": {
+  "client version"      : "TLSv1.2",
+  "random"              : "32FD552BFB58787472EEACE349FB290108C9D38FBFC61393B27241E2D7A74112",
+  "session id"          : "961BA0FDCD1DD54C22229A8C01741485D46BEA0D8B747252B2AB6A2070F7B55D",
+  "cipher suites"       : "[TLS_AES_256_GCM_SHA384(0x1302), TLS_AES_128_GCM_SHA256(0x1301), TLS_CHACHA20_POLY1305_SHA256(0x1303), TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384(0xC02C), TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256(0xC02B), TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256(0xCCA9), TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384(0xC030), TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256(0xCCA8), TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256(0xC02F), TLS_DHE_RSA_WITH_AES_256_GCM_SHA384(0x009F), TLS_DHE_RSA_WITH_CHACHA20_POLY1305_SHA256(0xCCAA), TLS_DHE_DSS_WITH_AES_256_GCM_SHA384(0x00A3), TLS_DHE_RSA_WITH_AES_128_GCM_SHA256(0x009E), TLS_DHE_DSS_WITH_AES_128_GCM_SHA256(0x00A2), TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA384(0xC024), TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384(0xC028), TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256(0xC023), TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256(0xC027), TLS_DHE_RSA_WITH_AES_256_CBC_SHA256(0x006B), TLS_DHE_DSS_WITH_AES_256_CBC_SHA256(0x006A), TLS_DHE_RSA_WITH_AES_128_CBC_SHA256(0x0067), TLS_DHE_DSS_WITH_AES_128_CBC_SHA256(0x0040), TLS_ECDH_ECDSA_WITH_AES_256_GCM_SHA384(0xC02E), TLS_ECDH_RSA_WITH_AES_256_GCM_SHA384(0xC032), TLS_ECDH_ECDSA_WITH_AES_128_GCM_SHA256(0xC02D), TLS_ECDH_RSA_WITH_AES_128_GCM_SHA256(0xC031), TLS_ECDH_ECDSA_WITH_AES_256_CBC_SHA384(0xC026), TLS_ECDH_RSA_WITH_AES_256_CBC_SHA384(0xC02A), TLS_ECDH_ECDSA_WITH_AES_128_CBC_SHA256(0xC025), TLS_ECDH_RSA_WITH_AES_128_CBC_SHA256(0xC029), TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA(0xC00A), TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA(0xC014), TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA(0xC009), TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA(0xC013), TLS_DHE_RSA_WITH_AES_256_CBC_SHA(0x0039), TLS_DHE_DSS_WITH_AES_256_CBC_SHA(0x0038), TLS_DHE_RSA_WITH_AES_128_CBC_SHA(0x0033), TLS_DHE_DSS_WITH_AES_128_CBC_SHA(0x0032), TLS_ECDH_ECDSA_WITH_AES_256_CBC_SHA(0xC005), TLS_ECDH_RSA_WITH_AES_256_CBC_SHA(0xC00F), TLS_ECDH_ECDSA_WITH_AES_128_CBC_SHA(0xC004), TLS_ECDH_RSA_WITH_AES_128_CBC_SHA(0xC00E), TLS_RSA_WITH_AES_256_GCM_SHA384(0x009D), TLS_RSA_WITH_AES_128_GCM_SHA256(0x009C), TLS_RSA_WITH_AES_256_CBC_SHA256(0x003D), TLS_RSA_WITH_AES_128_CBC_SHA256(0x003C), TLS_RSA_WITH_AES_256_CBC_SHA(0x0035), TLS_RSA_WITH_AES_128_CBC_SHA(0x002F), TLS_EMPTY_RENEGOTIATION_INFO_SCSV(0x00FF)]",
+  "compression methods" : "00",
+  "extensions"          : [
+    "status_request (5)": {
+      "certificate status type": ocsp
+      "OCSP status request": {
+        "responder_id": <empty>
+        "request extensions": {
+          <empty>
+        }
+      }
+    },
+    "supported_groups (10)": {
+    ...
+...
+javax.net.ssl|DEBUG|F0|kafka-admin-client-thread | adminclient-1|2022-09-02 10:57:41.706 EEST|ServerHello.java:888|Consuming ServerHello handshake message
+...
+javax.net.ssl|DEBUG|F0|kafka-admin-client-thread | adminclient-1|2022-09-02 10:57:41.733 EEST|EncryptedExtensions.java:171|Consuming EncryptedExtensions handshake message
+...
+javax.net.ssl|DEBUG|F0|kafka-admin-client-thread | adminclient-1|2022-09-02 10:57:41.739 EEST|CertificateMessage.java:1172|Consuming server Certificate handshake message
+...
+javax.net.ssl|DEBUG|F0|kafka-admin-client-thread | adminclient-1|2022-09-02 10:57:41.761 EEST|CertificateVerify.java:1166|Consuming CertificateVerify handshake message
+...
+javax.net.ssl|DEBUG|F0|kafka-admin-client-thread | adminclient-1|2022-09-02 10:57:41.764 EEST|Finished.java:917|Consuming server Finished handshake message
+...
+javax.net.ssl|DEBUG|F0|kafka-admin-client-thread | adminclient-1|2022-09-02 10:57:41.809 EEST|NewSessionTicket.java:567|Consuming NewSessionTicket message
+```
+
+# SSL Kafka - With CA
 
 
 
