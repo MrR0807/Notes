@@ -864,21 +864,344 @@ They are essentially the same as what `TestCallback`, but just split into two cl
 
 ### LoginModule
 
+There are two difference from previous example:
+* Parsing `debug="yesplease"` from JAAS config;
+* Using `NameCallback` and `PasswordCallback` in `login()`.
 
+```java
+@Override
+public void initialize(Subject subject, CallbackHandler callbackHandler, Map<String, ?> sharedState, 
+                                Map<String, ?> options) {
 
+   this.subject = subject;
+   this.callbackHandler = callbackHandler;
+   this.debug = Optional.ofNullable(options.get("debug"))
+         .map(shouldDebug -> shouldDebug.equals("yesplease"))
+         .orElse(false);
+}
+```
 
+```java
+@Override
+public boolean login() throws LoginException {
 
+   final var callbacks = new Callback[2];
+   callbacks[0] = new NameCallback("username: ");
+   callbacks[1] = new PasswordCallback("password: ", false);
 
+   try {
+      callbackHandler.handle(callbacks);
+      this.username = ((NameCallback)callbacks[0]).getName();
+      //This is not a secure way of storing password      
+      this.password = new String(((PasswordCallback) callbacks[1]).getPassword());
+   } catch (IOException | UnsupportedCallbackException e) {
+      throw new LoginException("Error during login");
+   }
 
+   if (debug) {
+      System.out.println("I'm helping");
+   }
+   ...
+}
+```
 
+You can later on use `debug` flag however you see fit.
 
+## Example Three
 
+As previously stated, `LoginModule` is **plugable**. Plugable means that the same `LoginModule` implementation can potentially be re-used in different applications, and added to an application without having to recompile code. For example, a `LoginModule` that authenticates users for in Windows Domains or Active Directory, could be provided by a third party for use in other applications.
 
+`LoginModule` are also **stackable**. Stackable means that you can use more than one `LoginModule` because your application may have more than one identity management system. For example, your application could be an employee records system that needs to authenticate with the HR system to access insurance records and the payroll system to access salary records. Each of these two systems could require a user to login, contributing `Principals` to the `Subject`.
 
+In this example, we’ll explore the stackable property by using two `LoginModules`.
 
+### JAAS config file
 
+```
+JaashandsExampleThree {
+  lt.test.testjaas.TestLoginModule required debug="yesplease";
+  lt.test.testjaas.TestLoginModuleTwo required;
+};
+```
 
+In this case, both `TestLoginModule` and `TestLoginModuleTwo` will be invoked during authentication process.
 
+### Main test class
+
+This is exactly the same as from Example one, just the LoginContext name is different: `new LoginContext("JaashandsExampleThree", new CallbackHandler() {}`.
+
+#### `TestLoginModuleTwo`
+
+```java
+public class TestLoginModuleTwo implements LoginModule {
+
+	@Override
+	public void initialize(Subject subject, CallbackHandler callbackHandler, Map<String, ?> sharedState,
+						   Map<String, ?> options) {
+	}
+
+	@Override
+	public boolean login() throws LoginException {
+		System.out.println("Login in TestLoginModuleTwo");
+		return true;
+	}
+
+	@Override
+	public boolean commit() throws LoginException {
+		System.out.println("Commit in TestLoginModuleTwo");
+		return true;
+	}
+
+	@Override
+	public boolean abort() throws LoginException {
+		System.out.println("Abort in TestLoginModuleTwo");
+		return true;
+	}
+
+	@Override
+	public boolean logout() throws LoginException {
+		System.out.println("Logout in TestLoginModuleTwo");
+		return true;
+	}
+}
+```
+
+As you can see it just returns `true` for all methods and logs which method was called in this class. Same logging approached was used in  `TestLoginModule`.
+
+Running the application yields this:
+
+```shell
+Login in TestLoginModule
+Login in TestLoginModuleTwo
+Commit in TestLoginModule
+Commit in TestLoginModuleTwo
+```
+
+This has demonstrated the stackable property of `LoginModule`. Both modules were invoked. And only after they both succeeded, the commit phase started.
+
+#### `Configuration Flag`
+
+As stated previously there are four different JAAS config flags, e.g. `required`. Each of them can influence the flow of authentication, for example `sufficient` flag states: 
+
+> The LoginModule is not required to succeed. If it does succeed, control immediately returns to the application (authentication does not proceed down the LoginModule list). If it fails, authentication continues down the LoginModule list.
+
+More on flags in [Javadoc](https://docs.oracle.com/en/java/javase/17/docs/api/java.base/javax/security/auth/login/Configuration.html). Changing the JAAS config file to:
+
+```
+JaashandsExampleThree {
+  lt.test.testjaas.TestLoginModuleTwo sufficient;
+  lt.test.testjaas.TestLoginModule required debug="yesplease";
+};
+```
+
+And running the application will yield (as expected):
+
+```
+Login in TestLoginModuleTwo
+Commit in TestLoginModuleTwo
+```
+
+Because it’s only required that `TestLoginModuleTwo` succeed. If it does, the others are not invoked.
+
+## Authorization
+
+This section is not required, because since Java 17, JAAS authorization mechanism is marked for removal: [JEP 411: Deprecate the Security Manager for Removal](https://openjdk.org/jeps/411).
+
+### The SecurityManager and AccessController
+
+As stated in JEP 411: Deprecate the Security Manager for Removal removes `SecurityManager` and doesn’t really talk about JAAS. How it’s connected then? Well, the pre-JAAS security model employed the concept of a security manager, a singleton of `java.lang.SecurityManager` through which all the types of permission were expressed and checked. This class is still used in current versions of Java as the preferred entry point for security checks, however, most of the methods just delegate to `AccessController` which was delivered as part of rewrite of `SecurityManager` by introducing JAAS. 
+
+Having this in mind, we can find in the JEP that:
+
+> java.security.{AccessController, AccessControlContext, AccessControlException, DomainCombiner} — The primary APIs for the access controller, which is the default implementation to which the Security Manager delegates permission checks. These APIs do not have value without the Security Manager, since certain operations will not work without both a policy implementation and access-control context support in the VM.
+
+Indeed those are removed, hence no point in exploring them.
+
+### Ok, but why did they exist in the first place?
+
+JAAS was created during Java applet times. It was paramount to have a security framework which would control access to local file system at very granual level. One of requirements was to deny access to the local file system to, for example, prevent applets from installing spyware or adware on your machine, or installing viruses. This in turn changed the whole concept of on who’s behalf Java code is executing. Hence a lot of operations were required to be check before executing.
+
+I’m not going to deep dive into how it works, because there are examples in [Oracle documetation](https://docs.oracle.com/en/java/javase/17/security/jaas-authorization.html#GUID-69241059-CCD0-49F6-838F-DDC752F9F19F), but just to showcase the principal:
+
+```java
+ package chp02;
+
+import java.io.File;
+import java.io.IOException;
+
+public class Chp02aMain {
+	public static void main(String[] args) throws IOException {
+		File file = new File("build/conf/cheese.txt");
+		try {
+			file.canWrite();
+			System.out.println("We can write to cheese.txt");
+		} catch (SecurityException e) {
+			System.out.println("We can NOT write to cheese.txt");
+		}
+	}
+}
+```
+
+`file.canWrite()`:
+
+```java
+public boolean canWrite() {
+    @SuppressWarnings("removal")
+    SecurityManager security = System.getSecurityManager();
+    if (security != null) {
+        security.checkWrite(path);
+    }
+    if (isInvalid()) {
+        return false;
+    }
+    return fs.checkAccess(this, FileSystem.ACCESS_WRITE);
+}
+```
+
+As you can see, Java has a check with SecurityManager. And if’d search JDK, such checks are everywhere.
+
+## Kafka
+
+In SASL PLAIN Kafka and SASL SCRAM-SHA-512 Kafka there will be two different `kafka_server_jaas.conf` used. For plain:
+
+```
+KafkaServer {
+  org.apache.kafka.common.security.plain.PlainLoginModule required
+  username="admin"
+  password="admin-secret"
+  user_admin="admin-secret";
+};
+```
+
+And for SCRAM:
+
+```
+KafkaServer {
+  org.apache.kafka.common.security.scram.ScramLoginModule required
+  username="admin"
+  password="admin-secret"
+  user_admin="admin-secret";
+};
+```
+
+Looking at these we can conclude, where to look for `LoginModule` implementations and see that all parameters after `required` are options that will be provided as `Map` key/value pairs just like with example two `debug="yesplease"`. In next section I’ll just inspect how `PlainLoginModule` works.
+
+### PlainLoginModule
+
+```java
+public class PlainLoginModule implements LoginModule {
+
+    private static final String USERNAME_CONFIG = "username";
+    private static final String PASSWORD_CONFIG = "password";
+
+    static {
+        PlainSaslServerProvider.initialize();
+    }
+
+    @Override
+    public void initialize(Subject subject, CallbackHandler callbackHandler, Map<String, ?> sharedState, 
+                           Map<String, ?> options) {
+        String username = (String) options.get(USERNAME_CONFIG);
+        if (username != null)
+            subject.getPublicCredentials().add(username);
+        String password = (String) options.get(PASSWORD_CONFIG);
+        if (password != null)
+            subject.getPrivateCredentials().add(password);
+    }
+
+    @Override
+    public boolean login() {
+        return true;
+    }
+
+    @Override
+    public boolean logout() {
+        return true;
+    }
+
+    @Override
+    public boolean commit() {
+        return true;
+    }
+
+    @Override
+    public boolean abort() {
+        return false;
+    }
+}
+```
+
+From this we can conclude, that during the first authentication phase, `Subject` is populated with credentials which are taken from JAAS config file under `username` and `password`. The remaining phases are not used. Looking into `CallbackHandler`:
+
+```java
+public class PlainServerCallbackHandler implements AuthenticateCallbackHandler {
+
+    private static final String JAAS_USER_PREFIX = "user_";
+    private List<AppConfigurationEntry> jaasConfigEntries;
+
+    @Override
+    public void configure(Map<String, ?> configs, String mechanism, List<AppConfigurationEntry> jaasConfigEntries) {
+        this.jaasConfigEntries = jaasConfigEntries;
+    }
+
+    @Override
+    public void handle(Callback[] callbacks) throws IOException, UnsupportedCallbackException {
+        String username = null;
+        for (Callback callback: callbacks) {
+            if (callback instanceof NameCallback)
+                username = ((NameCallback) callback).getDefaultName();
+            else if (callback instanceof PlainAuthenticateCallback) {
+                PlainAuthenticateCallback plainCallback = (PlainAuthenticateCallback) callback;
+                boolean authenticated = authenticate(username, plainCallback.password());
+                plainCallback.authenticated(authenticated);
+            } else
+                throw new UnsupportedCallbackException(callback);
+        }
+    }
+
+    protected boolean authenticate(String username, char[] password) throws IOException {
+        if (username == null)
+            return false;
+        else {
+            String expectedPassword = JaasContext.configEntryOption(jaasConfigEntries,
+                    JAAS_USER_PREFIX + username,
+                    PlainLoginModule.class.getName());
+            return expectedPassword != null && Utils.isEqualConstantTime(password, expectedPassword.toCharArray());
+        }
+    }
+}
+```
+
+`JaasContext`:
+
+```java
+public static String configEntryOption(List<AppConfigurationEntry> configurationEntries, String key, String loginModuleName) {
+    for (AppConfigurationEntry entry : configurationEntries) {
+        if (loginModuleName != null && !loginModuleName.equals(entry.getLoginModuleName()))
+            continue;
+        Object val = entry.getOptions().get(key);
+        if (val != null)
+            return (String) val;
+    }
+    return null;
+}
+```
+
+The authentication process is very simple, which is defined in `authenticate` method. It loops through a `List<AppConfigurationEntry>` and searches for `AppConfigurationEntry` where `LoginModule` is defined as `PlainLoginModule`. Once found, extracts the value of key `JAAS_USER_PREFIX + username`, which in this case is `user_admin="admin-secret"` and compares with password value.
+
+However `PlainLoginModule` is not like our previous examples, because Kafka is utilising even more Java’s security objects like `java.security.Provider` and `javax.security.sasl.SaslServer`. Nevertheless, we can still find bits of familiar code in, for example, `org.apache.kafka.common.security.plain.internalsPlainSaslServer`:
+
+```java
+...
+NameCallback nameCallback = new NameCallback("username", username);
+PlainAuthenticateCallback authenticateCallback = new PlainAuthenticateCallback(password.toCharArray());
+try {
+    callbackHandler.handle(new Callback[]{nameCallback, authenticateCallback});
+} catch (Throwable e) {
+    throw new SaslAuthenticationException("Authentication failed: credentials for user could not be verified", e);
+}
+...
+```
 
 
 
