@@ -42,10 +42,231 @@ The [chart from Confluent](https://docs.confluent.io/platform/current/installati
 
 # Plaintext Kafka
 
+Firstly, we have to validate that current setup without SSL or/and SASL works. To validate, use bellow configuration.
+
+```yaml
+
+version: '3'
+services:
+
+  zookeeper:
+    image: zookeeper:3.6
+    ports:
+      - "2181:2181"
+
+  kafka:
+    image: confluentinc/cp-kafka:6.0.9
+    ports:
+      - "29092:29092"
+      - "9092:9092"
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://0.0.0.0:29092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'false'
+      KAFKA_DELETE_TOPIC_ENABLE: 'true'
+      KAFKA_BROKER_ID: 0
+      # Otherwise you'll get Number of alive brokers '1' does not meet the required replication factor '3' for the offsets topic
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+```
+
+Next, create a simple KafkaAdmin, KafkaProducer, KafkaConsumer and integrating test class.
+
+## Common Kafka Properties Settings
+
+```java
+public enum TestCommonKafkaProperties {
+
+	BOOTSTRAP_SERVERS_CONFIG("localhost:29092");
+
+	private final String value;
+
+	TestCommonKafkaProperties(String value) {
+		this.value = value;
+	}
+
+	public String value() {
+		return value;
+	}
+}
+```
+
+## Admin
+
+```java
+public class Admin {
+
+   private final AdminClient adminClient;
+
+   public Admin() {
+      	adminClient = AdminClient.create(Map.of(
+				CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS_CONFIG.value()
+		));
+   }
+
+   public void deleteTopic(String topic) throws ExecutionException, InterruptedException {
+      adminClient.deleteTopics(List.of(topic)).all().get();
+   }
+
+   public void createTopic(String topic) throws ExecutionException, InterruptedException {
+      try {
+         adminClient.createTopics(List.of(new NewTopic(topic, 3, (short) 1))).all().get();
+      } catch (Exception e) {
+         if (e.getCause() instanceof TopicExistsException) {
+            return;
+         }
+         throw e;
+      }
+   }
+}
+```
+
+## Producer
+
+```java
+public class PlainProducer {
+
+   private final KafkaProducer<String, String> kafkaProducer;
+   private final String topic;
+
+   public PlainProducer(Map<String, Object> properties, String topic) {
+
+      this.kafkaProducer = new KafkaProducer<>(properties);
+      this.topic = topic;
+   }
+
+   public void produce(String message) {
+
+      try {
+         kafkaProducer.send(new ProducerRecord<>(topic, message)).get();
+      } catch (Exception e) {
+         e.printStackTrace();
+      }
+   }
+}
+```
+
+## Consumer
 
 
+```java
+public class PlainConsumer {
 
+   private final KafkaConsumer<String, String> consumer;
 
+   public PlainConsumer(Map<String, Object> properties, String topic) {
+      this.consumer = new KafkaConsumer<>(properties);
+      consumer.subscribe(List.of(topic));
+   }
+
+   public void consume() {
+
+      try {
+         while (true) {
+            final var records = consumer.poll(Duration.ofMillis(100));
+            for (final var record : records) {
+               System.out.println("*".repeat(10));
+               System.out.printf("topic = %s, partition = %d, offset = %d, customer = %s, message = %s\n",
+                     record.topic(), record.partition(), record.offset(),
+                     record.key(), record.value());
+               System.out.println("*".repeat(10));
+            }
+            consumer.commitSync();
+         }
+      } catch (WakeupException e) {
+         //nothing      
+      } finally {
+         consumer.close(Duration.ofMillis(500));
+         System.out.println("-".repeat(10));
+         System.out.println("Closing consumer");
+         System.out.println("-".repeat(10));
+      }
+   }
+
+   public void stop() {
+      consumer.wakeup();
+   }
+}
+```
+
+## Integrating Test Class
+
+```java
+public class TestMe {
+
+	private static final ExecutorService executor = Executors.newSingleThreadExecutor();
+
+	public static void main(String[] args) throws ExecutionException, InterruptedException {
+
+		final var topic = "hello.world";
+
+		final var admin = new Admin();
+		admin.createTopic(topic);
+
+		Map<String, Object> producerConfiguration = Map.of(
+				CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS_CONFIG.value(),
+				ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringSerializer",
+				ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringSerializer"
+		);
+
+		Map<String, Object> consumerConfiguration = Map.of(
+				CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS_CONFIG.value(),
+				ConsumerConfig.GROUP_ID_CONFIG, "groupsecurity",
+				ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringDeserializer",
+				ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringDeserializer"
+		);
+
+		final var plainConsumer = new PlainConsumer(consumerConfiguration, topic);
+		executor.submit(plainConsumer::consume);
+
+		TimeUnit.SECONDS.sleep(5);
+
+		final var plainProducer = new PlainProducer(producerConfiguration, topic);
+		plainProducer.produce("hello");
+
+		TimeUnit.SECONDS.sleep(5);
+		plainConsumer.stop();
+		TimeUnit.SECONDS.sleep(5);
+		System.out.println("Deleting topic");
+		admin.deleteTopic(topic);
+		TimeUnit.SECONDS.sleep(2);
+
+		executor.shutdownNow();
+		executor.awaitTermination(1, TimeUnit.SECONDS);
+	}
+}
+```
+
+```shell
+docker-compose up -d
+```
+
+Print logs of kafka container:
+
+```shell
+docker logs <kafka-container>
+```
+
+You should see:
+
+```shell
+started (kafka.server.KafkaServer)
+```
+
+```
+**********
+topic = hello.world, partition = 1, offset = 0, customer = null, message = hello
+**********
+----------
+Closing consumer
+----------
+Deleting topic
+```
 
 
 
