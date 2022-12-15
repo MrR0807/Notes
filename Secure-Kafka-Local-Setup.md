@@ -1595,6 +1595,61 @@ Closing consumer
 Deleting topic
 ```
 
+# TLS in layman's terms
+
+There are numerous sources explaining TLS in great detail. Most of those sources are fairly technical and deep dive into details. In this section I wanted to explain the need for TLS in a simplistic manner. 
+
+TLS solves an old problem of secret communication. One of the earlier and simpler (by no means first) cipher was called Caesar’s cipher. It works by replacing each letter in the message by a letter some fixed number of positions down the alphabet. Say we have a message: “All your base are belong to us”. If we shift alphabet by two, then the message becomes: “Cnn aqwt dcug ctg dgnqpi vq wu” (Caesar cipher online version). In this case, the cipher key is “shift alphabet by 2”. Furthermore, this cipher is called symmetrical. In other words, you use the same key for both encryption and decryption.
+
+Now let’s imagine that this cipher is uncrackable. And let’s say you want to send an encrypted letter to someone in another city. How will you share your secret key with the letter recipient so no one else intercepts it?
+
+Until mid-1970 all cipher systems used symmetric key algorithms and the problem of sharing cipher key was persistent and very exploitable. Enter asymmetric cryptography (public key cryptography).
+
+The key application of asymmetric cryptography is that the message that a sender encrypts using the recipient's public key can only be decrypted by recipient's paired private key. This solves the problem of sharing symmetrical key. Continuing the example of sending a letter encrypted with Caesar’s cipher - we can encrypt the original message with symmetric key, and then encrypt the symmetric key using asymmetric cryptography. This way, only the recipient will be able to decrypt the message, by firstly decrypting symmetric key using paired private key and then decrypt original message using symmetric key.
+
+A natural question arises - why not just use asymmetric cryptography all the time? Why use both symmetric and asymmetric cryptography? The answer is pretty simple - [speed](https://crypto.stackexchange.com/a/30778):
+
+> With symmetric ciphers, encryption and decryption speed can be several gigabytes per seconds on a common PC core; see these [benchmarks](http://bench.cr.yp.to/results-stream.html).
+
+> With RSA encryption (asymmetric ciphers), on comparable hardware, we are talking tens of thousands encryptions per second, and only few hundreds of decryption per seconds, for common key sizes, and small messages (like 1 bit to 250 bytes, way enough for a session keys and authenticators); see these [benchmarks](http://bench.cr.yp.to/results-encrypt.html).
+
+> Pure asymmetric encryption would often be like 3 to 5 decimal orders of magnitude slower than symmetric encryption is.
+
+## Pen and Paper RSA (asymmetric cipher) example
+
+Previously I have showed you a very simple symmetrical cipher called Caesar’s cipher. Now, I’d like to show you asymmetric cipher - RSA.
+
+RSA (Rivest–Shamir–Adleman) is a public-key algorithm that is widely used for secure data transmission. Because asymmetric cryptography is based on numbers theory, it is harder to understand how it works compared to symmetrical. Nevertheless let’s have a very simplified example. [Source of the example](https://www.youtube.com/watch?v=4zahvcJ9glg).
+
+Our message will contain one letter: B. RSA requires an encryption pair of numbers: for this example private key is (11, 14) and public key is (5, 14). Notice the second number is the same in both pairs of numbers. The public pair of numbers is the lock we hand over to the public. Whoever wants to send us a message should use these numbers in below steps.
+
+Encryption steps:
+* Convert message containing B to number. B → 2 (alphabetical).
+* Raise 2 to the power of 5 (the first number of the public key pair) and take the mod using the second number 14. The encrypted message is 4.
+
+```math
+2^5(mod14) = 32(mod14) = 4
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
