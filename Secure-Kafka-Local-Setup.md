@@ -1398,6 +1398,213 @@ Changing SASL_JAAS_CONFIG content in TestCommonKafkaProperties would fail Authen
 SaslAuthenticationException: Authentication failed: Invalid username or password
 ```
 
+# SASL SCRAM-SHA-512 Kafka
+
+## Docker Compose Yaml
+
+```yaml
+version: '3'
+services:
+
+  zookeeper:
+    image: zookeeper:3.6
+    ports:
+      - "2181:2181"
+
+  kafka:
+    image: confluentinc/cp-kafka:6.0.9
+    ports:
+      - "29092:29092"
+      - "9092:9092"
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_LISTENERS: SASL_PLAINTEXT://0.0.0.0:29092, PLAINTEXT://kafka:9092
+      KAFKA_ADVERTISED_LISTENERS: SASL_PLAINTEXT://localhost:29092, PLAINTEXT://kafka:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: SASL_PLAINTEXT:SASL_PLAINTEXT, PLAINTEXT:PLAINTEXT
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'false'
+      KAFKA_DELETE_TOPIC_ENABLE: 'true'
+      KAFKA_BROKER_ID: 0
+      # Otherwise you'll get Number of alive brokers '1' does not meet the required replication factor '3' for the offsets topic
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+
+      # Security settings
+      ZOOKEEPER_SASL_ENABLED: "false"
+      # inter.broker.listener.name must be a listener name defined in advertised.listeners
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_SASL_ENABLED_MECHANISMS: SCRAM-SHA-512
+
+      # To add VM options to Kafka
+      KAFKA_OPTS: "-Djava.security.auth.login.config=/etc/kafka/secrets/kafka_server_jaas.conf"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./security:/etc/kafka/secrets
+```
+
+As with SASL PLAIN Kafka, in order to mount kafka_server_jaas.conf to Kafka container, create:
+
+```
+mkdir security &&
+touch security/kafka_server_jaas.conf
+```
+
+The content of `kafka_server_jaas.conf`:
+
+```
+KafkaServer {
+  org.apache.kafka.common.security.scram.ScramLoginModule required
+  username="admin"
+  password="admin-secret"
+  user_admin="admin-secret";
+};
+Client{};
+```
+
+Differently from SASL PLAIN Kafka, instead of `plain.PlainLoginModule` use `scram.ScramLoginModule`.
+
+Each KafkaServer/Broker uses the `KafkaServer` section in the JAAS file to provide SASL configuration options for the broker, including any SASL client connections made by the broker for inter-broker communications.
+
+`Client` section is for authenticating a SASL connection with ZooKeeper, and also to allow brokers to set a SASL ACL on ZooKeeper nodes. `Client` is empty, because in this section communication with Zookeeper is `PLAINTEXT`.
+
+Start docker-compose:
+
+```shell
+docker-compose up -d
+docker logs <kafka-container>
+```
+
+Console output from Kafka container:
+
+```shell
+SASL is enabled.
+===> Running preflight checks ...
+...
+sasl.enabled.mechanisms = [SCRAM-SHA-512]
+...
+started (kafka.server.KafkaServer)
+```
+
+Because SCRAM implementation in Kafka stores SCRAM credentials in ZooKeeper, we must create SCRAM credentials in ZooKeeper.
+
+Loggin to docker container:
+
+```shell
+docker exec -it <kafka-container> /bin/bash
+```
+
+According to recommended way (below command line) adding SCRAM admin credentials to Zookeeper via Kafka should be done like so:
+
+```shell
+kafka-configs --bootstrap-server localhost:9092 --alter --add-config 'SCRAM-SHA-512=[password=admin-secret]' --entity-type users --entity-name admin
+```
+
+However, recommended way is not working with 6.0.9 and you will get:
+
+```shell
+Only quota configs can be added for 'users' using --bootstrap-server. Unexpected config names: Set(SCRAM-SHA-512)
+```
+
+Gotta use deprecated way via Zookeeper:
+
+```shell
+kafka-configs --zookeeper zookeeper:2181 --alter --add-config 'SCRAM-SHA-512=[password=admin-secret]' --entity-type users --entity-name admin
+```
+
+There might be exceptions, but the last line is the most important:
+
+```shell
+Warning: --zookeeper is deprecated and will be removed in a future version of Kafka.
+Use --bootstrap-server instead to specify a broker to connect to.
+WARN SASL configuration failed: javax.security.auth.login.LoginException: No JAAS configuration section named 'Client' was found in specified JAAS configuration file: '/etc/kafka/secrets/kafka_server_jaas.conf'. Will continue connection to Zookeeper server without SASL authentication, if Zookeeper server allows it. (org.apache.zookeeper.ClientCnxn)
+ERROR [ZooKeeperClient] Auth failed. (kafka.zookeeper.ZooKeeperClient)
+Completed updating config for entity: user-principal 'admin'.
+```
+
+### Common Kafka Properties Settings
+
+```java
+public enum TestCommonKafkaProperties {
+
+	BOOTSTRAP_SERVERS_CONFIG("localhost:29092"),
+	SECURITY_PROTOCOL_CONFIG("SASL_PLAINTEXT"),
+	SASL_MECHANISM("SCRAM-SHA-512"),
+	SASL_JAAS_CONFIG("org.apache.kafka.common.security.scram.ScramLoginModule required username=\"admin\" password=\"admin-secret\";");
+
+	private final String value;
+
+	TestCommonKafkaProperties(String value) {
+		this.value = value;
+	}
+
+	public String value() {
+		return value;
+	}
+}
+```
+
+### Admin
+
+```java
+adminClient = AdminClient.create(Map.of(
+		CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS_CONFIG.value(),
+		CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, SECURITY_PROTOCOL_CONFIG.value(),
+		SaslConfigs.SASL_MECHANISM, SASL_MECHANISM.value(),
+		SaslConfigs.SASL_JAAS_CONFIG, SASL_JAAS_CONFIG.value()
+));
+```
+
+### Producer
+
+```java
+Map<String, Object> producerConfiguration = Map.of(
+		CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS_CONFIG.value(),
+		ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringSerializer",
+		ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringSerializer",
+		// Security configs
+		CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, SECURITY_PROTOCOL_CONFIG.value(),
+		SaslConfigs.SASL_MECHANISM, SASL_MECHANISM.value(),
+		SaslConfigs.SASL_JAAS_CONFIG, SASL_JAAS_CONFIG.value()
+);
+```
+
+### Consumer
+
+```java
+Map<String, Object> consumerConfiguration = Map.of(
+		CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS_CONFIG.value(),
+		ConsumerConfig.GROUP_ID_CONFIG, "groupsecurity",
+		ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringDeserializer",
+		ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringDeserializer",
+		// Security configs
+		CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, SECURITY_PROTOCOL_CONFIG.value(),
+		SaslConfigs.SASL_MECHANISM, SASL_MECHANISM.value(),
+		SaslConfigs.SASL_JAAS_CONFIG, SASL_JAAS_CONFIG.value()
+);
+```
+
+Running TestMe class yields:
+
+```
+**********
+topic = hello.world, partition = 1, offset = 0, customer = null, message = hello
+**********
+----------
+Closing consumer
+----------
+Deleting topic
+```
+
+
+
+
+
+
+
+
+
+
+
 
 
 
