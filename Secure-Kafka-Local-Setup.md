@@ -1631,11 +1631,33 @@ Encryption steps:
 2^5(mod14) = 32(mod14) = 4
 ```
 
+Decryption steps:
+* Raise 4 to the power of 11 (first number from private pair) and take the mod using the second number 14.
 
+```math
+4^11(mod14) = 4194304(mod14) = 2
+```
 
+The decrypted message is 2 -> B.
 
+### How pairs are generated
 
+Naturally, the next question - how private and public key pairs are generated? Here is the sequence of  actions that are required to take to find in this example used private and public key pairs (as noted earlier, asymmetric algorithms are based on number theory hence the required steps are more advanced in nature):
+* Prime numbers are selected. In real world scenario, selected prime numbers are very long. However in this example, we’ll use one of firstly encountered prime numbers - 2 and 7.
+* Product of 2 and 7 = 14. This number is the module in both public and private keys.
+* Apply the phi function (also known as Euler's totient function) to the module part. Phi function result is calculated like so:
+  * List all numbers between 1 and 14 - 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14.
+  * Cross out all common factors (can divide exactly without leaving any remainder) of 2 in the list. The remaining list - 1, 3, 5, 7, 9, 11, 13.
+  * Cross out all common factors of 7 in the list. The remaining list - 1, 3, 5, 9, 11, 13. These numbers are called co-prime with number 14.
+  * The answer to phi function is 6 (the number of co-prime numbers listed previously - 1, 3, 5, 9, 11, 13).
+* The public key (let’s call it e for encryption) has to adhere to two properties:
+  * 1 < e < phi (which in our example is 6). In this case it is 2, 3, 4, 5.
+  * e has to be a co-prime with phi (from step 3) and 14 (from step 2). The only common co-prime number of 6 and 14 is 5. You can use this online co-prime calculator to recheck. From this we have our public key pair: [5, 14]. Reminder, 14 was calculated from step 2.
+* The private key (let’s call it d for decryption) is calculated from formula: 
 
+```math
+de(modphi(N)) = 1
+```
 
 
 
