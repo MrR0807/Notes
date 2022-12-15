@@ -445,6 +445,434 @@ public class TestCallback implements Callback {
 }
 ```
 
+```java
+public void handle(Callback[] callbacks) throws IOException, UnsupportedCallbackException {
+	for (Callback callback : callbacks) {
+		if (callback instanceof TestCallback tc) {
+			tc.setUsername("john");
+			tc.setPassword("jonhspassword");
+		} else {
+			throw new UnsupportedCallbackException(callback, "Unrecognized Callback");
+		}
+	}
+}
+```
+
+And in this case, when `CallbackHandler` is invoked, and it is of our type `TestCallback`, I just set the username and password to specific values. Why there is a loop will be addressed in follow sections.
+
+##### Summary
+
+We have established several things from main test class called JaasPlaysJazz:
+* When application starts it initialises `LoginContext` which underneath searches for `AppConfigurationEntry` entries (there can be multiple authentication `LoginModules`) for speficied name. In this case `Jaashands` which was defined in JAAS file;
+* `CallbackHandler` sole purpose is to provide `LoginModule` with credentials. Depending on application, it can do it numerious ways. In this example I’ve just hardcode those credentials as if they were provided by the user;
+* `loginContext.login()` call starts the authentication logic which is covered in next section;
+* After successful `loginContext.login()`, I can access Subject which contains Principal entries.
+
+#### `LoginModule`
+
+Implementations of `LoginModules` provide the core of JAAS authentication. Though `LoginContext` provides the client interface for JAAS authentication, `LoginContext` acts as a controller, delegating the majority of the authentication work and decisions to the list of `LoginModules` configured.
+
+The job of a `LoginModule` is simple: use credentials to verify a Subject's identity and then associate the appropriate `Principals` and credentials with that `Subject`.
+
+##### LoginModule Life-Cycle
+
+Below is an activity diagram of a `javax.security.auth.spi.LoginModule` implementations lifecycle:
+
+First, the `LoginModule` implementation's default constructor is used to create a new instance of the `LoginModule`. Because the default, no argument constructor is used, another method is used to pass in the objects the `LoginModule` will use. This is done with the `initialize()` method, which takes the `Subject` to be authenticated, the `Callbackhandler` to use to gather credentials, a `Map` used as a session shared by all the `LoginModules` in use, and a `Map` of configuration options specified by the `Configuration`.
+
+When the LoginContext executes a LoginModule's login() method, the LoginModule does whatever is needed to authenticate the Subject. This is the first phase of the two-phase process. If the login attempt succeeds, true to returned; if it failed, a javax.security.auth.LoginException, or one of it's sub-classes, is thrown; if the LoginModule should be ignored [for what reason?], false is returned. Each LoginModule stores whether is succeeded or not as private state, accessible by the other methods during the authorization lifecycle.
+
+Notice that Principals and Credentials are not yet added to the Subject in the login() method.
+
+Once all the LoginModules required to be successful have succeeded, the LoginContext controller calls the commit() method on each LoginModule. In the commit() method, the LoginModule will access the private success state. If authentication succeeded, the commit() method adds Principals and Credentials to the Subject and does any cleanup needed; if unsuccessful, just clean-up is done.
+
+If login wasn’t successful, the LoginModule's abort() method is called instead of commit(). Execution of the abort() method signals that the LoginModules should cleanup any state kept, and assure that no Principals or Credentials are added to the Subject.
+
+The full TestLoginModule class:
+
+```java
+public class TestLoginModule implements LoginModule {
+
+	private Subject subject;
+	private CallbackHandler callbackHandler;
+
+	// the authentication status
+	private boolean succeeded = false;
+	private boolean commitSucceeded = false;
+
+	// username and password
+	private String username;
+	private String password;
+
+	private TestPrincipal principal;
+
+
+	@Override
+	public void initialize(Subject subject, CallbackHandler callbackHandler, Map<String, ?> sharedState, 
+						   Map<String, ?> options) {
+
+		this.subject = subject;
+		this.callbackHandler = callbackHandler;
+	}
+
+	@Override
+	public boolean login() throws LoginException {
+
+		if (callbackHandler == null) {
+			throw new LoginException("No CallbackHandler available to garner authentication 
+										information from the user");
+		}
+
+		final var testCallback = new TestCallback();
+		var callbacks = new Callback[]{testCallback};
+
+		try {
+			callbackHandler.handle(callbacks);
+			this.username = testCallback.getUsername();
+			this.password = testCallback.getPassword();
+		} catch (IOException | UnsupportedCallbackException e) {
+			throw new LoginException("Error during login");
+		}
+
+
+		//verify credentials
+		if (this.username.equals("john") && this.password.equals("jonhspassword")) {
+			this.succeeded = true;
+			System.out.println("Authenticated successfully");
+			return true;
+		} else {
+			this.username = null;
+			this.password = null;
+			this.succeeded = false;
+			throw new FailedLoginException("Incorrect credentials");
+		}
+	}
+
+	@Override
+	public boolean commit() {
+		if (succeeded == false) {
+			return false;
+		} else {
+			principal = new TestPrincipal(username);
+			if (!subject.getPrincipals().contains(principal)) {
+				subject.getPrincipals().add(principal);
+				System.out.println("Principal added");
+			}
+
+			username = null;
+			password = null;
+			commitSucceeded = true;
+			return true;
+		}
+	}
+
+	@Override
+	public boolean abort() throws LoginException {
+		if (succeeded == false) {
+			return false;
+		} else if (succeeded == true && commitSucceeded == false) {
+			this.succeeded = false;
+			this.username = null;
+			this.password = null;
+			this.principal = null;
+		} else {
+			logout();
+		}
+
+		System.out.println("Abort");
+
+		return true;
+	}
+
+	@Override
+	public boolean logout() {
+		subject.getPrincipals().remove(principal);
+		this.succeeded = false;
+		this.commitSucceeded = false;
+		this.username = null;
+		this.password = null;
+		this.principal = null;
+
+		System.out.println("Logout");
+
+		return true;
+	}
+}
+```
+
+#### Connecting `TestLoginModule` with `JaasPlaysJazz`
+
+In this section I will go step by step and show how everything interacts.
+
+First step in `JaasPlaysJazz`.
+
+```java
+final var loginContext = new LoginContext("Jaashands", new CallbackHandler() {})
+```
+
+As already established, `LoginContext` searches for all possible implementations of `LoginModule` with name `Jaashands`. Now regarding `new CallbackHandler()`, this handler is passed to `TestLoginModule` `initialize` method: 
+```java
+public void initialize(Subject subject, CallbackHandler callbackHandler, Map<String, ?> sharedState, 
+						   Map<String, ?> options) {
+
+		this.subject = subject;
+		this.callbackHandler = callbackHandler;
+	}
+```
+
+When in `JaasPlaysJazz` `loginContext.login();` is called, the full `LoginModule` lifecycle starts. Firstly, the `login()` method is called:
+
+```java
+public boolean login() throws LoginException {
+
+		if (callbackHandler == null) {
+			throw new LoginException("No CallbackHandler available to garner authentication 
+										information from the user");
+		}
+
+		final var testCallback = new TestCallback();
+		var callbacks = new Callback[]{testCallback};
+
+		try {
+			callbackHandler.handle(callbacks);
+			this.username = testCallback.getUsername();
+			this.password = testCallback.getPassword();
+		} catch (IOException | UnsupportedCallbackException e) {
+			throw new LoginException("Error during login");
+		}
+
+
+		//verify credentials
+		if (this.username.equals("john") && this.password.equals("jonhspassword")) {
+			this.succeeded = true;
+			System.out.println("Authenticated successfully");
+			return true;
+		} else {
+			this.username = null;
+			this.password = null;
+			this.succeeded = false;
+			throw new FailedLoginException("Incorrect credentials");
+		}
+	}
+```
+
+In this method, I initialise the data carrier `TestCallback`, then I call `callbackHandler` which was initialised in `initialize` method. `CallbackHandler` is defined in `JaasPlaysJazz`. I could essentially exchange these lines:
+
+```java
+callbackHandler.handle(callbacks);
+this.username = testCallback.getUsername();
+this.password = testCallback.getPassword();
+```
+
+```java
+for (Callback callback : callbacks) {
+	if (callback instanceof TestCallback tc) {
+		tc.setUsername("john");
+		tc.setPassword("jonhspassword");
+	} else {
+		throw new UnsupportedCallbackException(callback, "Unrecognized Callback");
+	}
+}
+this.username = testCallback.getUsername();
+this.password = testCallback.getPassword();
+```
+
+Once the `username` and `password` is provided by `callbackHandler`, I can authenticate whether the user is correct. In this section, if this was a web application, I could search for username in the database and validate password against the entry in database. However, in this example I’m just hardcoding validation with `if (this.username.equals("john") && this.password.equals("jonhspassword"))`.
+
+Next step is `commit()` which gets executed as of two-phase process already explained. The key thing to address is that only if previous step was successful, `commit()` should be executed:
+
+```java
+public boolean commit() {
+	if (succeeded == false) {
+		return false;
+	} else {
+		principal = new TestPrincipal(username);
+		if (!subject.getPrincipals().contains(principal)) {
+			subject.getPrincipals().add(principal);
+			System.out.println("Principal added");
+		}
+
+		username = null;
+		password = null;
+		commitSucceeded = true;
+		return true;
+	}
+}
+```
+
+`TestPrincipal` is a simple data class:
+
+```java
+public record TestPrincipal(String name) implements Principal {
+
+   @Override   
+   public String getName() {
+      return name;
+   }
+}
+```
+
+The remaining actions is to add `Principal` to `Subject`. What you add in this method to `Subject`, is later on accessible in `JaasPlaysJazz` class:
+
+```java
+final var subject = loginContext.getSubject();
+final var principals = subject.getPrincipals();
+System.out.println("Size of principals: " + principals.size());
+```
+
+The two remaining methods were explained and there is no need to deep dive into them.
+
+#### Running the example
+
+As stated, there are several ways how to provide LoginModule information. The main and recommended way is via JAAS config file. Those config files have to be defined via VM variable when launching application as so:
+
+```shell
+-Djava.security.auth.login.config=security/test_jaas.conf
+```
+
+Or `java.security.auth.login.config` can be set programmatically:
+
+```java
+System.setProperty("java.security.auth.login.config", "security/test_jaas.conf");
+```
+
+Or as already defined, via initialisation of `Configuration`:
+
+```java
+final var config = new Configuration() {
+
+   @Override   
+   public AppConfigurationEntry[] getAppConfigurationEntry(String name) {
+      return new AppConfigurationEntry[]{
+            new AppConfigurationEntry(TestLoginModule.class.getName(),
+                  AppConfigurationEntry.LoginModuleControlFlag.REQUIRED,
+                  Map.of())
+      };
+   }
+};
+Configuration.setConfiguration(config);
+```
+
+## Example Two
+
+In this example I’ll skip explaining concepts which were already discussed or showcasing the same code. If there are no examples of the code, that means it is completely the same as from previous example.
+
+### JAAS config file
+
+```
+JaashandsExampleTwo {
+  lt.test.testjaas.TestLoginModule required debug="yesplease";
+};
+```
+
+As you can see, I’ve added optional `ModuleOptions` to showcase how they are provided to `LoginModule`.
+
+### Main test class
+
+```java
+final var loginContext = new LoginContext("JaashandsExampleTwo", callbacks -> {
+   for (Callback callback : callbacks) {
+      // prompt the user for a username      
+      if (callback instanceof NameCallback nameCallback) {
+         System.out.print(nameCallback.getPrompt());
+         nameCallback.setName((new BufferedReader(new InputStreamReader(System.in))).readLine());
+      }
+      // prompt the user for sensitive information      
+      else if (callback instanceof PasswordCallback passwordCallback) {
+         System.out.print(passwordCallback.getPrompt());
+         passwordCallback.setPassword((new BufferedReader(new InputStreamReader(System.in))).readLine().toCharArray());
+      } else {
+         throw new UnsupportedCallbackException(callback, "Unrecognized Callback");
+      }
+   }
+});
+```
+
+The `CallbackHandler` now contains two different `Callback`. Both of them are from Java library:
+* `javax.security.auth.callback.NameCallback`;
+* `javax.security.auth.callback.PasswordCallback`.
+
+The classes are farely trivial (they were cleaned up from javadoc and unnecessary properties):
+
+```java
+public class NameCallback implements Callback {
+
+    private String prompt;
+    private String inputName;
+
+    public NameCallback(String prompt) {
+        if (prompt == null || prompt.isEmpty())
+            throw new IllegalArgumentException();
+        this.prompt = prompt;
+    }
+
+    public String getPrompt() {
+        return prompt;
+    }
+
+    public void setName(String name) {
+        this.inputName = name;
+    }
+
+    public String getName() {
+        return inputName;
+    }
+}
+```
+
+```java
+public class PasswordCallback implements Callback {
+
+    private String prompt;
+    private boolean echoOn;
+    private char[] inputPassword;
+
+    public PasswordCallback(String prompt, boolean echoOn) {
+        if (prompt == null || prompt.isEmpty())
+            throw new IllegalArgumentException();
+
+        this.prompt = prompt;
+        this.echoOn = echoOn;
+    }
+
+    public String getPrompt() {
+        return prompt;
+    }
+
+    public boolean isEchoOn() {
+        return echoOn;
+    }
+
+    public void setPassword(char[] password) {
+        this.inputPassword = (password == null ? null : password.clone());
+    }
+
+    public char[] getPassword() {
+        return (inputPassword == null ? null : inputPassword.clone());
+    }
+
+    public void clearPassword() {
+        if (inputPassword != null) {
+            for (int i = 0; i < inputPassword.length; i++)
+                inputPassword[i] = ' ';
+        }
+    }
+}
+```
+
+They are essentially the same as what `TestCallback`, but just split into two classes. Also, instead of hardcoding these values, we’re asking for user’s input via `new BufferedReader(new InputStreamReader(System.in))).readLine()`. When lauching the application you will be prompted with two inputs.
+
+### LoginModule
+
+
+
+
+
+
+
+
+
+
 
 
 
