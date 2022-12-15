@@ -2252,57 +2252,178 @@ The same as in SSL Kafka - Without CA.
 
 # SASL SSL Kafka
 
+The last part is to use both SASL and SSL/TLS with Kafka. There won’t be anything new what wasn’t covered in previous sections. It just a matter of joining everything into one coherent unit.
 
+## Docker Compose Yaml
 
+```yaml
+version: '3'
+services:
 
+  zookeeper:
+    image: zookeeper:3.6
+    ports:
+      - "2181:2181"
 
+  kafka:
+    image: confluentinc/cp-kafka:6.0.9
+    ports:
+      - "29092:29092"
+      - "9092:9092"
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_LISTENERS: SASL_SSL://0.0.0.0:29092, PLAINTEXT://kafka:9092
+      KAFKA_ADVERTISED_LISTENERS: SASL_SSL://localhost:29092, PLAINTEXT://kafka:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: SASL_SSL:SASL_SSL, PLAINTEXT:PLAINTEXT
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'false'
+      KAFKA_DELETE_TOPIC_ENABLE: 'true'
+      KAFKA_BROKER_ID: 0
+      # Otherwise you'll get Number of alive brokers '1' does not meet the required replication
+      # factor '3' for the offsets topic
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
 
+      # Security settings
+      ## SSL settings
+      KAFKA_SSL_KEYSTORE_FILENAME: kafka-broker-identity.jks
+      KAFKA_SSL_KEYSTORE_CREDENTIALS: password.txt
+      KAFKA_SSL_KEY_CREDENTIALS: key-password.txt
+      # Turns off hostname verification
+      KAFKA_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM: " "
+      KAFKA_SSL_CLIENT_AUTH: none
+      KAFKA_SSL_KEYSTORE_TYPE: PKCS12
+      
+      ## SASL settings
+      ZOOKEEPER_SASL_ENABLED: "false"
+      KAFKA_SASL_ENABLED_MECHANISMS: SCRAM-SHA-512
+      # inter.broker.listener.name must be a listener name defined in advertised.listeners
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
 
+      # To add VM options to Kafka
+      KAFKA_OPTS: "-Djavax.net.debug=ssl,handshake -Djava.security.auth.login.config=/etc/kafka/secrets/kafka_server_jaas.conf"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./security:/etc/kafka/secrets
 
+  # GUI for Kafka
+  kafdrop:
+    image: obsidiandynamics/kafdrop
+    ports:
+      - 9100:9000
+    environment:
+      - KAFKA_BROKERCONNECT=kafka:9092
+      - JVM_OPTS=-Xms32M -Xmx64M
+    depends_on:
+      - kafka
+```
 
+Both docker compose files from SASL SCRAM-SHA-512 Kafka  and SSL Kafka - Without CA or SSL Kafka - With CA were merged. The only key difference is that instead of  SASL or SSL in listeners/protocol map - SASL_SSL is used.
 
+## Generating Certificates, Key Pairs, Keystore and Truststore
 
+Commands can be used from either SSL Kafka - Without CA or SSL Kafka - With CA. I will not repeat that information here.
 
+## SASL Configuration
 
+Follow SASL SCRAM-SHA-512 Kafka to correctly setup SASL configurations.
 
+## Starting Docker Compose
 
+During in beginning of Kafka container start up, you should see both SASL and SSL enabled:
 
+```shell
+===> Configuring ...
+SSL is enabled.
+SASL is enabled.
+===> Running preflight checks ...
+...
+...
+started (kafka.server.KafkaServer)
+```
 
+## Common Kafka Properties Settings
 
+Again, Kafka properties should be merged from SASL and SSL/TLS documentations.
 
+```java
+public enum TestCommonKafkaProperties {
 
+	BOOTSTRAP_SERVERS_CONFIG("localhost:29092"),
+	SECURITY_PROTOCOL_CONFIG("SASL_SSL"),
+	SSL_TRUSTSTORE_LOCATION_CONFIG(<Absolute Path to client truststore>),
+	SSL_TRUSTSTORE_PASSWORD_CONFIG("truststorepass"),
+	SSL_ENDPOINT_IDENTIFICATION_ALGORITHM_CONFIG(" "),
+	SASL_MECHANISM("SCRAM-SHA-512"),
+	SASL_JAAS_CONFIG("org.apache.kafka.common.security.scram.ScramLoginModule required username=\"admin\" password=\"admin-secret\";");
 
+	private final String value;
 
+	TestCommonKafkaProperties(String value) {
+		this.value = value;
+	}
 
+	public String value() {
+		return value;
+	}
+}
+```
 
+## Admin
 
+```java
+adminClient = AdminClient.create(Map.of(
+		CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS_CONFIG.value(),
+		CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, SECURITY_PROTOCOL_CONFIG.value(),
+		SslConfigs.SSL_TRUSTSTORE_LOCATION_CONFIG, SSL_TRUSTSTORE_LOCATION_CONFIG.value(),
+		SslConfigs.SSL_TRUSTSTORE_PASSWORD_CONFIG, SSL_TRUSTSTORE_PASSWORD_CONFIG.value(),
+		SslConfigs.SSL_ENDPOINT_IDENTIFICATION_ALGORITHM_CONFIG, SSL_ENDPOINT_IDENTIFICATION_ALGORITHM_CONFIG.value(),
+		SaslConfigs.SASL_MECHANISM, SASL_MECHANISM.value(),
+		SaslConfigs.SASL_JAAS_CONFIG, SASL_JAAS_CONFIG.value()
+));
+```
 
+## Producer
 
+```java
+Map<String, Object> producerConfiguration = Map.of(
+		CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS_CONFIG.value(),
+		ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringSerializer",
+		ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringSerializer",
+		// Security configs
+		CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, SECURITY_PROTOCOL_CONFIG.value(),
+		SslConfigs.SSL_TRUSTSTORE_LOCATION_CONFIG, SSL_TRUSTSTORE_LOCATION_CONFIG.value(),
+		SslConfigs.SSL_TRUSTSTORE_PASSWORD_CONFIG, SSL_TRUSTSTORE_PASSWORD_CONFIG.value(),
+		SslConfigs.SSL_ENDPOINT_IDENTIFICATION_ALGORITHM_CONFIG, SSL_ENDPOINT_IDENTIFICATION_ALGORITHM_CONFIG.value(),
+		SaslConfigs.SASL_MECHANISM, SASL_MECHANISM.value(),
+		SaslConfigs.SASL_JAAS_CONFIG, SASL_JAAS_CONFIG.value()
+);
+```
 
+## Consumer
 
+```java
+Map<String, Object> consumerConfiguration = Map.of(
+		CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS_CONFIG.value(),
+		ConsumerConfig.GROUP_ID_CONFIG, "groupsecurity",
+		ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringDeserializer",
+		ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringDeserializer",
+		// Security configs
+		CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, SECURITY_PROTOCOL_CONFIG.value(),
+		SslConfigs.SSL_TRUSTSTORE_LOCATION_CONFIG, SSL_TRUSTSTORE_LOCATION_CONFIG.value(),
+		SslConfigs.SSL_TRUSTSTORE_PASSWORD_CONFIG, SSL_TRUSTSTORE_PASSWORD_CONFIG.value(),
+		SslConfigs.SSL_ENDPOINT_IDENTIFICATION_ALGORITHM_CONFIG, SSL_ENDPOINT_IDENTIFICATION_ALGORITHM_CONFIG.value(),
+		SaslConfigs.SASL_MECHANISM, SASL_MECHANISM.value(),
+		SaslConfigs.SASL_JAAS_CONFIG, SASL_JAAS_CONFIG.value()
+);
+```
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+```
+**********
+topic = hello.world, partition = 1, offset = 0, customer = null, message = hello
+**********
+----------
+Closing consumer
+----------
+Deleting topic
+```
