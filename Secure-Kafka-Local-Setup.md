@@ -1203,15 +1203,200 @@ try {
 ...
 ```
 
+# SASL PLAIN Kafka
+
+Kafka protocol supports authentication using SASL and has built-in support for several commonly used SASL mechanisms. SASL can be combined with TLS as the transport layer to provide a secure channel with authentication and encryption. SASL authentication is performed through a sequence of server challenges and client-responses where the SASL mechanism defines the sequence and wire format of challenges and responses. Kafka brokers support the following SASL mechanisms out-of-the box with customizable callbacks to integrate with existing security infrastructure.
+* **GSSAPI**: Kerberos authentication is supported using SASL/GSSAPI and can be used to integrate with Kerberos servers like Active Directory or OpenLDAP.
+* **PLAIN**: User name/password authentication that is typically used with a custom server-side callback to verify passwords from an external password store.
+* **SCRAM-SHA-256 and SCRAM-SHA-512**: User name/password authentication available out-of-the-box with Kafka without the need for additional password stores.
+* **OAUTHBEARER**: Authentication using OAuth bearer tokens that is typically used with custom callbacks to acquire and validate tokens granted by standard OAuth servers.
+
+Kafka uses Java Authentication and Authorization Service (JAAS) for configuration of SASL. The configuration option `sasl.jaas.config` contains a single JAAS configuration entry that specifies a login module and its options.
+
+JAAS configuration may also be specified in configuration files using the Java system property `java.security.auth.login.config`.
+
+## Docker Compose Yaml
+
+When it comes to docker-compose.yml there are [nuances with Kafka Docker Image](https://github.com/confluentinc/cp-docker-images/blob/fec6d0a8635cea1dd860e610ac19bd3ece8ad9f4/debian/kafka/include/etc/confluent/docker/configure). In SASL case, I have to define `KAFKA_OPTS` `java.security.auth.login.config` path otherwise container will not start. The path points to jaas config file.
+
+Also, disabling SASL between Zookeeper and Kafka as this is not the goal of documentation and just complicates the setup. Furthermore, defining inter broker communication as PLAIN, due to ease of setup.
+
+```yaml
+version: '3'
+services:
+
+  zookeeper:
+    image: zookeeper:3.6
+    ports:
+      - "2181:2181"
+
+  kafka:
+    image: confluentinc/cp-kafka:6.0.9
+    ports:
+      - "29092:29092"
+      - "9092:9092"
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_LISTENERS: SASL_PLAINTEXT://0.0.0.0:29092, PLAINTEXT://kafka:9092
+      KAFKA_ADVERTISED_LISTENERS: SASL_PLAINTEXT://localhost:29092, PLAINTEXT://kafka:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: SASL_PLAINTEXT:SASL_PLAINTEXT, PLAINTEXT:PLAINTEXT
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'false'
+      KAFKA_DELETE_TOPIC_ENABLE: 'true'
+      KAFKA_BROKER_ID: 0
+      # Otherwise you'll get Number of alive brokers '1' does not meet the required replication factor '3' for the offsets topic
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+
+      # Security settings
+      ZOOKEEPER_SASL_ENABLED: "false"
+      # inter.broker.listener.name must be a listener name defined in advertised.listeners
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_SASL_ENABLED_MECHANISMS: PLAIN
+
+      # To add VM options to Kafka
+      KAFKA_OPTS: "-Djava.security.auth.login.config=/etc/kafka/secrets/kafka_server_jaas.conf"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./security:/etc/kafka/secrets
+```
+
+In order to mount `kafka_server_jaas.conf` to Kafka container, create:
+
+```shell
+mkdir security &&
+touch security/kafka_server_jaas.conf
+```
+
+The content of `kafka_server_jaas.conf`:
+
+```
+KafkaServer {
+  org.apache.kafka.common.security.plain.PlainLoginModule required
+  username="admin"
+  password="admin-secret"
+  user_admin="admin-secret";
+};
+Client{};
+```
+
+Each KafkaServer/Broker uses the `KafkaServer` section in the JAAS file to provide SASL configuration options for the broker, including any SASL client connections made by the broker for inter-broker communications.
+
+`Client` section is for authenticating a SASL connection with ZooKeeper, and also to allow brokers to set a SASL ACL on ZooKeeper nodes. `Client` is empty, because in this section communication with Zookeeper is `PLAINTEXT`.
+
+An alternative content of `kafka_server_jaas.conf` where user `john` instead of `admin`:
+
+```
+KafkaServer {
+  org.apache.kafka.common.security.plain.PlainLoginModule required
+  username="john"
+  password="thisisjohnsecret"
+  user_john="thisisjohnsecret";
+};
+Client{};
+```
+
+Start docker-compose:
+
+```
+docker-compose up -d
+docker logs <kafka-container>
+```
+
+Console output from Kafka container:
+```
+SASL is enabled.
+===> Running preflight checks ...
+...
+...
+started (kafka.server.KafkaServer)
+```
+
+## Common Kafka Properties Settings
+
+```java
+public enum TestCommonKafkaProperties {
+
+	BOOTSTRAP_SERVERS_CONFIG("localhost:29092"),
+	SECURITY_PROTOCOL_CONFIG("SASL_PLAINTEXT"),
+	SASL_MECHANISM("PLAIN"),
+	SASL_JAAS_CONFIG("org.apache.kafka.common.security.plain.PlainLoginModule required username=\"admin\" password=\"admin-secret\";");
+    //For user jonh
+	//SASL_JAAS_CONFIG("org.apache.kafka.common.security.plain.PlainLoginModule required username=\"john\" password=\"thisisjohnsecret\";");
+	
+	
+
+	private final String value;
+
+	TestCommonKafkaProperties(String value) {
+		this.value = value;
+	}
+
+	public String value() {
+		return value;
+	}
+}
+```
+
+## Admin
+
+```java
+adminClient = AdminClient.create(Map.of(
+		CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS_CONFIG.value(),
+		// Security configs
+		CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, SECURITY_PROTOCOL_CONFIG.value(),
+		SaslConfigs.SASL_MECHANISM, SASL_MECHANISM.value(),
+		SaslConfigs.SASL_JAAS_CONFIG, SASL_JAAS_CONFIG.value()
+));
+```
 
 
+## Producer
 
+```java
+Map<String, Object> producerConfiguration = Map.of(
+		CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS_CONFIG.value(),
+		ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringSerializer",
+		ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringSerializer",
+		// Security configs
+		CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, SECURITY_PROTOCOL_CONFIG.value(),
+		SaslConfigs.SASL_MECHANISM, SASL_MECHANISM.value(),
+		SaslConfigs.SASL_JAAS_CONFIG, SASL_JAAS_CONFIG.value()
+);
+```
 
+## Consumer
 
+```java
+Map<String, Object> consumerConfiguration = Map.of(
+		CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS_CONFIG.value(),
+		ConsumerConfig.GROUP_ID_CONFIG, "groupsecurity",
+		ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringDeserializer",
+		ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringDeserializer",
+		// Security configs
+		CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, SECURITY_PROTOCOL_CONFIG.value(),
+		SaslConfigs.SASL_MECHANISM, SASL_MECHANISM.value(),
+		SaslConfigs.SASL_JAAS_CONFIG, SASL_JAAS_CONFIG.value()
+);
+```
 
+Running TestMe class yields:
 
+```
+**********
+topic = hello.world, partition = 1, offset = 0, customer = null, message = hello
+**********
+----------
+Closing consumer
+----------
+Deleting topic
+```
 
+Changing SASL_JAAS_CONFIG content in TestCommonKafkaProperties would fail Authentication:
 
+```
+SaslAuthenticationException: Authentication failed: Invalid username or password
+```
 
 
 
