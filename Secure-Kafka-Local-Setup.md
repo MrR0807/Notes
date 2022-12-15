@@ -1659,11 +1659,22 @@ Naturally, the next question - how private and public key pairs are generated? H
 de(modphi(N)) = 1
 ```
 
+We have e = 5 (from step 4), then we have phi (N) =  6 (from step 3), hence the function looks like so:
 
+```math
+5d(mod6) = 1
+```
 
+By just setting d incrementally, we can see how the results change:
+* when d = 1, then 5 x 1 mod 6 = 5
+* when d = 2, then 5 x 2 mod 6 = 4
+* when d = 3, then 5 x 3 mod 6 = 3
+* when d = 4, then 5 x 4 mod 6 = 2
+* when d = 5, then 5 x 5 mod 6 = 1 (this could be a first part of the private key)
+….
+* when d = 11, then 5 x 11 mod 6 = 1 (this is our key from example)
 
-
-
+# SSL Kafka - Without CA
 
 
 
