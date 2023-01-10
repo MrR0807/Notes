@@ -1,3 +1,7 @@
+# Useful links
+
+https://krishnakrmahto.com/configure-kafka-for-high-throughput
+
 # Broker Properties
 
 ## High
