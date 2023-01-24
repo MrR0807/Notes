@@ -30,7 +30,15 @@ However, somebody has a problem which might be a problem to me:
 > I have completely agreed with you that .crc file is good for data integrity and it is not adding any overhead on NN. Still, there are few cases where we need to avoid .crc file, for e.g. in my case I have mounted S3 on S3FS and saving data from rdd to mounting point. It is creating lots of .crc file on S3 which we don't require, to overcome this we need to write an extra utility to filter out all the .crc file which degrade our performance. The interesting observation is that there is a .crc file for `_SUCCESS` file too. and that .crc files is 8 bytes of size while the `_SUCCESS` file is 0 byte. If we are having 1000 million part files than we are using extra `1000M*12` bytes.
 
 
+# From JSON to Parquet
 
+## Dates/Timestamps
+
+What format should we expect: https://stackoverflow.com/questions/10286204/what-is-the-right-json-date-format.
+
+# Apache Avro
+
+https://avro.apache.org/docs/1.11.1/getting-started-java/
 
 
 
