@@ -18,6 +18,8 @@ Maybe helpful in order to parse Json into Avro and then to Parquet?
 
 `Schemas` also in `https://github.com/apache/parquet-mr/`.
 
+**Answer**: It uses the same kite-sdk to infer Avro schema.
+
 
 # crc files
 
