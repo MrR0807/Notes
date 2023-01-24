@@ -1,13 +1,23 @@
 # Questions to answer
 
 * `crc` files (see crc files section). Should we filter them out when uploading to S3?
-* Using `parquet-cli`, there is no possibility to see parquet schema? Only in avro? `parquet schema` - Print the Avro schema for a file.
+* Why everything is firstly converted to Avro and only then to Parquet? Why not convert directly to Parquet schema?
+* Create an example with using parquet-cli `Schemas` class;
 * 
 
 
-# Parquet file inspection
+# Parquet CLI
+
+## Parquet file inspection
 
 There is an IntelliJ plugin which allows to inspect parquet files' schema and data by drag and drop. The plugin is called `Avro and Parquet Viewer`. For CLI experience use `parquet-cli` - not `parquet-tools` which is deprecated. You won't be able to install it on Mac via brew. However, there are old stackoverflow answers like this [one](https://stackoverflow.com/questions/36140264/inspect-parquet-from-command-line) having example with deprecated `parquet-tools`.
+
+## AvroJson
+
+Maybe helpful in order to parse Json into Avro and then to Parquet?
+
+`Schemas` also in `https://github.com/apache/parquet-mr/`.
+
 
 # crc files
 
@@ -26,4 +36,18 @@ However, somebody has a problem which might be a problem to me:
 
 # Sources
 * Hadoop The Definitive Guide, 4th Edition
+* [Parquet Types](https://parquet.apache.org/docs/file-format/types/)
 * [Disabling crc file generation](https://groups.google.com/a/cloudera.org/g/cdk-dev/c/JR45MsLeyTE)
+
+
+
+
+
+
+
+
+
+
+
+
+
