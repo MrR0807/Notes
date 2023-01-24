@@ -20,6 +20,12 @@ Maybe helpful in order to parse Json into Avro and then to Parquet?
 
 **Answer**: It uses the same kite-sdk to infer Avro schema.
 
+# json-avro-converter
+
+There is this library: https://github.com/allegro/json-avro-converter, which can convert Json to Avro, but https://issues.apache.org/jira/browse/CARBONDATA-2627 remove this dependency and provides example without this depedency.
+
+
+
 
 # crc files
 
