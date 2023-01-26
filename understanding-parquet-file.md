@@ -175,9 +175,13 @@ final var schema = new Schema.Parser().parse(schemaString);
 
 I'm sure if I'd spent more time I would find even more different ways to infer Parquet Schema. The problem that there is no straight path to Parquet schema using Java implementation, but only going via already defined encodings (e.g. Protobuf, Avro etc).
 
+#### Data to parquet file
 
+Building Parquet schema has many ways, providing data into Parquet file is no different.
 
+##### Example Parquet Writer
 
+Parquet format Java implementation developers decided not to create a simple, production ready Parquet writer or reader and everything should go through other encodings (e.g. Protobuf, Avro etc.). Well, at least from first glance. However, they've created some example implementations of `ParquerWriter` in [example package](https://github.com/apache/parquet-mr/tree/master/parquet-hadoop/src/main/java/org/apache/parquet/hadoop/example). It is hard to understand how much it 
 
 
 
@@ -317,6 +321,7 @@ public class AmazonS3Sink {
 * Hadoop The Definitive Guide, 4th Edition
 * [Parquet Types](https://parquet.apache.org/docs/file-format/types/)
 * [Parquet Format Github](https://github.com/apache/parquet-format)
+* [Parquet Example Package](https://github.com/apache/parquet-mr/tree/master/parquet-hadoop/src/main/java/org/apache/parquet/hadoop/example)
 * [Disabling crc file generation](https://groups.google.com/a/cloudera.org/g/cdk-dev/c/JR45MsLeyTE)
 * [Amazon S3 AWS SDK Upload Objects](https://docs.aws.amazon.com/AmazonS3/latest/userguide/upload-objects.html)
 * [LocalStack](https://localstack.cloud/)
