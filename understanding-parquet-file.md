@@ -96,7 +96,7 @@ MessageType schema = MessageTypeParser.parseMessageType("""
 
 ##### Infer Parquet Schema from JSON
 
-There are several libraries which does this, and initially I've relied on [kite-sdk](https://github.com/kite-sdk/kite). However, because it depends on older Parquet dependencies, there were incompatibility issues, which could not be solved without ditching the library. The next logic step was to inspect how Parquet itself solves this via `parquet-cli`. 
+There are several libraries which does this, and initially I've relied on [kite-sdk](https://github.com/kite-sdk/kite). However, because it depends on older Parquet dependencies, there were incompatibility issues, which could not be solved without ditching the library. The next logic step was to inspect how Parquet itself solves this via `parquet-cli`. There is command which, according to documentation, "Create a Parquet file from a data file". The class can be found [here](https://github.com/apache/parquet-mr/blob/master/parquet-cli/src/main/java/org/apache/parquet/cli/commands/ConvertCommand.java). Here are the main snippets: 
 
 
 
