@@ -98,6 +98,83 @@ MessageType schema = MessageTypeParser.parseMessageType("""
 
 There are several libraries which does this, and initially I've relied on [kite-sdk](https://github.com/kite-sdk/kite). However, because it depends on older Parquet dependencies, there were incompatibility issues, which could not be solved without ditching the library. The next logic step was to inspect how Parquet itself solves this via `parquet-cli`. There is command which, according to documentation, "Create a Parquet file from a data file". The class can be found [here](https://github.com/apache/parquet-mr/blob/master/parquet-cli/src/main/java/org/apache/parquet/cli/commands/ConvertCommand.java). Here are the main snippets: 
 
+```java
+
+# ConvertCommand
+
+public int run() throws IOException {
+...
+  Schema schema;
+  if (avroSchemaFile != null) {
+    schema = Schemas.fromAvsc(open(avroSchemaFile));
+  } else {
+    schema = getAvroSchema(source);
+  }
+...
+}
+
+# BaseCommand class
+
+protected Schema getAvroSchema(String source) throws IOException {
+    Formats.Format format;
+    try (SeekableInput in = openSeekable(source)) {
+      format = Formats.detectFormat((InputStream) in);
+      in.seek(0);
+
+      switch (format) {
+        case PARQUET:
+          return Schemas.fromParquet(getConf(), qualifiedURI(source));
+        case AVRO:
+          return Schemas.fromAvro(open(source));
+        case TEXT:
+          if (source.endsWith("avsc")) {
+            return Schemas.fromAvsc(open(source));
+          } else if (source.endsWith("json")) {
+            return Schemas.fromJSON("json", open(source));
+          }
+        default:
+      }
+
+      throw new IllegalArgumentException(String.format(
+          "Could not determine file format of %s.", source));
+    }
+  }
+
+# Schemas class
+
+public static Schema fromJSON(String name, InputStream in) throws IOException {
+  return AvroJson.inferSchema(in, name, 20);
+}
+```
+
+To my surpirse, Parquet cli which is in source of parquet format Java implementation firstly converts to Avro schema, and then uses `AvroParquetWriter`. This is very weird. Wouldn't it make more sense to convert directly to Parquet Schema and write using ParquetWriter? Why the extra hop?
+
+Anyway, by adding `parquet-cli` depedency, it is not possible to infer *Avro* schema from *JSON*:
+
+```java
+String json = """
+		{
+			"id": 1,
+			"string": "hello world"
+		}""";
+
+final var byteArrayInputStream = new ByteArrayInputStream(json.getBytes(StandardCharsets.UTF_8));
+Schema avroSchema = Schemas.fromJSON("thisisname", byteArrayInputStream);
+```
+
+##### Infer Parquet Schema from Java Object
+
+There is yet another way to infer Parquet schema and that is using Avro library (org.apache.avro):
+
+```
+final var schemaString = ReflectData.get().getSchema(<Class instance>).toString();
+final var schema = new Schema.Parser().parse(schemaString);
+```
+
+##### Any more? 
+
+I'm sure if I'd spent more time I would find even more different ways to infer Parquet Schema. The problem that there is no straight path to Parquet schema using Java implementation, but only going via already defined encodings (e.g. Protobuf, Avro etc).
+
 
 
 
