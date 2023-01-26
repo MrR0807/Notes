@@ -181,7 +181,49 @@ Building Parquet schema has many ways, providing data into Parquet file is no di
 
 ##### Example Parquet Writer
 
-Parquet format Java implementation developers decided not to create a simple, production ready Parquet writer or reader and everything should go through other encodings (e.g. Protobuf, Avro etc.). Well, at least from first glance. However, they've created some example implementations of `ParquerWriter` in [example package](https://github.com/apache/parquet-mr/tree/master/parquet-hadoop/src/main/java/org/apache/parquet/hadoop/example). It is hard to understand how much it 
+Parquet format Java implementation developers decided not to create a simple, production ready Parquet writer or reader and everything should go through other encodings (e.g. Protobuf, Avro etc.). Well, at least from first glance. However, they've created some example implementations of `ParquerWriter` in [example package](https://github.com/apache/parquet-mr/tree/master/parquet-hadoop/src/main/java/org/apache/parquet/hadoop/example). It is hard to know whether these implementations should be used in production code or not (if I don't want to jump through Avro hoops), but here's the example:
+
+
+```java
+public class Example {
+
+  public static void main(String[] args) throws IOException {
+
+    MessageType schema = MessageTypeParser.parseMessageType("""
+      message Pair {
+	required binary left (UTF8);
+	required binary right (UTF8);
+      }""");
+
+    final var simpleGroup = new SimpleGroup(schema);
+
+    simpleGroup
+	.append("left", "L")
+        .append("right", "R");
+
+    final var out = new ByteArrayOutputStream();
+    final var writer = ExampleParquetWriter
+	.builder(new ParquetBufferedWriter(new BufferedOutputStream(out)))
+	.withType(schema)
+	.build();
+
+    writer.write(simpleGroup);
+    writer.close();
+  }
+}
+```
+
+After close, the data is flushed to `ByteArrayOutputStream` and can be read or outputed into a file/S3.
+
+##### Implementing your own ParquetWriter
+
+##### 
+
+
+##### What is `org.apache.parquet.io.OutputFile` and `ParquetBufferedWriter`
+
+There are two possible outputs for `ParquetWriter` - `org.apache.hadoop.fs.Path`
+
 
 
 
