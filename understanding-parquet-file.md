@@ -65,10 +65,17 @@ SQL database -> Maxwell or Debezium -> Kafka -> Transformer App -> S3
 * CDC
   * How does Maxwell ensure exactly once? There is Github [issue where the resolution](https://github.com/zendesk/maxwell/issues/785) is unclear (was it implemented?);
   * What happens when Maxwell instance restarts? It should maintain somewhere what it managed to send to Kafka. Is it write ahead log? Say Maxwell writes into ahead log that it read X change and sent it to Kafka. What if Kafka does not respond/is dead. Will it retry? What if both die? Will it retry with new Maxwell instance?
-  * Should we use encoding when sending to Kafka from Maxwell (
+  * Should we use encoding when sending to Kafka from Maxwell (Avro, Protobuf etc)?
+  * Procedure how Maxwell will be introduce into new MySQL instances and already existing ones?
 * Kafka
   * If we have several partitions and several consumers, how will we ensure order of statements?
   * 
+
+
+* General observatios about the whole flow
+  * A very rigid and clear process of creating new tables/new schemas/new tenants/new microservices/extracting existing capabilities into microservices. This will affect almost all Mambu eventually.
+  * Current Banking Engine has a luxury that most likely its database tables can be firstly extracted and have a baseline on which bin logs can be applied. What about databases that won't have a clear way to get baseline?
+  * Say two tables are co-dependant in CBE. Entries are written one after another (transactional). Say that one of the tables is extracted into a microservices and has its own lifecycle. Say we have CDC from both of them. There is no way to ensure that this behaviour will be kept. Will we ever be required to maintain that order (like streaming with payments)? 
 
 
 
