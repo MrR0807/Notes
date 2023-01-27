@@ -213,11 +213,11 @@ I'm sure if I'd spent more time I would find even more different ways to infer P
 
 #### Data to parquet file
 
-Building Parquet schema has many ways, building data into `ParquetWriter` understandable format is no different. No matter how the schema is defined, we need to prepare data for the `ParquetWriter`. How the data is built depends directly on type of writer, but at the same time not really. Let me show you want I mean.
+Building Parquet schema has many ways, building data into `ParquetWriter` understandable format is no different. How the data is built depends directly on type of writer, but at the same time not really. Let me show you want I mean.
 
 ##### Building data manually
 
-One of the easiest ways to build data which can be writter by `ParquetWriter` is by building it manually. For example, to build a Parquet record, I can use Java object from `org.apache.parquet.example`:
+One of the easiest ways to build data which can be writter by `ParquetWriter` is by building it manually. For example, to build a Parquet record, I can use a Java object from `org.apache.parquet.example`:
 
 ```java
 MessageType schema = MessageTypeParser.parseMessageType("""
@@ -233,17 +233,17 @@ simpleGroup
 		.append("mappedContent", "This is content");
 ```
 
-By creating `SimpleGroup` and appending data manually, I have created a record which can be written using `ExampleParquetWriter` from ` org.apache.parquet.hadoop.example`. Or, say I'd like to use `AvroParquetWriter`, then I'd have to create manually Avro record:
+By creating `SimpleGroup` and appending data manually, I have created a record which can be written using `ExampleParquetWriter` from ` org.apache.parquet.hadoop.example`. Or, say I'd like to use `AvroParquetWriter`, then I'd have to create Avro record manually:
 
 ```java
 // Schema is in Avro format, not Parquet
 final var avroSchema = """
 	{
 		"type": "record",
-		 "name": "OutputEntity",
-		 "fields": [
-			 {"name": "timestamp", "type": "long"},
-			 {"name": "mappedContent", "type": ["string"]}
+		"name": "OutputEntity",
+		"fields": [
+		    {"name": "timestamp", "type": "long"},
+		    {"name": "mappedContent", "type": ["string"]}
 		 ]
 	}""";
 
