@@ -258,7 +258,7 @@ Similar things can be done with other encodings.
 
 ##### Via Java Objects
 
-Instead of manually defining each field and then mapping a value to it, I can create Java objects which will automatically map the values into Parquet file from object's instances values. 
+Instead of manually defining each field and then mapping a value to it, I can create a Java objects which will automatically map the values into Parquet file from object's instances values. 
 
 ```java
 MessageType schema = MessageTypeParser.parseMessageType("""
@@ -354,7 +354,7 @@ public static class OutputEntity implements IndexedRecord {
 ```
 
 
-**NOTE!**. Because this relies on strict order, it is best to define Avro schema by hand and maintaine dependency between field orders in the Avro schema and order of `get` method.
+**NOTE!**. Because this relies on strict order, it is best to define Avro schema by hand and maintaine dependency between field order in the Avro schema and order of `get` method in Java class.
 
 
 ##### From JSON to Avro `GenericRecord`
