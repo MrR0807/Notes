@@ -58,9 +58,8 @@ https://avro.apache.org/docs/1.11.1/getting-started-java/
 SQL database -> Maxwell or Debezium -> Kafka -> Transformer App -> S3
 
 * SQL Datatabase
-  * How many databases are supporting this?
   * If we exchange database from say MySQL to PostgreSQL, will the output from (Maxwell or Debezium) be the same?
-  * Can the format change with upgrade?
+  * Can the format change with upgrade of database?
   * For example, [MySQL has 3 types of Binary Logging Formats](https://dev.mysql.com/doc/refman/8.0/en/binary-log-formats.html): statement-based, row-based (default) and mixed logging. Amazon's RDS [recommends using mixed](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_LogAccess.MySQL.BinaryFormat.html). Does it even matter?
 * CDC
   * How does Maxwell ensure exactly once? There is Github [issue where the resolution](https://github.com/zendesk/maxwell/issues/785) is unclear (was it implemented?);
