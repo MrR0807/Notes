@@ -107,6 +107,8 @@ Ingest data -> Transform -> Push to Sink
 
 #### Kafka
 
+
+
 ### Transform
 
 Once data is in the application there are numerious ways how one can map incoming data into Parquet file. To write into Parquet file, there are three things requered:
@@ -128,7 +130,7 @@ MessageType schema = MessageTypeParser.parseMessageType("""
 			}""");
 ```
 
-##### Infer Parquet Schema from JSON
+##### Infer Avro Schema from JSON
 
 There are several libraries which does this, and initially I've relied on [kite-sdk](https://github.com/kite-sdk/kite). However, because it depends on older Parquet dependencies, there were incompatibility issues, which could not be solved without ditching the library. The next logic step was to inspect how Parquet itself solves this via `parquet-cli`. There is command which, according to documentation, "Create a Parquet file from a data file". The class can be found [here](https://github.com/apache/parquet-mr/blob/master/parquet-cli/src/main/java/org/apache/parquet/cli/commands/ConvertCommand.java). Here are the main snippets: 
 
@@ -181,9 +183,9 @@ public static Schema fromJSON(String name, InputStream in) throws IOException {
 }
 ```
 
-To my surpirse, Parquet cli which is in source of parquet format Java implementation firstly converts to Avro schema, and then uses `AvroParquetWriter`. This is very weird. Wouldn't it make more sense to convert directly to Parquet Schema and write using ParquetWriter? Why the extra hop?
+To my surpirse, Parquet cli which is in source of Parquet format Java implementation firstly converts to Avro schema, and then uses `AvroParquetWriter`. This is very weird. Wouldn't it make more sense to convert directly to Parquet Schema and write using ParquetWriter? Why the extra hop?
 
-Anyway, by adding `parquet-cli` depedency, it is not possible to infer *Avro* schema from *JSON*:
+Anyway, by adding `parquet-cli` depedency, it is possible to infer *Avro* schema from *JSON*:
 
 ```java
 String json = """
@@ -196,7 +198,7 @@ final var byteArrayInputStream = new ByteArrayInputStream(json.getBytes(Standard
 Schema avroSchema = Schemas.fromJSON("thisisname", byteArrayInputStream);
 ```
 
-##### Infer Parquet Schema from Java Object
+##### Infer Avro Schema from Java Object
 
 There is yet another way to infer Parquet schema and that is using Avro library (org.apache.avro):
 
@@ -204,6 +206,8 @@ There is yet another way to infer Parquet schema and that is using Avro library 
 final var schemaString = ReflectData.get().getSchema(<Class instance>).toString();
 final var schema = new Schema.Parser().parse(schemaString);
 ```
+
+Again, once Avro schema is defined, we can use `AvroParquetWriter`.
 
 ##### Any more? 
 
@@ -215,7 +219,7 @@ Building Parquet schema has many ways, providing data into Parquet file is no di
 
 ##### Example Parquet Writer
 
-Parquet format Java implementation developers decided not to create a simple, production ready Parquet writer or reader and everything should go through other encodings (e.g. Protobuf, Avro etc.). Well, at least from first glance. However, they've created some example implementations of `ParquerWriter` in [example package](https://github.com/apache/parquet-mr/tree/master/parquet-hadoop/src/main/java/org/apache/parquet/hadoop/example). It is hard to know whether these implementations should be used in production code or not (if I don't want to jump through Avro hoops), but here's the example:
+Parquet format Java implementation developers decided not to create a simple, production ready Parquet writer or reader and everything should go through other encodings (e.g. Protobuf, Avro etc.). At least from the first glance. However, they've created some example implementations of `ParquerWriter` in [example package](https://github.com/apache/parquet-mr/tree/master/parquet-hadoop/src/main/java/org/apache/parquet/hadoop/example). It is hard to know whether these implementations should be used in production code or not (if I don't want to jump through Avro hoops), but here's the example of using it:
 
 
 ```java
@@ -251,12 +255,15 @@ After close, the data is flushed to `ByteArrayOutputStream` and can be read or o
 
 ##### Implementing your own ParquetWriter
 
+
+
+
 ##### 
 
 
 ##### What is `org.apache.parquet.io.OutputFile` and `ParquetBufferedWriter`
 
-There are two possible outputs for `ParquetWriter` - `org.apache.hadoop.fs.Path`
+There are two possible outputs for `ParquetWriter` - `org.apache.hadoop.fs.Path` or `org.apache.parquet.io.OutputFile`.
 
 
 
