@@ -307,7 +307,56 @@ final var writer = AvroParquetWriter.<OutputEntity>builder(new Path("hello123.pa
 
 This is a feature of `AvroParquetWriter` and not possible with `ExampleParquetWriter`.
 
-##### Extending Avro 
+##### Extending Avro's `IndexedRecord`
+
+If my custom class extends Avro's `IndexedRecord` then reflection is not required anymore.
+
+```java
+public static class OutputEntity implements IndexedRecord {
+
+	private String mappedContent;
+	private long timestamp;
+
+	public OutputEntity(long timestamp, String mappedContent) {
+		this.mappedContent = mappedContent;
+		this.timestamp = timestamp;
+	}
+
+	public long getTimestamp() {
+		return timestamp;
+	}
+
+	public String getMappedContent() {
+		return mappedContent;
+	}
+
+	@Override
+	public void put(int i, Object v) {
+		switch (i) {
+			case 0 -> this.mappedContent = (String) v;
+			case 1 -> this.timestamp = (Long) v;
+			default -> throw new RuntimeException("");
+		}
+	}
+
+	@Override
+	public Object get(int i) {
+		return switch (i) {
+			case 0 -> this.mappedContent;
+			case 1 -> this.timestamp;
+			default -> throw new RuntimeException("");
+		};
+	}
+
+	@Override
+	public Schema getSchema() {
+		return null;
+	}
+}
+```
+
+
+**NOTE!**. Because this relies on strict order, it is best to define Avro schema by hand and maintaine dependency between field orders in the Avro schema and order of `get` method.
 
 
 ##### From JSON to Avro `GenericRecord`
