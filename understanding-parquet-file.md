@@ -68,7 +68,7 @@ SQL database -> Maxwell or Debezium -> Kafka -> Transformer App -> S3
   * Procedure how Maxwell will be introduce into new MySQL instances and already existing ones?
 * Kafka
   * If we have several partitions and several consumers, how will we ensure order of statements?
-  * We have to identify which tables have no need for order then they can have more partitions, while tables where orders matters.
+  * We have to identify which tables have no need for order then they can have more partitions, while tables where orders matters have to have only one partition (CDC throughput for such tables).
 * Transformation App
   * Use standard encodings (Avro, Protobuf etc)?
   * If we decide to stick with JSON, then we need to decide how will we deserialize and serialize that data. Should we write our own Parquet Schema infer logic from JSON?
