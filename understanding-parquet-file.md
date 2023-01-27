@@ -472,7 +472,7 @@ public static void main(String[] args) throws IOException {
 
 ##### What is `org.apache.parquet.io.OutputFile` and `ParquetBufferedWriter`
 
-Maybe you've noticed that in `ExampleParquetWriter` I've provided to `builder()` method `ParquetBufferedWriter` while with `AvroParquetWriter` - `org.apache.hadoop.fs.Path`. 
+Maybe you've noticed that in `ExampleParquetWriter` I've provided to `builder()` method `ParquetBufferedWriter` instance while with `AvroParquetWriter` - `org.apache.hadoop.fs.Path`. 
 
 Looking into `ParquetWriter` source code, there are two ways how to obtain builder instance:
 
@@ -486,7 +486,26 @@ protected Builder(OutputFile path) {
 }
 ```
 
-When `Path` is provided, the `writer.close()` method will create a file and place `ParquetWriter` content to it. While with `OutputFile`, the content will be placed into 
+When `Path` is provided, the `writer.close()` method will create a file and place `ParquetWriter` content to it. While with `OutputFile`, the content will be placed into. However, the lack of documentation about `OutputFile` makes it hard to understand the full scope of this class and how it should be implemented. Taken from source code (doesn't even have a clear explanation what this interface should represent):
+
+```java
+public interface OutputFile {
+
+  PositionOutputStream create(long blockSizeHint) throws IOException;
+
+  PositionOutputStream createOrOverwrite(long blockSizeHint) throws IOException;
+
+  boolean supportsBlockSize();
+
+  long defaultBlockSize();
+
+  default String getPath() {
+    return null;
+  }
+}
+```
+
+TODO investigate how it is used and other examples like https://github.com/apache/flink/blob/master/flink-formats/flink-parquet/src/main/java/org/apache/flink/formats/parquet/StreamOutputFile.java and 
 
 
 
