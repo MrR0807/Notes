@@ -637,6 +637,7 @@ However, somebody has a problem which might be a problem to me:
 * [Amazon S3 AWS SDK Upload Objects](https://docs.aws.amazon.com/AmazonS3/latest/userguide/upload-objects.html)
 * [LocalStack](https://localstack.cloud/)
 * [Apache Avro Documentation](https://avro.apache.org/docs/1.11.1/getting-started-java/)
+* [Dremel made simple with Parquet](https://blog.twitter.com/engineering/en_us/a/2013/dremel-made-simple-with-parquet)
 
 
 
