@@ -395,12 +395,11 @@ In parquet-mr Github repo, there are four implementations of `ParquetWriter` pro
 * `ProtoParquetWriter`;
 * `ThriftParquetWriter`.
 
-The biggest problem I think with trying to implement your own `ParquetWriter` is lack of good documentation.
+The biggest problem I think with trying to implement your own `ParquetWriter` is lack of good documentation and clear guidance how all classes interact.
 
+##### `ExampleParquetWriter`
 
-##### Example `ParquetWriter`
-
-Parquet format Java implementation developers decided not to create a simple, production ready Parquet writer or reader and everything should go through other encodings (e.g. Protobuf, Avro etc.). At least from the first glance. However, they've created some example implementations of `ParquerWriter` in [example package](https://github.com/apache/parquet-mr/tree/master/parquet-hadoop/src/main/java/org/apache/parquet/hadoop/example). It is hard to know whether these implementations should be used in production code or not (if I don't want to jump through Avro hoops), but here's the example of using it:
+Parquet format Java implementation developers decided not to create a simple, production ready Parquet writer or reader. Everything it seems should go through other encodings (e.g. Protobuf, Avro etc.). However, they've created some example implementations of `ParquerWriter` in [example package](https://github.com/apache/parquet-mr/tree/master/parquet-hadoop/src/main/java/org/apache/parquet/hadoop/example). It is hard to know whether these implementations should be used in production code or not (if I don't want to jump through Avro hoops), but here's the example of using it:
 
 
 ```java
@@ -409,16 +408,16 @@ public class Example {
   public static void main(String[] args) throws IOException {
 
     MessageType schema = MessageTypeParser.parseMessageType("""
-      message Pair {
-	required binary left (UTF8);
-	required binary right (UTF8);
-      }""");
+	message OutputEntity {
+		required INT64 timestamp;
+		required binary mappedContent (UTF8);
+	}""");
 
     final var simpleGroup = new SimpleGroup(schema);
 
     simpleGroup
-	.append("left", "L")
-        .append("right", "R");
+		.append("timestamp", Instant.now().toEpochMilli())
+		.append("mappedContent", "This is content");
 
     final var out = new ByteArrayOutputStream();
     final var writer = ExampleParquetWriter
@@ -440,12 +439,54 @@ After close, the data is flushed to `ByteArrayOutputStream` and can be read or o
 
 ##### Using `AvroParquetWriter`
 
+`AvroParquetWriter` seems to be go to writer when used in examples or even parquet's Java implementation own code. Building `AvroParquetWriter` is as straightfoward as `ExampleParquetWriter`:
+
+```java
+public static void main(String[] args) throws IOException {
+
+	final var avroSchema = """
+		{
+			"type": "record",
+			 "name": "OutputEntity",
+			 "fields": [
+				 {"name": "timestamp", "type": "long"},
+				 {"name": "mappedContent", "type": ["string"]}
+			 ]
+		}""";
+
+	final var schema = new Schema.Parser().parse(avroSchema);
+
+	GenericRecord user = new GenericData.Record(schema);
+	user.put("timestamp", Instant.now().toEpochMilli());
+	user.put("mappedContent", "This is content");
+
+	final var writer = AvroParquetWriter.builder(new Path("hello.parquet"))
+			.withSchema(schema)
+			.build();
+
+	writer.write(user);
+	writer.close();
+}
+```
+
 
 ##### What is `org.apache.parquet.io.OutputFile` and `ParquetBufferedWriter`
 
-There are two possible outputs for `ParquetWriter` - `org.apache.hadoop.fs.Path` or `org.apache.parquet.io.OutputFile`.
+Maybe you've noticed that in `ExampleParquetWriter` I've provided to `builder()` method `ParquetBufferedWriter` while with `AvroParquetWriter` - `org.apache.hadoop.fs.Path`. 
 
+Looking into `ParquetWriter` source code, there are two ways how to obtain builder instance:
 
+```java
+protected Builder(Path path) {
+  this.path = path;
+}
+
+protected Builder(OutputFile path) {
+  this.file = path;
+}
+```
+
+When `Path` is provided, the `writer.close()` method will create a file and place `ParquetWriter` content to it. While with `OutputFile`, the content will be placed into 
 
 
 
