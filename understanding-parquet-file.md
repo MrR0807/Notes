@@ -256,6 +256,12 @@ user.put("timestamp", Instant.now().toEpochMilli());
 user.put("mappedContent", "This is content");
 ```
 
+Similar things can be done with other encodings.
+
+##### Via Java Objects
+
+Instead of manually defining each field and then mapping a value to it, I can create Java objects which will automatically map the values into Parquet file from object's instances values. 
+
 
 
 
