@@ -69,8 +69,19 @@ SQL database -> Maxwell or Debezium -> Kafka -> Transformer App -> S3
   * Procedure how Maxwell will be introduce into new MySQL instances and already existing ones?
 * Kafka
   * If we have several partitions and several consumers, how will we ensure order of statements?
+  * We have to identify which tables have no need for order then they can have more partitions, while tables where orders matters.
 * Transformation App
-  * 
+  * Use standard encodings (Avro, Protobuf etc)?
+  * If we decide to stick with JSON, then we need to decide how will we deserialize and serialize that data. Should we write our own Parquet Schema infer logic from JSON?
+  * Buffering? Should we try to buffer according to file size or just flush on time bases? This might create widely different file sizes.
+  * If we decide to buffer and flush on size, then we'll have to investigate how each data type/compression algorith affects the size. When Stream of data is moving, there is no way of knowing for sure what size Parquet file will be. This is due to several reasons: 1) Parquet itself is an encoding format not only column oriented data structure; 2) Due to being column oriented structure it can perform different kinds of store optimisation like [Run-length encoding](https://en.wikipedia.org/wiki/Run-length_encoding) or [Dictionary Encoding](https://github.com/apache/parquet-format/blob/master/Encodings.md#dictionary-encoding-plain_dictionary--2-and-rle_dictionary--8); 3) Lastly, we can apply compression like Snappy.
+  * If we decide to flush on time bases, we'll have to types of threads running - one which takes records from Kafka and places them into stream. The other which will flush the data from the strem to sink periodically. However, watching mechanism will needed for stream flushing so the thread don't die and leave ever growing stream of data (maybe the thread which places data into the stream as it will be the main loop?);
+  * How much does it cost in terms of efficiency to create `ParquetWriter` for each stream? Should they be reusable?
+  * Different types of sinks?
+  * Next to parquet files, we have to provide simple CRUD operations in SQL format. This will allow clients to transition from database backup more easily and will help us in future features (archiving). However, this will add double size pressure (presumambly even bigger than Parquet files) on sink.
+  * Recovery in the application? Say application has processed X amount of data and crashes. The new instance will just reprocesses the same data and it should be fine. However, what if the X amount of data is a big number? Should we have some kind of checkpoints like Flink? How much overhead does it create? Where will be store this data? In Kubernetes persistance storage of 3rd party like S3?
+  * Should we deal somehow with possible duplication? Create hashcodes of each statements and check whether such statements were already processed in X time window (say we have moving 5 minutes time window).
+
 
 
 * General observatios about the whole flow
