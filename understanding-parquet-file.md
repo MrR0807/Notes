@@ -290,12 +290,24 @@ Similar thing can be done with [Avro's serializing](https://avro.apache.org/docs
 As stated previously, even `parquet-cli` firstly maps to Avro schema and then uses `AvroParquetWriter` to write data into Parquet files. Building on this weird pratices, I can use Avro's utilities like inspecting data via reflection and mapping it:
 
 ```java
+final var schemaString = ReflectData.get().getSchema(lt.test.simplecdc.model.OutputEntity.class).toString();
+final var schema = new Schema.Parser().parse(schemaString);
 
-
-
+final var record = new OutputEntity(Instant.now().toEpochMilli(), "Content");
 ```
 
+And then when creating `AvroParquetWriter`:
 
+```java
+final var writer = AvroParquetWriter.<OutputEntity>builder(new Path("hello123.parquet"))
+		.withSchema(schema)
+		.withDataModel(ReflectData.get()) //This has to be defined to inspect OutputEntity instance properties
+		.build();
+```
+
+This is a feature of `AvroParquetWriter` and not possible with `ExampleParquetWriter`.
+
+##### Extending Avro 
 
 
 ##### From JSON to Avro `GenericRecord`
