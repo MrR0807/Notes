@@ -382,8 +382,20 @@ final GenericRecord jsonRecord = reader.read(null, jsonDecoder);
 
 Then, `AvroParquetWriter` can be used.
 
+##### Any more?
+
+I'm sure if I'd spent more time I would find even more different ways to build record for `ParquetWriter`.
+
 
 #### `ParquetWriter`
+
+In parquet-mr Github repo, there are four implementations of `ParquetWriter` provided out of the box:
+* `AvroParquetWriter`;
+* `ExampleParquetWriter`;
+* `ProtoParquetWriter`;
+* `ThriftParquetWriter`.
+
+The biggest problem I think with trying to implement your own `ParquetWriter` is lack of good documentation.
 
 
 ##### Example `ParquetWriter`
