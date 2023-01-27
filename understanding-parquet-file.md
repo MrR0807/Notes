@@ -118,7 +118,7 @@ Parquet format is defined in both Parquet Documentation and in parquet-format Gi
 
 ##### Define Parquet Schema explicitly
 
-The simplest and most straightforward approach is to construct Parquet schema by hand. This might get more complicated if nested structures are introduced due to 
+The simplest and most straightforward approach is to construct Parquet schema by hand. This might get more complicated if nested structures are introduced due to Definition and Repetition properties, but nevertheless, doable.
 
 ```java
 MessageType schema = MessageTypeParser.parseMessageType("""
@@ -130,7 +130,7 @@ MessageType schema = MessageTypeParser.parseMessageType("""
 
 ##### Infer Avro Schema from JSON
 
-There are several libraries which does this, and initially I've relied on [kite-sdk](https://github.com/kite-sdk/kite). However, because it depends on older Parquet dependencies, there were incompatibility issues, which could not be solved without ditching the library. The next logic step was to inspect how Parquet itself solves this via `parquet-cli`. There is command which, according to documentation, "Create a Parquet file from a data file". The class can be found [here](https://github.com/apache/parquet-mr/blob/master/parquet-cli/src/main/java/org/apache/parquet/cli/commands/ConvertCommand.java). Here are the main snippets: 
+There are several libraries which does this, and initially I've relied on [kite-sdk](https://github.com/kite-sdk/kite). However, because it depends on older Parquet dependencies, there were incompatibility issues, which could not be solved without ditching the library. The next logical step was to inspect how Parquet itself solves this via `parquet-cli`. There is command which, according to documentation, "Creates a Parquet file from a data file". The class can be found [here](https://github.com/apache/parquet-mr/blob/master/parquet-cli/src/main/java/org/apache/parquet/cli/commands/ConvertCommand.java). Here are the main snippets: 
 
 ```java
 
@@ -181,7 +181,7 @@ public static Schema fromJSON(String name, InputStream in) throws IOException {
 }
 ```
 
-To my surpirse, Parquet cli which is in source of Parquet format Java implementation firstly converts to Avro schema, and then uses `AvroParquetWriter`. This is very weird. Wouldn't it make more sense to convert directly to Parquet Schema and write using ParquetWriter? Why the extra hop?
+To my surpirse, Parquet cli, which is in source of Parquet format Java implementation, firstly converts to Avro schema, and then uses `AvroParquetWriter`. This is very weird. Wouldn't it make more sense to convert directly to Parquet Schema and write using ParquetWriter? Why the extra hop?
 
 Anyway, by adding `parquet-cli` depedency, it is possible to infer *Avro* schema from *JSON*:
 
@@ -196,7 +196,7 @@ final var byteArrayInputStream = new ByteArrayInputStream(json.getBytes(Standard
 Schema avroSchema = Schemas.fromJSON("thisisname", byteArrayInputStream);
 ```
 
-##### Infer Avro Schema from Java Object
+##### Infer Avro Schema from Java Object via reflection
 
 There is yet another way to infer Parquet schema and that is using Avro library (org.apache.avro):
 
@@ -213,7 +213,7 @@ I'm sure if I'd spent more time I would find even more different ways to infer P
 
 #### Data to parquet file
 
-Building Parquet schema has many ways, providing data into Parquet file is no different. No matter how the schema is defined, we need to prepare data for the `ParquetWriter`. How the data is built depends directly on type of writer, but at the same time not really. Let me show you want I mean.
+Building Parquet schema has many ways, building data into `ParquetWriter` understandable format is no different. No matter how the schema is defined, we need to prepare data for the `ParquetWriter`. How the data is built depends directly on type of writer, but at the same time not really. Let me show you want I mean.
 
 ##### Building data manually
 
