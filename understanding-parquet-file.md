@@ -62,6 +62,15 @@ SQL database -> Maxwell or Debezium -> Kafka -> Transformer App -> S3
   * If we exchange database from say MySQL to PostgreSQL, will the output from (Maxwell or Debezium) be the same?
   * Can the format change with upgrade?
   * For example, [MySQL has 3 types of Binary Logging Formats](https://dev.mysql.com/doc/refman/8.0/en/binary-log-formats.html): statement-based, row-based (default) and mixed logging. Amazon's RDS [recommends using mixed](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_LogAccess.MySQL.BinaryFormat.html). Does it even matter?
+* CDC
+  * How does Maxwell ensure exactly once? There is Github [issue where the resolution](https://github.com/zendesk/maxwell/issues/785) is unclear (was it implemented?);
+  * What happens when Maxwell instance restarts? It should maintain somewhere what it managed to send to Kafka. Is it write ahead log? Say Maxwell writes into ahead log that it read X change and sent it to Kafka. What if Kafka does not respond/is dead. Will it retry? What if both die? Will it retry with new Maxwell instance?
+  * Should we use encoding when sending to Kafka from Maxwell (
+* Kafka
+  * If we have several partitions and several consumers, how will we ensure order of statements?
+  * 
+
+
 
 
 ## SQL Database
