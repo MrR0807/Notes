@@ -359,8 +359,28 @@ public static class OutputEntity implements IndexedRecord {
 
 ##### From JSON to Avro `GenericRecord`
 
+Another tricket that Avro library has is constructing a `GenericRecord`, which I've used in section "Building data manually", from JSON. Here's the code:
 
+```java
+final var avroSchema = """
+	{
+		"type": "record",
+		 "name": "OutputEntity",
+		 "fields": [
+			 {"name": "timestamp", "type": "long"},
+			 {"name": "mappedContent", "type": "string"}
+		 ]
+	}""";
 
+final var schema = new Schema.Parser().parse(avroSchema);
+
+final var jsonDecoder = DecoderFactory.get().jsonDecoder(schema, new DataInputStream(new ByteArrayInputStream(JSON.getBytes())));
+final var reader = new GenericDatumReader<GenericRecord>(schema);
+//Just to show that this is GenericRecord
+final GenericRecord jsonRecord = reader.read(null, jsonDecoder);
+```
+
+Then, `AvroParquetWriter` can be used.
 
 
 #### `ParquetWriter`
