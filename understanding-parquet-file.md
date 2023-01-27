@@ -215,9 +215,20 @@ I'm sure if I'd spent more time I would find even more different ways to infer P
 
 #### Data to parquet file
 
-Building Parquet schema has many ways, providing data into Parquet file is no different.
+Building Parquet schema has many ways, providing data into Parquet file is no different. No matter how the schema is defined, we need to prepare data for the `ParquetWriter`. How the data is built depends directly on type of writer, but at the same time not really. Let me show you want I mean.
 
-##### Example Parquet Writer
+##### Building data manually
+
+
+
+
+
+
+
+#### `ParquetWriter`
+
+
+##### Example `ParquetWriter`
 
 Parquet format Java implementation developers decided not to create a simple, production ready Parquet writer or reader and everything should go through other encodings (e.g. Protobuf, Avro etc.). At least from the first glance. However, they've created some example implementations of `ParquerWriter` in [example package](https://github.com/apache/parquet-mr/tree/master/parquet-hadoop/src/main/java/org/apache/parquet/hadoop/example). It is hard to know whether these implementations should be used in production code or not (if I don't want to jump through Avro hoops), but here's the example of using it:
 
@@ -253,12 +264,11 @@ public class Example {
 
 After close, the data is flushed to `ByteArrayOutputStream` and can be read or outputed into a file/S3.
 
-##### Implementing your own ParquetWriter
+##### Implementing your own `ParquetWriter`
 
+**BIG TODO**
 
-
-
-##### 
+##### Using `AvroParquetWriter`
 
 
 ##### What is `org.apache.parquet.io.OutputFile` and `ParquetBufferedWriter`
