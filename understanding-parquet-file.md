@@ -219,7 +219,42 @@ Building Parquet schema has many ways, providing data into Parquet file is no di
 
 ##### Building data manually
 
+One of the easiest ways to build data which can be writter by `ParquetWriter` is by building it manually. For example, to build a Parquet record, I can use Java object from `org.apache.parquet.example`:
 
+```java
+MessageType schema = MessageTypeParser.parseMessageType("""
+	message OutputEntity {
+		required INT64 timestamp;
+		required binary mappedContent (UTF8);
+	}""");
+
+final var simpleGroup = new SimpleGroup(schema);
+
+simpleGroup
+		.append("timestamp", Instant.now().toEpochMilli())
+		.append("mappedContent", "This is content");
+```
+
+By creating `SimpleGroup` and appending data manually, I have created a record which can be written using `ExampleParquetWriter` from ` org.apache.parquet.hadoop.example`. Or, say I'd like to use `AvroParquetWriter`, then I'd have to create manually Avro record:
+
+```java
+// Schema is in Avro format, not Parquet
+final var avroSchema = """
+	{
+		"type": "record",
+		 "name": "OutputEntity",
+		 "fields": [
+			 {"name": "timestamp", "type": "long"},
+			 {"name": "mappedContent", "type": ["string"]}
+		 ]
+	}""";
+
+final var schema = new Schema.Parser().parse(avroSchema);
+
+GenericRecord user = new GenericData.Record(schema);
+user.put("timestamp", Instant.now().toEpochMilli());
+user.put("mappedContent", "This is content");
+```
 
 
 
