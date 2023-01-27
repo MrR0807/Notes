@@ -285,6 +285,23 @@ public static class OutputEntity extends SimpleGroup {
 
 Similar thing can be done with [Avro's serializing](https://avro.apache.org/docs/1.11.1/getting-started-java/#serializing).
 
+##### Via Avro's reflection utilities
+
+As stated previously, even `parquet-cli` firstly maps to Avro schema and then uses `AvroParquetWriter` to write data into Parquet files. Building on this weird pratices, I can use Avro's utilities like inspecting data via reflection and mapping it:
+
+```java
+
+
+
+```
+
+
+
+
+##### From JSON to Avro `GenericRecord`
+
+
+
 
 
 #### `ParquetWriter`
