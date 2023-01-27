@@ -57,11 +57,11 @@ https://avro.apache.org/docs/1.11.1/getting-started-java/
 
 SQL database -> Maxwell or Debezium -> Kafka -> Transformer App -> S3
 
-* SQL Datatabase
+* SQL Datatabase:
   * If we exchange database from say MySQL to PostgreSQL, will the output from (Maxwell or Debezium) be the same?
   * Can the format change with upgrade of database?
   * For example, [MySQL has 3 types of Binary Logging Formats](https://dev.mysql.com/doc/refman/8.0/en/binary-log-formats.html): statement-based, row-based (default) and mixed logging. Amazon's RDS [recommends using mixed](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_LogAccess.MySQL.BinaryFormat.html). Does it even matter?
-* CDC
+* CDC:
   * How does Maxwell ensure exactly once? There is Github [issue where the resolution](https://github.com/zendesk/maxwell/issues/785) is unclear (was it implemented?);
   * What happens when Maxwell instance restarts? It should maintain somewhere what it managed to send to Kafka. Is it write ahead log? Say Maxwell writes into ahead log that it read X change and sent it to Kafka. What if Kafka does not respond/is dead. Will it retry? What if both die? Will it retry with new Maxwell instance?
   * Should we use encoding when sending to Kafka from Maxwell (Avro, Protobuf etc)?
@@ -69,7 +69,7 @@ SQL database -> Maxwell or Debezium -> Kafka -> Transformer App -> S3
 * Kafka
   * If we have several partitions and several consumers, how will we ensure order of statements?
   * We have to identify which tables have no need for order then they can have more partitions, while tables where orders matters have to have only one partition (CDC throughput for such tables).
-* Transformation App
+* Transformation App:
   * Use standard encodings (Avro, Protobuf etc)?
   * If we decide to stick with JSON, then we need to decide how will we deserialize and serialize that data. Should we write our own Parquet Schema infer logic from JSON? (Infering parquet schema from JSON is not a good solution, because that means schema can change without us noticing).
   * Buffering? Should we try to buffer according to file size or just flush on time bases? This might create widely different file sizes.
@@ -80,8 +80,8 @@ SQL database -> Maxwell or Debezium -> Kafka -> Transformer App -> S3
   * Recovery part two. Say application managed to flush Parquet file, but not sent offset to Kafka, how will we validate that we shouldn't duplicate data?
   * Should we deal somehow with possible duplication? Create hashcodes of each statements and check whether such statements were already processed in X time window (say we have moving 5 minutes time window).
 
-* General observatios about the whole flow
-  * A very rigid and clear process of creating new tables/new schemas/new tenants/new microservices/extracting existing capabilities into microservices. This will affect almost all Mambu eventually.
+* General observatios about the whole flow:
+  * A very rigid and clear process of creating new tables/new schemas/new tenants/new microservices/extracting existing capabilities into microservices. This will affect almost all organisation eventually.
   * Current Banking Engine has a luxury that most likely its database tables can be firstly extracted and have a baseline on which bin logs can be applied. What about databases that won't have a clear way to get baseline?
   * Say two tables are co-dependant in CBE. Entries are written one after another (transactional). Say that one of the tables is extracted into a microservices and has its own lifecycle. Say we have CDC from both of them. There is no way to ensure that this behaviour will be kept. Will we ever be required to maintain that order (like streaming with payments)?
   * We have to ensure database tables evolution without braking our whole flow. Checks of braking changes have to be done before application is started (does not matter if CBE or new microservices). Avro schemas for each table which participates in data extraction? Which is validated against database before starting? These validations have to happen both locally (so people can test locally) and in pipeline. If we don't ensure the validity of schema in upstream, there is little to do in say Flink/Custom Transformer App. The application will detect a change and will do what? Refuse to processes it will the amount of messages in Kafka grow? Or will it just ignore and introduce a breaking change for clients?
@@ -105,20 +105,20 @@ Ingest data -> Transform -> Push to Sink
 
 #### Kafka
 
-
-
 ### Transform
 
 Once data is in the application there are numerious ways how one can map incoming data into Parquet file. To write into Parquet file, there are three things requered:
 * Parquet file schema;
-* Data to parquet file;
+* Data to parquet file in read form;
 * `ParquetWriter`
 
 #### Construct Parquet File Schema
 
-Parquet format is defined in both Parquet Documentation and in Github. Neither is a good place for a beginner. There are bits and pieces around the internet which try to explain the format, but it is not nearly enough. On this particular topic - in a different section.
+Parquet format is defined in both Parquet Documentation and in parquet-format Github repository. Neither is a good place for a beginner. There are bits and pieces around the internet which try to explain the format, but it is not nearly enough. On this particular topic - in a different section.
 
 ##### Define Parquet Schema explicitly
+
+The simplest and most straightforward approach is to construct Parquet schema by hand. This might get more complicated if nested structures are introduced due to 
 
 ```java
 MessageType schema = MessageTypeParser.parseMessageType("""
