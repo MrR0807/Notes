@@ -64,6 +64,8 @@ Todo
 
 ## Kafka
 
+Todo. The mechanism is clear, it just a matter of selecting and writing the correct way to handle incoming records (most likely use kafka-sdk library), whether parallelize each received batch of records per X worker threads, each working with a separate Parquet file etc wherever possible.
+
 ## Transformer App
 
 Ingest data -> Transform -> Push to Sink
