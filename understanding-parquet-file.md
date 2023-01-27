@@ -1,22 +1,16 @@
 # Parquet file anatomy
 
+**BIG TODO**
+
 # Parquet file anatomy via Java implementation
 
-
-# From JSON to Parquet
-
-## Dates/Timestamps
-
-What format should we expect: https://stackoverflow.com/questions/10286204/what-is-the-right-json-date-format.
-
-# Apache Avro
-
-https://avro.apache.org/docs/1.11.1/getting-started-java/
-
+**BIG TODO**
 
 # CDC with Parquet to S3
 
-SQL database -> Maxwell or Debezium -> Kafka -> Transformer App -> S3
+SQL database -> Maxwell/Debezium -> Kafka -> Transformer App -> S3
+
+## Questions
 
 * SQL Datatabase:
   * If we exchange database from say MySQL to PostgreSQL, will the output from (Maxwell or Debezium) be the same?
@@ -48,13 +42,25 @@ SQL database -> Maxwell or Debezium -> Kafka -> Transformer App -> S3
   * We have to ensure database tables evolution without braking our whole flow. Checks of braking changes have to be done before application is started (does not matter if CBE or new microservices). Avro schemas for each table which participates in data extraction? Which is validated against database before starting? These validations have to happen both locally (so people can test locally) and in pipeline. If we don't ensure the validity of schema in upstream, there is little to do in say Flink/Custom Transformer App. The application will detect a change and will do what? Refuse to processes it will the amount of messages in Kafka grow? Or will it just ignore and introduce a breaking change for clients?
 
 
-
+# Full CDC flow
 
 ## SQL Database
 
+### MySQL
+
+Todo
+
+### PostgreSQL
+
+Todo
+
 ## Maxwell
 
+Todo
+
 ## Debezium
+
+Todo
 
 ## Kafka
 
@@ -628,6 +634,7 @@ However, somebody has a problem which might be a problem to me:
 * [Disabling crc file generation](https://groups.google.com/a/cloudera.org/g/cdk-dev/c/JR45MsLeyTE)
 * [Amazon S3 AWS SDK Upload Objects](https://docs.aws.amazon.com/AmazonS3/latest/userguide/upload-objects.html)
 * [LocalStack](https://localstack.cloud/)
+* [Apache Avro Documentation](https://avro.apache.org/docs/1.11.1/getting-started-java/)
 
 
 
