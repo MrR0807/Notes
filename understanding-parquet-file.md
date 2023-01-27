@@ -505,11 +505,12 @@ public interface OutputFile {
 }
 ```
 
-TODO investigate how it is used and other examples like https://github.com/apache/flink/blob/master/flink-formats/flink-parquet/src/main/java/org/apache/flink/formats/parquet/StreamOutputFile.java and 
-
+**TODO investigate** how it is used and other examples like https://github.com/apache/flink/blob/master/flink-formats/flink-parquet/src/main/java/org/apache/flink/formats/parquet/StreamOutputFile.java and org.apache.parquet.hadoop.util.HadoopOutputFile.
 
 
 ### Push to Sink
+
+At this stage it is time to write data into sink.
 
 #### Amazon S3
 
