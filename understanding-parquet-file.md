@@ -262,7 +262,28 @@ Similar things can be done with other encodings.
 
 Instead of manually defining each field and then mapping a value to it, I can create Java objects which will automatically map the values into Parquet file from object's instances values. 
 
+```java
+MessageType schema = MessageTypeParser.parseMessageType("""
+	message OutputEntity {
+		required INT64 timestamp;
+		required binary mappedContent (UTF8);
+	}""");
 
+
+final var outputEntity = new OutputEntity(schema, Instant.now().toEpochMilli(), "This is yet to be");
+```
+
+```java
+public static class OutputEntity extends SimpleGroup {
+	public OutputEntity(GroupType schema, long timestamp, String mappedContent) {
+		super(schema);
+		add("timestamp", timestamp);
+		add("mappedContent", mappedContent);
+	}
+}
+```
+
+Similar thing can be done with [Avro's serializing](https://avro.apache.org/docs/1.11.1/getting-started-java/#serializing).
 
 
 
