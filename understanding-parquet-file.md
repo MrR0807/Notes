@@ -624,7 +624,16 @@ However, somebody has a problem which might be a problem to me:
 
 
 
+# TODO
 
+[parquet-json some library INVESTIGATE](https://github.com/getyourguide/parquet-json)
+https://hackolade.com/help/Parquetschema.html
+https://dzone.com/articles/understanding-how-parquet
+https://liam-blog.ml/2020/05/31/details-you-need-to-know-about-Apache-Parquet/
+https://github.com/apache/parquet-format/blob/master/LogicalTypes.md
+http://www.benstopford.com/2015/02/14/log-structured-merge-trees/
+https://github.com/apache/parquet-format/blob/master/Encodings.md#dictionary-encoding-plain_dictionary--2-and-rle_dictionary--8
+https://towardsdatascience.com/demystifying-the-parquet-file-format-13adb0206705
 
 
 
@@ -638,16 +647,3 @@ However, somebody has a problem which might be a problem to me:
 * [LocalStack](https://localstack.cloud/)
 * [Apache Avro Documentation](https://avro.apache.org/docs/1.11.1/getting-started-java/)
 * [Dremel made simple with Parquet](https://blog.twitter.com/engineering/en_us/a/2013/dremel-made-simple-with-parquet)
-
-
-
-
-
-
-
-
-
-
-
-
-
