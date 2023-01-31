@@ -139,7 +139,7 @@ In this section, I will explore Dremel's nested structure and via several exampl
 
 #### The model
 
-To store in a columnar format we first need to describe the data structures using a schema. This is done using a model similar to Protocol buffers. This model is minimalistic in that it represents nesting using groups of fields and repetition using repeated fields. There is no need for any other complex types like Maps, List or Sets as they all can be mapped to a combination of repeated fields and groups.
+To store in a columnar format we first need to describe the data structures using a schema. This is done using a model similar to **Protocol buffers**. This model is minimalistic in that it represents nesting using groups of fields and repetition using repeated fields. There is no need for any other complex types like Maps, List or Sets as they all can be mapped to a combination of repeated fields and groups.
 
 The root of the schema is a group of fields called a message. Each field has three attributes: a repetition, a type and a name. The type of a field is either a group or a primitive type (e.g., int, float, boolean, string) and the repetition can be one of the three following cases:
 * required: exactly one occurrence
@@ -190,6 +190,12 @@ A Map is equivalent to a repeating field containing groups of key-value pairs wh
 
 
 **BIG TODO**
+
+## Conclusion
+
+So the nested columnar data is represented in Protobuf schema, the metada is represented in Thrift encoding, columnar data applies compactions algos.
+
+
 
 # Parquet file anatomy via Java implementation
 
