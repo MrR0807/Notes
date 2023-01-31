@@ -778,7 +778,9 @@ However, somebody has a problem which might be a problem to me:
 * http://www.benstopford.com/2015/02/14/log-structured-merge-trees/
 * https://github.com/apache/parquet-format/blob/master/Encodings.md#dictionary-encoding-plain_dictionary--2-and-rle_dictionary--8
 * https://towardsdatascience.com/demystifying-the-parquet-file-format-13adb0206705
-
+* https://blog.acolyer.org/2018/09/26/the-design-and-implementation-of-modern-column-oriented-database-systems/
+* https://cloud.google.com/blog/products/bigquery/inside-capacitor-bigquerys-next-generation-columnar-storage-format
+* https://storage.googleapis.com/pub-tools-public-publication-data/pdf/43119.pdf
 
 
 # Sources
