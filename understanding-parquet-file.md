@@ -70,6 +70,23 @@ A nested type, for example, in SQL databases can be represented via relationship
 | 2 | 1 | Banana | 1.00 |
 | 3 | 3 | Apple | 0.60 |
 
+This table states that John bought and apple and banana while Eve bought an apple. If I would join two tables:
+
+```
+
+
+
+
+```
+
+
+
+
+
+
+
+
+
 
 
 ## Encoding
