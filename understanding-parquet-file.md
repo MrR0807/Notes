@@ -48,7 +48,17 @@ The best example of flat structure can be SQL database entries or CSV file rows.
 | 2   | Adam       | Stevenson |
 | 3   | Eve        | Stevenson |
 
+An entry of one row could be represented in JSON format like so:
 
+```json
+{
+  "id": 1,
+  "firstName": "John",
+  "lastName": "Johnson"
+}
+```
+
+There are no nested types, the structure is flat and there are no relationships. However, in 
 
 
 
