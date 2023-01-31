@@ -64,7 +64,11 @@ There are no nested types, the structure is flat and there are no relationships.
 
 A nested type, for example, in SQL databases can be represented via relationships: one-to-many, many-to-many etc. And a way this is represented, say in SQL, is duplicating the parent data next to the child. For example, say we have additional table, which represents sales to particular client. The client table will be represented as previous table, while the sales transactions could look like so:
 
-
+| Sales Id | Client Id | Product | Amount |
+|----------|-----------|------------|--|
+| 1 | 1 | Apple | 0.60 |
+| 2 | 1 | Banana | 1.00 |
+| 3 | 3 | Apple | 0.60 |
 
 
 
