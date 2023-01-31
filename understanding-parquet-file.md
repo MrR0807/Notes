@@ -39,7 +39,7 @@ In this particular topic, data can be represented in two forms:
 * Flat structure
 * Nested structure
 
-The best example of flat structure can be SQL database entries or CSV file rows. For example SQL table could look:
+The best example of flat structure can be SQL database entries or CSV file rows. For example SQL table of clients could look:
 
 
 | Id  | First Name | Last Name |
@@ -72,15 +72,55 @@ A nested type, for example, in SQL databases can be represented via relationship
 
 This table states that John bought and apple and banana while Eve bought an apple. If I would join two tables:
 
+```sql
+SELECT * FROM clients AS c 
+INNER JOIN  sales AS s
+ON c.id = s.client_id;
 ```
 
+I would get the result:
 
+| Id  | First Name | Last Name | Sales Id | Client Id | Product | Amount |
+|-----|-----------|-----------|----------|-----------|---------|--------|
+| 1   | John      | Johnson          | 1        | 1         | Apple   | 0.60   |
+| 1   | John      | Johnson          | 2        | 1         | Banana  | 1.00   |
+| 3   | Eve       | Stevenson          | 3        | 3         | Apple   | 0.60   |
 
+As stated, nested type in flat structure is represented as repetition of parent entity. In JSON format, this can be represented easier, because data is not repeated, but nested:
 
+```json
+[
+  {
+    "id": 1,
+    "firstName": "John",
+    "lastName": "Johnson"
+    "sales": [
+      {
+        "id": 1,
+        "product": "Apple",
+        "amount": 0.60
+      },
+      {
+        "id": 2,
+        "product": "Banana",
+        "amount": 1.00
+      }
+    ]
+  },
+  {
+    "id": 3,
+    "firstName": "Eve",
+    "lastName": "Stevenson"
+    "sales": [
+      {
+        "id": 3,
+        "product": "Apple",
+        "amount": 0.60
+      }
+    ]
+  }
+]
 ```
-
-
-
 
 
 
