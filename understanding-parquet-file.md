@@ -166,6 +166,12 @@ Lists (or Sets) can be represented by a repeating field:
 |-----------------------------------------------------------|--------------------------------------------------------------|
 | message ExampleList { <br/>repeated string list;<br/> } | {<br/> list: "a", <br/> list: "b", <br/> list: "c",<br/> ... <br/> } |
 
+A Map is equivalent to a repeating field containing groups of key-value pairs where the key is required:
+
+
+| Schema: Map of strings to strings                                                                             | Data: {"AL" -> "Alabama", ... }                                                                                   |
+|---------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------|
+| message ExampleMap {<br/>repeated group map {<br/>required string key;<br/>optional string value;<br/>}<br/>} | {<br/>map: {<br/>key: "AL",<br/>value: "Alabama"<br/>},<br/>map: {<br/>key: "AK",<br/>value: "Alaska"<br/>}<br/>} |
 
 
 
