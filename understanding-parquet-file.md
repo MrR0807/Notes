@@ -164,7 +164,7 @@ Lists (or Sets) can be represented by a repeating field:
 
 | Schema: List of Strings                                   | Data: ["a", "b", "c", ...]                                   |
 |-----------------------------------------------------------|--------------------------------------------------------------|
-| message ExampleList { <br/> <p>repeated string list;</p> <br/> } | {<br/> list: "a", <br/> list: "b", <br/> list: "c",<br/> ... <br/> } |
+| message ExampleList { <br/>repeated string list;<br/> } | {<br/> list: "a", <br/> list: "b", <br/> list: "c",<br/> ... <br/> } |
 
 
 
