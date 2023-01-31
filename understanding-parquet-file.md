@@ -16,6 +16,15 @@ Take from [Wiki](https://en.wikipedia.org/wiki/Apache_Parquet):
 
 When I've started delving into this topic, none of these descriptions really rang with me. What is not explicitly emphasized that Parquet has built on top of previous solutions, which are blended together. I think each component should be addressed independently before aggregate - which Parquet is.
 
+These are components that I'm going to address:
+* MapReduce
+* File metadata importance
+* Columnar data layout
+* Nested columnar data layout (Google's Dremel)
+* Encoding (e.g. Avro, Thrift)
+
+
+
 
 
 
