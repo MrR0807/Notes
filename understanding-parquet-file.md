@@ -127,8 +127,7 @@ Nested types before Google's Dremel in columnar formats were not solved or at le
 
 Furthermore, trying to adapt their data representation to existing flat columnar structures by "<...> normalizing and recombining such data at web scale is [was] usually **prohibitive**". Thus they needed a new solution - Dremel.
 
-At this point, it is important to emphasize two things
-
+At this point, it is important to explicitly emphasize that Dremel's nested structure came to existance to solve Google's (and other web companies) natural data structure representation, which was nested, instead of trying to apply flattening strategies and then recombination.
 
 The creation of nested columnar representation was so successful, that opensource Paruqet format was based upon it. Later, Google publicised another paper proving that [Storing and Querying Tree-Structured Records in Dremel](https://storage.googleapis.com/pub-tools-public-publication-data/pdf/43119.pdf) are performant and scalable.
 
