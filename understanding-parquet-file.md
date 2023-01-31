@@ -35,7 +35,7 @@ Google BigQuery book why Parquet was created.
 
 ## Nested columnar data layout
 
-In this particular topic, data structure can be represented in two forms:
+Data structure can be represented in two forms:
 * Flat
 * Nested
 
@@ -58,7 +58,7 @@ An entry of one row could be represented in JSON format like so:
 }
 ```
 
-However, flat structures are not always best represantion of data as stated in Google's Dremel: 
+However, flat structures are not always best represantion of data as stated in Google's Dremel document: 
 
 > The data used in web and scientific computing is often nonrelational. Hence, a flexible data model is essential in these domains. Data structures used in programming languages, messages exchanged by distributed systems, structured documents, etc. lend themselves naturally to a **nested** representation. <...> A **nested data model underlies most of structured data processing** at Google and reportedly at other major web companies.
 
@@ -86,7 +86,7 @@ I would get the result:
 | 1   | John      | Johnson          | 2        | 1         | Banana  | 1.00   |
 | 3   | Eve       | Stevenson          | 3        | 3         | Apple   | 0.60   |
 
-As stated, nested type in flat structure is represented as repetition of parent entity. In JSON format, this can be represented easier, because data is not repeated, but nested:
+As stated, nested type in flat structure is represented as repetition of parent entity. In JSON format, this can be represented easier:
 
 ```json
 [
@@ -122,7 +122,7 @@ As stated, nested type in flat structure is represented as repetition of parent 
 ]
 ```
 
-However,  nested types in columnar formats were not  
+Nested types before Google's Dremel  in columnar formats were not 
 
 
 
