@@ -207,7 +207,11 @@ Here is the definition level for each of the following cases:
 | a: { b: { c: null }}  | 2                    |
 | a: { b: { c: "foo" }} | 3 (actually defined) |
 
+Making definition levels small is important as the goal is to store the levels in as few bits as possible.
 
+#### Repetition levels
+
+To support repeated fields we need to store when new lists are starting in a column of values. This is what repetition level is for: it is the level at which we have to create a new list for the current value. In other words, the repetition level can be seen as a marker of when to start a new list and at which level. For example consider the following representation of a list of lists of strings:
 
 
 
