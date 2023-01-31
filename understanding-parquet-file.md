@@ -122,7 +122,7 @@ As stated, nested type in flat structure is represented as repetition of parent 
 ]
 ```
 
-Nested types before Google's Dremel  in columnar formats were not 
+Nested types before Google's Dremel   in columnar formats were not 
 
 
 
