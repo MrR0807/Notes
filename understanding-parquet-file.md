@@ -1,5 +1,28 @@
 # Parquet file anatomy
 
+To start of, I'm going to quote some of the descriptions of Parquet.
+
+From Parquet [oficial documentation](https://parquet.apache.org/):
+
+> Apache Parquet is an open source, column-oriented data file format designed for efficient data storage and retrieval. It provides efficient data compression and encoding schemes with enhanced performance to handle complex data in bulk.
+
+Take from [Wiki](https://en.wikipedia.org/wiki/Apache_Parquet):
+
+> Apache Parquet is a free and open-source column-oriented data storage format in the Apache Hadoop ecosystem. It is similar to RCFile and ORC, the other columnar-storage file formats in Hadoop, and is compatible with most of the data processing frameworks around Hadoop. It provides efficient data compression and encoding schemes with enhanced performance to handle complex data in bulk.
+
+> Apache Parquet is a columnar storage format that can efficiently store nested data.
+
+[Hadoop: The Definitive Guide](https://www.oreilly.com/library/view/hadoop-the-definitive/9780596521974/)
+
+When I've started delving into this topic, none of these descriptions really rang with me. What is not explicitly emphasized that Parquet has built on top of previous solutions, which are blended together. I think each component should be addressed independently before aggregate - which Parquet is.
+
+
+
+
+
+
+
+
 **BIG TODO**
 
 # Parquet file anatomy via Java implementation
