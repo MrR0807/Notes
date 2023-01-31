@@ -10,9 +10,9 @@ Take from [Wiki](https://en.wikipedia.org/wiki/Apache_Parquet):
 
 > Apache Parquet is a free and open-source column-oriented data storage format in the Apache Hadoop ecosystem. It is similar to RCFile and ORC, the other columnar-storage file formats in Hadoop, and is compatible with most of the data processing frameworks around Hadoop. It provides efficient data compression and encoding schemes with enhanced performance to handle complex data in bulk.
 
-> Apache Parquet is a columnar storage format that can efficiently store nested data.
+From book [Hadoop: The Definitive Guide](https://www.oreilly.com/library/view/hadoop-the-definitive/9780596521974/)
 
-[Hadoop: The Definitive Guide](https://www.oreilly.com/library/view/hadoop-the-definitive/9780596521974/)
+> Apache Parquet is a columnar storage format that can efficiently store nested data.
 
 When I've started delving into this topic, none of these descriptions really rang with me. What is not explicitly emphasized that Parquet has built on top of previous solutions, which are blended together. I think each component should be addressed independently before aggregate - which Parquet is.
 
@@ -34,6 +34,21 @@ Google BigQuery book why Parquet was created.
 ## Columnar data layout
 
 ## Nested columnar data layout
+
+In this particular topic, data can be represented in two forms:
+* Flat structure
+* Nested structure
+
+The best example of flat structure can be SQL database entries or CSV file rows. For example SQL table could look:
+
+
+| Id  | First Name | Last Name |
+|-----|------------|-----------|
+| 1   | John       | Johnson   |
+| 2   | Adam       | Stevenson |
+| 3   | Eve        | Stevenson |
+
+
 
 
 
