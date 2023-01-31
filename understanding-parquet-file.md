@@ -127,7 +127,7 @@ Nested types before Google's Dremel in columnar formats were not solved or at le
 
 Furthermore, trying to adapt their data representation to existing flat columnar structures by "<...> normalizing and recombining such data at web scale is [was] usually **prohibitive**". Thus they needed a new solution - Dremel.
 
-At this point, it is important to explicitly emphasize that Dremel's nested structure came to existance to solve Google's (and other web companies) natural data structure representation need, which was nested, instead of trying to apply flattening strategies and then recombination in current columnar data representation solution space.
+At this point, it is important to explicitly emphasize that Dremel's nested structure came to existance to solve Google's (and other web companies) natural data structure representation need, which was nested, in columnar databases instead of trying to apply flattening strategies and then recombination in current columnar data representation solution space.
 
 The creation of nested columnar structure was so successful, that opensource projects like Parquet were born. Later (after 4 years from Dremel publication), Google publicised another paper proving that [Storing and Querying Tree-Structured Records in Dremel](https://storage.googleapis.com/pub-tools-public-publication-data/pdf/43119.pdf) are performant and scalable.
 
@@ -137,9 +137,27 @@ In this section, I will explore Dremel's nested structure and via several exampl
 
 **Note!** A lot of information in this section will be copy pasted from this great Twitter [blog post on this very topic](https://blog.twitter.com/engineering/en_us/a/2013/dremel-made-simple-with-parquet). I'm copying just to have all information in one place without needing to jump between pages and also adding additional examples for better clarity.
 
+#### The model
 
+To store in a columnar format we first need to describe the data structures using a schema. This is done using a model similar to Protocol buffers. This model is minimalistic in that it represents nesting using groups of fields and repetition using repeated fields. There is no need for any other complex types like Maps, List or Sets as they all can be mapped to a combination of repeated fields and groups.
 
+The root of the schema is a group of fields called a message. Each field has three attributes: a repetition, a type and a name. The type of a field is either a group or a primitive type (e.g., int, float, boolean, string) and the repetition can be one of the three following cases:
+* required: exactly one occurrence
+* optional: 0 or 1 occurrence
+* repeated: 0 or more occurrences
 
+For example, here’s a schema one might use for an address book:
+
+```
+message AddressBook {
+  required string owner;
+  repeated string ownerPhoneNumbers;
+  repeated group contacts {
+    required string name;
+    optional string phoneNumber;
+  }
+}
+```
 
 
 
