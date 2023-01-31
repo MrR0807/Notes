@@ -125,6 +125,11 @@ Nested types before Google's Dremel in columnar formats were not solved or at le
 
 > Column stores have been adopted for analyzing relational data [1] but to the **best of our knowledge have not been extended to nested data models.**
 
+Furthermore, trying to adapt their data representation to existing flat columnar structures by "<...> normalizing and recombining such data at web scale is [was] usually **prohibitive**". Thus they needed a new solution - Dremel.
+
+At this point, it is important to emphasize two things
+
+
 The creation of nested columnar representation was so successful, that opensource Paruqet format was based upon it. Later, Google publicised another paper proving that [Storing and Querying Tree-Structured Records in Dremel](https://storage.googleapis.com/pub-tools-public-publication-data/pdf/43119.pdf) are performant and scalable.
 
 
