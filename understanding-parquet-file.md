@@ -137,7 +137,7 @@ In this section, I will explore Dremel's nested structure and via several exampl
 
 **Note!** A lot of information in this section will be copy pasted from this great Twitter [blog post on this very topic](https://blog.twitter.com/engineering/en_us/a/2013/dremel-made-simple-with-parquet). I'm copying just to have all information in one place without needing to jump between pages and also adding additional examples for better clarity.
 
-#### The model
+#### The schema
 
 To store in a columnar format we first need to describe the data structures using a schema. This is done using a model similar to **Protocol buffers (Protobuf)**.
 
@@ -177,7 +177,23 @@ A Map is equivalent to a repeating field containing groups of key-value pairs wh
 |---------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------|
 | message ExampleMap {<br/>repeated group map {<br/>required string key;<br/>optional string value;<br/>}<br/>} | {<br/>map: {<br/>key: "AL",<br/>value: "Alabama"<br/>},<br/>map: {<br/>key: "AK",<br/>value: "Alaska"<br/>}<br/>} |
 
+#### Definition levels
 
+To support nested records we need to store the level for which the field is null. This is what the definition level is for: from 0 at the root of the schema up to the maximum level for this column. When a field is defined then all its parents are defined too, but when it is null we need to record the level at which it started being null to be able to reconstruct the record.
+
+In a flat schema, an optional field is encoded on a single bit using 0 for null and 1 for defined. In a nested schema, we use an additional value for each level of nesting (as shown in the example), finally if a field is required it does not need a definition level.
+
+For example, consider the simple nested schema below:
+
+```
+message ExampleDefinitionLevel {
+  optional group a {
+    optional group b {
+      optional string c;
+    }
+  }
+}
+```
 
 
 
