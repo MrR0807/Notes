@@ -131,6 +131,13 @@ At this point, it is important to explicitly emphasize that Dremel's nested stru
 
 The creation of nested columnar structure was so successful, that opensource projects like Parquet were born. Later (after 4 years from Dremel publication), Google publicised another paper proving that [Storing and Querying Tree-Structured Records in Dremel](https://storage.googleapis.com/pub-tools-public-publication-data/pdf/43119.pdf) are performant and scalable.
 
+### Dremel's Nested Structure
+
+In this section, I will explore Dremel's nested structure and via several examples, showcase Definition and Repetition concepts and how they help represent nested structures.
+
+**Note!** A lot of what will be 
+
+
 
 
 
