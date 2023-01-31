@@ -62,7 +62,7 @@ However, flat structures are not always best represantion of data as stated in G
 
 > The data used in web and scientific computing is often nonrelational. Hence, a flexible data model is essential in these domains. Data structures used in programming languages, messages exchanged by distributed systems, structured documents, etc. lend themselves naturally to a **nested** representation. <...> A **nested data model underlies most of structured data processing** at Google and reportedly at other major web companies.
 
-A nested type, for example, in SQL databases can be represented via relationships: one-to-many, many-to-many etc. And a way this is represented, say in SQL, is duplicating the parent data next to the child. For example, say we have additional table, which represents sales to particular client. The client table will be represented as previous table, while the sales transactions could look like so:
+A nested type, for example, in SQL databases can be represented via relationships: one-to-many, many-to-many etc. This is represented in SQL by duplicating the parent data next to the child. For example, say we have additional table, which represents sales to particular client. The client table will be represented as previous table, while the sales transactions could look like so:
 
 | Sales Id | Client Id | Product | Amount |
 |----------|-----------|------------|--|
@@ -70,7 +70,7 @@ A nested type, for example, in SQL databases can be represented via relationship
 | 2 | 1 | Banana | 1.00 |
 | 3 | 3 | Apple | 0.60 |
 
-This table states that John bought and apple and banana while Eve bought an apple. If I would join two tables:
+Via join I can create a nested structure:
 
 ```sql
 SELECT * FROM clients AS c 
@@ -78,7 +78,7 @@ INNER JOIN  sales AS s
 ON c.id = s.client_id;
 ```
 
-I would get the result:
+Result:
 
 | Id  | First Name | Last Name | Sales Id | Client Id | Product | Amount |
 |-----|-----------|-----------|----------|-----------|---------|--------|
@@ -122,7 +122,11 @@ As stated, nested type in flat structure is represented as repetition of parent 
 ]
 ```
 
-Nested types before Google's Dremel   in columnar formats were not 
+Nested types before Google's Dremel in columnar formats were not solved or at least as stated in the paper:
+
+> Column stores have been adopted for analyzing relational data [1] but to the **best of our knowledge have not been extended to nested data models.**
+
+
 
 
 
