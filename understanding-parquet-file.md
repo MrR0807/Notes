@@ -41,7 +41,6 @@ Data structure can be represented in two forms:
 
 The best example of flat structure can be SQL database entries or CSV file rows. For example SQL table of clients could look:
 
-
 | Id  | First Name | Last Name |
 |-----|------------|-----------|
 | 1   | John       | Johnson   |
@@ -86,7 +85,7 @@ Result:
 | 1   | John      | Johnson          | 2        | 1         | Banana  | 1.00   |
 | 3   | Eve       | Stevenson          | 3        | 3         | Apple   | 0.60   |
 
-As stated, nested type in flat structure is represented as repetition of parent entity. In JSON format, this can be represented easier:
+As stated, nested type in flat structure in this case has been represented as repetition of parent entity. In JSON format, this can be represented easier:
 
 ```json
 [
@@ -125,6 +124,8 @@ As stated, nested type in flat structure is represented as repetition of parent 
 Nested types before Google's Dremel in columnar formats were not solved or at least as stated in the paper:
 
 > Column stores have been adopted for analyzing relational data [1] but to the **best of our knowledge have not been extended to nested data models.**
+
+The creation of nested columnar representation was so successful, that opensource Paruqet format was based upon it. Later, Google publicised another paper proving that [Storing and Querying Tree-Structured Records in Dremel](https://storage.googleapis.com/pub-tools-public-publication-data/pdf/43119.pdf) are performant and scalable.
 
 
 
@@ -795,6 +796,7 @@ However, somebody has a problem which might be a problem to me:
 * [Dremel made simple with Parquet](https://blog.twitter.com/engineering/en_us/a/2013/dremel-made-simple-with-parquet)
 * [Dremel: Interactive Analysis of Web-Scale Datasets](https://storage.googleapis.com/pub-tools-public-publication-data/pdf/36632.pdf)
 * [Column-oriented Database Systems](http://www.cs.umd.edu/~abadi/papers/columnstore-tutorial.pdf)
+* [Storing and Querying Tree-Structured Records in Dremel](https://storage.googleapis.com/pub-tools-public-publication-data/pdf/43119.pdf)
 
 
 
