@@ -141,7 +141,7 @@ In this section, I will explore Dremel's nested structure and via several exampl
 
 To store in a columnar format we first need to describe the data structures using a schema. This is done using a model similar to **Protocol buffers (Protobuf)**.
 
-**Sidenote!**. I'm guessing that Google's Protobuf's schema was chosen, because they (Parquet developers) did not want to deviate from Google's Dremel paper, which naturally represented the nested structure schema in their used encoding format which was/is Protobuf.
+**Sidenote!** I'm guessing that Google's Protobuf's schema was chosen, because they (Parquet developers) did not want to deviate from Google's Dremel paper, which naturally represented the nested structure schema in their used encoding format which was/is Protobuf.
 
 This model [Protobuf] is minimalistic in that it represents nesting using groups of fields and repetition using repeated fields. There is no need for any other complex types like Maps, List or Sets as they all can be mapped to a combination of repeated fields and groups.
 
@@ -194,6 +194,19 @@ message ExampleDefinitionLevel {
   }
 }
 ```
+
+It contains one column: a.b.c where all fields are optional and can be null. When c is defined, then necessarily a and b are defined too, but when c is null, we need to save the level of the null value. There are 3 nested optional fields so the maximum definition level is 3.
+
+Here is the definition level for each of the following cases:
+
+
+| Value                 | Definition Level     |
+|-----------------------|----------------------|
+| a: null               | 0                    |
+| a: { b: null }        | 1                    |
+| a: { b: { c: null }}  | 2                    |
+| a: { b: { c: "foo" }} | 3 (actually defined) |
+
 
 
 
