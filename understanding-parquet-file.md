@@ -35,9 +35,9 @@ Google BigQuery book why Parquet was created.
 
 ## Nested columnar data layout
 
-In this particular topic, data can be represented in two forms:
-* Flat structure
-* Nested structure
+In this particular topic, data structure can be represented in two forms:
+* Flat
+* Nested
 
 The best example of flat structure can be SQL database entries or CSV file rows. For example SQL table of clients could look:
 
