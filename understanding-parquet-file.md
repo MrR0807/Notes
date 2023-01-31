@@ -122,6 +122,8 @@ As stated, nested type in flat structure is represented as repetition of parent 
 ]
 ```
 
+However,  nested types in columnar formats were not  
+
 
 
 
