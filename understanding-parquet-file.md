@@ -58,7 +58,7 @@ An entry of one row could be represented in JSON format like so:
 }
 ```
 
-There are no nested types, the structure is flat and there are no relationships. However, in 
+There are no nested types, the structure is flat and there are no relationships. However, as stated in Google's Dremel 
 
 
 
@@ -718,6 +718,7 @@ However, somebody has a problem which might be a problem to me:
 * [LocalStack](https://localstack.cloud/)
 * [Apache Avro Documentation](https://avro.apache.org/docs/1.11.1/getting-started-java/)
 * [Dremel made simple with Parquet](https://blog.twitter.com/engineering/en_us/a/2013/dremel-made-simple-with-parquet)
+* [Dremel: Interactive Analysis of Web-Scale Datasets](https://storage.googleapis.com/pub-tools-public-publication-data/pdf/36632.pdf)
 * [Column-oriented Database Systems](http://www.cs.umd.edu/~abadi/papers/columnstore-tutorial.pdf)
 
 
