@@ -139,7 +139,11 @@ In this section, I will explore Dremel's nested structure and via several exampl
 
 #### The model
 
-To store in a columnar format we first need to describe the data structures using a schema. This is done using a model similar to **Protocol buffers**. This model is minimalistic in that it represents nesting using groups of fields and repetition using repeated fields. There is no need for any other complex types like Maps, List or Sets as they all can be mapped to a combination of repeated fields and groups.
+To store in a columnar format we first need to describe the data structures using a schema. This is done using a model similar to **Protocol buffers (Protobuf)**.
+
+**Sidenote!**. I'm guessing that Google's Protobuf's schema was chosen, because they (Parquet developers) did not want to deviate from Google's Dremel paper, which naturally represented the nested structure schema in their used encoding format which was/is Protobuf.
+
+This model [Protobuf] is minimalistic in that it represents nesting using groups of fields and repetition using repeated fields. There is no need for any other complex types like Maps, List or Sets as they all can be mapped to a combination of repeated fields and groups.
 
 The root of the schema is a group of fields called a message. Each field has three attributes: a repetition, a type and a name. The type of a field is either a group or a primitive type (e.g., int, float, boolean, string) and the repetition can be one of the three following cases:
 * required: exactly one occurrence
