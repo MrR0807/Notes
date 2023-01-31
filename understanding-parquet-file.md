@@ -23,7 +23,19 @@ These are components that I'm going to address:
 * Nested columnar data layout (Google's Dremel)
 * Encoding (e.g. Avro, Thrift)
 
+## MapReduce
 
+TODO.
+
+Google BigQuery book why Parquet was created.
+
+## File metadata importance
+
+## Columnar data layout
+
+## Nested columnar data layout
+
+## Encoding
 
 
 
