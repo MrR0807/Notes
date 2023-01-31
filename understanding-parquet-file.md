@@ -18,7 +18,7 @@ When I've started delving into this topic, none of these descriptions really ran
 
 These are components that I'm going to address:
 * MapReduce
-* File metadata importance
+* File's metadata importance
 * Columnar data layout
 * Nested columnar data layout (Google's Dremel)
 * Encoding (e.g. Avro, Thrift)
@@ -29,11 +29,13 @@ TODO.
 
 Google BigQuery book why Parquet was created.
 
-## File metadata importance
+## File's metadata importance
 
 ## Columnar data layout
 
 ## Nested columnar data layout
+
+
 
 ## Encoding
 
@@ -691,3 +693,12 @@ However, somebody has a problem which might be a problem to me:
 * [LocalStack](https://localstack.cloud/)
 * [Apache Avro Documentation](https://avro.apache.org/docs/1.11.1/getting-started-java/)
 * [Dremel made simple with Parquet](https://blog.twitter.com/engineering/en_us/a/2013/dremel-made-simple-with-parquet)
+* [Column-oriented Database Systems](http://www.cs.umd.edu/~abadi/papers/columnstore-tutorial.pdf)
+
+
+
+
+
+
+
+
