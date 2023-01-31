@@ -58,7 +58,7 @@ An entry of one row could be represented in JSON format like so:
 }
 ```
 
-There are no nested types, the structure is flat and there are no relationships. However, as stated in Google's Dremel: 
+However, flat structures are not always best represantion of data as stated in Google's Dremel: 
 
 > The data used in web and scientific computing is often nonrelational. Hence, a flexible data model is essential in these domains. Data structures used in programming languages, messages exchanged by distributed systems, structured documents, etc. lend themselves naturally to a **nested** representation. <...> A **nested data model underlies most of structured data processing** at Google and reportedly at other major web companies.
 
