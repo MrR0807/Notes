@@ -645,6 +645,85 @@ final var parquetSchemaString = """
 		}""";
 ```
 
+And I've modified the `TestTwo` class by extracting Avro generations:
+
+```java
+public class TestTwo {
+
+	private static final AvroSchemaConverter AVRO_SCHEMA_CONVERTER = new AvroSchemaConverter(new Configuration());
+
+	public static void main(String[] args) throws IOException {
+
+		final var parquetSchemaString = """
+				message Out {
+				  required group Integers (LIST) {
+				    repeated int32 whatever;
+				  }
+				}""";
+		final var parquetSchema = MessageTypeParser.parseMessageType(parquetSchemaString);
+		System.out.println(parquetSchema);
+
+		final var avroSchemaFromParquet = AVRO_SCHEMA_CONVERTER.convert(parquetSchema);
+		System.out.println(avroSchemaFromParquet);
+
+		writeUsingExampleParquetWriter(parquetSchema);
+
+		readParquetFromFile("test.parquet");
+	}
+
+	private static void writeUsingExampleParquetWriter(MessageType parquetSchema) throws IOException {
+		final var parquetWriter = buildWriter(parquetSchema);
+		final SimpleGroup parquetRecord = createParquetGenericRecord(parquetSchema);
+		parquetWriter.write(parquetRecord);
+		parquetWriter.close();
+	}
+
+	private static ParquetWriter<Group> buildWriter(MessageType parquetSchema) {
+
+		try {
+			return ExampleParquetWriter.<Group>builder(new Path("test.parquet"))
+					.withType(parquetSchema)
+					.build();
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+	}
+
+	private static SimpleGroup createParquetGenericRecord(MessageType parquetSchema) {
+		final var parquetRecord = new SimpleGroup(parquetSchema);
+		parquetRecord.addGroup("Integers")
+				.append("whatever", 1)
+				.append("whatever", 2);
+
+		return parquetRecord;
+	}
+
+	private static void readParquetFromFile(String fileName) throws IOException {
+		ParquetReader<Group> reader = new ParquetReader<>(new Path(fileName), new GroupReadSupport());
+
+		Group result = reader.read();
+		final var group = result.getGroup("Integers", 0);
+		final var i1 = group.getInteger("whatever", 0);
+		final var i2 = group.getInteger("whatever", 1);
+		System.out.println(i1);
+		System.out.println(i2);
+	}
+}
+```
+
+
+Running `main` is successful and ParquetReader successfully reads the outcome. However, running `parquet-cli`:
+
+```shell
+$ parquet cat test.parquet
+{"Integers": null}
+```
+
+`Integers` are null.
+
+## Conclusion
+
+
 
 
 
