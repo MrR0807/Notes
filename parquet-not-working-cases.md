@@ -65,7 +65,9 @@ message Out {
 }
 ```
 
-The only difference is that instead of `UTF8` it is `STRING`. 
+The only difference is that instead of `UTF8` it is `STRING`. From [parquet-format Github](https://github.com/apache/parquet-format/blob/master/LogicalTypes.md#string) definition, they are compatible:
+
+> `STRING` corresponds to `UTF8` ConvertedType.
 
 
 ## `AvroSchemaConverter` conversion from Parquet to Avro
