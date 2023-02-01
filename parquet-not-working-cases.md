@@ -28,7 +28,7 @@ Each case will be started by defining both Avro and Parquet schemas by hand. The
 
 # Simple flat schema
 
-Hand created avro schema:
+## Hand written Avro Schema
 
 ```
 {
@@ -47,8 +47,7 @@ Hand created avro schema:
 }
 ```
 
-
-Equivalent hand created Parquet schema:
+## Hand written Parquet Schema
 
 ```
 message Out {
@@ -56,6 +55,33 @@ message Out {
 	required binary MyString (UTF8);
 }
 ```
+
+## `AvroSchemaConverter` conversion from Avro to Parquet
+
+```
+message Out {
+  required int32 MyInteger;
+  required binary MyString (STRING);
+}
+```
+
+The only difference is that instead of `UTF8` it is `STRING`. 
+
+
+## `AvroSchemaConverter` conversion from Parquet to Avro
+
+```
+{
+	"type":"record",
+	"name":"Out",
+	"fields":[
+		{"name":"MyInteger","type":"int"},
+		{"name":"MyString","type":"string"}
+]}
+```
+
+## Full Code
+
 
 
 
