@@ -339,7 +339,7 @@ Converting first schema from "Hand written Parquet Schema":
 }
 ```
 
-This is nothing like hand written example.
+This is nothing like hand written Avro example.
 
 
 Converting second schema from "Hand written Parquet Schema":
@@ -406,6 +406,30 @@ Running main prints:
 ```
 
 Again, this is very much the same as written by hand Avro schema and when writting Parquet schema (second example) AGAINST what is documented in the Parquet format documentation. Why?
+
+Let's use `parquet-cli` command `convert` JSON file and inspect it's schema:
+
+```shell
+$ echo '{ "Integers": [1,2] }' > commandtest.json
+$ parquet convert commandtest.json -o commandtest.parquet
+$ parquet cat commandtest.parquet
+> {"Integers": [1, 2]}
+$ parquet schema commandtest.parquet
+> 
+{
+  "type" : "record",
+  "name" : "json",
+  "fields" : [ {
+    "name" : "Integers",
+    "type" : {
+      "type" : "array",
+      "items" : "int"
+    },
+    "doc" : "Type inferred from '[1,2]'"
+  } ]
+}
+
+```
 
 
 ## Full Code
