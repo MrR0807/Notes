@@ -360,6 +360,51 @@ Converting second schema from "Hand written Parquet Schema":
 
 As expected, it maps to exactly.
 
+Avro has additional schema infering from Java objects functionality. Example:
+
+```java
+public static class Out {
+	private List<Integer> Integers;
+
+	public Out(List<Integer> integers) {
+		Integers = integers;
+	}
+
+	public List<Integer> getIntegers() {
+		return Integers;
+	}
+}
+	
+public static void main(String[] args) throws IOException {
+
+	final var schemaString = ReflectData.get().getSchema(Out.class).toString();
+	final var schema = new Schema.Parser().parse(schemaString);
+
+	System.out.println(schema);
+}
+
+Running main prints:
+
+```
+{
+  "type": "record",
+  "name": "Out",
+  "namespace": "com.test.fromjsontoparquet.TestTwo",
+  "fields": [
+    {
+      "name": "Integers",
+      "type": {
+        "type": "array",
+        "items": "int",
+        "java-class": "java.util.List"
+      }
+    }
+  ]
+}
+```
+
+Again, this is very much the same as written by hand and when writting Parquet schema AGAINST what is documented in the Parquet format documentation. Why?
+
 
 ## Full Code
 
