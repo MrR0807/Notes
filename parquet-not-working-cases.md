@@ -17,29 +17,46 @@ dependencies {
 }
 ```
 
+
+# Why
+
+I have found inconsistencies between how Avro and Parquet converts schemas, how values are serialized and deserialized, and how parquet cli tool interacts with written files. I wanted to document those cases for both my own sanity and to raise awareness of these cases.
+
+
 # Simple Objects
 
-Let's start with simple objects.
+Let's start with simple objects. In this test case I will also use `AvroSchemaConverter` to convert from Parquet to Avro and from Avro to Parquet in order to see, whether there are discrepancies between hand created and automatically created schemas.
 
-Avro schema:
+Hand created avro schema:
 
+```
+{
+	"type":"record",
+	"name":"Out",
+	"fields":[
+		{
+			"name":"MyInteger",
+			"type":{"type":"int"}
+		},
+		{
+			"name":"MyString",
+			"type":{"type":"string"}
+		}
+	]
+}
 ```
 
 
+Equivalent hand created Parquet schema:
 
+```
+message Out {
+	required int32 MyInteger;
+	required binary MyString (UTF8);
+}
 ```
 
 
-Equivalent Parquet schema:
-
-```
-
-
-
-```
-
-
-Code that writes and reads.
 
 
 
