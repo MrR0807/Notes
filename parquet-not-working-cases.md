@@ -230,11 +230,68 @@ parquet cat avrotest.parquet
 
 # Simple schema with array
 
+Parquet schema is similar to Protobuf, but not entirely. While they are very similar with primitive types, with nested types differences start to show. If I wanted to add an array of integers in Protobuf, I could define schema like:
+
+```
+message Out {
+  repeated int32 integers = 1
+}
+```
+
+While in Parquet it should be defined as per [documentation](https://github.com/apache/parquet-format/blob/master/LogicalTypes.md#lists): 
+
+```
+message Out {
+  required/optional group integers (LIST) {
+    repeated group list {
+      required/optional int32 element;
+    }
+  }
+}
+```
+
+However, there are nuances with arrays, Parquet and Avro.
 
 
 ## Hand written Avro Schema
 
+```
+{
+	"type":"record",
+	"name":"Out",
+	"fields":[
+		{
+			"name":"Integers",
+			"type":{"type":"array", "items": "int"}
+		}
+	]
+}
+```
+
 ## Hand written Parquet Schema
+
+I'm going to write two schemas and in examples we'll see why.
+
+Per documentation:
+
+```
+message Out {
+  required group Integers (LIST) {
+    repeated group list {
+      required int32 element;
+    }
+  }
+}
+```
+
+```
+message Out {
+  required group Integers (LIST) {
+    repeated int32 array;
+  }
+}
+```
+
 
 ## `AvroSchemaConverter` conversion from Avro to Parquet
 
