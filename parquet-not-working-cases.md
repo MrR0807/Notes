@@ -478,7 +478,7 @@ message Document {
  final var parquetSchema =
      new MessageType("Out",
          new GroupType(Type.Repetition.REQUIRED, "Integers",
-	     new PrimitiveType(Type.Repetition.REPEATED, PrimitiveType.PrimitiveTypeName.INT32, "array")
+	         new PrimitiveType(Type.Repetition.REPEATED, PrimitiveType.PrimitiveTypeName.INT32, "array")
 	)
      );
  ```
