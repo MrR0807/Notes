@@ -208,6 +208,8 @@ public class TestOne {
 }
 ```
 
+## Reading with `ParquetReader`
+
 Files are read with `ParquetReader` outputting:
 
 ```shell
@@ -217,7 +219,7 @@ string
 string
 ```
 
-Parquet-cli works with generic files as well:
+## Reading with `parquet-cli`
 
 ```shell
 parquet cat test.parquet    
@@ -226,7 +228,67 @@ parquet cat avrotest.parquet
 {"MyInteger": 1, "MyString": "string"}
 ```
 
+# Simple schema with array
 
+## Hand written Avro Schema
+
+## Hand written Parquet Schema
+
+## `AvroSchemaConverter` conversion from Avro to Parquet
+
+## `AvroSchemaConverter` conversion from Parquet to Avro
+
+## Full Code
+
+## Reading with `ParquetReader`
+
+## Reading with `parquet-cli`
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Simple schema with XXXXXXXXXXX
+
+## Hand written Avro Schema
+
+## Hand written Parquet Schema
+
+## `AvroSchemaConverter` conversion from Avro to Parquet
+
+## `AvroSchemaConverter` conversion from Parquet to Avro
+
+## Full Code
+
+## Reading with `ParquetReader`
+
+## Reading with `parquet-cli`
+
+
+
+# Simple schema with YYYYYYYYYYYYYYY
+
+## Hand written Avro Schema
+
+## Hand written Parquet Schema
+
+## `AvroSchemaConverter` conversion from Avro to Parquet
+
+## `AvroSchemaConverter` conversion from Parquet to Avro
+
+## Full Code
+
+## Reading with `ParquetReader`
+
+## Reading with `parquet-cli`
 
 
 
