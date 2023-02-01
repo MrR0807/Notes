@@ -284,6 +284,8 @@ message Out {
 }
 ```
 
+Deviates from documentation:
+
 ```
 message Out {
   required group Integers (LIST) {
@@ -403,7 +405,7 @@ Running main prints:
 }
 ```
 
-Again, this is very much the same as written by hand and when writting Parquet schema AGAINST what is documented in the Parquet format documentation. Why?
+Again, this is very much the same as written by hand Avro schema and when writting Parquet schema (second example) AGAINST what is documented in the Parquet format documentation. Why?
 
 
 ## Full Code
