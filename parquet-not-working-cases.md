@@ -17,4 +17,43 @@ dependencies {
 }
 ```
 
-# 
+# Simple Objects
+
+Let's start with simple objects.
+
+Avro schema:
+
+```
+
+
+
+```
+
+
+Equivalent Parquet schema:
+
+```
+
+
+
+```
+
+
+Code that writes and reads.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
