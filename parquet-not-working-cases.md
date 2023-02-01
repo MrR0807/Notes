@@ -428,8 +428,11 @@ $ parquet schema commandtest.parquet
     "doc" : "Type inferred from '[1,2]'"
   } ]
 }
-
 ```
+
+Again, this corresponds to non-documented Parquet schema. Why? Why `parquet-cli` tool generates schemas, which do not comply with their own standards?
+
+Lastly, in 
 
 
 ## Full Code
