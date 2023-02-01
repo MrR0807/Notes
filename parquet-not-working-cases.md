@@ -632,7 +632,18 @@ $ parquet cat avrotest.parquet
 
 ## Bonus twist
 
-Remember in "`AvroSchemaConverter` conversion from Avro to Parquet" I've wrote: "Also, notice that name of "repeated" type is array. This is important in further steps". What happens if 
+Remember in "`AvroSchemaConverter` conversion from Avro to Parquet" section I've wrote: "Also, notice that name of "repeated" type is array. This is important in further steps". What happens if the name is not array? For example:
+
+```java
+final var parquetSchemaString = """
+		message Out {
+		  required group Integers (LIST) {
+			repeated int32 whatever;
+		  }
+		}""";
+```
+
+
 
 
 
