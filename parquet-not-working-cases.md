@@ -630,7 +630,9 @@ $ parquet cat avrotest.parquet
 {"Integers": [1, 2]}
 ```
 
+## Bonus twist
 
+Remember in "`AvroSchemaConverter` conversion from Avro to Parquet" I've wrote: "Also, notice that name of "repeated" type is array. This is important in further steps". What happens if 
 
 
 
