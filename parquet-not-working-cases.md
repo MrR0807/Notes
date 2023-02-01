@@ -362,6 +362,8 @@ Converting second schema from "Hand written Parquet Schema":
 
 As expected, it maps to exactly.
 
+### More misalignments 
+
 Avro has additional schema infering from Java objects functionality. Example:
 
 ```java
@@ -405,9 +407,9 @@ Running main prints:
 }
 ```
 
-Again, this is very much the same as written by hand Avro schema and when writting Parquet schema (second example) AGAINST what is documented in the Parquet format documentation. Why?
+Again, this is very much the same as written by hand Avro schema and when writting Parquet schema (second example). However, this goes against what is documented in the Parquet format documentation. Why?
 
-Let's use `parquet-cli` command `convert` JSON file and inspect it's schema:
+Another case - use `parquet-cli` command `convert`, which converts JSON file into parquet and inspect it's schema:
 
 ```shell
 $ echo '{ "Integers": [1,2] }' > commandtest.json
@@ -432,7 +434,43 @@ $ parquet schema commandtest.parquet
 
 Again, this corresponds to non-documented Parquet schema. Why? Why `parquet-cli` tool generates schemas, which do not comply with their own standards?
 
-Lastly, in 
+Lastly, in `org.apache.parquet.example.Paper` there is Dremel paper example built using Parquet Java classes:
+
+```java
+  public static final MessageType schema =
+      new MessageType("Document",
+          new PrimitiveType(REQUIRED, INT64, "DocId"),
+          new GroupType(OPTIONAL, "Links",
+              new PrimitiveType(REPEATED, INT64, "Backward"),
+              new PrimitiveType(REPEATED, INT64, "Forward")
+              ),
+          new GroupType(REPEATED, "Name",
+              new GroupType(REPEATED, "Language",
+                  new PrimitiveType(REQUIRED, BINARY, "Code"),
+                  new PrimitiveType(OPTIONAL, BINARY, "Country")),
+              new PrimitiveType(OPTIONAL, BINARY, "Url")));
+```
+
+Which corresponds:
+
+```
+message Document {
+ required int64 DocId;
+ optional group Links {
+   repeated int64 Backward;
+   repeated int64 Forward; 
+ }
+ repeated group Name {
+   optional string Url; 
+   repeated group Language {
+     required string Code;
+     optional string Country; 
+   }
+ }
+}
+ ```
+ 
+ 
 
 
 ## Full Code
