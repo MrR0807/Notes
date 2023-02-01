@@ -230,6 +230,8 @@ parquet cat avrotest.parquet
 
 # Simple schema with array
 
+
+
 ## Hand written Avro Schema
 
 ## Hand written Parquet Schema
