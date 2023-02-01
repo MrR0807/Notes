@@ -451,7 +451,7 @@ Lastly, in `org.apache.parquet.example.Paper` there is Dremel paper example buil
               new PrimitiveType(OPTIONAL, BINARY, "Url")));
 ```
 
-Which corresponds:
+Which corresponds to schema defined in [Dremel paper](https://storage.googleapis.com/pub-tools-public-publication-data/pdf/36632.pdf):
 
 ```
 message Document {
@@ -470,6 +470,12 @@ message Document {
 }
  ```
  
+ Taking inspiration, I can define similarly this test's schema:
+ 
+ ```java
+ 
+ 
+ ```
  
 
 
