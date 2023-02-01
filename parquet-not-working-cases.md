@@ -453,7 +453,7 @@ Lastly, in `org.apache.parquet.example.Paper` there is Dremel paper example buil
               new PrimitiveType(OPTIONAL, BINARY, "Url")));
 ```
 
-Which corresponds to schema defined in [Dremel paper](https://storage.googleapis.com/pub-tools-public-publication-data/pdf/36632.pdf):
+Which corresponds to Protobuf schema defined in [Dremel paper](https://storage.googleapis.com/pub-tools-public-publication-data/pdf/36632.pdf):
 
 ```
 message Document {
