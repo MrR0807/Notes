@@ -723,17 +723,12 @@ $ parquet cat test.parquet
 
 ## Conclusion
 
-
-
-
-
-
-
-
-
-
-
-
+* The standard way of how lists should be declared in Parquet is not working;
+* The old standard should be used;
+* The old standard is supported by Avro;
+* If mapping between Avro and Parquet is required, list elements should be called `array`;
+* Programable `new MessageType` declaration of schemas does not work;
+* `parquet-cli` inconsistencies with `ParquetReader`.
 
 
 # Simple schema with XXXXXXXXXXX
