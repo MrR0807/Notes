@@ -412,6 +412,7 @@ Again, this is very much the same as written by hand Avro schema and when writti
 Another case - use `parquet-cli` command `convert`, which converts JSON file into parquet and inspect it's schema:
 
 ```shell
+
 $ echo '{ "Integers": [1,2] }' > commandtest.json
 $ parquet convert commandtest.json -o commandtest.parquet
 $ parquet cat commandtest.parquet
