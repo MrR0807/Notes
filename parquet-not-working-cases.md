@@ -503,9 +503,132 @@ java.lang.UnsupportedOperationException: REPEATED not supported outside LIST or 
 
 ## Full Code
 
+```java
+public class TestTwo {
+
+	private static final AvroSchemaConverter AVRO_SCHEMA_CONVERTER = new AvroSchemaConverter(new Configuration());
+
+	public static void main(String[] args) throws IOException {
+
+		final var avroSchemaString = """
+				{
+					"type":"record",
+					"name":"Out",
+					"fields":[
+						{
+							"name":"Integers",
+							"type":{"type":"array", "items": "int"}
+						}
+					]
+				}""";
+		final var avroSchema = new Schema.Parser().parse(avroSchemaString);
+
+		final var parquetSchemaString = """
+				message Out {
+				  required group Integers (LIST) {
+				    repeated int32 array;
+				  }
+				}""";
+		final var parquetSchema = MessageTypeParser.parseMessageType(parquetSchemaString);
+		System.out.println(parquetSchema);
+
+		final var avroSchemaFromParquet = AVRO_SCHEMA_CONVERTER.convert(parquetSchema);
+		System.out.println(avroSchemaFromParquet);
+
+		final var parquetSchemaFromAvro = AVRO_SCHEMA_CONVERTER.convert(avroSchema);
+		System.out.println(parquetSchemaFromAvro);
+
+		writeUsingExampleParquetWriter(parquetSchema);
+		writeUsingAvroParquetWriter(avroSchema);
+
+		readParquetFromFile("test.parquet");
+		readParquetFromFile("avrotest.parquet");
+	}
+
+	private static void writeUsingExampleParquetWriter(MessageType parquetSchema) throws IOException {
+		final var parquetWriter = buildWriter(parquetSchema);
+		final SimpleGroup parquetRecord = createParquetGenericRecord(parquetSchema);
+		parquetWriter.write(parquetRecord);
+		parquetWriter.close();
+	}
+
+	private static ParquetWriter<Group> buildWriter(MessageType parquetSchema) {
+
+		try {
+			return ExampleParquetWriter.<Group>builder(new Path("test.parquet"))
+					.withType(parquetSchema)
+					.build();
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+	}
+
+	private static SimpleGroup createParquetGenericRecord(MessageType parquetSchema) {
+		final var parquetRecord = new SimpleGroup(parquetSchema);
+		parquetRecord.addGroup("Integers")
+				.append("array", 1)
+				.append("array", 2);
+
+		return parquetRecord;
+	}
+
+	private static void writeUsingAvroParquetWriter(Schema avroSchema) throws IOException {
+		final var avroParquetWriter = buildAvroParquetWriter(avroSchema);
+		GenericRecord avroParquetRecord = createAvroGenericRecord(avroSchema);
+		avroParquetWriter.write(avroParquetRecord);
+		avroParquetWriter.close();
+	}
+
+	private static GenericRecord createAvroGenericRecord(Schema avroSchema) {
+		GenericRecord avroParquetRecord = new GenericData.Record(avroSchema);
+		avroParquetRecord.put("Integers", List.of(1, 2));
+		return avroParquetRecord;
+	}
+
+	private static ParquetWriter<GenericRecord> buildAvroParquetWriter(Schema parquetSchema) {
+
+		try {
+			return AvroParquetWriter.<GenericRecord>builder(new Path("avrotest.parquet"))
+					.withSchema(parquetSchema)
+					.build();
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+	}
+
+	private static void readParquetFromFile(String fileName) throws IOException {
+		ParquetReader<Group> reader = new ParquetReader<>(new Path(fileName), new GroupReadSupport());
+
+		Group result = reader.read();
+		final var group = result.getGroup("Integers", 0);
+		final var i1 = group.getInteger("array", 0);
+		final var i2 = group.getInteger("array", 1);
+		System.out.println(i1);
+		System.out.println(i2);
+	}
+}
+```
+
+
 ## Reading with `ParquetReader`
 
+Files are read with `ParquetReader` outputting:
+
+```shell
+1
+2
+1
+2
+```
+
 ## Reading with `parquet-cli`
+
+```shell
+$ parquet cat test.parquet
+{"Integers": [1, 2]}
+$ parquet cat avrotest.parquet
+{"Integers": [1, 2]}
+```
 
 
 
