@@ -22,10 +22,11 @@ dependencies {
 
 I have found inconsistencies between how Avro and Parquet converts schemas, how values are serialized and deserialized, and how parquet cli tool interacts with written files. I wanted to document those cases for both my own sanity and to raise awareness of these cases.
 
+# What
 
-# Simple Objects
+Each case will be started by defining both Avro and Parquet schemas by hand. They inspecting how they are automatically converted using `AvroSchemaConverter` into one another, use generic writting methods to serialise information and then deserialise it and lastly use `parquet-cli` to again read those files. I will start with simple cases and ramp up by adding complex types like lists and maps.
 
-Let's start with simple objects. In this test case I will also use `AvroSchemaConverter` to convert from Parquet to Avro and from Avro to Parquet in order to see, whether there are discrepancies between hand created and automatically created schemas.
+# Simple flat schema
 
 Hand created avro schema:
 
