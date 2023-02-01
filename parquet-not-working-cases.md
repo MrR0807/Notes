@@ -473,11 +473,33 @@ message Document {
  Taking inspiration, I can define similarly this test's schema:
  
  ```java
- 
- 
+ final var parquetSchema =
+		new MessageType("Out",
+				new GroupType(Type.Repetition.REQUIRED, "Integers",
+						new PrimitiveType(Type.Repetition.REPEATED, PrimitiveType.PrimitiveTypeName.INT32, "array")
+				)
+		);
  ```
  
+ Printing this schema:
+ 
+ ```
+ message Out {
+  required group Integers {
+    repeated int32 array;
+  }
+}
+```
 
+The main difference is that it has missing "(LIST)" type hint after "Integers". This shcema does not even work with `AvroSchemaConverter`, due to:
+
+```java
+java.lang.UnsupportedOperationException: REPEATED not supported outside LIST or MAP. Type: repeated int32 array
+	at org.apache.parquet.avro.AvroSchemaConverter.convertFields(AvroSchemaConverter.java:292)
+	at org.apache.parquet.avro.AvroSchemaConverter.convertField(AvroSchemaConverter.java:440)
+	at org.apache.parquet.avro.AvroSchemaConverter.convertFields(AvroSchemaConverter.java:290)
+	at org.apache.parquet.avro.AvroSchemaConverter.convert(AvroSchemaConverter.java:279)
+```
 
 ## Full Code
 
