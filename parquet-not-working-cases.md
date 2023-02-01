@@ -20,11 +20,11 @@ dependencies {
 
 # Why
 
-I have found inconsistencies between how Avro and Parquet converts schemas, how values are serialized and deserialized, and how parquet cli tool interacts with written files. I wanted to document those cases for both my own sanity and to raise awareness of these cases.
+I have found inconsistencies between how Avro and Parquet converts schemas, how values are serialized and deserialized, and how `parquet-cli` tool interacts with written files. I wanted to document those cases for both my own sanity and to raise awareness of these cases.
 
 # What
 
-Each case will be started by defining both Avro and Parquet schemas by hand. They inspecting how they are automatically converted using `AvroSchemaConverter` into one another, use generic writting methods to serialise information and then deserialise it and lastly use `parquet-cli` to again read those files. I will start with simple cases and ramp up by adding complex types like lists and maps.
+Each case will be started by defining both Avro and Parquet schemas by hand. Then inspect how they are automatically converted using `AvroSchemaConverter` into one another and vice versa, use generic writting methods to serialise information and then deserialise it and lastly use `parquet-cli` to again read those files. I will start with simple cases and ramp up by adding complex types like lists and maps.
 
 # Simple flat schema
 
@@ -295,7 +295,71 @@ message Out {
 
 ## `AvroSchemaConverter` conversion from Avro to Parquet
 
+As you can see, from Avro schema to Parquet creates a second schema from "Hand written Parquet Schema". Why?
+
+```
+message Out {
+  required group Integers (LIST) {
+    repeated int32 array;
+  }
+}
+```
+
+Also, notice that name of "repeated" type is array. This is important in further steps.
+
+
 ## `AvroSchemaConverter` conversion from Parquet to Avro
+
+Converting first schema from "Hand written Parquet Schema":
+
+```
+{
+  "type": "record",
+  "name": "Out",
+  "fields": [
+    {
+      "name": "Integers",
+      "type": {
+        "type": "array",
+        "items": {
+          "type": "record",
+          "name": "list",
+          "fields": [
+            {
+              "name": "element",
+              "type": "int"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}
+```
+
+This is nothing like hand written example.
+
+
+Converting second schema from "Hand written Parquet Schema":
+
+```
+{
+  "type": "record",
+  "name": "Out",
+  "fields": [
+    {
+      "name": "Integers",
+      "type": {
+        "type": "array",
+        "items": "int"
+      }
+    }
+  ]
+}
+```
+
+As expected, it maps to exactly.
+
 
 ## Full Code
 
