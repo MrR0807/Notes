@@ -360,7 +360,7 @@ Converting second schema from "Hand written Parquet Schema":
 }
 ```
 
-As expected, it maps to exactly.
+As expected, it maps exactly to hand written Avro schema.
 
 ### More misalignments 
 
