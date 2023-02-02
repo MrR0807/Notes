@@ -737,31 +737,88 @@ $ parquet cat test.parquet
 
 ```
 {
-	"name":"Out",
-	"type":"record",
-	"fields":[
-		{
-			"name":"Integers",
-			"type":{
-				"type":"array",
-				"items": {
-					"name": "Children",
-					"type": "record",
-					"fields": [
-					{"name": "age", "type": "int"},
-					{"name": "name", "type": "string"}]
-				}
-			}
-		}
-	]
+  "name":"Out",
+  "type":"record",
+  "fields":[
+    {
+      "name":"Integers",
+      "type":{
+        "type":"array",
+        "items": {
+          "name": "Children",
+          "type": "record",
+          "fields": [
+            {"name": "age", "type": "int"},
+            {"name": "name", "type": "string"}]
+        }
+      }
+    }
+  ]
 }
 ```
 
 ## Hand written Parquet Schema
 
+```
+message Out {
+  required group Integers (LIST) {
+	repeated group Children {
+		required int32 age;
+		required binary name (UTF8);
+	}
+  }
+}
+```
+
 ## `AvroSchemaConverter` conversion from Avro to Parquet
 
+```
+{
+  "type": "record",
+  "name": "Out",
+  "fields": [
+    {
+      "name": "Integers",
+      "type": {
+        "type": "array",
+        "items": {
+          "type": "record",
+          "name": "Children",
+          "fields": [
+            {
+              "name": "age",
+              "type": "int"
+            },
+            {
+              "name": "name",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}
+```
+
+Exactly the same as hand written.
+
 ## `AvroSchemaConverter` conversion from Parquet to Avro
+
+```
+message Out {
+  required group Integers (LIST) {
+    repeated group array {
+      required int32 age;
+      required binary name (STRING);
+    }
+  }
+}
+```
+
+The `Children` name is gone and instead, we have `array`.
+
+
 
 ## Full Code
 
@@ -897,8 +954,31 @@ public class TestThree {
 
 ## Reading with `ParquetReader`
 
+Running main prints:
+```
+Children
+  age: 1
+  name: hello
+Children
+  age: 2
+  name: hello2
+
+array
+  age: 1
+  name: avroname
+```
+
+
 ## Reading with `parquet-cli`
 
+`parquet-cli` again, does not work when Parquet schema has been built without `array` naming convetion.
+
+```shell
+$ parquet cat test.parquet
+{"Integers": null}
+$ parquet cat avrotest.parquet
+{"Integers": [{"age": 1, "name": "avroname"}]}
+```
 
 
 # Simple schema with YYYYYYYYYYYYYYY
