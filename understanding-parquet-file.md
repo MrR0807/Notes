@@ -869,6 +869,7 @@ However, somebody has a problem which might be a problem to me:
 * https://blog.acolyer.org/2018/09/26/the-design-and-implementation-of-modern-column-oriented-database-systems/
 * https://cloud.google.com/blog/products/bigquery/inside-capacitor-bigquerys-next-generation-columnar-storage-format
 * https://storage.googleapis.com/pub-tools-public-publication-data/pdf/43119.pdf
+* https://medium.com/data-rocks/protobuf-as-an-encoding-format-for-apache-kafka-cad4709a668d (protobuf is not good?)
 
 
 # Sources
