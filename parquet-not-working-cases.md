@@ -735,6 +735,28 @@ $ parquet cat test.parquet
 
 ## Hand written Avro Schema
 
+```
+{
+	"name":"Out",
+	"type":"record",
+	"fields":[
+		{
+			"name":"Integers",
+			"type":{
+				"type":"array",
+				"items": {
+					"name": "Children",
+					"type": "record",
+					"fields": [
+					{"name": "age", "type": "int"},
+					{"name": "name", "type": "string"}]
+				}
+			}
+		}
+	]
+}
+```
+
 ## Hand written Parquet Schema
 
 ## `AvroSchemaConverter` conversion from Avro to Parquet
