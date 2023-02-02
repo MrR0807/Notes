@@ -743,6 +743,136 @@ $ parquet cat test.parquet
 
 ## Full Code
 
+```java
+public class TestThree {
+
+	private static final AvroSchemaConverter AVRO_SCHEMA_CONVERTER = new AvroSchemaConverter(new Configuration());
+
+	public static void main(String[] args) throws IOException {
+
+		final var avroSchemaString = """
+				{
+					"name":"Out",
+					"type":"record",
+					"fields":[
+						{
+							"name":"Integers",
+							"type":{
+								"type":"array",
+								"items": {
+									"name": "Children",
+									"type": "record",
+									"fields": [
+									{"name": "age", "type": "int"},
+									{"name": "name", "type": "string"}]
+								}
+							}
+						}
+					]
+				}""";
+		final var avroSchema = new Schema.Parser().parse(avroSchemaString);
+
+		final var parquetSchemaString = """
+				message Out {
+				  required group Integers (LIST) {
+				    repeated group Children {
+				    	required int32 age;
+				    	required binary name (UTF8);
+				    }
+				  }
+				}""";
+		final var parquetSchema = MessageTypeParser.parseMessageType(parquetSchemaString);
+
+		final var avroSchemaFromParquet = AVRO_SCHEMA_CONVERTER.convert(parquetSchema);
+		System.out.println(avroSchemaFromParquet);
+
+		final var parquetSchemaFromAvro = AVRO_SCHEMA_CONVERTER.convert(avroSchema);
+		System.out.println(parquetSchemaFromAvro);
+
+		writeUsingExampleParquetWriter(parquetSchema);
+		writeUsingAvroParquetWriter(avroSchema);
+
+		readParquetFromFile("test.parquet");
+		readParquetFromFile("avrotest.parquet");
+	}
+
+	private static void writeUsingExampleParquetWriter(MessageType parquetSchema) throws IOException {
+		final var parquetWriter = buildWriter(parquetSchema);
+		final SimpleGroup parquetRecord = createParquetGenericRecord(parquetSchema);
+		parquetWriter.write(parquetRecord);
+		parquetWriter.close();
+	}
+
+	private static ParquetWriter<Group> buildWriter(MessageType parquetSchema) {
+
+		try {
+			return ExampleParquetWriter.<Group>builder(new Path("test.parquet"))
+					.withType(parquetSchema)
+					.build();
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+	}
+
+	private static SimpleGroup createParquetGenericRecord(MessageType parquetSchema) {
+		final var parquetRecord = new SimpleGroup(parquetSchema);
+		final var integers = parquetRecord
+				.addGroup("Integers");
+		integers.addGroup("Children")
+				.append("age", 1)
+				.append("name", "hello");
+		integers.addGroup("Children")
+				.append("age", 2)
+				.append("name", "hello2");
+		return parquetRecord;
+	}
+
+	private static void writeUsingAvroParquetWriter(Schema avroSchema) throws IOException {
+		final var avroParquetWriter = buildAvroParquetWriter(avroSchema);
+		GenericRecord avroParquetRecord = createAvroGenericRecord(avroSchema);
+		avroParquetWriter.write(avroParquetRecord);
+		avroParquetWriter.close();
+	}
+
+	private static GenericRecord createAvroGenericRecord(Schema avroSchema) {
+		GenericRecord record = new GenericData.Record(avroSchema);
+
+		Schema childSchema = record.getSchema().getField("Integers").schema().getElementType();
+		List<GenericRecord> childrenList = new ArrayList<>();
+		GenericRecord children = new GenericData.Record(childSchema);
+
+		children.put("age", 1);
+		children.put("name", "avroname");
+		childrenList.add(children);
+
+		final var integers = new GenericData.Array<>(record.getSchema().getField("Integers").schema(), childrenList);
+		record.put("Integers", integers);
+
+		return record;
+	}
+
+	private static ParquetWriter<GenericRecord> buildAvroParquetWriter(Schema parquetSchema) {
+
+		try {
+			return AvroParquetWriter.<GenericRecord>builder(new Path("avrotest.parquet"))
+					.withSchema(parquetSchema)
+					.build();
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+	}
+
+	private static void readParquetFromFile(String fileName) throws IOException {
+		ParquetReader<Group> reader = new ParquetReader<>(new Path(fileName), new GroupReadSupport());
+
+		Group result = reader.read();
+		final var integers = result.getGroup("Integers", 0);
+
+		System.out.println(integers);
+	}
+}
+```
+
 ## Reading with `ParquetReader`
 
 ## Reading with `parquet-cli`
