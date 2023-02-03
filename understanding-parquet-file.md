@@ -73,7 +73,7 @@ Via join I can create a nested structure:
 
 ```sql
 SELECT * FROM clients AS c 
-INNER JOIN  sales AS s
+INNER JOIN sales AS s
 ON c.id = s.client_id;
 ```
 
