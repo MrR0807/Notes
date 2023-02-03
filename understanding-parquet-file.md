@@ -334,7 +334,18 @@ contacts.phoneNumber value:"555 987 6543" d:2 r:0
 contacts.phoneNumber value: null d:1 r:1
 contacts value:null d:0 r:0
 
+Another representation of this example could be:
 
+{
+  AddressBook.owner: "Julien Le Dem"
+  AddressBook.ownerPhoneNumbers: ["555 123 4567", "555 666 1337"]
+  AddressBook.contacts: [{name: "Dmitriy Ryaboy", phoneNumber: "555 987 6543"}, {name: "Chris Aniszczyk", phoneNumber:null}]
+},
+{
+  AddressBook.owner: "A. Nonymous"
+  AddressBook.ownerPhoneNumbers: null
+  AddressBook.contacts: null
+}
 
 
 
