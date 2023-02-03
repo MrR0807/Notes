@@ -351,8 +351,9 @@ Another representation of this example could be:
 
 If this does not make sense, don't worry. There are more examples, which hopefully will clear things up.
 
-
 #### Examples
+
+
 
 ##### Example one
 
