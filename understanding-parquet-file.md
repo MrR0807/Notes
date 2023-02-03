@@ -414,11 +414,11 @@ message Out {
 }
 ```
 
-Because it is repeated, there are two things to remember. `a` can have an array of values or be set to null. Here is possible variants:
+Because it is repeated, there are two things to remember. `a` can have an array of values or be set to null. Here are possible variants:
 * `a:null` - in this particular case, `a` D:0 R:0
-* `a:[1,2,3,4,5] - D:1 R:1
+* `a:[1,2,3,4,5]` - D:1 R:1
 
-`a` in this case is very similar to "Example One" `optional b`. It is either a null or not, hence D is either 0 or 1. While R is 1, which indicates at what level array is.
+`a` in this case it is very similar to "Example One" `optional b`. It is either a `null` or not, hence D is either 0 or 1. While R is 1, which indicates at what level array is.
 
 ##### Example three
 
