@@ -133,7 +133,7 @@ The creation of nested columnar structure was so successful, that opensource pro
 
 ### Dremel's Nested Structure
 
-In this section, I will explore Dremel's nested structure and via several examples, showcase Definition and Repetition concepts and how they help represent nested structures.
+In this section, I will explore Dremel's nested structure and via several examples, showcase core Definition and Repetition concepts, which allow for nested structures to be represented in columnar data.
 
 **Note!** A lot of information in this section will be copy pasted from this great Twitter [blog post on this very topic](https://blog.twitter.com/engineering/en_us/a/2013/dremel-made-simple-with-parquet). I'm copying just to have all information in one place without needing to jump between pages and also adding additional examples for better clarity.
 
