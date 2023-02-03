@@ -264,6 +264,12 @@ The column will contain the following repetition levels and values:
 | 1                | i     |
 | 2                | j     |
 
+The repetition level marks the beginning of lists and can be interpreted as follows:
+* 0 marks every new record and implies creating a new level1 and level2 list
+* 1 marks every new level1 list and implies creating a new level2 list as well.
+* 2 marks every new element in a level2 list.
+
+A repetition level of 0 marks the beginning of a new record. In a flat schema there is no repetition and the repetition level is always 0. **Only levels that are repeated need a Repetition level**: optional or required fields are never repeated and can be skipped while attributing repetition levels.
 
 #### Examples
 
