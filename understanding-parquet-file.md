@@ -373,8 +373,8 @@ public class Test {
 
 		for (final var column : parquetSchema.getColumns()) {
 			System.out.println(column.toString());
-			System.out.println(column.getMaxRepetitionLevel());
-			System.out.println(column.getMaxDefinitionLevel());
+			System.out.println("R: " + column.getMaxRepetitionLevel());
+			System.out.println("D: " + column.getMaxDefinitionLevel());
 		}
 	}
 }
@@ -390,8 +390,19 @@ message Out {
 }
 ```
 
+`a` field is required, that means it will always have a value. It is also not `repeated` type, hence there is no Repetition value. So in this case `a` field's Definition is 0 and Repetition is 0.
+`b` field is not `repeated` type, hence Repetition is 0. However, it can either have a value or be null. When it is null, then Definition is set as 0 (just remember that when there is no value there are no bits). If `b` is defined then Definition value is 1.
 
+If you define this schema in the previous Java code example and run - you'll get this printed:
 
+```
+[a] required int32 a
+R: 0
+D: 0
+[b] optional int32 b
+R: 0
+D: 1
+```
 
 ##### Example two
 
