@@ -459,8 +459,8 @@ To make it easier, lets build from the start:
 * one: null - d:0 r:0
 * one.two: null - d:1 r:0
 * one.two: [] - d:2 r:1
-* one.two.three: null - d:3 r:1
-* one.two.three: [] - d:4 r:2
+* one.two.three: [null] - d:3 r:1
+* one.two.three: [[]] - d:4 r:2
 
 Different perspective to this structure:
 
@@ -468,14 +468,14 @@ Different perspective to this structure:
 one: {
   two: [
     three: [
-      four: 1
-      four: 2
-      four: 3
+      four: 1 //R:0 (start of 1 and 2 level arrays)
+      four: 2 //R:2 (value in 2 level array)
+      four: 3 //R:2 (value in 2 level array)
     ],
     three: [
-      four: 4
-      four: 5
-      four: 6
+      four: 4 //R:1 (start of 2 level array)
+      four: 5 //R:2 (value in 2 level array)
+      four: 6 //R:2 (value in 2 level array)
     ]
   ]
 }
