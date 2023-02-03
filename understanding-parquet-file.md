@@ -221,15 +221,34 @@ message nestedLists {
 }
 ```
 
-This translates to arrays within array. Data can be represented as: `[[a,b,c], [d,e,f,g]], [[h], [i,j]]`. Or can be represented:
+This translates to arrays within arrays. Data can be represented as: `[[a,b,c], [d,e,f,g]], [[h], [i,j]]`. Or can be represented:
 
 ```
 {
-
-
-
+  level1: {
+    level2: a
+    level2: b
+    level2: c
+  },
+  level1: {
+    level2: d
+    level2: e
+    level2: f
+    level2: g
+  }
+},
+{
+  level1: {
+    level2: h
+  },
+  level1: {
+    level2: i
+    level2: j
+  }
 }
 ```
+
+
 
 
 
