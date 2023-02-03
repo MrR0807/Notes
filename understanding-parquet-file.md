@@ -443,15 +443,43 @@ From `b` perspective:
 
 ##### Example four
 
+```
+message Out {
+  optional group one {
+    repeated group two {
+      repeated group three {
+        optional int32 four;
+      }
+    }
+  }
+}
+```
 
+To make it easier, lets build from the start:
+* one: null - d:0 r:0
+* one.two: null - d:1 r:0
+* one.two: [] - d:2 r:1
+* one.two.three: null - d:3 r:1
+* one.two.three: [] - d:4 r:2
 
-##### Example five
+Different perspective to this structure:
 
-
-
-
-
-
+```
+one: {
+  two: [
+    three: [
+      four: 1
+      four: 2
+      four: 3
+    ],
+    three: [
+      four: 4
+      four: 5
+      four: 6
+    ]
+  ]
+}
+```
 
 ## Encoding
 
