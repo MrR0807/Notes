@@ -353,9 +353,45 @@ If this does not make sense, don't worry. There are more examples, which hopeful
 
 #### Examples
 
+Code for calculating max repetition and max definition so you can build additional examples yourself:
+
+```java
+public class Test {
+
+	public static void main(String[] args) {
+
+		final var parquetSchemaString = """
+				message Out {
+				  optional group a {
+				  	optional group b {
+				  		optional int32 c;
+				  	}
+				  }
+				}""";
+
+		final var parquetSchema = MessageTypeParser.parseMessageType(parquetSchemaString);
+
+		for (final var column : parquetSchema.getColumns()) {
+			System.out.println(column.toString());
+			System.out.println(column.getMaxRepetitionLevel());
+			System.out.println(column.getMaxDefinitionLevel());
+		}
+	}
+}
+```
 
 
 ##### Example one
+
+```
+message Out {
+  required int32 a;
+  optional int32 b;
+}
+```
+
+
+
 
 ##### Example two
 
