@@ -16,7 +16,7 @@ From book [Hadoop: The Definitive Guide](https://www.oreilly.com/library/view/ha
 
 When I've started delving into this topic, none of these descriptions really rang with me. What is not explicitly emphasized that Parquet has built on top of previous solutions, which are blended together into what's know as Parquet. I think each component should be addressed independently before trying to understand aggregate.
 
-These are components that I'm going to address:
+Components that I'm going to address:
 * MapReduce
 * File's metadata importance
 * Columnar data layout
