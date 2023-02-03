@@ -61,7 +61,7 @@ However, flat structures are not always best represantion of data as stated in G
 
 > The data used in web and scientific computing is often nonrelational. Hence, a flexible data model is essential in these domains. Data structures used in programming languages, messages exchanged by distributed systems, structured documents, etc. lend themselves naturally to a **nested** representation. <...> A **nested data model underlies most of structured data processing** at Google and reportedly at other major web companies.
 
-A nested type, for example, in SQL databases can be represented via relationships: one-to-many, many-to-many etc. This is represented in SQL by duplicating the parent data next to the child. For example, say we have additional table, which represents sales to particular client. The client table will be represented as previous table, while the sales transactions could look like so:
+A nested type, for example, in SQL databases can be represented via relationships: one-to-many, many-to-many etc. This is represented in SQL by duplicating the parent data next to the child. For example, say we have additional table, which represents sales to a particular client. The client table will be represented as previous table, while the sales transactions could look like so:
 
 | Sales Id | Client Id | Product | Amount |
 |----------|-----------|------------|--|
