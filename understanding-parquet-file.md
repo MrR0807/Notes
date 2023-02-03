@@ -406,9 +406,44 @@ D: 1
 
 ##### Example two
 
+Moving forward Definition level will be shorten with just D value, and Repetition - R.
+
+```
+message Out {
+  repeated int32 a;
+}
+```
+
+Because it is repeated, there are two things to remember. `a` can have an array of values or be set to null. Here is possible variants:
+* `a:null` - in this particular case, `a` D:0 R:0
+* `a:[1,2,3,4,5] - D:1 R:1
+
+`a` in this case is very similar to "Example One" `optional b`. It is either a null or not, hence D is either 0 or 1. While R is 1, which indicates at what level array is.
+
 ##### Example three
 
+```
+message Out {
+  repeated group a {
+    optional int32 b;
+  }
+}
+```
+
+Possible variants:
+* `a:null` 
+* `a:[null]`
+* `a:[1,2,3]`
+
+From `b` perspective:
+* `a:null` - D:0 R:0
+* `a.b:null`- D:1 R:0
+* `a.b:1` - D:2 R:0
+* `a.b:1, a.b:2` - The first is D:2, R:0 (becaues it signals array start), the following `a.b:2` D:2 R:1 (because it tells which level array it belongs to).
+
 ##### Example four
+
+
 
 ##### Example five
 
