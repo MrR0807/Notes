@@ -248,10 +248,21 @@ This translates to arrays within arrays. Data can be represented as: `[[a,b,c], 
 }
 ```
 
+The column will contain the following repetition levels and values:
 
 
-
-
+| Repetition level | Value |
+|------------------|-------|
+| 0                | a     |
+| 2                | b     |
+| 2                | c     |
+| 1                | d     |
+| 2                | e     |
+| 2                | f     |
+| 2                | g     |
+| 0                | h     |
+| 1                | i     |
+| 2                | j     |
 
 
 #### Examples
