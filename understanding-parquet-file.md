@@ -271,9 +271,77 @@ The repetition level marks the beginning of lists and can be interpreted as foll
 
 A repetition level of 0 marks the beginning of a new record. In a flat schema there is no repetition and the repetition level is always 0. **Only levels that are repeated need a Repetition level**: optional or required fields are never repeated and can be skipped while attributing repetition levels.
 
+#### Striping and assembly
+
+Now using the two notions together, let’s consider the AddressBook example again. This table shows the maximum repetition and definition levels for each column with explanations on why they are smaller than the depth of the column. Reminder of AddressBook schema:
+
+```
+message AddressBook {
+  required string owner;
+  repeated string ownerPhoneNumbers;
+  repeated group contacts {
+    required string name;
+    optional string phoneNumber;
+  }
+}
+```
+
+| Column            | Max Definition level | Max Repetition level     |
+|-------------------|---------------------|--------------------------|
+| owner             | 0 (required type)   | 0 (type is not repeated) |
+| ownerPhoneNumbers | 1                   | 1 (repeated)             |
+| contacts.name     | 1                   | 1 (repeated)             |
+| contacts.phoneNumber         | 2                   | 1                        |
+
+In particular for the column contacts.phoneNumber, a defined phone number will have the maximum definition level of 2, and a contact without phone number will have a definition level of 1. In the case where contacts are absent, it will be 0.
+
+```
+AddressBook {
+  owner: "Julien Le Dem",
+  ownerPhoneNumbers: "555 123 4567",
+  ownerPhoneNumbers: "555 666 1337",
+  contacts: {
+    name: "Dmitriy Ryaboy",
+    phoneNumber: "555 987 6543",
+  },
+  contacts: {
+    name: "Chris Aniszczyk"
+  }
+}
+
+AddressBook {
+  owner: "A. Nonymous"
+}
+```
+
+We’ll now focus on the column contacts.phoneNumber to illustrate this. Once projected the record has the following structure:
+
+```
+AddressBook {
+  contacts: {
+    phoneNumber: "555 987 6543"
+  }
+  contacts: {
+  }
+}
+
+AddressBook {
+}
+```
+
+The data in the column will be as follows:
+contacts.phoneNumber value:"555 987 6543" d:2 r:0
+contacts.phoneNumber value: null d:1 r:1
+contacts value:null d:0 r:0
+
+
+
+
+
+
+
+
 #### Examples
-
-
 
 ##### Example one
 
