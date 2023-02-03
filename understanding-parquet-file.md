@@ -336,6 +336,7 @@ contacts value:null d:0 r:0
 
 Another representation of this example could be:
 
+```
 {
   AddressBook.owner: "Julien Le Dem"
   AddressBook.ownerPhoneNumbers: ["555 123 4567", "555 666 1337"]
@@ -346,7 +347,7 @@ Another representation of this example could be:
   AddressBook.ownerPhoneNumbers: null
   AddressBook.contacts: null
 }
-
+```
 
 
 
