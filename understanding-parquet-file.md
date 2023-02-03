@@ -330,9 +330,9 @@ AddressBook {
 ```
 
 The data in the column will be as follows:
-contacts.phoneNumber value:"555 987 6543" d:2 r:0
-contacts.phoneNumber value: null d:1 r:1
-contacts value:null d:0 r:0
+* contacts.phoneNumber value:"555 987 6543" d:2 r:0
+* contacts.phoneNumber value: null d:1 r:1
+* contacts value:null d:0 r:0
 
 Another representation of this example could be:
 
