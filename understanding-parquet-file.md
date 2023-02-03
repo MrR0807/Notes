@@ -214,6 +214,23 @@ Making definition levels small is important as the goal is to store the levels i
 To support repeated fields we need to store when new lists are starting in a column of values. This is what repetition level is for: it is the level at which we have to create a new list for the current value. In other words, the repetition level can be seen as a marker of when to start a new list and at which level. For example consider the following representation of a list of lists of strings:
 
 
+#### Examples
+
+
+
+##### Example one
+
+##### Example two
+
+##### Example three
+
+##### Example four
+
+##### Example five
+
+
+
+
 
 
 
