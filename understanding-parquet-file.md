@@ -487,6 +487,16 @@ This sections prerequisite is reading [Designing Data-Intensive Applications](ht
 
 ### JSON
 
+JSON encoding is currently one of more prominent encodings. It is defined by [The Internet Engineering Task Force document](https://www.ietf.org/rfc/rfc4627.txt). The JSON object structure is very simple and it does not require elaborate setup to create one by hand.
+
+Let's say I want to encode this JSON message:
+```json
+{
+  "a": 27,
+  "b": "foo"
+}
+```
+
 
 
 
