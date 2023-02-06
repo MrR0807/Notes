@@ -500,7 +500,7 @@ Let's say I want to encode this JSON message:
 In the IETF document, there are hexidecimal values provided for all possible structure characters. Using it, I can construct a JSON message.
 Firstly, JSON's begin-object starts with a `{` and ends with `}`. Respectable hex values are: `7B` and `7D`. Then quotation mark `22`, `a` letter = 61, quatation mark `22`, `3A` for colon, 20 for space and representation for `27` in hex is `3237`. Will not continue explictly defining each symbol, but the same JSON object now with each line as hexidecimal:
 
-```json
+```
 {		7B
   "a": 27,	22 61 22 3A 20 3237 2C
   "b": "foo"	22 62 22 3A 20 22 666f6f 22
