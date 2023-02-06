@@ -483,7 +483,9 @@ one: {
 
 ## Encoding
 
-A lot of information provided here will be taken from superb book - [Designing Data-Intensive Applications](https://www.amazon.com/Designing-Data-Intensive-Applications-Reliable-Maintainable/dp/1449373321).
+This sections prerequisite is reading [Designing Data-Intensive Applications](https://www.amazon.com/Designing-Data-Intensive-Applications-Reliable-Maintainable/dp/1449373321) book's Chapter 4: Encoding and Evolution. It lays down the fundamentals very well and because almost all section from that book would be required to copy paste - I decided against it. What I will do is provide code examples of encoding.
+
+### JSON
 
 
 
