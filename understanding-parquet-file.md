@@ -497,9 +497,57 @@ Let's say I want to encode this JSON message:
 }
 ```
 
+In the IETF document, there are hexidecimal values provided for all possible structure characters. Using it, I can construct a JSON message.
+Firstly, JSON's begin-object starts with a `{` and ends with `}`. Respectable hex values are: `7B` and `7D`. Then quotation mark `22`, `a` letter = 61, quatation mark `22`, `3A` for colon, 20 for space and representation for `27` in hex is `3237`. Will not continue explictly defining each symbol, but the same JSON object now with each line as hexidecimal:
 
+```json
+{		7B
+  "a": 27,	22 61 22 3A 20 3237 2C
+  "b": "foo"	22 62 22 3A 20 22 666f6f 22
+}		7D
+```
 
+The code:
 
+```java
+import org.apache.commons.codec.DecoderException;
+import org.apache.commons.codec.binary.Hex;
+
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+public class TestFive {
+
+	private static final ObjectMapper objectMapper = new ObjectMapper();
+
+	public static void main(String[] args) throws IOException, DecoderException {
+
+		final var jsonBytes = Hex.decodeHex("7b2261223a2032372c2262223a2022666f6f227d");
+		System.out.println(new String(jsonBytes));
+
+		final var test = objectMapper.readValue(jsonBytes, Test.class);
+		System.out.println(test);
+	}
+
+	public record Test(int a, String b) {
+
+		@JsonCreator
+		public Test {
+		}
+	}
+}
+```
+
+Running this prints:
+
+```
+{"a": 27,"b": "foo"}
+Test[a=27, b=foo]
+```
+
+Which shows that this is correctly encoded and Java JSON library can deserialize it into a `record`.
+
+### Avro
 
 
 **BIG TODO**
