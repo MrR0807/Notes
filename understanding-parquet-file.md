@@ -483,7 +483,7 @@ one: {
 
 ## Encoding
 
-
+A lot of information provided here will be taken from superb book - [Designing Data-Intensive Applications](https://www.amazon.com/Designing-Data-Intensive-Applications-Reliable-Maintainable/dp/1449373321).
 
 
 
