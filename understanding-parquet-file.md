@@ -598,7 +598,7 @@ There is a [great blog post](https://writeitdifferently.com/avro/binary/encoding
 To encode the same message as from JSON section, I will have to define Avro schema and use it to write data:
 
 ```java
-public class TestFive {
+public class WriteAvroBytes {
 
 	static final String avroSchema = """
 			{
@@ -618,15 +618,40 @@ public class TestFive {
 		data.put("b", "foo");
 
 		try (final var baos = new ByteArrayOutputStream()) {
-			BinaryEncoder encoder = EncoderFactory.get().binaryEncoder(baos, null);
-			final var writer = new GenericDatumWriter<GenericRecord>(schema);
-
-			writer.write(data, encoder);
-			encoder.flush();
+			writeToInputStream(data, baos);
+			readInputStream(baos);
 		}
+	}
+
+	private static void writeToInputStream(GenericData.Record data, ByteArrayOutputStream baos) throws IOException {
+		BinaryEncoder encoder = EncoderFactory.get().binaryEncoder(baos, null);
+		final var writer = new GenericDatumWriter<GenericRecord>(schema);
+
+		writer.write(data, encoder);
+		encoder.flush();
+	}
+
+	private static void readInputStream(ByteArrayOutputStream baos) throws IOException {
+		final var binaryDecoder = DecoderFactory.get().binaryDecoder(new ByteArrayInputStream(baos.toByteArray()), null);
+		
+		System.out.println("Hex representation: " + new String(Hex.encodeHex(baos.toByteArray())));
+		System.out.println("Byte size: " + baos.toByteArray().length);
+		System.out.println("Value a: " + binaryDecoder.readLong());
+		System.out.println("Value b: " + binaryDecoder.readString());
 	}
 }
 ```
+
+Running this will print:
+
+```shell
+Hex representation: 3606666f6f
+Byte size: 5
+Value a: 27
+Value b: foo
+```
+
+
 
 
 
