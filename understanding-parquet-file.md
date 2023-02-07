@@ -653,6 +653,10 @@ Let's examine each separately. Hex value `36` stands for numeric value `27`.
 
 
 
+https://golb.hplar.ch/2019/06/variable-length-int-java.html
+
+
+
 
 
 
