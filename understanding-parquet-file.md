@@ -587,13 +587,9 @@ Which shows that this is correctly encoded and Java JSON library can deserialize
 
 Apache Avro is another binary encoding format that is interestingly different from Protocol Buffers and Thrift. It was started in 2009 as a subproject of Hadoop, as a result of Thrift not being a good fit for Hadoop’s use cases. Avro also uses a schema to specify the structure of the data being encoded.
 
-If you examine the byte sequence, you can see that there is nothing to identify fields or their datatypes. The encoding simply consists of values concatenated together. A string is just a length prefix followed by UTF-8 bytes, but there’s nothing in the encoded data that tells you that it is a string. It could just as well be an integer, or something else entirely. An integer is encoded using a variable-length encoding (the same as Thrift’s CompactProtocol).
-
-To parse the binary data, you go through the fields in the order that they appear in the schema and use the schema to tell you the datatype of each field. This means that the binary data can only be decoded correctly if the code reading the data is using the exact same schema as the code that wrote the data.
-
 There is a [great blog post](https://writeitdifferently.com/avro/binary/encoding/2020/07/26/avro-binary-encoding-in-kafka.html), which goes into detail how byte values can be constructed with Avro, as well as [Avro documentation](https://avro.apache.org/docs/1.8.1/spec.html#binary_encoding).
 
-To encode the same message as from JSON section, I will have to define Avro schema and use it to write data:
+To encode the same message as in JSON section, I will have to define Avro schema and use it to write data:
 
 ```java
 public class WriteAvroBytes {
@@ -649,8 +645,9 @@ Value a: 27
 Value b: foo
 ```
 
+Avro message "weights" only 5 bytes, compared to 18 in JSON format. Also, to parse the binary data, I have to go through the fields in the order that they appear in the schema and use the schema to tell you the datatype of each field. This means that the binary data can only be decoded correctly if the code reading the data is using the exact same schema as the code that wrote the data. In this example I have chose to explicitly use specific methods, but Avro library takes care of reading data out of the box without being this verbose.
 
-
+Examine the byte sequence, we can see that there is nothing to identify fields or their datatypes. The encoding simply consists of values concatenated together. A string is just a length prefix followed by UTF-8 bytes, but there’s nothing in the encoded data that tells you that it is a string. It could just as well be an integer, or something else entirely. An integer is encoded using a variable-length encoding (the same as Thrift’s CompactProtocol).
 
 
 
