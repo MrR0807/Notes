@@ -483,7 +483,13 @@ one: {
 
 ## Encoding
 
-This sections prerequisite is reading [Designing Data-Intensive Applications](https://www.amazon.com/Designing-Data-Intensive-Applications-Reliable-Maintainable/dp/1449373321) book's Chapter 4: Encoding and Evolution. It lays down the fundamentals very well and because almost all section from that book would be required to copy paste - I decided against it. What I will do is provide code examples of encoding, which compliments named section in the book.
+This section's prerequisite is reading [Designing Data-Intensive Applications](https://www.amazon.com/Designing-Data-Intensive-Applications-Reliable-Maintainable/dp/1449373321) book's Chapter 4: Encoding and Evolution. It lays down the fundamentals very well. A lot of information in this section will be copy pasted from named book's chapter.
+
+### Formats for Encoding Data
+
+Programs usually work with data in (at least) two different representations:
+*  In memory, data is kept in objects, structs, lists, arrays, hash tables, trees, and so on. These data structures are optimized for efficient access and manipulation by the CPU (typically using pointers).
+*  When you want to write data to a file or send it over the network, you have to encode it as some kind of self-contained sequence of bytes (for example, a JSON document). Since a pointer wouldn’t make sense to any other process, this sequence-of-bytes representation looks quite different from the data structures that are normally used in memory.
 
 ### JSON
 
