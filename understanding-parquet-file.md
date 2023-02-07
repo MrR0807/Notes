@@ -647,7 +647,9 @@ Value b: foo
 
 Avro message "weights" only 5 bytes, compared to 18 in JSON format. Also, to parse the binary data, I have to go through the fields in the order that they appear in the schema and use the schema to tell you the datatype of each field. This means that the binary data can only be decoded correctly if the code reading the data is using the exact same schema as the code that wrote the data. In this example I have chose to explicitly use specific methods, but Avro library takes care of reading data out of the box without being this verbose.
 
-Examine the byte sequence, we can see that there is nothing to identify fields or their datatypes. The encoding simply consists of values concatenated together. A string is just a length prefix followed by UTF-8 bytes, but there’s nothing in the encoded data that tells you that it is a string. It could just as well be an integer, or something else entirely. An integer is encoded using a variable-length encoding (the same as Thrift’s CompactProtocol).
+Examine the byte sequence, we can see that there is nothing to identify fields or their datatypes. The encoding simply consists of values concatenated together. A string is just a length prefix followed by UTF-8 bytes, but there’s nothing in the encoded data that tells you that it is a string. It could just as well be an integer, or something else entirely. An integer is encoded using a variable-length zig-zag coding.
+
+
 
 
 
