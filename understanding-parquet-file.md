@@ -586,9 +586,10 @@ Which shows that this is correctly encoded and Java JSON library can deserialize
 
 ### Conclusion
 
-Encoding serves several purposes:
-* Compressing the data which is sent via wire. This saves both 
-
+Correct encoding solves several problems:
+* Space - encoding data can save space (both sending less data via network and storing in storage) as we saw with JSON vs Avro;
+* Speed - using bloated encoding leads to slower encoding/decoding processes which puts more pressure on CPU;
+* Schema evolution - some encoding types allow for fluent schema evolution.
 
 ## Conclusion
 
