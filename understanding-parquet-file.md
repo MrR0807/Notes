@@ -515,7 +515,7 @@ For data that is used only internally within your organization, there is less pr
 
 ### Practical Examples
 
-Thrift and Avro examples will rely on lower level constructs of named libraries in order to encode data as required by protocols. However, in How to Guides in named encoding documentations usually use higher level constructs which ease usage/requires less boilerplate, but does not necessarily translate to expected bytes (e.g. Avro's `DataFileWriter`, whichs is provided in their official documentation embeds Avro schema along with data hence making files way bigger).
+Thrift and Avro examples will rely on lower level constructs of named libraries in order to encode **only** data as required. However, in How to Guides of named encoding documentations, provided examples usually use higher level constructs which ease usage/requires less boilerplate, but does not necessarily translate to expected data bytes/adds additional metadata (e.g. Avro's `DataFileWriter`, whichs is provided in their official documentation embeds Avro schema along with data hence making files way bigger).
 
 #### JSON
 
