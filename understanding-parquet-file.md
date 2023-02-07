@@ -610,7 +610,13 @@ Code to generate data:
 
 This will generate Hex value: `0a0001000000000000001b0b000200000003666f6f`.
 
-Using Thrift [Struct encoding](https://github.com/apache/thrift/blob/master/doc/specs/thrift-binary-protocol.md#struct-encoding) 
+Thrift [Struct encoding](https://github.com/apache/thrift/blob/master/doc/specs/thrift-binary-protocol.md#struct-encoding) defines data structure like so:
+* field-type (whether it is a string, integer, list etc);
+* field-id;
+* length indication (length of a string, number of items in a list);
+* field-value.
+
+
 
 
 
