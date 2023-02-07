@@ -596,7 +596,11 @@ Thrift has two different binary encoding formats:
 * `BinaryProtocol`
 * `CompactProtocol`
 
-Firstly, lets encode data with `BinaryProtocol` and analyse it. By, default, Thrift expects us to use 
+Firstly, lets encode data with `BinaryProtocol` and analyse it.
+
+**Sidenote!** By default, Thrift recommends to use their "Apache Thrift compiler", which allows to generate classes from their schema. For example, in this repository `CrossPlatformResource` is defined, which generates this [monster of a class](https://github.com/eugenp/tutorials/blob/master/apache-thrift/generated/com/baeldung/thrift/impl/CrossPlatformResource.java). I'll go a more simpler route.
+
+
 
 
 
