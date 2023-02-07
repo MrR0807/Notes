@@ -515,8 +515,9 @@ For data that is used only internally within your organization, there is less pr
 
 **JSON is less verbose than XML, but both still use a lot of space compared to binary formats**. 
 
+### Practical Examples
 
-### JSON
+#### JSON
 
 JSON encoding is currently one of more prominent encodings. It is defined by [The Internet Engineering Task Force document](https://www.ietf.org/rfc/rfc4627.txt). The JSON object structure is very simple and it does not require elaborate setup to create one by hand.
 
@@ -582,6 +583,12 @@ Which shows that this is correctly encoded and Java JSON library can deserialize
 
 
 **BIG TODO**
+
+### Conclusion
+
+Encoding serves several purposes:
+* Compressing the data which is sent via wire. This saves both 
+
 
 ## Conclusion
 
