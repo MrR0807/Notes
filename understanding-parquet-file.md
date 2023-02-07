@@ -483,7 +483,7 @@ one: {
 
 ## Encoding
 
-This sections prerequisite is reading [Designing Data-Intensive Applications](https://www.amazon.com/Designing-Data-Intensive-Applications-Reliable-Maintainable/dp/1449373321) book's Chapter 4: Encoding and Evolution. It lays down the fundamentals very well and because almost all section from that book would be required to copy paste - I decided against it. What I will do is provide code examples of encoding.
+This sections prerequisite is reading [Designing Data-Intensive Applications](https://www.amazon.com/Designing-Data-Intensive-Applications-Reliable-Maintainable/dp/1449373321) book's Chapter 4: Encoding and Evolution. It lays down the fundamentals very well and because almost all section from that book would be required to copy paste - I decided against it. What I will do is provide code examples of encoding, which compliments named section in the book.
 
 ### JSON
 
@@ -498,7 +498,7 @@ Let's say I want to encode this JSON message:
 ```
 
 In the IETF document, there are hexidecimal values provided for all possible structure characters. Using it, I can construct a JSON message.
-Firstly, JSON's begin-object starts with a `{` and ends with `}`. Respectable hex values are: `7B` and `7D`. Then quotation mark `22`, `a` letter = 61, quatation mark `22`, `3A` for colon, 20 for space and representation for `27` in hex is `3237`. Will not continue explictly defining each symbol, but the same JSON object now with each line as hexidecimal:
+Firstly, JSON's begin-object starts with a `{` and ends with `}`. Respectable hex values are: `7B` and `7D`. Then quotation mark hex value is `22`, and `a` letter = `61`, `3A` for colon, `20` for space and representation for `27` number in hex is `3237`. Will not continue explictly defining each symbol, but here is the same JSON object, with each line containing it's hexidecimal representation:
 
 ```
 {		7B
