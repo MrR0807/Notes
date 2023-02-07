@@ -579,7 +579,7 @@ Test[a=27, b=foo]
 
 Which shows that this is correctly encoded and Java JSON library can deserialize it into a `record`. If I remove spaces, this JSON representation "weights" **18 bytes**.
 
-#### Thrift and Protobuf
+#### Thrift
 
 Apache Thrift is binary encoding library. Thrift was originally developed at Facebook, and was made open source in 2007–08.
 
@@ -587,16 +587,16 @@ Thrift requires a schema for any data that is encoded. Continuing JSON example, 
 
 ```
 struct Test {
-  1: required i32 a,
+  1: required i64 a,
   2: required string b
 }
 ```
 
 Thrift has two different binary encoding formats: 
-* BinaryProtocol
-* CompactProtocol
+* `BinaryProtocol`
+* `CompactProtocol`
 
-Firstly, lets 
+Firstly, lets encode data with `BinaryProtocol` and analyse it. By, default, Thrift expects us to use 
 
 
 
@@ -1353,6 +1353,8 @@ However, somebody has a problem which might be a problem to me:
 * [Avro Binary encoding based on messages in Kafka](https://writeitdifferently.com/avro/binary/encoding/2020/07/26/avro-binary-encoding-in-kafka.html)
 * [An Introduction and Comparison of Several Common Java Serialization Frameworks](https://www.alibabacloud.com/blog/an-introduction-and-comparison-of-several-common-java-serialization-frameworks_597900)
 * [Programmer’s Guide to Apache Thrift](https://www.manning.com/books/programmers-guide-to-apache-thrift)
+* [Thrift Binary protocol encoding](https://github.com/apache/thrift/blob/master/doc/specs/thrift-binary-protocol.md)
+* [Thrift Compact protocol encoding](https://github.com/apache/thrift/blob/master/doc/specs/thrift-compact-protocol.md)
 
 
 
