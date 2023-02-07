@@ -581,6 +581,25 @@ Which shows that this is correctly encoded and Java JSON library can deserialize
 
 Apache Thrift and Protocol Buffers (protobuf) are binary encoding libraries that are based on the same principle. Protocol Buffers was originally developed at Google, Thrift was originally developed at Facebook, and both were made open source in 2007–08.
 
+Both Thrift and Protocol Buffers require a schema for any data that is encoded.
+
+Thrift schema:
+
+```
+struct Test {
+  1: required i32 a,
+  2: required string b
+}
+```
+
+Protobuf schema:
+
+```
+ message Test {
+  required int32 a = 1;
+  required string b = 2;
+ }
+```
 
 
 
