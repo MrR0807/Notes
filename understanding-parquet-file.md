@@ -647,23 +647,20 @@ Value b: foo
 
 Avro message "weights" only 5 bytes, compared to 18 in JSON format. Also, to parse the binary data, I have to go through the fields in the order that they appear in the schema and use the schema to tell you the datatype of each field. This means that the binary data can only be decoded correctly if the code reading the data is using the exact same schema as the code that wrote the data. In this example I have chose to explicitly use specific methods, but Avro library takes care of reading data out of the box without being this verbose.
 
-Examine the byte sequence, we can see that there is nothing to identify fields or their datatypes. The encoding simply consists of values concatenated together. A string is just a length prefix followed by UTF-8 bytes, but there’s nothing in the encoded data that tells you that it is a string. It could just as well be an integer, or something else entirely. An integer is encoded using a variable-length zig-zag coding.
+Examining the byte sequence, we can see that there is nothing to identify fields or their datatypes. The encoding simply consists of values concatenated together. A string is just a length prefix followed by UTF-8 bytes, but there’s nothing in the encoded data that tells you that it is a string. It could just as well be an integer, or something else entirely. An integer is encoded using a variable-length zig-zag coding.
 
-Let's examine each separately. As stated per documentation, for "int and long values are written using variable-length zig-zag coding", it is beyond this document scope to explain what is zig-zag encoding, but here is a nice blog post explaining it: [Variable length integers](https://golb.hplar.ch/2019/06/variable-length-int-java.html). The encoding code:
+Let's examine each encoded value separately. As stated per documentation, for "int and long values are written using variable-length zig-zag coding", it is beyond this document's scope to explain what is zig-zag encoding, but here is a nice blog post explaining it: [Variable length integers](https://golb.hplar.ch/2019/06/variable-length-int-java.html). A working zigzag encoding code:
 
+```java
+private static void printVariableLengthZigZagHexValue(long value) {
+	long encoded = (value << 1) ^ (value >> 31);
+	System.out.println("Long value: " + value + " Hex value: " + Long.toHexString(encoded));
+}
 ```
 
+Running this method with value `27` will print Hex value of `36`. This is the first number of Avro sequence in Hex.
 
-
-```
-
-
-
-Hex value `36` stands for numeric value `27`. 
-
-
-
-
+The string is encoded immediately after: `06666f6f`. As stated before, string is represented by lenght prefix followed by UTF-8 bytes. 06 lenght prefix represents value 3. Again, this has been encoded with zigzag. While the remaining `666f6f` can be decoded with a single line: `System.out.println(new String(Hex.decode("666f6f")));`. It will print `foo` as expected.
 
 
 
