@@ -493,7 +493,7 @@ Programs usually work with data in (at least) two different representations:
 
 Thus, we need some kind of translation between the two representations. The translation from the in-memory representation to a byte sequence is called encoding (also known as serialization or marshalling), and the reverse is called decoding (parsing, deserialization, unmarshalling).
 
-As this is such a common problem, there are a myriad different libraries and encod‐ ing formats to choose from.
+As this is such a common problem, there are a myriad different libraries and encoding formats to choose from.
 
 ### Language-Specific Formats
 
@@ -507,19 +507,17 @@ For these reasons it’s generally a bad idea to use your language’s built-in 
 
 ### JSON, XML, and Binary Variants
 
-Moving to standardized encodings that can be written and read by many program‐ ming languages, JSON and XML are the obvious contenders. They are widely known, widely supported.
+Moving to standardized encodings that can be written and read by many programming languages, JSON and XML are the obvious contenders. They are widely known, widely supported.
 
-### Binary encoding
+For data that is used only internally within your organization, there is less pressure to use a lowest-common-denominator encoding format (e.g. JSON). For example, you could choose a format that is more compact or faster to parse. For a small dataset, the gains are negligible, but once you get into the terabytes, the choice of data format can have a big impact.
 
-For data that is used only internally within your organization, there is less pressure to use a lowest-common-denominator encoding format. For example, you could choose a format that is more compact or faster to parse. For a small dataset, the gains are negligible, but once you get into the terabytes, the choice of data format can have a big impact.
-
-**JSON is less verbose than XML, but both still use a lot of space compared to binary formats**. 
+**JSON is less verbose than XML, but both still use a lot of space compared to binary formats**.
 
 ### Practical Examples
 
 #### JSON
 
-JSON encoding currently is one of more prominent encodings. It is defined by [The Internet Engineering Task Force document](https://www.ietf.org/rfc/rfc4627.txt). The JSON object structure is very simple and it does not require elaborate setup to create one by hand.
+JSON encoding currently is one of more prominent encodings. It is defined by The Internet Engineering Task Force document [RFC4627](https://www.ietf.org/rfc/rfc4627.txt). The JSON object structure is very simple and it does not require elaborate setup to create one by hand.
 
 Let's say I want to encode this JSON message:
 ```json
