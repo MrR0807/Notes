@@ -515,6 +515,8 @@ For data that is used only internally within your organization, there is less pr
 
 ### Practical Examples
 
+Thrift and Avro examples will rely on lower level constructs of named libraries in order to encode data as required by protocols. However, How to Guides in those protocols usually use higher level constructs which eases usage, but might generate more data than expected (e.g.   
+
 #### JSON
 
 JSON encoding currently is one of more prominent encodings. It is defined by The Internet Engineering Task Force document [RFC4627](https://www.ietf.org/rfc/rfc4627.txt). The JSON object structure is very simple and it does not require elaborate setup to create one by hand.
@@ -589,6 +591,13 @@ struct Test {
   2: required string b
 }
 ```
+
+Thrift has two different binary encoding formats: 
+* BinaryProtocol
+* CompactProtocol
+
+Firstly, lets 
+
 
 
 
