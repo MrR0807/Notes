@@ -593,6 +593,45 @@ If you examine the byte sequence, you can see that there is nothing to identify 
 
 To parse the binary data, you go through the fields in the order that they appear in the schema and use the schema to tell you the datatype of each field. This means that the binary data can only be decoded correctly if the code reading the data is using the exact same schema as the code that wrote the data.
 
+There is a [great blog post](https://writeitdifferently.com/avro/binary/encoding/2020/07/26/avro-binary-encoding-in-kafka.html), which goes into detail how byte values can be constructed with Avro, as well as [Avro documentation](https://avro.apache.org/docs/1.8.1/spec.html#binary_encoding).
+
+To encode the same message as from JSON section, I will have to define Avro schema and use it to write data:
+
+```java
+public class TestFive {
+
+	static final String avroSchema = """
+			{
+			  "type": "record",
+			  "name": "FooTest",
+			  "fields" : [
+				{"name": "a", "type": "long"},
+				{"name": "b", "type": "string"}
+			  ]
+			}""";
+
+	static final Schema schema = new Schema.Parser().parse(avroSchema);
+
+	public static void main(String[] args) throws Exception {
+		final var data = new GenericData.Record(schema);
+		data.put("a", 27);
+		data.put("b", "foo");
+
+		try (final var baos = new ByteArrayOutputStream()) {
+			BinaryEncoder encoder = EncoderFactory.get().binaryEncoder(baos, null);
+			final var writer = new GenericDatumWriter<GenericRecord>(schema);
+
+			writer.write(data, encoder);
+			encoder.flush();
+		}
+	}
+}
+```
+
+
+
+
+
 
 **BIG TODO**
 
