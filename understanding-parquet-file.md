@@ -649,11 +649,21 @@ Avro message "weights" only 5 bytes, compared to 18 in JSON format. Also, to par
 
 Examine the byte sequence, we can see that there is nothing to identify fields or their datatypes. The encoding simply consists of values concatenated together. A string is just a length prefix followed by UTF-8 bytes, but there’s nothing in the encoded data that tells you that it is a string. It could just as well be an integer, or something else entirely. An integer is encoded using a variable-length zig-zag coding.
 
-Let's examine each separately. Hex value `36` stands for numeric value `27`. 
+Let's examine each separately. As stated per documentation, for "int and long values are written using variable-length zig-zag coding", it is beyond this document scope to explain what is zig-zag encoding, but here is a nice blog post explaining it: [Variable length integers](https://golb.hplar.ch/2019/06/variable-length-int-java.html). The encoding code:
+
+```
 
 
 
-https://golb.hplar.ch/2019/06/variable-length-int-java.html
+```
+
+
+
+Hex value `36` stands for numeric value `27`. 
+
+
+
+
 
 
 
