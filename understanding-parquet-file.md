@@ -519,7 +519,7 @@ For data that is used only internally within your organization, there is less pr
 
 #### JSON
 
-JSON encoding is currently one of more prominent encodings. It is defined by [The Internet Engineering Task Force document](https://www.ietf.org/rfc/rfc4627.txt). The JSON object structure is very simple and it does not require elaborate setup to create one by hand.
+JSON encoding currently is one of more prominent encodings. It is defined by [The Internet Engineering Task Force document](https://www.ietf.org/rfc/rfc4627.txt). The JSON object structure is very simple and it does not require elaborate setup to create one by hand.
 
 Let's say I want to encode this JSON message:
 ```json
@@ -577,9 +577,25 @@ Running this prints:
 Test[a=27, b=foo]
 ```
 
-Which shows that this is correctly encoded and Java JSON library can deserialize it into a `record`.
+Which shows that this is correctly encoded and Java JSON library can deserialize it into a `record`. If I remove spaces, this JSON representation "weights" **18 bytes**.
 
-### Avro
+#### Thrift
+
+
+
+
+
+#### Avro
+
+Apache Avro is another binary encoding format that is interestingly different from Protocol Buffers and Thrift. It was started in 2009 as a subproject of Hadoop, as a result of Thrift not being a good fit for Hadoop’s use cases. Avro also uses a schema to specify the structure of the data being encoded.
+
+If you examine the byte sequence, you can see that there is nothing to identify fields or their datatypes. The encoding simply consists of values concatenated together. A string is just a length prefix followed by UTF-8 bytes, but there’s nothing in the enco‐ ded data that tells you that it is a string. It could just as well be an integer, or some‐ thing else entirely. An integer is encoded using a variable-length encoding (the same as Thrift’s CompactProtocol).
+
+To parse the binary data, you go through the fields in the order that they appear in the schema and use the schema to tell you the datatype of each field. This means that the binary data can only be decoded correctly if the code reading the data is using the exact same schema as the code that wrote the data.
+
+
+
+
 
 
 **BIG TODO**
