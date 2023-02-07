@@ -593,8 +593,8 @@ struct Test {
 ```
 
 Thrift has two different binary encoding formats: 
-* `BinaryProtocol`
-* `CompactProtocol`
+* [`BinaryProtocol`](https://github.com/apache/thrift/blob/master/doc/specs/thrift-binary-protocol.md)
+* [`CompactProtocol`](https://github.com/apache/thrift/blob/master/doc/specs/thrift-compact-protocol.md)
 
 Firstly, lets encode data with `BinaryProtocol` and analyse it.
 
@@ -608,7 +608,9 @@ Code to generate data:
 
 ```
 
+This will generate Hex value: `0a0001000000000000001b0b000200000003666f6f`.
 
+Using Thrift [Struct encoding](https://github.com/apache/thrift/blob/master/doc/specs/thrift-binary-protocol.md#struct-encoding) 
 
 
 
