@@ -579,11 +579,9 @@ Which shows that this is correctly encoded and Java JSON library can deserialize
 
 #### Thrift and Protobuf
 
-Apache Thrift and Protocol Buffers (protobuf) are binary encoding libraries that are based on the same principle. Protocol Buffers was originally developed at Google, Thrift was originally developed at Facebook, and both were made open source in 2007–08.
+Apache Thrift is binary encoding library. Thrift was originally developed at Facebook, and was made open source in 2007–08.
 
-Both Thrift and Protocol Buffers require a schema for any data that is encoded.
-
-Thrift schema:
+Thrift requires a schema for any data that is encoded. Continuing JSON example, here is defined Thrift schema:
 
 ```
 struct Test {
@@ -592,14 +590,6 @@ struct Test {
 }
 ```
 
-Protobuf schema:
-
-```
- message Test {
-  required int32 a = 1;
-  required string b = 2;
- }
-```
 
 
 
@@ -684,11 +674,6 @@ private static void printVariableLengthZigZagHexValue(long value) {
 Running this method with value `27` will print Hex value of `36`. This is the first number of Avro sequence in Hex.
 
 The string is encoded immediately after: `06666f6f`. As stated before, string is represented by lenght prefix followed by UTF-8 bytes. 06 lenght prefix represents value 3. Again, this has been encoded with zigzag. While the remaining `666f6f` can be decoded with a single line: `System.out.println(new String(Hex.decode("666f6f")));`. It will print `foo` as expected.
-
-
-
-
-
 
 **BIG TODO**
 
@@ -1358,6 +1343,7 @@ However, somebody has a problem which might be a problem to me:
 * [Storing and Querying Tree-Structured Records in Dremel](https://storage.googleapis.com/pub-tools-public-publication-data/pdf/43119.pdf)
 * [Avro Binary encoding based on messages in Kafka](https://writeitdifferently.com/avro/binary/encoding/2020/07/26/avro-binary-encoding-in-kafka.html)
 * [An Introduction and Comparison of Several Common Java Serialization Frameworks](https://www.alibabacloud.com/blog/an-introduction-and-comparison-of-several-common-java-serialization-frameworks_597900)
+* [Programmer’s Guide to Apache Thrift](https://www.manning.com/books/programmers-guide-to-apache-thrift)
 
 
 
