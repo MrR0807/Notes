@@ -577,7 +577,11 @@ Test[a=27, b=foo]
 
 Which shows that this is correctly encoded and Java JSON library can deserialize it into a `record`. If I remove spaces, this JSON representation "weights" **18 bytes**.
 
-#### Thrift
+#### Thrift and Protobuf
+
+Apache Thrift and Protocol Buffers (protobuf) are binary encoding libraries that are based on the same principle. Protocol Buffers was originally developed at Google, Thrift was originally developed at Facebook, and both were made open source in 2007–08.
+
+
 
 
 
