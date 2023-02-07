@@ -491,6 +491,31 @@ Programs usually work with data in (at least) two different representations:
 *  In memory, data is kept in objects, structs, lists, arrays, hash tables, trees, and so on. These data structures are optimized for efficient access and manipulation by the CPU (typically using pointers).
 *  When you want to write data to a file or send it over the network, you have to encode it as some kind of self-contained sequence of bytes (for example, a JSON document). Since a pointer wouldn’t make sense to any other process, this sequence-of-bytes representation looks quite different from the data structures that are normally used in memory.
 
+Thus, we need some kind of translation between the two representations. The translation from the in-memory representation to a byte sequence is called encoding (also known as serialization or marshalling), and the reverse is called decoding (parsing, deserialization, unmarshalling).
+
+As this is such a common problem, there are a myriad different libraries and encod‐ ing formats to choose from.
+
+### Language-Specific Formats
+
+Many programming languages come with built-in support for encoding in-memory objects into byte sequences (e.g. Java's `java.io.Serializable`). These encoding libraries are very convenient, because they allow in-memory objects to be saved and restored with minimal additional code. However, they also have a number of deep problems:
+* The encoding is often tied to a particular programming language, and reading the data in another language is very difficult.
+* In order to restore data in the same object types, the decoding process needs to be able to instantiate arbitrary classes. This is frequently a source of security problems.
+* Versioning data is often an afterthought in these libraries.
+* Efficiency (CPU time taken to encode or decode, and the size of the encoded structure) is also often an afterthought. For example, Java’s built-in serialization is notorious for its bad performance and bloated encoding.
+
+For these reasons it’s generally a bad idea to use your language’s built-in encoding for anything other than very transient purposes.
+
+### JSON, XML, and Binary Variants
+
+Moving to standardized encodings that can be written and read by many program‐ ming languages, JSON and XML are the obvious contenders. They are widely known, widely supported.
+
+### Binary encoding
+
+For data that is used only internally within your organization, there is less pressure to use a lowest-common-denominator encoding format. For example, you could choose a format that is more compact or faster to parse. For a small dataset, the gains are negligible, but once you get into the terabytes, the choice of data format can have a big impact.
+
+**JSON is less verbose than XML, but both still use a lot of space compared to binary formats**. 
+
+
 ### JSON
 
 JSON encoding is currently one of more prominent encodings. It is defined by [The Internet Engineering Task Force document](https://www.ietf.org/rfc/rfc4627.txt). The JSON object structure is very simple and it does not require elaborate setup to create one by hand.
