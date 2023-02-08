@@ -809,7 +809,7 @@ From the definitions there are a couple of observable optimisations:
 
 These encodings are beyond this documentation scope, but there is a good blog post on [Variable length integers](https://golb.hplar.ch/2019/06/variable-length-int-java.html).
 
-Helper functions to decode these values (built by inspecting Thrift source code):
+Helper functions to encode/decode these values (built by inspecting Thrift source code):
 
 ```java
 import java.util.Arrays;
@@ -866,8 +866,8 @@ Analyse:
 * Field Id delta + Field Type: `16` - in bits it is `0001 0110`. The first part of 4 bits represent the delta or if it is a first entry, then current id. `0001` bits traslate to `1`. The second portion of 4 bits represent field type. `0110` converts to `6` which in [Struct encoding](https://github.com/apache/thrift/blob/master/doc/specs/thrift-compact-protocol.md#struct-encoding) means `I64`.
 * Field value: `36` - Because we know it is `I64` type, we expect at least 10 bytes to represent a number (as per documentation). Because we know that `int` and `long` values encoded with zigzag and then Unsigned LEB128, we have to use Helper functions to decode the number: `final var bytes = Hex.decodeHex("36"); System.out.println(ThriftHelperUtils.readI64(bytes));`. This will print 27, which is our number.
 * Field Id delta + Field Type: `18` - translates to pair of 4 bits: `0001 1000`. First pair is the same as previously, the second translates to number 8, which means `BINARY` as per documentation.
-* Field length (because it is string, from documentation we know it is encoded with Unsigned LEB128): `03` - using Helper functions to decode the number: `System.out.println(readVarint64(Hex.decodeHex("03")))` prints `3`. This is our string lenght.
-* Field value: `666f6f` - this should be familiar from JSON section and it stands for "foo".
+* Field length (because it is string, from documentation, we know it is encoded with Unsigned LEB128): `03` - using Helper functions to decode the number: `System.out.println(readVarint64(Hex.decodeHex("03")))` prints `3`. This is our string lenght.
+* Field value: `666f6f` - this should be familiar from JSON section and it stands for "foo" in UTF-8.
 
 Just like before, let's manipulate Hex values directly to return different data. 
 
@@ -878,7 +878,7 @@ Just like before, let's manipulate Hex values directly to return different data.
   ^        ^
 ```
 
-Let's provide to the example:
+Use newly constructed hex value within `main` method:
 
 ```java
 final var array = Hex.decode("169ed303180a68656c6c6f776f726c64");
@@ -894,15 +894,17 @@ helloworld
 
 ##### Conclusion
 
-I'll repeat myself, but as you understood, differently from JSON, Thrift does not include names of the variables, but relies on schema and field tags which are represented as numbers. Thrift also encodes the type of the variable, differently from JSON, which tries to guess the type. Hence for small messages, Thrift Binary encoded message is bigger in size than JSON. If we use Compact, it is obviously smaller. To reach that, it uses elaborate bit encoding algorithms like zigzag and Unsigned LEB128, also, compacts how field ids and types are represented. Avro pushes the envelope and does not include types at all, that way shaving more bits from the message size.
+I'll repeat myself, but as you understood, differently from JSON, Thrift does not include names of the variables, but relies on schema and field tags which are represented as numbers. Thrift also encodes the type of the variable, differently from JSON, which tries to guess the type. Hence for small messages, Thrift Binary encoded message is bigger in size than JSON. If we use Compact, it is obviously smaller. To reach that, Thrift developers use elaborate bit encoding algorithms like zigzag and Unsigned LEB128. Furthermore, compacts how field ids and types are represented by concatinating bytes.
+
+But Avro manages to compact data even further.
 
 #### Avro
 
-Apache Avro is another binary encoding format that is interestingly different from Protocol Buffers and Thrift. It was started in 2009 as a subproject of Hadoop, as a result of Thrift not being a good fit for Hadoop’s use cases. Avro also uses a schema to specify the structure of the data being encoded.
+Apache Avro is another binary encoding format that is interestingly different from Thrift. It was started in 2009 as a subproject of Hadoop, as a result of Thrift not being a good fit for Hadoop’s use cases. Avro also uses a schema to specify the structure of the data being encoded.
 
-There is a [great blog post](https://writeitdifferently.com/avro/binary/encoding/2020/07/26/avro-binary-encoding-in-kafka.html), which goes into detail how byte values can be constructed with Avro, as well as [Avro documentation](https://avro.apache.org/docs/1.8.1/spec.html#binary_encoding).
+There is a [great and lengthy blog post](https://writeitdifferently.com/avro/binary/encoding/2020/07/26/avro-binary-encoding-in-kafka.html), which goes into detail how byte values are constructed with Avro, as well as [Avro documentation](https://avro.apache.org/docs/1.8.1/spec.html#binary_encoding).
 
-To encode the same message as in JSON section, I will have to define Avro schema and use it to write data:
+However, I will continue with my example. As stated, and just like with Thrift I will have to define Avro schema and use it to write data:
 
 ```java
 public class WriteAvroBytes {
@@ -958,7 +960,7 @@ Value a: 27
 Value b: foo
 ```
 
-Avro message "weights" only 5 bytes, compared to 18 in JSON format. Also, to parse the binary data, I have to go through the fields in the order that they appear in the schema and use the schema to tell you the datatype of each field. This means that the binary data can only be decoded correctly if the code reading the data is using the exact same schema as the code that wrote the data. In this example I have chose to explicitly use specific methods, but Avro library takes care of reading data out of the box without being this verbose.
+Avro message "weights" only 5 bytes, compared to 18 in JSON format and . Also, to parse the binary data, I have to go through the fields in the order that they appear in the schema and use the schema to tell you the datatype of each field. This means that the binary data can only be decoded correctly if the code reading the data is using the exact same schema as the code that wrote the data. In this example I have chose to explicitly use specific methods, but Avro library takes care of reading data out of the box without being this verbose.
 
 Examining the byte sequence, we can see that there is nothing to identify fields or their datatypes. The encoding simply consists of values concatenated together. A string is just a length prefix followed by UTF-8 bytes, but there’s nothing in the encoded data that tells you that it is a string. It could just as well be an integer, or something else entirely. An integer is encoded using a variable-length zig-zag coding.
 
