@@ -869,6 +869,17 @@ Analyse:
 * Field length (because it is string, from documentation we know it is encoded with Unsigned LEB128): `03` - using Helper functions to decode the number: `System.out.println(readVarint64(Hex.decodeHex("03")))` prints `3`. This is our string lenght.
 * Field value: `666f6f` - this should be familiar from JSON section and it stands for "foo".
 
+Just like before, let's manipulate Hex values directly to return different data. 
+
+```
+16361803666f6f
+
+169ed303180a68656c6c6f776f726c64
+```
+
+
+
+
 
 
 
