@@ -863,12 +863,9 @@ public class ThriftHelperUtils {
 ```
 
 
-36 18
-
-
 Analyse:
-* 16 - in bits it is `0001 0110`. The first part of 4 bits represent the delta or if it first, then current id. `0001` bits traslate to `1`. The second portion of 4 bits represent field type. `0110` converts to `6` which in [Struct encoding](https://github.com/apache/thrift/blob/master/doc/specs/thrift-compact-protocol.md#struct-encoding) means `I64`.
-* 
+* Field Id delta + Field Type: `16` - in bits it is `0001 0110`. The first part of 4 bits represent the delta or if it is a first entry, then current id. `0001` bits traslate to `1`. The second portion of 4 bits represent field type. `0110` converts to `6` which in [Struct encoding](https://github.com/apache/thrift/blob/master/doc/specs/thrift-compact-protocol.md#struct-encoding) means `I64`.
+* Field value: `3618` - Because we know it the type we expect at least 10 bytes to represent a number.  
 
 * 03
 * 666f6f
