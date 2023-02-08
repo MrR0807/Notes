@@ -1012,15 +1012,19 @@ Correct encoding solves several problems:
 * Speed - using bloated encoding leads to slower encoding/decoding processes which puts more pressure on CPU;
 * Schema evolution - some encoding types allow for fluent schema evolution.
 
-In this last section I'm just going to add several benchmarks which tried to measure how fast encoding/decoding in JSON, Thrift, Avro.
+In this last section I'm just going to add several benchmarks which tried to measure how fast encoding/decoding in JSON, Thrift, Avro:
+* [Serialization performance in .NET: JSON, BSON, Protobuf, Avro](https://blog.devgenius.io/serialization-performance-in-net-json-bson-protobuf-avro-a25e8207d9de)
+* [An Introduction and Comparison of Several Common Java Serialization Frameworks](https://www.alibabacloud.com/blog/an-introduction-and-comparison-of-several-common-java-serialization-frameworks_597900)
+* [JVM serializers](https://github.com/eishay/jvm-serializers/wiki/)
+* [Apache Thrift vs Protocol Buffers vs Fast Buffers](https://www.eprosima.com/index.php/resources-all/performance/apache-thrift-vs-protocol-buffers-vs-fast-buffers)
+* [How Uber Engineering Evaluated JSON Encoding and Compression Algorithms to Put the Squeeze on Trip Data](https://www.uber.com/en-GB/blog/trip-data-squeeze-json-encoding-compression/)
+* [Performance evaluation of object serialization libraries in XML, JSON and binary formats](https://www.semanticscholar.org/paper/Performance-evaluation-of-object-serialization-in-Maeda/676669064d37a904d503dc8c99338766cbdd96e7)
 
-
+The results are a mixed bag and most of the time it seems that implementation details of particular language and library is more important rather than protocols itself.
 
 ## Conclusion
 
 So the nested columnar data is represented in Protobuf schema, the metada is represented in Thrift encoding, columnar data applies compactions algos.
-
-
 
 # Parquet file anatomy via Java implementation
 
