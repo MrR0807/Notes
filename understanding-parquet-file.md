@@ -875,11 +875,24 @@ Just like before, let's manipulate Hex values directly to return different data.
 16361803666f6f
 
 169ed303180a68656c6c6f776f726c64
+  ^        ^
 ```
 
+Let's provide to the example:
 
+```java
+final var array = Hex.decode("169ed303180a68656c6c6f776f726c64");
+read(array);
+```
 
+Which prints:
 
+```
+29903
+helloworld
+```
+
+##### Conclusion
 
 
 
