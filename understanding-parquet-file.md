@@ -799,7 +799,7 @@ Running main yields hex value: `16361803666f6f`.
 Thrift [Struct encoding](https://github.com/apache/thrift/blob/master/doc/specs/thrift-compact-protocol.md#struct-encoding) for Compact protocol defines data structure like so:
 * Instead of field-id now there is field-delta. "The field id delta can be computed by `current-field-id - previous-field-id`, or just `current-field-id` if this is the first of the struct". It is unsigned 4 bits integer, strictly positive.
 * field-type (whether it is a string, integer, list etc) is an unsigned 4 bit integer instead of signed 8 bit integer.
-* length indication (length of a string, number of items in a list). In our case it is going to be a string which is ??? using var int encoding a signed 32 bit integer.
+* length indication (length of a string, number of items in a list). In our case it is going to be a string, hence the leght size is encoded with  Unsigned LEB128.
 * field-value
 
 From the definitions there are a couple of observable optimisations:
