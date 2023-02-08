@@ -483,7 +483,7 @@ one: {
 
 ## Encoding
 
-This section's prerequisite is reading [Designing Data-Intensive Applications](https://www.amazon.com/Designing-Data-Intensive-Applications-Reliable-Maintainable/dp/1449373321) book's Chapter 4: Encoding and Evolution. It lays down the fundamentals very well. A lot of information in this section will be copy pasted from named book's chapter.
+This section's prerequisite is reading [Designing Data-Intensive Applications](https://www.amazon.com/Designing-Data-Intensive-Applications-Reliable-Maintainable/dp/1449373321) book's Chapter 4: Encoding and Evolution. It lays down the fundamentals very well. Some of information in this section will be copy pasted from named book's chapter.
 
 ### Formats for Encoding Data
 
