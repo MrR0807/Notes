@@ -690,6 +690,29 @@ Deconstructing:
 * Field length (because this is a string, it contains field lenght of 32 bit integer or 8 hex values): `00000003` - which stands for 3, the length of encoded "foo" string.
 * Field value: `666f6f` - this should be familiar from JSON section and it stands for "foo".
 
+We can manipulate the hex value and say instead of 27, I'd like to print 283. Old vs new hex value:
+
+
+```
+0a0001000000000000001b0b000200000003666f6f
+
+0a0001000000000000011b0b000200000003666f6f
+                   ^
+```
+
+And provide to `read` method:
+
+```java
+final var manipulatedBytes = Hex.decode("0a0001000000000000011b0b000200000003666f6f");
+read(manipulatedBytes);
+```
+
+Which will print as expected:
+
+```
+283
+foo
+```
 
 
 
