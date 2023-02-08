@@ -721,9 +721,82 @@ As you can see, the big difference compared to JSON is that there are no field n
 
 ##### CompactProtocol
 
-The Thrift `CompactProtocol` encoding is semantically equivalent to `BinaryProtocol`, but it manages to pack the same information into even fewer bytes.
+The Thrift `CompactProtocol` encoding is semantically equivalent to `BinaryProtocol`, but it manages to pack the same information into fewer bytes.
 
 It does this by packing the field type and field id into a single byte, and use variable-length integers. Rather than using a full eight bytes for the number 27, it is encoded in one byte, with the top bit of each byte used to indicate whether there are still more bytes to come. This means numbers between –64 and 63 are encoded in one byte, numbers between –8192 and 8191 are encoded in two bytes, etc. Bigger numbers use more bytes.
+
+```java
+public class ThriftExample {
+
+	public static void main(String[] args) throws TException, IOException, ClassNotFoundException {
+
+		TMemoryBuffer trans = new TMemoryBuffer(100);
+		TProtocol protocol = new TCompactProtocol(trans);
+
+		write(protocol, 27, "foo");
+
+		final var array = trans.getArray();
+		System.out.println(Hex.encode(removeTrailingZeros(array)));
+
+		read(array);
+	}
+
+	public static void write(TProtocol oprot, long a, String b) throws TException {
+
+		oprot.writeStructBegin(new TStruct("Test"));
+
+		oprot.writeFieldBegin(new TField("a", I64, (short) 1));
+		oprot.writeI64(a);
+		oprot.writeFieldEnd();
+
+		oprot.writeFieldBegin(new TField("b", STRING, (short) 2));
+		oprot.writeString(b);
+		oprot.writeFieldEnd();
+
+		oprot.writeFieldStop();
+		oprot.writeStructEnd();
+	}
+
+	public static void read(byte[] array) throws TException {
+
+		final var tMemoryBuffer = new TMemoryBuffer(array.length);
+		tMemoryBuffer.write(array);
+		TProtocol protocol = new TCompactProtocol(tMemoryBuffer);
+
+		protocol.readStructBegin();
+
+		protocol.readFieldBegin();
+		final var l = protocol.readI64();
+		protocol.readFieldEnd();
+
+		protocol.readFieldBegin();
+		final var s = protocol.readString();
+		protocol.readFieldEnd();
+
+		protocol.readStructEnd();
+
+		System.out.println(l);
+		System.out.println(s);
+	}
+
+	/**
+	 * Dumb way of removing trailing zeros
+	 */
+	public static byte[] removeTrailingZeros(byte[] original) {
+		int sizeWithoutTrailingZeros = original.length;
+		while (original[sizeWithoutTrailingZeros - 1] == 0) {
+			--sizeWithoutTrailingZeros;
+		}
+		return Arrays.copyOf(original, sizeWithoutTrailingZeros);
+	}
+}
+```
+
+It is completely the same as in `BinaryProtocol` section, but the difference is that instead of `new TBinaryProtocol()` I'm using `new TCompactProtocol()`. 
+
+Running main yields hex value: `16361803666f6f`.
+
+
 
 
 #### Avro
