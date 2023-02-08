@@ -803,32 +803,62 @@ Thrift [Struct encoding](https://github.com/apache/thrift/blob/master/doc/specs/
 * field-value
 
 From the definitions there are a couple of observable optimisations:
-* Instead of separate field id and field type now there is one byte or 2 hex value field.
+* Instead of separate field id and field type now there is one byte or 2 hex value field representing both.
 * String lenght value is minimized using Unsigned LEB128 encoding.
 * Integer values are compacted by using zigzag int encoding, then additionally with Unsigned LEB128.
 
 These encodings are beyond this documentation scope, but there is a good blog post on [Variable length integers](https://golb.hplar.ch/2019/06/variable-length-int-java.html).
 
-A working zigzag encoding code:
+Helper functions to decode these values (built by inspecting Thrift source code):
 
 ```java
-private static void printVariableLengthZigZagHexValue(long value) {
-	long encoded = (value << 1) ^ (value >> 31);
-	System.out.println("Long value: " + value + " Hex value: " + Long.toHexString(encoded));
-}
-```
+import java.util.Arrays;
 
-A working Variable Length decoder, taken from [here](https://rosettacode.org/wiki/Variable-length_quantity#Java):
-
-```java
-public static long decode(byte[] b) {
-	long n = 0;
-	for (byte value : b) {
-		int curByte = value & 0xFF;
-		n = (n << 7) | (curByte & 0x7F);
-		if ((curByte & 0x80) == 0) break;
+public class ThriftHelperUtils {
+	
+	public static long readI64(byte[] bytes) {
+		return zigzagToLong(readVarint64(bytes));
 	}
-	return n;
+
+	public static long readVarint64(byte[] bytes) {
+		int shift = 0;
+		long result = 0;
+
+		for (var b : bytes) {
+			result |= (long) (b & 0x7f) << shift;
+			if ((b & 0x80) != 0x80) break;
+			shift += 7;
+		}
+
+		return result;
+	}
+
+	public static long zigzagToLong(long n) {
+		return (n >>> 1) ^ -(n & 1);
+	}
+
+	public static byte[] writeI64(long i64) {
+		return writeVarint64(longToZigzag(i64));
+	}
+
+	public static long longToZigzag(long l) {
+		return (l << 1) ^ (l >> 63);
+	}
+
+	public static byte[] writeVarint64(long n) {
+		final byte[] temp = new byte[10];
+		int idx = 0;
+		while (true) {
+			if ((n & ~0x7FL) == 0) {
+				temp[idx++] = (byte) n;
+				break;
+			} else {
+				temp[idx++] = ((byte) ((n & 0x7F) | 0x80));
+				n >>>= 7;
+			}
+		}
+		return Arrays.copyOf(temp, idx);
+	}
 }
 ```
 
