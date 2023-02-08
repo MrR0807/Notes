@@ -611,11 +611,21 @@ Code to generate data:
 This will generate Hex value: `0a0001000000000000001b0b000200000003666f6f`.
 
 Thrift [Struct encoding](https://github.com/apache/thrift/blob/master/doc/specs/thrift-binary-protocol.md#struct-encoding) defines data structure like so:
-* field-type (whether it is a string, integer, list etc);
-* field-id;
-* length indication (length of a string, number of items in a list);
-* field-value.
+* field-type (whether it is a string, integer, list etc) is a signed 8 bit integer
+* field-id is a signed 16 bit integer
+* length indication (length of a string, number of items in a list). In our case it is going to be a string which is a signed 32 bit integer
+* field-value
 
+The bit size of integer is important, because each hex value can represent 4 bits. For example if we have 16 bit integer, that means there will be 4 hex values.
+
+Deconstructing:
+* Field type (8 bit): `0a` - 
+* Field id (16 bit): `0001` - 
+* Field value (Because ints don't have length indicator it will be just value. Also we have defined `a` as `i64` we expect 8 bytes or 64 bits, or 16 hex values): `000000000000001b`  - 
+* Field type (8 bit): `0b` - 
+* Field id (16 bit): `0002` - 
+* Field length (because this is a string, it contains field lenght of 32 bit integer or 8 hex values): `00000003` - 
+* Field value: `666f6f` - 
 
 
 
