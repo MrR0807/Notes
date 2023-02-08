@@ -894,8 +894,7 @@ helloworld
 
 ##### Conclusion
 
-
-
+I'll repeat myself, but as you understood, differently from JSON, Thrift does not include names of the variables, but relies on schema and field tags which are represented as numbers. Thrift also encodes the type of the variable, differently from JSON, which tries to guess the type. Hence for small messages, Thrift Binary encoded message is bigger in size than JSON. If we use Compact, it is obviously smaller. To reach that, it uses elaborate bit encoding algorithms like zigzag and Unsigned LEB128, also, compacts how field ids and types are represented. Avro pushes the envelope and does not include types at all, that way shaving more bits from the message size.
 
 #### Avro
 
@@ -984,6 +983,9 @@ Correct encoding solves several problems:
 * Space - encoding data can save space (both sending less data via network and storing in storage) as we saw with JSON vs Avro;
 * Speed - using bloated encoding leads to slower encoding/decoding processes which puts more pressure on CPU;
 * Schema evolution - some encoding types allow for fluent schema evolution.
+
+
+For small messages Binary Thrift is actually bigger than JSON! However, if I would have picked a larger JSON model, Thrift would have eventually won on size. However, the Compact protocol
 
 ## Conclusion
 
