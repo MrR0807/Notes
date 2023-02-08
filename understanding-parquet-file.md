@@ -619,13 +619,13 @@ Thrift [Struct encoding](https://github.com/apache/thrift/blob/master/doc/specs/
 The bit size of integer is important, because each hex value can represent 4 bits. For example if we have 16 bit integer, that means there will be 4 hex values.
 
 Deconstructing:
-* Field type (8 bit): `0a` - 
-* Field id (16 bit): `0001` - 
-* Field value (Because ints don't have length indicator it will be just value. Also we have defined `a` as `i64` we expect 8 bytes or 64 bits, or 16 hex values): `000000000000001b`  - 
-* Field type (8 bit): `0b` - 
-* Field id (16 bit): `0002` - 
-* Field length (because this is a string, it contains field lenght of 32 bit integer or 8 hex values): `00000003` - 
-* Field value: `666f6f` - 
+* Field type (8 bit): `0a` - stands for 10. [Thrift Struct encoding](https://github.com/apache/thrift/blob/master/doc/specs/thrift-binary-protocol.md#struct-encoding) tells us that this is `I64`.
+* Field id (16 bit): `0001` - stands for 1.
+* Field value (Because ints don't have length indicator it will be just value. Also we have defined `a` as `i64` we expect 8 bytes or 64 bits, or 16 hex values): `000000000000001b`  - stands for 27.
+* Field type (8 bit): `0b` - stands for 11. [Thrift Struct encoding](https://github.com/apache/thrift/blob/master/doc/specs/thrift-binary-protocol.md#struct-encoding) tells us that this is `BINARY` or string in other words.
+* Field id (16 bit): `0002` - stands for 2.
+* Field length (because this is a string, it contains field lenght of 32 bit integer or 8 hex values): `00000003` - which stands for 3, the length of encoded "foo" string.
+* Field value: `666f6f` - this should be familiar from JSON section and it stands for "foo".
 
 
 
