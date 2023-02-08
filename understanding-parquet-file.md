@@ -807,8 +807,16 @@ From the definitions there are a couple of observable optimisations:
 * String lenght value is minimized using Unsigned LEB128 encoding.
 * Integer values are compacted by using zigzag int encoding, then additionally with Unsigned LEB128.
 
+These encodings are beyond this documentation scope, but there is a good blog post on [Variable length integers](https://golb.hplar.ch/2019/06/variable-length-int-java.html).
 
+A working zigzag encoding code:
 
+```java
+private static void printVariableLengthZigZagHexValue(long value) {
+	long encoded = (value << 1) ^ (value >> 31);
+	System.out.println("Long value: " + value + " Hex value: " + Long.toHexString(encoded));
+}
+```
 
 
 
