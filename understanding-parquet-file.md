@@ -598,7 +598,7 @@ Thrift has two different binary encoding formats:
 
 Firstly, lets encode data with `BinaryProtocol` and analyse it.
 
-**Sidenote!** By default, Thrift recommends to use their "Apache Thrift compiler", which generate classes from Thrift schema. For example, in [this repository](https://github.com/eugenp/tutorials/blob/master/apache-thrift/src/main/resources/cross-platform-service.thrift) `CrossPlatformResource` is defined, which generates this [monster of a class](https://github.com/eugenp/tutorials/blob/master/apache-thrift/generated/com/baeldung/thrift/impl/CrossPlatformResource.java). I'll go a more simpler route.
+**Sidenote!** By default, Thrift recommends to use their "Apache Thrift compiler", which generate classes from Thrift schema. For example, in [this repository](https://github.com/eugenp/tutorials/blob/master/apache-thrift/src/main/resources/cross-platform-service.thrift) `CrossPlatformResource` is a three field struct, which when generated becomes almost 600 lines [monster of a class](https://github.com/eugenp/tutorials/blob/master/apache-thrift/generated/com/baeldung/thrift/impl/CrossPlatformResource.java). I'll go a more simpler route.
 
 Code to generate data:
 
