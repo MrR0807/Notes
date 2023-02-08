@@ -600,6 +600,8 @@ Firstly, lets encode data with `BinaryProtocol` and analyse it.
 
 **Sidenote!** By default, Thrift recommends to use their "Apache Thrift compiler", which generate classes from Thrift schema. For example, in [this repository](https://github.com/eugenp/tutorials/blob/master/apache-thrift/src/main/resources/cross-platform-service.thrift) `CrossPlatformResource` is a three field struct, which when generated becomes almost 600 lines [monster of a class](https://github.com/eugenp/tutorials/blob/master/apache-thrift/generated/com/baeldung/thrift/impl/CrossPlatformResource.java). I'll go a more simpler route.
 
+##### BinaryProtocol
+
 Code to generate data:
 
 ```java
@@ -700,7 +702,7 @@ We can manipulate the hex value and say instead of 27, I'd like to print 283. Ol
                    ^
 ```
 
-And provide to `read` method:
+And provide manipulated bytes to `read` method:
 
 ```java
 final var manipulatedBytes = Hex.decode("0a0001000000000000011b0b000200000003666f6f");
@@ -714,7 +716,7 @@ Which will print as expected:
 foo
 ```
 
-
+##### CompactProtocol
 
 
 
