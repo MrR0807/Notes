@@ -985,7 +985,6 @@ final var stringLengthHex = Hex.encodeHex(stringLength);
 final var repeat = "La".repeat(600);
 final var stringValue = Hex.encodeHex(repeat.getBytes(StandardCharsets.UTF_8));
 
-
 byteArrayOutputStream.writeBytes(Hex.decodeHex("36"));
 byteArrayOutputStream.writeBytes(Hex.decodeHex(stringLengthHex));
 byteArrayOutputStream.writeBytes(Hex.decodeHex(stringValue));
