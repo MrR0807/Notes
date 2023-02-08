@@ -833,12 +833,14 @@ public static long decode(byte[] b) {
 ```
 
 
-
+36 18
 
 
 Analyse:
+* 16 - in bits it is `0001 0110`. The first part of 4 bits represent the delta or if it first, then current id. `0001` bits traslate to `1`. The second portion of 4 bits represent field type. `0110` converts to `6` which in [Struct encoding](https://github.com/apache/thrift/blob/master/doc/specs/thrift-compact-protocol.md#struct-encoding) means `I64`.
 * 
 
+* 03
 * 666f6f
 
 
