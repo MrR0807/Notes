@@ -802,11 +802,12 @@ Thrift [Struct encoding](https://github.com/apache/thrift/blob/master/doc/specs/
 * length indication (length of a string, number of items in a list). In our case it is going to be a string which is ??? using var int encoding a signed 32 bit integer.
 * field-value
 
+From the definitions there are a couple of observable optimisations:
+* Instead of separate field id and field type now there is one byte or 2 hex value field.
+* String lenght value is minimized using Unsigned LEB128 encoding.
+* Integer values are compacted by using zigzag int encoding, then additionally with Unsigned LEB128.
 
 
-
-
-optimization beyond trying to use less to 
 
 
 
