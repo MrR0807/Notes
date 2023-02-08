@@ -603,7 +603,70 @@ Firstly, lets encode data with `BinaryProtocol` and analyse it.
 Code to generate data:
 
 ```java
+public class ThriftExample {
 
+	public static void main(String[] args) throws TException, IOException, ClassNotFoundException {
+
+		TMemoryBuffer trans = new TMemoryBuffer(100);
+		TProtocol protocol = new TBinaryProtocol(trans);
+
+		write(protocol, 27, "foo");
+
+		final var array = trans.getArray();
+		System.out.println(Hex.encode(removeTrailingZeros(array)));
+
+		read(array);
+	}
+
+	public static void write(TProtocol oprot, long a, String b) throws TException {
+
+		oprot.writeStructBegin(new TStruct("Test"));
+
+		oprot.writeFieldBegin(new TField("a", I64, (short) 1));
+		oprot.writeI64(a);
+		oprot.writeFieldEnd();
+
+		oprot.writeFieldBegin(new TField("b", STRING, (short) 2));
+		oprot.writeString(b);
+		oprot.writeFieldEnd();
+
+		oprot.writeFieldStop();
+		oprot.writeStructEnd();
+	}
+
+	public static void read(byte[] array) throws TException {
+
+		final var tMemoryBuffer = new TMemoryBuffer(array.length);
+		tMemoryBuffer.write(array);
+		TProtocol protocol = new TBinaryProtocol(tMemoryBuffer);
+
+		protocol.readStructBegin();
+
+		protocol.readFieldBegin();
+		final var l = protocol.readI64();
+		protocol.readFieldEnd();
+
+		protocol.readFieldBegin();
+		final var s = protocol.readString();
+		protocol.readFieldEnd();
+
+		protocol.readStructEnd();
+
+		System.out.println(l);
+		System.out.println(s);
+	}
+
+	/**
+	 * Dumb way of removing trailing zeros
+	 */
+	public static byte[] removeTrailingZeros(byte[] original) {
+		int sizeWithoutTrailingZeros = original.length;
+		while (original[sizeWithoutTrailingZeros - 1] == 0) {
+			--sizeWithoutTrailingZeros;
+		}
+		return Arrays.copyOf(original, sizeWithoutTrailingZeros);
+	}
+}
 
 
 ```
@@ -611,19 +674,19 @@ Code to generate data:
 This will generate Hex value: `0a0001000000000000001b0b000200000003666f6f`.
 
 Thrift [Struct encoding](https://github.com/apache/thrift/blob/master/doc/specs/thrift-binary-protocol.md#struct-encoding) defines data structure like so:
-* field-type (whether it is a string, integer, list etc) is a signed 8 bit integer
-* field-id is a signed 16 bit integer
-* length indication (length of a string, number of items in a list). In our case it is going to be a string which is a signed 32 bit integer
-* field-value
+* field-type (whether it is a string, integer, list etc) is a signed 8 bit integer.
+* field-id is a signed 16 bit integer.
+* length indication (length of a string, number of items in a list). In our case it is going to be a string which is a signed 32 bit integer.
+* field-value.
 
 The bit size of integer is important, because each hex value can represent 4 bits. For example if we have 16 bit integer, that means there will be 4 hex values.
 
 Deconstructing:
-* Field type (8 bit): `0a` - stands for 10. [Thrift Struct encoding](https://github.com/apache/thrift/blob/master/doc/specs/thrift-binary-protocol.md#struct-encoding) tells us that this is `I64`.
-* Field id (16 bit): `0001` - stands for 1.
+* Field type (8 bit, 2 hex values): `0a` - stands for 10. [Thrift Struct encoding](https://github.com/apache/thrift/blob/master/doc/specs/thrift-binary-protocol.md#struct-encoding) tells us that this is `I64`.
+* Field id (16 bit, 4 hex values): `0001` - stands for 1.
 * Field value (Because ints don't have length indicator it will be just value. Also we have defined `a` as `i64` we expect 8 bytes or 64 bits, or 16 hex values): `000000000000001b`  - stands for 27.
-* Field type (8 bit): `0b` - stands for 11. [Thrift Struct encoding](https://github.com/apache/thrift/blob/master/doc/specs/thrift-binary-protocol.md#struct-encoding) tells us that this is `BINARY` or string in other words.
-* Field id (16 bit): `0002` - stands for 2.
+* Field type (8 bit, 2 hex values): `0b` - stands for 11. [Thrift Struct encoding](https://github.com/apache/thrift/blob/master/doc/specs/thrift-binary-protocol.md#struct-encoding) tells us that this is `BINARY` or string in other words.
+* Field id (16 bit, 4 hex values): `0002` - stands for 2.
 * Field length (because this is a string, it contains field lenght of 32 bit integer or 8 hex values): `00000003` - which stands for 3, the length of encoded "foo" string.
 * Field value: `666f6f` - this should be familiar from JSON section and it stands for "foo".
 
