@@ -1008,12 +1008,13 @@ What fun!
 ### Conclusion
 
 Correct encoding solves several problems:
-* Space - encoding data can save space (both sending less data via network and storing in storage) as we saw with JSON vs Avro;
+* Space - encoding data can save space - both sending less data via network and storing in storages;
 * Speed - using bloated encoding leads to slower encoding/decoding processes which puts more pressure on CPU;
 * Schema evolution - some encoding types allow for fluent schema evolution.
 
+In this last section I'm just going to add several benchmarks which tried to measure how fast encoding/decoding in JSON, Thrift, Avro.
 
-For small messages Binary Thrift is actually bigger than JSON! However, if I would have picked a larger JSON model, Thrift would have eventually won on size. However, the Compact protocol
+
 
 ## Conclusion
 
