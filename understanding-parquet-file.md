@@ -862,13 +862,15 @@ public class ThriftHelperUtils {
 }
 ```
 
+16361803666f6f
+
 
 Analyse:
 * Field Id delta + Field Type: `16` - in bits it is `0001 0110`. The first part of 4 bits represent the delta or if it is a first entry, then current id. `0001` bits traslate to `1`. The second portion of 4 bits represent field type. `0110` converts to `6` which in [Struct encoding](https://github.com/apache/thrift/blob/master/doc/specs/thrift-compact-protocol.md#struct-encoding) means `I64`.
-* Field value: `3618` - Because we know it the type we expect at least 10 bytes to represent a number.  
-
-* 03
-* 666f6f
+* Field value: `36` - Because we know it is `I64` type, we expect at least 10 bytes to represent a number (as per documentation). Because we know that `int` and `long` values encoded with zigzag and then Unsigned LEB128, we have to use Helper functions to decode the number: `final var bytes = Hex.decodeHex("36"); System.out.println(ThriftHelperUtils.readI64(bytes));`. This will print 27, which is our number.
+* Field Id delta + Field Type: `18` - 
+* Field length (because it is string, from documentation we know it is encoded with Unsigned LEB128): `03` - 
+* Field value: `666f6f` - this should be familiar from JSON section and it stands for "foo".
 
 
 
