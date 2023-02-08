@@ -818,6 +818,22 @@ private static void printVariableLengthZigZagHexValue(long value) {
 }
 ```
 
+A working Variable Length decoder, taken from [here](https://rosettacode.org/wiki/Variable-length_quantity#Java):
+
+```java
+public static long decode(byte[] b) {
+	long n = 0;
+	for (byte value : b) {
+		int curByte = value & 0xFF;
+		n = (n << 7) | (curByte & 0x7F);
+		if ((curByte & 0x80) == 0) break;
+	}
+	return n;
+}
+```
+
+
+
 
 
 Analyse:
