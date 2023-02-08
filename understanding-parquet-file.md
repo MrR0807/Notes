@@ -716,9 +716,14 @@ Which will print as expected:
 foo
 ```
 
+As you can see, the big difference compared to JSON is that there are no field names (`a` or `b`). Instead, the encoded data contains field tags, which are numbers (1, 2, and 3). Those are the numbers that appear in the schema definition. Field tags are like aliases for fields—they are a compact way of saying what field we’re talking about, without having to spell out the field name.
+
+
 ##### CompactProtocol
 
+The Thrift `CompactProtocol` encoding is semantically equivalent to `BinaryProtocol`, but it manages to pack the same information into even fewer bytes.
 
+It does this by packing the field type and field id into a single byte, and use variable-length integers. Rather than using a full eight bytes for the number 27, it is encoded in one byte, with the top bit of each byte used to indicate whether there are still more bytes to come. This means numbers between –64 and 63 are encoded in one byte, numbers between –8192 and 8191 are encoded in two bytes, etc. Bigger numbers use more bytes.
 
 
 #### Avro
