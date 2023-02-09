@@ -72,6 +72,13 @@ When discussing file systems there are many terms for referring to certain conce
 
 #### Retrieving file's data
 
+At this point we have several key concepts cleared up. Files are streams of data. Files' metadata is stored in i-node, which among other things, *knows* where the file is kept on the disk. Disk is made of blocks. Blocks are the **smallest unit that the disk can read or write**.
+
+Say our blocks are made of 1024 bytes. Image a request to read from position 4096 of a file. We need to find the fourth block of the file because the file position, 4096, divided by the file system block size, is 4. The i-node contains a list of blocks that make up the file and it can tell us the disk address of the fourth block of the file. Then the file system must ask the disk to read that block. Finally, having retrieved the data, the file system can pass the data back to the user[7].
+
+We simplified this example quite a bit, but the basic idea is always the same. Given a request for data at some position in a file, the file system must translate that logical position to a physical disk location, request that block from the disk, and then pass the data back to the user[7].
+
+When a request is made to read (or write) data that is not on a file system block boundary, the file system must round down the file position to the beginning of a block. Then when the file system copies data to/from the block, it must add in the offset from the start of the block of the original position. For example, if we used the file offset 4732 instead of 4096, **we would still need to read the fourth block of the file.** But after getting the fourth block, we would use the data at byte offset 636 (4732 - 4096) within the fourth block[7].
 
 
 
