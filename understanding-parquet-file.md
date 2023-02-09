@@ -197,9 +197,11 @@ To decide whether to use a columnor a row-oriented store, you need to understand
 If data is stored on magnetic disk, then if a query needs to access only a single record (i.e., all or some of the attributes of a single row of a table), a column-store will have to seek several times (to all columns/files of the table referenced in the query) to read just this single record. However, if a query needs to access many records, then large swaths of entire columns can be read, amortizing the seeks to the dierent columns. In a conventional row-store, in contrast, if a query needs to access a single record, only one seek is needed as the whole record is stored contiguously, and
 the overhead of reading all the attributes of the record (rather than just the relevant attributes requested by the current query) will be negligible relative to the seek time. However, as more and more records are accessed, the transfer time begins to dominate the seek time, and a column-oriented approach begins to perform better than a row-oriented approach. For this reason, column-stores are typically used in analytic applications, with queries that scan a large fraction of individual tables and compute aggregates or other statistics over them[1].
 
-### Columnar vs Row layout advance
+### Columnar layout advance
 
-In previouse section I've tried to visualise the problem space and simplisticly explain why column storages are attractive solution. However, there are numerious different papers and studies[1][4][5], which analyse this in depth. On of the such papers is [The Design and Implementation of Modern Column-Oriented Database Systems](https://stratos.seas.harvard.edu/files/stratos/files/columnstoresfntdbs.pdf).
+In previouse sections I've tried to visualise the problem space and simplisticly explain what is the difference between row and column storages. In this section I'd like to take a deeper dive into columnar databases optimisation and how advancing technology popularised columnar databases[1].
+
+
 
 
 
