@@ -150,8 +150,8 @@ To get the salary average the database would need to look through all three disk
 
 #### Column oriented layout
 
-Column-oriented database management systems partition data vertically (i.e., by col‐ umn) instead of storing it in rows. Here, values for the same column are stored con‐ tiguously on disk (as opposed to storing rows contiguously as in the previous example). For example, if we store historical stock market prices, price quotes are stored together. Storing values for different columns in separate files or file segments allows efficient queries by column, since they can be read in one pass rather than con‐ suming entire rows and discarding data for columns that weren’t queried.
-Column-oriented stores are a good fit for analytical workloads that compute aggre‐ gates, such as finding trends, computing average values, etc. Processing complex aggregates can be used in cases when logical records have multiple fields, but some of them (in this case, price quotes) have different importance and are often consumed together[9].
+Column-oriented database management systems partition data vertically (i.e., by column) instead of storing it in rows. Here, values for the same column are stored contiguously on disk (as opposed to storing rows contiguously as in the previous example). For example, if we store historical stock market prices, price quotes are stored together. Storing values for different columns in separate files or file segments allows efficient queries by column, since they can be read in one pass rather than consuming entire rows and discarding data for columns that weren’t queried.
+Column-oriented stores are a good fit for analytical workloads that compute aggregates, such as finding trends, computing average values, etc. Processing complex aggregates can be used in cases when logical records have multiple fields, but some of them (in this case, price quotes) have different importance and are often consumed together[9].
 
 ##### Practical examples
 
