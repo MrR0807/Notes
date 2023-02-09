@@ -48,7 +48,9 @@ Say we have a familiar traditional database layout (or CSV file for that matter)
 | 9   | Lucas | 37  | 1000   |
 | 10  | Peter | 61  | 7500   |
 
+This representation of information is provided in 2D. On a physical this data gets linearized into 1D sequences of values[2], which are represented by 0 and 1. Hence the table gets transformed into this:
 
+`1,John,26,1000,2,Adam,41,2000,3,Eve,29,2500,
 
 
 
