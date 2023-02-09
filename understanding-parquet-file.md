@@ -236,7 +236,8 @@ Through the end of the 2000s there was an explosion of new columnoriented DBMS p
 With popularization of solid state storages (SSDs) columnoriented storage was shown to never be worse than row storage, and in some cases where selective predicates were used, it outperformed row storage for any projectivity; if selectivity is high, then column-stores can minimize the amount of intermediate results they create which otherwise represents a significant overhead.
 
 **In summary**:
-* 
+* Column-oriented database systems can be traced to the 1970s.
+* Column-oriented database systems lacked optimizations which were advanced 
 
 
 #### Optimizations
