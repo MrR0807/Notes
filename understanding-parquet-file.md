@@ -205,15 +205,27 @@ In other words, columnar databases are best for OLAP loads, while row databases 
 | What data represents | Latest state of data (current point in time)       | History of events that happened over time |
 | Dataset size         | Gigabytes to terabytes                             | Terabytes to petabytes                    |
 
-
-
 ### Columnar layout advance
 
 In previouse sections I've tried to visualise the problem space and simplisticly explain what is the difference between row and column storages. In this section I'd like to take a deeper dive into columnar databases optimisation and how advancing technology popularised columnar databases[1].
 
+#### History
 
+The roots of column-oriented database systems can be traced to the 1970s, when transposed files first appeared. TOD (Time Oriented Database) was a system based on transposed files and designed for medical record management. One of the earliest systems that resembled modern column-stores was Cantor. It featured compression techniques for integers that included zero suppression, delta encoding, RLE (run length encoding), and delta RLE–all these are commonly employed by modern column-stores (we discuss column-oriented compression in later chapters). A dynamic programming algorithm was used to choose compression methods and related parameters[1].
 
+Research on transposed files was followed by investigations of vertical partitioning as a technique for table attribute clustering. At the time, row-stores were the standard architecture for relational database systems. A typical implementation for storing records inside a page was a slotted-page approach. This storage model is known as the N-ary Storage Model or NSM. In 1985, Copeland and Khoshafian proposed an alternative to NSM, the Decomposition Storage Model or DSM–a predecessor to columnstores.  For many, that work marked the first comprehensive comparison of row- and column-stores. For the next 20 years, the terms DSM and NSM were more commonly used instead of row- or column-oriented storage[1].
 
+An analysis (based on technology available at the time) showed that DSM could speed up certain scans over NSM when only a few columns were projected, at the expense of extra storage space. Since DSM slowed down scans that projected more than a few columns, the authors focused on the advantages of DSM pertaining to its simplicity and flexibility as a storage format. They speculated that physical design decisions would be simpler for DSM-based stores (since there were no index-creation decisions to make) and query execution engines would be easier to build for DSM. The original DSM paper did not examine any compression techniques nor did it evaluate any benefits of column orientation for relational operators other than scans[1].
+
+Although the research eorts around DSM pointed out several advantages of column over row storage, it was not until much later, in the 2000s, that technology and application trends paved the ground for the case of column-stores for data warehousing and analytical tasks[1].
+
+##### Technology and Application Trends
+
+At its core, the basic design of a relational database management system has remained to date very close to systems developed in the 1980s. The hardware landscape, however, has changed dramatically. In 1980, a Digital VAX 11/780 had a 1 MIPS CPU with 1KB of cache memory, 8 MB maximum main memory, disk drives with 1.2 MB/second transfer rate and 80MB capacity, and carried a $250K price tag. In 2010, servers typically had 5,000 to 10,000 times faster CPUs, larger cache and RAM sizes, and larger disk capacities. Disk transfer times for hard drives improved about 100 times and average disk-head seek times are 10 times faster (30msec vs. 3msec). The differences in these trends (10,000x vs. 100x vs. 10x) have had a significant impact on the performance of database workloads[1].
+
+The imbalance between disk capacity growth and the performance improvement of disk transfer and disk seek times can be viewed through two metrics: (a) the transfer bandwidth per available byte (assuming the entire disk is used), which has been reduced over the years by two orders of magnitude, and (b) the ratio of sequential access speed over random access speed, which has increased one order of magnitude. These two metrics clearly show that DBMSs need to not only avoid random disk I/Os whenever possible, but, most importantly, preserve disk bandwidth[1].
+
+As random access throughout the memory hierarchy became increasingly expensive, query processing techniques began to increasingly rely on sequential access patterns, to the point that most DBMS architectures are built around the premise that completely sequential access should be done whenever possible. However, as database sizes increased, scanning through large amounts of data became slower and slower. A bandwidth-saving solution was clearly needed, yet most database vendors did not view DSM as viable replacement to NSM, due to limitations identified in early DSM implementations [22] where DSM was superior to NSM only when queries access very few columns. In order for a column-based (DSM) storage scheme to outperform row-based (NSM) storage, it needed to have a fast mechanism for reconstructing tuples (since the rest of the DBMS would still operate on rows) and it also needed to be able to amortize the cost of disk seeks when accessing multiple columns on disk. Faster CPUs would eventually enable the former and larger memories (for buering purposes) would allow the latter[1].
 
 
 
@@ -251,6 +263,7 @@ only a subset of a table’s attributes."
 7. [Practical File System Design](http://www.nobius.org/dbg/practical-file-system-design.pdf)
 8. [Row vs Column Oriented Databases](https://dataschool.com/data-modeling-101/row-vs-column-oriented-databases/)
 9. Data intensive book
+10. https://blog.acolyer.org/2018/09/26/the-design-and-implementation-of-modern-column-oriented-database-systems/
 
 
 ## Nested columnar data layout
