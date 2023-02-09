@@ -82,7 +82,7 @@ When a request is made to read (or write) data that is not on a file system bloc
 
 When a request for I/O spans multiple blocks (such as a read for 8192 bytes), the file system must find the location for many blocks. If the file system has done a good job, **the blocks will be contiguous on disk. Requests for contiguous blocks on disk improve the efficiency of doing I/O to disk. The fastest thing a disk drive can do is to read or write large contiguous regions of disk blocks, and so file systems always strive to arrange file data as contiguously as possible.**
 
-There are two key concepts to remember:
+In short, there are two key concepts to remember:
 * Even if we need small amount of data from a given block, we still need to read all of it.
 * Reading/writing in sequence (contiguous) improves the efficiency of doing I/O from/to disk.
 
@@ -94,8 +94,6 @@ Let's get back to our example and take two extremes of data storing.
 
 As already stated, data from 2D can be linearized as `1,John,26,1000,2,Adam,41,2000,3,Eve,29,2500,4,Maria,55,1500...`. This is called row oriented layout and common row oriented databases are PostgreSQL or MySQL. 
 The other extreme is to linearize each row vertically: `1,2,3,4,5,6,7,8,9,10,John,Adam,Eve,Maria`. This is called column oriented layout and common column oriented databases are Google's BigQuery or Amazon's Redshift.
-
-Upcoming sections are oversimplified, but they lay the foundation.
 
 #### Row oriented layout
 
@@ -138,7 +136,7 @@ SELECT AVG(Salary)
 FROM TABLE
 ```
 
-It will require the database to read in significantly more data, as both the needed attributes and the surrounding attributes stored in the same blocks need to be read. Not to mention reading all blocks of data.
+It will require the database to read in significantly more data, as both the needed attributes and the surrounding attributes stored in the same blocks need to be read. Not to mention going over all blocks of data.
 
 Lastly, let’s assume a Disk can only hold enough bytes of data for three blocks to be stored on each disk. In a row oriented database the table above would be stored as:
 
@@ -146,7 +144,7 @@ Lastly, let’s assume a Disk can only hold enough bytes of data for three block
 |------------------------|------------------------|------------------------|
 | Block1, Block2, Block3 | Block4, Block5, Block6 | Block7, Block8, Block9 |
 
-To get the salary average the database would need to look through all three disks, which might not even be co-located.
+To get the salary average, the database would need to look through all three disks, which might not even be co-located adding additional network latency.
 
 #### Column oriented layout
 
@@ -155,7 +153,7 @@ Column-oriented stores are a good fit for analytical workloads that compute aggr
 
 ##### Practical examples
 
-Again, the same conditions stand. Each disk block can store 4 values. Our table data would be stored on a disk in a column oriented database in order column by column like this:
+Again, the same conditions stand - each disk block can store 4 values. Our table data would be stored on a disk in a column oriented database in order column by column like this:
 
 | Block 1           | Block 2           | Block 3           | ... | Block 10            |
 |-------------------|-------------------|-------------------|-----|---------------------|
@@ -196,6 +194,18 @@ To decide whether to use a columnor a row-oriented store, you need to understand
 
 If data is stored on magnetic disk, then if a query needs to access only a single record (i.e., all or some of the attributes of a single row of a table), a column-store will have to seek several times (to all columns/files of the table referenced in the query) to read just this single record. However, if a query needs to access many records, then large swaths of entire columns can be read, amortizing the seeks to the dierent columns. In a conventional row-store, in contrast, if a query needs to access a single record, only one seek is needed as the whole record is stored contiguously, and
 the overhead of reading all the attributes of the record (rather than just the relevant attributes requested by the current query) will be negligible relative to the seek time. However, as more and more records are accessed, the transfer time begins to dominate the seek time, and a column-oriented approach begins to perform better than a row-oriented approach. For this reason, column-stores are typically used in analytic applications, with queries that scan a large fraction of individual tables and compute aggregates or other statistics over them[1].
+
+In other words, columnar databases are best for OLAP loads, while row databases for OLTP[9]:
+
+| Property             | Transaction processing systems (OLTP)              | Analytic Systems (OLAP)                   |
+|----------------------|----------------------------------------------------|-------------------------------------------|
+| Main read pattern    | Small number of records per query, fetched by key  | Aggregate over large number of records    |
+| Main write pattern   | Random-access, low-latency writes from user input  | Bulk import (ETL) or event stream         |
+| Primarily used by    | End user/customer, via web application             | Internal analyst, for decision support    |
+| What data represents | Latest state of data (current point in time)       | History of events that happened over time |
+| Dataset size         | Gigabytes to terabytes                             | Terabytes to petabytes                    |
+
+
 
 ### Columnar layout advance
 
