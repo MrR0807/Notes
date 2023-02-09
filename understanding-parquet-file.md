@@ -50,11 +50,12 @@ Google BigQuery book why Parquet was created.
 ### References
 
 1. [The Design and Implementation of Modern Column-Oriented Database Systems](https://stratos.seas.harvard.edu/files/stratos/files/columnstoresfntdbs.pdf)
-2. [Weaving Relations for Cache Performance](https://www.vldb.org/conf/2001/P169.pdf)
-3. [Row-Store / Column-Store / Hybrid-Store](https://db.in.tum.de/teaching/ws1718/seminarHauptspeicherdbs/paper/sterjo.pdf?lang=de)
-4. [A tour through hybrid column/row-oriented DBMS schemes](http://dbmsmusings.blogspot.com/2009/09/tour-through-hybrid-columnrow-oriented.html)
-5. [Demystifying the Parquet File Format](https://towardsdatascience.com/demystifying-the-parquet-file-format-13adb0206705)
-6. 
+2. [Database Systems: Data Layouts (Part 1)](https://www.youtube.com/watch?v=bkwtWfFcwq0)
+3. [Weaving Relations for Cache Performance](https://www.vldb.org/conf/2001/P169.pdf)
+4. [Row-Store / Column-Store / Hybrid-Store](https://db.in.tum.de/teaching/ws1718/seminarHauptspeicherdbs/paper/sterjo.pdf?lang=de)
+5. [A tour through hybrid column/row-oriented DBMS schemes](http://dbmsmusings.blogspot.com/2009/09/tour-through-hybrid-columnrow-oriented.html)
+6. [Demystifying the Parquet File Format](https://towardsdatascience.com/demystifying-the-parquet-file-format-13adb0206705)
+7. 
 
 
 ## Nested columnar data layout
