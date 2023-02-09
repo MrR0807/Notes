@@ -105,6 +105,45 @@ Say each disk block can contain 4 values (int, string, etc.). Our table data wou
 |-------------------|-------------------|-------------------|-----|---------------------|
 | 1, John, 26, 1000 | 2, Adam, 41, 2000 | 3, Eve, 29, 2500  |     | 10, Peter, 61, 7500 |
 
+This allows the database write a row quickly because, all that needs to be done to write to it is to tack on another row to the end of the data (disk block 11):
+
+| Block 1           | Block 2           | Block 3           | ... | Block 10            | Block 11             |
+|-------------------|-------------------|-------------------|-----|---------------------|----------------------|
+| 1, John, 26, 1000 | 2, Adam, 41, 2000 | 3, Eve, 29, 2500  |     | 10, Peter, 61, 7500 | 11, Monica, 55, 4500 |
+
+```sql
+UPDATE TABLE
+SET Age = 62, Salary = 8000
+WHERE Id = 10
+```
+
+If I need to update both age and salary for a particular person by id, all the data is in one block. That means my update operation will be extremely efficient.
+
+Same goes for selecting particular person and accessing all data:
+
+```sql
+SELECT * 
+FROM TABLE
+WHERE Id = 10
+```
+
+However, what happens when I need to calculate an average of all salaries?
+
+```sql
+SELECT AVG(Salary)
+FROM TABLE
+```
+
+It will require the database to read all disk blocks as well as discard other parameters (id, name, age). This is extremely inefficient. Also, what would happen if I would need to add additional column. If I wanted to maintain contiguous blocks, I would need to go over all blocks and rewrite them one by one. 
+Lastly, let’s assume a Disk can only hold enough bytes of data for three blocks to be stored on each disk. In a row oriented database the table above would be stored as:
+
+| Disk 1                 | Disk 2                 | Disk 3                 |
+|------------------------|------------------------|------------------------|
+| Block1, Block2, Block3 | Block4, Block5, Block6 | Block7, Block8, Block9 |
+
+To get the sum of all the people’s ages the computer would need to look through all three disks.
+
+
 
 
 
