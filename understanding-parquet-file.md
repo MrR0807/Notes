@@ -114,6 +114,7 @@ Remember when I said that the order of the data does not matter, well it does, b
 5. [A tour through hybrid column/row-oriented DBMS schemes](http://dbmsmusings.blogspot.com/2009/09/tour-through-hybrid-columnrow-oriented.html)
 6. [Demystifying the Parquet File Format](https://towardsdatascience.com/demystifying-the-parquet-file-format-13adb0206705)
 7. [Practical File System Design](http://www.nobius.org/dbg/practical-file-system-design.pdf)
+8. [Row vs Column Oriented Databases](https://dataschool.com/data-modeling-101/row-vs-column-oriented-databases/)
 
 
 ## Nested columnar data layout
