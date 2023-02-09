@@ -144,13 +144,6 @@ Lastly, let’s assume a Disk can only hold enough bytes of data for three block
 
 To get the salary average the database would need to look through all three disks, which might not even be co-located.
 
-
-
-
-
-
-
-
 #### Column oriented layout
 
 
