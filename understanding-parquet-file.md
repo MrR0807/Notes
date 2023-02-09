@@ -235,8 +235,16 @@ Through the end of the 2000s there was an explosion of new columnoriented DBMS p
 
 With popularization of solid state storages (SSDs) columnoriented storage was shown to never be worse than row storage, and in some cases where selective predicates were used, it outperformed row storage for any projectivity; if selectivity is high, then column-stores can minimize the amount of intermediate results they create which otherwise represents a significant overhead.
 
-In summary:
+**In summary**:
 * 
+
+
+#### Optimizations
+
+
+All these optimizations, like costs CPU cycles, but if you remember from "History" section, CPU efficiency increase 1000x times while disk seeks only 10x. It means there are CPU cycles abundancy which can be exploited.
+
+"Exploiting extra CPU cycles. Usually, the bottom line goal of a database system is performance, i.e., processing one or more queries as fast as possible, not compression ratio. Disk space is cheap, and is getting cheaper rapidly. However, compression does improve performance (in addition to reducing disk space); if data is compressed, then less time is spent in I/O during query processing as less data is read from disk into memory (and from memory to CPU). Another important motivation here is that as CPUs are getting much faster compared to memory bandwidth, the cost of accessing data costs more in terms of CPU cycles than it did in the past. Intuitively, this means that now we have more CPU cycles to spare in decompressing compressed data fast which is preferable to transferring uncompressed and thus bigger data at slow speeds (in terms of waisted CPU cycles) through the memory hierarchy"
 
 
 
@@ -253,11 +261,11 @@ In summary:
 (or through a storage hierarchy) are often the major performance bottlenecks in database systems, while at the same time database schemas
 are becoming more and more complex with fat tables with hundreds
 of attributes being common, a column-store is likely to be much more
-ecient at executing queries, as the one in our example, that touch
+efficient at executing queries, as the one in our example, that touch
 only a subset of a table’s attributes."
 
 
-"Exploiting extra CPU cycles. Usually, the bottom line goal of a database system is performance, i.e., processing one or more queries as fast as possible, not compression ratio. Disk space is cheap, and is getting cheaper rapidly. However, compression does improve performance (in addition to reducing disk space); if data is compressed, then less time is spent in I/O during query processing as less data is read from disk into memory (and from memory to CPU). Another important motivation here is that as CPUs are getting much faster compared to memory bandwidth, the cost of accessing data costs more in terms of CPU cycles than it did in the past. Intuitively, this means that now we have more CPU cycles to spare in decompressing compressed data fast which is preferable to transferring uncompressed and thus bigger data at slow speeds (in terms of waisted CPU cycles) through the memory hierarchy" 
+ 
 
 ### References
 
