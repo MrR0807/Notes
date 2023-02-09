@@ -88,6 +88,8 @@ There are two key concepts to remember:
 
 Remember when I said that the order of the data does not matter, well it does, but it heavily depends on how the file systems are utilised.
 
+### Columnar vs Row layout
+
 
 
 
