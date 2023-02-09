@@ -54,7 +54,23 @@ This representation of information is provided in 2D. Before data gets written t
 * Devirtualization - from virtual pages to physical pages.
 * Materialization - from physical pages to storage devices.
 
-The order of the data does not matter in theory, it can be `John,26,1,1000,Adam,41,2,2000...` or `John,Adam,Even,1,2,3...`,  as long as we can rebuild it back via what is called tuple reconstruction or recombination. In other words, when we get the sequence of bytes or 1D values, how do we rebuild it into a table.
+The order of the data does not matter in theory, it can be `John,26,1,1000,Adam,41,2,2000...` or `John,Adam,Even,1,2,3...`,  as long as we can find it efficiently and rebuild it back via what is called tuple reconstruction or recombination. In other words, when we get the sequence of bytes or 1D values, how do we rebuild it into a table.
+
+### File Systems
+
+Columnar vs row store debate only makes sense when it is happening in the context of File Systems. Thus a little a bit of theory.
+
+The main purpose of computers is to create, manipulate, store, and retrieve data. A file system provides the machinery to support these tasks. At the highest level a file system is a way to organize, store, retrieve, and manage information on a permanent storage medium such as a disk[7].
+
+When discussing file systems there are many terms for referring to certain concepts, and so it is necessary to define how we will refer to the specific concepts that make up a file system[7]. I will not list all of them, but only few which are required for this document:
+* Disk - A permanent storage medium of a certain size. A disk also has a sector or block size, which is the minimum unit that the disk can read or write. The block size of most modern hard disks is 512 bytes.
+* Block - **The smallest unit writable by a disk or file system.** Everything a file system does is composed of operations done on blocks. A file system block is always the same size as or larger (in integer multiples) than the disk block size.
+* Partition - A subset of all the blocks on a disk. A disk can have several partitions.
+* Volume - The name we give to a collection of blocks on some storage medium (i.e., a disk). That is, a volume may be all of the blocks on a single disk, some portion of the total number of blocks on a disk, or it may even span multiple disks and be all the blocks on several disks. The term “volume” is used to refer to a disk or partition that has been initialized with a file system.
+* I-node - The place where a file system stores all the necessary metadata about a file. The i-node also provides the connection to the contents of the file and any other data associated with the file.
+* File - The primary functionality that all file systems must provide is a way to store a named piece of data and to later retrieve that data using the name given to it. A file is where a program stores data permanently. In its simplest form a file stores a single piece of information. 
+
+
 
 
 
@@ -76,7 +92,7 @@ The order of the data does not matter in theory, it can be `John,26,1,1000,Adam,
 4. [Row-Store / Column-Store / Hybrid-Store](https://db.in.tum.de/teaching/ws1718/seminarHauptspeicherdbs/paper/sterjo.pdf?lang=de)
 5. [A tour through hybrid column/row-oriented DBMS schemes](http://dbmsmusings.blogspot.com/2009/09/tour-through-hybrid-columnrow-oriented.html)
 6. [Demystifying the Parquet File Format](https://towardsdatascience.com/demystifying-the-parquet-file-format-13adb0206705)
-7. 
+7. [Practical File System Design](http://www.nobius.org/dbg/practical-file-system-design.pdf)
 
 
 ## Nested columnar data layout
