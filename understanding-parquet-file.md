@@ -95,7 +95,17 @@ Let's get back to our example and take two extremes of data storing.
 As already stated, data from 2D can be linearized as `1,John,26,1000,2,Adam,41,2000,3,Eve,29,2500,4,Maria,55,1500...`. This is called row oriented layout and common row oriented databases are PostgreSQL or MySQL. 
 The other extreme is to linearize each row vertically: `1,2,3,4,5,6,7,8,9,10,John,Adam,Eve,Maria`. This is called column oriented layout and common column oriented databases are Google's BigQuery or Amazon's Redshift.
 
+Upcoming sections are oversimplified, but they lay the foundation.
+
 #### Row oriented layout
+
+Say each disk block can contain 4 values (int, string, etc.). Our table data would be stored on a disk in a row oriented database in order row by row like this:
+
+| Block 1           | Block 2           | Block 3           | ... | Block 10            |
+|-------------------|-------------------|-------------------|-----|---------------------|
+| 1, John, 26, 1000 | 2, Adam, 41, 2000 | 3, Eve, 29, 2500  |     | 10, Peter, 61, 7500 |
+
+
 
 
 
