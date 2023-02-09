@@ -33,8 +33,21 @@ Google BigQuery book why Parquet was created.
 
 ## Columnar data layout
 
+Say we have a familiar traditional database layout (or CSV file for that matter):
 
 
+| Id  | Name  | Age | Salary |
+|-----|-------|-----|--------|
+| 1   | John  | 26  | 1000   |
+| 2   | Adam  | 41  | 2000   |
+| 3   | Eve   | 29  | 2500   |
+| 4   | Maria | 55  | 1500   |
+| 5   | Chris | 67  | 3000   |
+| 6   | Emma  | 80  | 3500   |
+| 7   | Ava   | 18  | 10000  |
+| 8   | Liam  | 19  | 10000  |
+| 9   | Lucas | 37  | 1000   |
+| 10  | Peter | 61  | 7500   |
 
 
 
