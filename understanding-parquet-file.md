@@ -80,7 +80,9 @@ We simplified this example quite a bit, but the basic idea is always the same. G
 
 When a request is made to read (or write) data that is not on a file system block boundary, the file system must round down the file position to the beginning of a block. Then when the file system copies data to/from the block, it must add in the offset from the start of the block of the original position. For example, if we used the file offset 4732 instead of 4096, **we would still need to read the fourth block of the file.** But after getting the fourth block, we would use the data at byte offset 636 (4732 - 4096) within the fourth block[7].
 
+When a request for I/O spans multiple blocks (such as a read for 8192 bytes), the file system must find the location for many blocks. If the file system has done a good job, **the blocks will be contiguous on disk. Requests for contiguous blocks on disk improve the efficiency of doing I/O to disk. The fastest thing a disk drive can do is to read or write large contiguous regions of disk blocks, and so file systems always strive to arrange file data as contiguously as possible.**
 
+Remember I've said that 
 
 
 
