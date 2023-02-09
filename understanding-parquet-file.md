@@ -99,6 +99,9 @@ Upcoming sections are oversimplified, but they lay the foundation.
 
 #### Row oriented layout
 
+Row-oriented database management systems store data in records or rows. Their layout is quite close to the tabular data representation, where every row has the same set of fields. This approach works well for cases where several fields constitute the record (name, birth date, and a phone number) uniquely identified by the key (in this example, a monotonically incremented number). All fields representing a single user record are often read together. When creating records (for example, when the user fills out a registration form), we write them together as well. At the same time, each field can be modified individually. This is great for cases when we’d like to access an entire user record, but makes queries accessing individual fields of multiple user records (for example, queries fetching only the phone numbers) more expensive, since data for the other fields will be paged in as well [9].
+
+
 Say each disk block can contain 4 values (int, string, etc.). Our table data would be stored on a disk in a row oriented database in order row by row like this:
 
 | Block 1           | Block 2           | Block 3           | ... | Block 10            |
@@ -152,6 +155,35 @@ Again, the same conditions stand. Each disk block can store 4 values. Our table 
 |-------------------|-------------------|-------------------|-----|---------------------|
 | 1, 2, 3, 4 | 5, 6, 7, 8 | 9, 10, John, Adam  |     | 10000, 10000, 1000, 7500 |
 
+Writing to a column store would require to navigate to each block holding last entries and plugging data into them. This is obviously less efficient than row layout.
+
+```sql
+UPDATE TABLE
+SET Age = 62, Salary = 8000
+WHERE Id = 10
+```
+
+Would require to traverse each block and find correct values to update. Again, inefficient.
+
+```sql
+SELECT * 
+FROM TABLE
+WHERE Id = 10
+```
+
+Selecting all parameters for particular id is, again, same problem.
+
+However, what happens when I need to calculate an average of all salaries?
+
+```sql
+SELECT AVG(Salary)
+FROM TABLE
+```
+
+It is going to be blazing fast, because data will be contiguous without needing to read all parameters like it was with row layout.
+
+Similar thing when calculating salary average when data is distributed through several disks. It will only need to access one, instead of traversing all of them.
+
 
 
 
@@ -181,6 +213,7 @@ only a subset of a table’s attributes."
 6. [Demystifying the Parquet File Format](https://towardsdatascience.com/demystifying-the-parquet-file-format-13adb0206705)
 7. [Practical File System Design](http://www.nobius.org/dbg/practical-file-system-design.pdf)
 8. [Row vs Column Oriented Databases](https://dataschool.com/data-modeling-101/row-vs-column-oriented-databases/)
+9. Data intensive book
 
 
 ## Nested columnar data layout
