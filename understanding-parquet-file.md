@@ -190,6 +190,11 @@ It is going to be blazing fast, because data will be contiguous without needing 
 
 Similar thing when calculating salary average when data is distributed through several disks. It will only need to access one, instead of traversing all of them.
 
+#### Columnar vs Row layout simple conclusion
+
+To decide whether to use a columnor a row-oriented store, you need to understand your access patterns. If the read data is consumed in records (i.e., most or all of the columns are requested) and the workload consists mostly of point queries and range scans, the row-oriented approach is likely to yield better results. If scans span many rows, or compute aggregate over a subset of columns, it is worth considering a column-oriented approach.
+
+#### Columnar vs Row layout complexities
 
 
 
