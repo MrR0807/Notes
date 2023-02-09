@@ -33,6 +33,19 @@ Google BigQuery book why Parquet was created.
 
 ## Columnar data layout
 
+http://dbmsmusings.blogspot.com/2009/09/tour-through-hybrid-columnrow-oriented.html
+https://towardsdatascience.com/demystifying-the-parquet-file-format-13adb0206705
+https://www.vldb.org/conf/2001/P169.pdf
+https://db.in.tum.de/teaching/ws1718/seminarHauptspeicherdbs/paper/sterjo.pdf?lang=de
+https://stratos.seas.harvard.edu/files/stratos/files/columnstoresfntdbs.pdf
+
+
+
+
+
+
+### Stuff without a place
+
 ## Nested columnar data layout
 
 Data structure can be represented in two forms:
@@ -1027,6 +1040,17 @@ The results are a mixed bag and most of the time it seems that implementation de
 So the nested columnar data is represented in Protobuf schema, the metada is represented in Thrift encoding, columnar data applies compactions algos.
 
 # Parquet file anatomy via Java implementation
+
+
+## Stuff without place
+
+
+https://towardsdatascience.com/understanding-apache-parquet-7197ba6462a9
+
+The metadata is always written in the footer of the file as this allows a single pass write. In plain English, the data is written first, then the metadata can be accurately written knowing all the locations, size and encoding of the written data. Many formats write their metadata in the header. However, this requires multiple passes as data is written after the header. Parquet makes this efficient to read metadata and the data itself.
+
+
+
 
 **BIG TODO**
 
