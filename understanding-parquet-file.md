@@ -49,10 +49,12 @@ Say we have a familiar traditional database layout (or CSV file for that matter)
 | 10  | Peter | 61  | 7500   |
 
 This representation of information is provided in 2D. Before data gets written to physical disk it goes through several stages[2]:
-* Linearization - from 2D data to a 1D sequence of values (e.g. `1,John,26,1000,2,Adam,41,2000,3,Eve,29,2500,4,Maria,55,1500...`)
-* Serialization - from a 1D sequence of values to bytes on virtual pages (e.g. `00110001010010100110111101101000011011100011001000110110...`)
-* Devirtualization - from virtual pages to physical pages
-* Materialization - from physical pages to storage devices
+* Linearization - from 2D data to a 1D sequence of values (e.g. `1,John,26,1000,2,Adam,41,2000,3,Eve,29,2500,4,Maria,55,1500...`).
+* Serialization - from a 1D sequence of values to bytes on virtual pages (e.g. `00110001010010100110111101101000011011100011001000110110...`).
+* Devirtualization - from virtual pages to physical pages.
+* Materialization - from physical pages to storage devices.
+
+The order of the data does not matter in theory, as long as we can rebuild it back via what is called tuple reconstruction or recombination. In other words, when we get the sequence of bytes or 1D values, how do rebuild it into a table.
 
 
 
