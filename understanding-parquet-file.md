@@ -50,7 +50,9 @@ Say we have a familiar traditional database layout (or CSV file for that matter)
 
 This representation of information is provided in 2D. Before data gets written to physical disk it gets linearized into 1D sequences of values[2], which eventually gets translated into binary. Hence the table gets transformed into this:
 
-`1,John,26,1000,2,Adam,41,2000,3,Eve,29,2500,4,Maria,55,1500...` -> `00110001010010100110111101101000011011100011001000110110`.
+`1,John,26,1000,2,Adam,41,2000,3,Eve,29,2500,4,Maria,55,1500...` -> `00110001010010100110111101101000011011100011001000110110...`.
+
+
 
 
 
