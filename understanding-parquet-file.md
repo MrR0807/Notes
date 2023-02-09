@@ -192,10 +192,23 @@ Similar thing when calculating salary average when data is distributed through s
 
 #### Columnar vs Row layout simple conclusion
 
-To decide whether to use a columnor a row-oriented store, you need to understand your access patterns. If the read data is consumed in records (i.e., most or all of the columns are requested) and the workload consists mostly of point queries and range scans, the row-oriented approach is likely to yield better results. If scans span many rows, or compute aggregate over a subset of columns, it is worth considering a column-oriented approach.
+To decide whether to use a columnor a row-oriented store, you need to understand your access patterns. 
+
+If data is stored on magnetic disk, then if a query needs to access only a single record (i.e., all or some of the attributes of a single row of a table), a column-store will have to seek several times (to all columns/files of the table referenced in the query) to read just this single record. However, if a query needs to access many records, then large swaths of entire columns can be read, amortizing the seeks to the dierent columns. In a conventional row-store, in contrast, if a query needs to access a single record, only one seek is needed as the whole record is stored contiguously, and
+the overhead of reading all the attributes of the record (rather than just the relevant attributes requested by the current query) will be negligible relative to the seek time. However, as more and more records are accessed, the transfer time begins to dominate the seek time, and a column-oriented approach begins to perform better than a row-oriented approach. For this reason, column-stores are typically used in analytic applications, with queries that scan a large fraction of individual tables and compute aggregates or other statistics over them[1].
+
+### Columnar vs Row layout advance
+
+In previouse section I've tried to visualise the problem space and simplisticly explain why column storages are attractive solution. However, there are numerious different papers and studies[1][4][5], which analyse this in depth. On of the such papers is [The Design and Implementation of Modern Column-Oriented Database Systems](https://stratos.seas.harvard.edu/files/stratos/files/columnstoresfntdbs.pdf).
 
 
-#### Columnar vs Row layout complexities
+
+
+
+
+
+
+
 
 
 
