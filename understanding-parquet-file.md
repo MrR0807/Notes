@@ -146,7 +146,11 @@ To get the salary average the database would need to look through all three disk
 
 #### Column oriented layout
 
+Again, the same conditions stand. Each disk block can store 4 values. Our table data would be stored on a disk in a column oriented database in order column by column like this:
 
+| Block 1           | Block 2           | Block 3           | ... | Block 10            |
+|-------------------|-------------------|-------------------|-----|---------------------|
+| 1, 2, 3, 4 | 5, 6, 7, 8 | 9, 10, John, Adam  |     | 10000, 10000, 1000, 7500 |
 
 
 
