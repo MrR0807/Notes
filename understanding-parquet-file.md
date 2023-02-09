@@ -134,14 +134,17 @@ SELECT AVG(Salary)
 FROM TABLE
 ```
 
-It will require the database to read all disk blocks as well as discard other parameters (id, name, age). This is extremely inefficient. Also, what would happen if I would need to add additional column. If I wanted to maintain contiguous blocks, I would need to go over all blocks and rewrite them one by one. 
+It will require the database to read in significantly more data, as both the needed attributes and the surrounding attributes stored in the same blocks need to be read. Not to mention reading all blocks of data.
+
 Lastly, let’s assume a Disk can only hold enough bytes of data for three blocks to be stored on each disk. In a row oriented database the table above would be stored as:
 
 | Disk 1                 | Disk 2                 | Disk 3                 |
 |------------------------|------------------------|------------------------|
 | Block1, Block2, Block3 | Block4, Block5, Block6 | Block7, Block8, Block9 |
 
-To get the sum of all the people’s ages the computer would need to look through all three disks.
+To get the salary average the database would need to look through all three disks, which might not even be co-located.
+
+
 
 
 
@@ -159,6 +162,14 @@ To get the sum of all the people’s ages the computer would need to look throug
 
 
 ### Stuff without a place
+
+
+"Since data transfer costs from storage
+(or through a storage hierarchy) are often the major performance bottlenecks in database systems, while at the same time database schemas
+are becoming more and more complex with fat tables with hundreds
+of attributes being common, a column-store is likely to be much more
+ecient at executing queries, as the one in our example, that touch
+only a subset of a table’s attributes."
 
 
 "Exploiting extra CPU cycles. Usually, the bottom line goal of a database system is performance, i.e., processing one or more queries as fast as possible, not compression ratio. Disk space is cheap, and is getting cheaper rapidly. However, compression does improve performance (in addition to reducing disk space); if data is compressed, then less time is spent in I/O during query processing as less data is read from disk into memory (and from memory to CPU). Another important motivation here is that as CPUs are getting much faster compared to memory bandwidth, the cost of accessing data costs more in terms of CPU cycles than it did in the past. Intuitively, this means that now we have more CPU cycles to spare in decompressing compressed data fast which is preferable to transferring uncompressed and thus bigger data at slow speeds (in terms of waisted CPU cycles) through the memory hierarchy" 
