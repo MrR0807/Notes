@@ -54,7 +54,7 @@ This representation of information is provided in 2D. Before data gets written t
 * Devirtualization - from virtual pages to physical pages.
 * Materialization - from physical pages to storage devices.
 
-The order of the data does not matter in theory, as long as we can rebuild it back via what is called tuple reconstruction or recombination. In other words, when we get the sequence of bytes or 1D values, how do rebuild it into a table.
+The order of the data does not matter in theory, it can be `John,26,1,1000,Adam,41,2,2000...` or `John,Adam,Even,1,2,3...`,  as long as we can rebuild it back via what is called tuple reconstruction or recombination. In other words, when we get the sequence of bytes or 1D values, how do we rebuild it into a table.
 
 
 
