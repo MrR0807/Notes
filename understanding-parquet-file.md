@@ -101,6 +101,7 @@ Upcoming sections are oversimplified, but they lay the foundation.
 
 Row-oriented database management systems store data in records or rows. Their layout is quite close to the tabular data representation, where every row has the same set of fields. This approach works well for cases where several fields constitute the record (name, birth date, and a phone number) uniquely identified by the key (in this example, a monotonically incremented number). All fields representing a single user record are often read together. When creating records (for example, when the user fills out a registration form), we write them together as well. At the same time, each field can be modified individually. This is great for cases when we’d like to access an entire user record, but makes queries accessing individual fields of multiple user records (for example, queries fetching only the phone numbers) more expensive, since data for the other fields will be paged in as well [9].
 
+##### Practical examples
 
 Say each disk block can contain 4 values (int, string, etc.). Our table data would be stored on a disk in a row oriented database in order row by row like this:
 
@@ -148,6 +149,11 @@ Lastly, let’s assume a Disk can only hold enough bytes of data for three block
 To get the salary average the database would need to look through all three disks, which might not even be co-located.
 
 #### Column oriented layout
+
+Column-oriented database management systems partition data vertically (i.e., by col‐ umn) instead of storing it in rows. Here, values for the same column are stored con‐ tiguously on disk (as opposed to storing rows contiguously as in the previous example). For example, if we store historical stock market prices, price quotes are stored together. Storing values for different columns in separate files or file segments allows efficient queries by column, since they can be read in one pass rather than con‐ suming entire rows and discarding data for columns that weren’t queried.
+Column-oriented stores are a good fit for analytical workloads that compute aggre‐ gates, such as finding trends, computing average values, etc. Processing complex aggregates can be used in cases when logical records have multiple fields, but some of them (in this case, price quotes) have different importance and are often consumed together[9].
+
+##### Practical examples
 
 Again, the same conditions stand. Each disk block can store 4 values. Our table data would be stored on a disk in a column oriented database in order column by column like this:
 
