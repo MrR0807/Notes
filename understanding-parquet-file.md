@@ -33,11 +33,9 @@ Google BigQuery book why Parquet was created.
 
 ## Columnar data layout
 
-http://dbmsmusings.blogspot.com/2009/09/tour-through-hybrid-columnrow-oriented.html
-https://towardsdatascience.com/demystifying-the-parquet-file-format-13adb0206705
-https://www.vldb.org/conf/2001/P169.pdf
-https://db.in.tum.de/teaching/ws1718/seminarHauptspeicherdbs/paper/sterjo.pdf?lang=de
-https://stratos.seas.harvard.edu/files/stratos/files/columnstoresfntdbs.pdf
+
+
+
 
 
 
@@ -48,6 +46,16 @@ https://stratos.seas.harvard.edu/files/stratos/files/columnstoresfntdbs.pdf
 
 
 "Exploiting extra CPU cycles. Usually, the bottom line goal of a database system is performance, i.e., processing one or more queries as fast as possible, not compression ratio. Disk space is cheap, and is getting cheaper rapidly. However, compression does improve performance (in addition to reducing disk space); if data is compressed, then less time is spent in I/O during query processing as less data is read from disk into memory (and from memory to CPU). Another important motivation here is that as CPUs are getting much faster compared to memory bandwidth, the cost of accessing data costs more in terms of CPU cycles than it did in the past. Intuitively, this means that now we have more CPU cycles to spare in decompressing compressed data fast which is preferable to transferring uncompressed and thus bigger data at slow speeds (in terms of waisted CPU cycles) through the memory hierarchy" 
+
+### References
+
+1. [The Design and Implementation of Modern Column-Oriented Database Systems](https://stratos.seas.harvard.edu/files/stratos/files/columnstoresfntdbs.pdf)
+2. [Weaving Relations for Cache Performance](https://www.vldb.org/conf/2001/P169.pdf)
+3. [Row-Store / Column-Store / Hybrid-Store](https://db.in.tum.de/teaching/ws1718/seminarHauptspeicherdbs/paper/sterjo.pdf?lang=de)
+4. [A tour through hybrid column/row-oriented DBMS schemes](http://dbmsmusings.blogspot.com/2009/09/tour-through-hybrid-columnrow-oriented.html)
+5. [Demystifying the Parquet File Format](https://towardsdatascience.com/demystifying-the-parquet-file-format-13adb0206705)
+6. 
+
 
 ## Nested columnar data layout
 
