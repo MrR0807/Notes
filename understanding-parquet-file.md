@@ -237,7 +237,9 @@ With popularization of solid state storages (SSDs) columnoriented storage was sh
 
 **In summary**:
 * Column-oriented database systems can be traced to the 1970s.
-* Column-oriented database systems lacked optimizations which were advanced 
+* Column-oriented database systems lacked optimizations which were advanced over the years.
+* Column-oriented database systems were not good fit in the early days due to hardware limitations.
+* Column-oriented database systems were not seriously considered, because the amount of data was perfectly manageable by row-oriented databases.
 
 
 #### Optimizations
