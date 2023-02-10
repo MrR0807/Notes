@@ -247,8 +247,7 @@ Lastly, with popularization of solid state storages (SSDs) column-oriented stora
 
 As stated in previous section, simply storing data in columns wasn't/isn’t sufficient to get the full performance out of column-based stores. There are a number of techniques that have been developed over the years that also make a big impact. The figure below shows an unoptimised column store performing worse than a row store on a simplified TPC-H benchmark. But by the time you add in a number of the optimisations we’re about to discuss, it ends up about 5x faster than the row store [10].
 
-[]
-
+![columnar-vs-row](https://github.com/MrR0807/Notes/blob/master/column-vs-row.jpeg)
 
 
 
