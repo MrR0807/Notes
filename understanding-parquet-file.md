@@ -276,8 +276,9 @@ A visualisation of hybrid layout using previous example:
 |-------------------|-------------------|-------------------|-----|---------------------|
 | 1, 2, 3, 4 | John, Adam, Eve, Maria | 26, 41, 29, 55  | ...   | 10000, 10000, 1000, 7500 |
 
-The order of data is diveded into **row groups**. In this instance, one row group is comprised of 4 elements of each row's column. Just to further clarity I'll provide full 1D layout for each discussed layout.
+The order of data is diveded into **row groups**. In this instance, one row group is comprised of 4 elements of each row's column. Just to further clarify I'll provide full 1D layout for each discussed layout.
 
+I'll repeat the full table so scrolling is not necessary:
 
 | Id  | Name  | Age | Salary |
 |-----|-------|-----|--------|
