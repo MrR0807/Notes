@@ -35,7 +35,7 @@ Google BigQuery book why Parquet was created.
 
 ## Columnar data layout
 
-Say we have a familiar traditional database layout (or CSV file for that matter) with entries like so:
+Say we have a familiar, traditional database layout (or CSV file for that matter) with entries like so:
 
 | Id  | Name  | Age | Salary |
 |-----|-------|-----|--------|
