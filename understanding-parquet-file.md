@@ -331,7 +331,9 @@ Below find some of the performance comparison between PAX, NSM and DSM layouts[3
 
 ![PAX-NSM-DSM-4](https://github.com/MrR0807/Notes/blob/master/PAX-NSM-DSM-4.png)
 
+I will not go into details how and why the performance improvements were achieved, but in summary[5]:
 
+> PAX was able to achieve the CPU efficiency of column-stores while maintaining the disk I/O properties of row-stores. For those without detailed knowledge of column-stores, this might seem strange: the way most column-stores pitch their products is by accentuating the disk I/O efficiency advantage (you only need to read in from disk exactly what attributes are accessed by a particular query). Why would a column-store want equivalent disk access patterns as a row-store? Well, it turns out column-stores have an oft-overlooked significant CPU efficiency as well. The aspect of CPU efficiency that the PAX paper examined was cache hit ratio and memory bandwidth requirements. It turns out that having column data stored sequentially within a block allows cache lines to contain data from just one column. Since most DBMS operators only operate on one or two columns at a time, the cache is filled with relevant data for that operation, thereby reducing CPU inefficiency due to cache misses. Furthermore, only relevant columns for any particular operation need to shipped from memory.
 
 
 
