@@ -83,7 +83,7 @@ When a request is made to read (or write) data that is not on a file system bloc
 When a request for I/O spans multiple blocks (such as a read for 8192 bytes), the file system must find the location for many blocks. If the file system has done a good job, **the blocks will be contiguous on disk. Requests for contiguous blocks on disk improve the efficiency of doing I/O to disk. The fastest thing a disk drive can do is to read or write large contiguous regions of disk blocks, and so file systems always strive to arrange file data as contiguously as possible.**
 
 In short, there are two key concepts to remember:
-* Even if we need small amount of data from a given block, we still need to read all of it.
+* Even if we need partial data from a given block, we still need to read all block's data.
 * Reading/writing in sequence (contiguous) improves the efficiency of doing I/O from/to disk.
 
 Remember when I said that the order of the data does not matter, well it does, but it heavily depends on how the file systems are utilised.
