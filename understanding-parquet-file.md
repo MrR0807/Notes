@@ -259,15 +259,21 @@ Figure 4.6 summarizes a list of features and design principles that altogether d
 
 ![columnar-vs-row-optimizations](https://github.com/MrR0807/Notes/blob/master/columnar-vs-row-optimizations.jpeg)
 
-In next few sections I will provide some columnar optimizations techniques which are also utilised in Parquet format.
+**In next few sections I will provide some columnar optimizations techniques which are also utilised in Parquet format.**
 
 ##### Run-Length Encoding (RLE)
 
+> Run-length encoding (RLE) compresses runs of the same value in a column to a compact singular representation. Thus, it is well-suited for columns that are sorted or that have reasonable-sized runs of the same value. These runs are replaced with triples: (value, start position, runLength) where each element of the triple is typically given a fixed number of bits. For example, if the first 42 elements of a column contain the value ‘M’, then these 42 elements can be replaced with the triple: (‘M’, 1, 42) [1].
+
+> Let’s say we have a column with 10,000,000 values, but all the values are 0. To store this information, we just need 2 numbers: 0 and 10,000,000 —the value and the number of times it repeated [6].
+
 ##### Dictionary Encoding with Bit-Packing
 
-##### 
+> Let’s say we have a column that contains country names, some of which are very long. If we wanted to store “The Democratic Republic of Congo,” we would need a string column that can handle at least 32 characters. Dictionary encoding replaces each value in our column with a small integer and stores the mapping in our data page’s metadata. When on disk, our encoded values are bit-packed to take up the least amount of space possible, but when we read the data we can still convert our column back to its original values[6].
 
+##### Compression
 
+> Intuitively, data stored in columns is more compressible than data stored in rows <...>. For example, assume a database table containing information about customers (name, phone number, e-mail address, snail-mail address, etc.). Storing all data together in the form of rows, means that each data page contains information on names, phone numbers, addresses, etc. and we have to compress all this information together. On the other hand, storing data in columns allows all of the names to be stored together, all of the phone numbers together, etc. Certainly phone numbers are more similar to each other than to other fields like e-mail addresses or names. This has two positive side-eects that strengthen the use of compression in column-stores; first, compression algorithms may be able to compress more data with the same common patterns as more data of the same type fit in a single page when storing data of just one attribute, and second, more similar data implies that in general the data structures, codes, etc. used for compression will be smaller and thus this leads to better compression [1].
 
 ### Hybrid layout
 
@@ -302,7 +308,6 @@ I'll repeat the full table so scrolling is not necessary:
 | 9   | Lucas | 37  | 1000   |
 | 10  | Peter | 61  | 7500   |
 
-
 **Row Layout**
 
 ```
@@ -314,7 +319,6 @@ I'll repeat the full table so scrolling is not necessary:
 ```
 1,2,3,4,5,6,7,8,9,10,John,Adam,Eve,Maria,Chris,Emma,Ava,Liam,Lucas,Peter,26,41,29,55,67,80,18,19,37,61,1000,2000,2500,1500,3000,3500,10000,10000,1000,7500
 ```
-
 
 **Hybrid Layout**
 
@@ -346,28 +350,6 @@ I will not go into details how the performance improvements were achieved, becau
 
 Lastly, I'd like to just add on top what is outlined in the quote - remember "Columnar layout optimizations" section. **Because data in row group is layed out in columnar fashion, columnar optimizations can be applied e.g. Run-Length Encoding (RLE)**.
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
- 
-
 ### References
 
 1. [The Design and Implementation of Modern Column-Oriented Database Systems](https://stratos.seas.harvard.edu/files/stratos/files/columnstoresfntdbs.pdf)
@@ -379,7 +361,7 @@ Lastly, I'd like to just add on top what is outlined in the quote - remember "Co
 7. [Practical File System Design](http://www.nobius.org/dbg/practical-file-system-design.pdf)
 8. [Row vs Column Oriented Databases](https://dataschool.com/data-modeling-101/row-vs-column-oriented-databases/)
 9. Data intensive book
-10. https://blog.acolyer.org/2018/09/26/the-design-and-implementation-of-modern-column-oriented-database-systems/
+10. [The design and implementation of modern column-oriented database systems](https://blog.acolyer.org/2018/09/26/the-design-and-implementation-of-modern-column-oriented-database-systems/)
 
 
 ## Nested columnar data layout
@@ -1386,8 +1368,6 @@ https://towardsdatascience.com/understanding-apache-parquet-7197ba6462a9
 The metadata is always written in the footer of the file as this allows a single pass write. In plain English, the data is written first, then the metadata can be accurately written knowing all the locations, size and encoding of the written data. Many formats write their metadata in the header. However, this requires multiple passes as data is written after the header. Parquet makes this efficient to read metadata and the data itself.
 
 
-
-
 **BIG TODO**
 
 # CDC with Parquet to S3
@@ -2042,6 +2022,7 @@ However, somebody has a problem which might be a problem to me:
 * [Programmer’s Guide to Apache Thrift](https://www.manning.com/books/programmers-guide-to-apache-thrift)
 * [Thrift Binary protocol encoding](https://github.com/apache/thrift/blob/master/doc/specs/thrift-binary-protocol.md)
 * [Thrift Compact protocol encoding](https://github.com/apache/thrift/blob/master/doc/specs/thrift-compact-protocol.md)
+* [Designing Data-Intensive Applications, 1st Edition](https://www.amazon.com/Designing-Data-Intensive-Applications-Reliable-Maintainable/dp/1449373321)
 
 
 
