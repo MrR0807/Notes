@@ -270,6 +270,13 @@ Hybrid layout was first suggested in academic paper called "Weaving Relations fo
 
 > a new layout for data records that combines the best of the two worlds and exhibits performance superior to both placement schemes by eliminating unnecessary accesses to main memory. For a given relation, PAX stores the same data on each page as NSM. Within each page, however, PAX groups all the values of a particular attribute together on a minipage.
 
+A visualisation of hybrid layout using previous example would like so:
+
+
+
+
+
+
 
 
 
