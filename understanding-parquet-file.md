@@ -60,7 +60,7 @@ The order of the data does not matter in theory, it can be `John,26,1,1000,Adam,
 
 ### File Systems
 
-Columnar vs row stores debate only makes sense when it is happening in the context of File Systems. Thus a little a bit of theory.
+To further proceed with row, columnar, hybrid analysis we firstly have to start at the beginning - File System. Thus a little a bit of theory. Thus a little a bit of theory.
 
 The main purpose of computers is to create, manipulate, store, and retrieve data. A file system provides the machinery to support these tasks. At the highest level a file system is a way to organize, store, retrieve, and manage information on a permanent storage medium such as a disk[7].
 
