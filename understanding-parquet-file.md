@@ -266,15 +266,58 @@ Let's go back to Parquet. Which layout does it utilise? The answer is both - oth
 
 **Note!** There are multiple different implementations of hybrid layout currently, but I'm going to cover only one of them which Parquet is based upon.
 
-Hybrid layout was first suggested in academic paper called "Weaving Relations for Cache Performance"[1]. Within the paper, the first hybrid layout is described - PAX or Partition Attributes Across. According to the paper, PAX is:
+Hybrid layout was first suggested in academic paper called "Weaving Relations for Cache Performance"[3]. Within the paper, the first hybrid layout is described - PAX or Partition Attributes Across. According to the paper, PAX is:
 
 > a new layout for data records that combines the best of the two worlds and exhibits performance superior to both placement schemes by eliminating unnecessary accesses to main memory. For a given relation, PAX stores the same data on each page as NSM. Within each page, however, PAX groups all the values of a particular attribute together on a minipage.
 
-A visualisation of hybrid layout using previous example would like so:
+A visualisation of hybrid layout using previous example:
 
 | Block 1           | Block 2           | Block 3           | ... | Block 10            |
 |-------------------|-------------------|-------------------|-----|---------------------|
 | 1, 2, 3, 4 | John, Adam, Eve, Maria | 26, 41, 29, 55  | ...   | 10000, 10000, 1000, 7500 |
+
+The order of data is diveded into **row groups**. In this instance, one row group is comprised of 4 elements of each row's column. Just to further clarity I'll provide full 1D layout for each discussed layout.
+
+
+| Id  | Name  | Age | Salary |
+|-----|-------|-----|--------|
+| 1   | John  | 26  | 1000   |
+| 2   | Adam  | 41  | 2000   |
+| 3   | Eve   | 29  | 2500   |
+| 4   | Maria | 55  | 1500   |
+| 5   | Chris | 67  | 3000   |
+| 6   | Emma  | 80  | 3500   |
+| 7   | Ava   | 18  | 10000  |
+| 8   | Liam  | 19  | 10000  |
+| 9   | Lucas | 37  | 1000   |
+| 10  | Peter | 61  | 7500   |
+
+
+**Row Layout**
+
+```
+1,John,26,1000,2,Adam,41,2000,3,Eve,29,2500,4,Maria,55,1500,5,Chris,67,3000,6,Emma,80,3500,7,Ava,18,10000,8,Liam,19,10000,9,Lucas,37,1000,10,Peter,61,7500
+```
+
+**Column Layout**
+
+```
+1,2,3,4,5,6,7,8,9,10,John,Adam,Eve,Maria,Chris,Emma,Ava,Liam,Lucas,Peter,26,41,29,55,67,80,18,19,37,61,1000,2000,2500,1500,3000,3500,10000,10000,1000,7500
+```
+
+
+**Hybrid Layout**
+
+With row groups of 4.
+
+```
+1,2,3,4,John,Adam,Eve,Maria,26,41,29,55,1000,2000,2500,1500,5,6,7,8,Chris,Emma,Ava,Liam,67,80,18,19,3000,3500,10000,10000,9,10,Lucas,Peter,37,61,1000,7500
+```
+
+
+
+
+
 
 
 
