@@ -1,6 +1,8 @@
 # Parquet file anatomy
 
-To start of, I'm going to quote some of the descriptions of Parquet.
+When I've started delving into Parquet, I quickly found out that there is a huge gap of concise and in depth overview of what Parquet really is, why it exists and what kind of problems it solves. To my disappointment, official Parquet documentation is quite shallow and lacks any depth. There aren't any books solely on this particular topic as well. This is why I've decided to try to compile others insights, knowledge and my own insights into this document.
+
+Let's start our journey with quotes, which describe Parquet.
 
 From Parquet [oficial documentation](https://parquet.apache.org/):
 
@@ -14,7 +16,7 @@ From book [Hadoop: The Definitive Guide](https://www.oreilly.com/library/view/ha
 
 > Apache Parquet is a columnar storage format that can efficiently store nested data.
 
-When I've started delving into this topic, none of these descriptions really rang with me. What is not explicitly emphasized that Parquet is built on top of previous solutions, which are blended together into what's know as Parquet. I think each component should be addressed independently before trying to understand aggregate.
+What is not explicitly emphasized that Parquet is built on top of several solutions, which are blended together into what's know as Parquet. I think each component should be addressed independently before trying to understand aggregate.
 
 Components that I'm going to address:
 * MapReduce
