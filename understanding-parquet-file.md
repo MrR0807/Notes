@@ -259,6 +259,44 @@ Figure 4.6 summarizes a list of features and design principles that altogether d
 
 ![columnar-vs-row-optimizations](https://github.com/MrR0807/Notes/blob/master/columnar-vs-row-optimizations.jpeg)
 
+
+### Hybrid layout
+
+
+
+
+There is a third layout, which is based both on row and columnar layouts. 
+
+
+It was important to overview two extremes of data layout to 
+
+
+
+Getting back to Parquet. Which layout does it utilise? The answer is neither, because Parquet is based on Hybrid layout. This layout dates back to what is called PAX schema 
+
+
+It was important to overview row and column oriented layouts to understand their drawbacks and benefits. 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
  
 
 ### References
