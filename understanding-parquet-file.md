@@ -90,7 +90,7 @@ Remember when I said that the order of the data does not matter, well it does, b
 
 ### Columnar vs Row layout
 
-Let's get back to our example and take two extremes of data storing. 
+Let's get back to our example and take two extremes how data could be stored. 
 
 As already stated, data from 2D can be linearized as `1,John,26,1000,2,Adam,41,2000,3,Eve,29,2500,4,Maria,55,1500...`. This is called row oriented layout and common row oriented databases are PostgreSQL or MySQL. 
 The other extreme is to linearize each row vertically: `1,2,3,4,5,6,7,8,9,10,John,Adam,Eve,Maria`. This is called column oriented layout and common column oriented databases are Google's BigQuery or Amazon's Redshift.
@@ -148,8 +148,8 @@ To get the salary average, the database would need to look through all three dis
 
 #### Column oriented layout
 
-Column-oriented database management systems partition data vertically (i.e., by column) instead of storing it in rows. Here, values for the same column are stored contiguously on disk (as opposed to storing rows contiguously as in the previous example). For example, if we store historical stock market prices, price quotes are stored together. Storing values for different columns in separate files or file segments allows efficient queries by column, since they can be read in one pass rather than consuming entire rows and discarding data for columns that weren’t queried.
-Column-oriented stores are a good fit for analytical workloads that compute aggregates, such as finding trends, computing average values, etc. Processing complex aggregates can be used in cases when logical records have multiple fields, but some of them (in this case, price quotes) have different importance and are often consumed together[9].
+Column-oriented database management systems partition data vertically (i.e., by column) instead of storing it in rows. Here, values for the same column are stored contiguously on disk (as opposed to storing rows contiguously as in the previous example). For example, if we store historical stock market prices, price quotes are stored together. Storing values for different columns in separate files or file segments allows efficient queries by column, since they can be read in one pass rather than consuming entire rows and discarding data for columns that weren’t queried (like example with salary average).
+Column-oriented stores are a good fit for **analytical workloads** that compute aggregates, such as finding trends, computing average values, etc. Processing complex aggregates can be used in cases when logical records have multiple fields, but some of them (in this case, price quotes) have different importance and are often consumed together[9].
 
 ##### Practical examples
 
@@ -167,7 +167,7 @@ SET Age = 62, Salary = 8000
 WHERE Id = 10
 ```
 
-Would require to traverse each block and find correct values to update. Again, inefficient.
+Would require to traverse each block, find entry's correct values to update. Again, inefficient.
 
 ```sql
 SELECT * 
@@ -184,15 +184,15 @@ SELECT AVG(Salary)
 FROM TABLE
 ```
 
-It is going to be blazing fast, because data will be contiguous without needing to read all parameters like it was with row layout.
+It is going to be blazing fast, because data will be contiguous without needing to read all parameters and all blocks like it was with row layout.
 
-Similar thing when calculating salary average when data is distributed through several disks. It will only need to access one, instead of traversing all of them.
+Similar thing when data is distributed through several disks. It will only need to access one, instead of traversing all of them.
 
 #### Columnar vs Row layout simple conclusion
 
-To decide whether to use a columnor a row-oriented store, you need to understand your access patterns. 
+To decide whether to use a columnor a row-oriented store, you need to understand your **access patterns**. 
 
-If data is stored on magnetic disk, then if a query needs to access only a single record (i.e., all or some of the attributes of a single row of a table), a column-store will have to seek several times (to all columns/files of the table referenced in the query) to read just this single record. However, if a query needs to access many records, then large swaths of entire columns can be read, amortizing the seeks to the dierent columns. In a conventional row-store, in contrast, if a query needs to access a single record, only one seek is needed as the whole record is stored contiguously, and
+If data is stored on magnetic disk, then if a query needs to access only a single record (i.e., all or some of the attributes of a single row of a table), a column-store will have to seek several times (to all columns/files of the table referenced in the query) to read just this single record. However, if a query needs to access many records, then large swaths of entire columns can be read, amortizing the seeks to the different columns. In a conventional row-store, in contrast, if a query needs to access a single record, only one seek is needed as the whole record is stored contiguously, and
 the overhead of reading all the attributes of the record (rather than just the relevant attributes requested by the current query) will be negligible relative to the seek time. However, as more and more records are accessed, the transfer time begins to dominate the seek time, and a column-oriented approach begins to perform better than a row-oriented approach. For this reason, column-stores are typically used in analytic applications, with queries that scan a large fraction of individual tables and compute aggregates or other statistics over them[1].
 
 In other words, columnar databases are best for OLAP loads, while row databases for OLTP[9]:
@@ -207,7 +207,7 @@ In other words, columnar databases are best for OLAP loads, while row databases 
 
 ### Columnar layout advance
 
-In previouse sections I've tried to visualise the problem space and simplisticly explain what is the difference between row and column storages. In this section I'd like to take a deeper dive into columnar databases optimisation and how advancing technology popularised columnar databases[1].
+In previouse sections I've tried to visualise the problem space and simplisticly explain what is the difference between row and column storages. In this section I'd like to take a deeper dive into columnar databases optimisations and how advancing technology popularised columnar databases[1].
 
 #### History
 
