@@ -390,7 +390,7 @@ An entry of one row could be represented in JSON format like so:
 }
 ```
 
-However, flat structures are not always best represantion of data as stated in Google's Dremel document: 
+However, flat structures are not always best represantion of data as stated in Google's Dremel document[2]: 
 
 > The data used in web and scientific computing is often nonrelational. Hence, a flexible data model is essential in these domains. Data structures used in programming languages, messages exchanged by distributed systems, structured documents, etc. lend themselves naturally to a **nested** representation. <...> A **nested data model underlies most of structured data processing** at Google and reportedly at other major web companies.
 
@@ -462,13 +462,13 @@ Furthermore, trying to adapt their data representation to existing flat columnar
 
 At this point, it is important to explicitly emphasize that Dremel's nested structure came to existance to solve Google's (and other web companies) natural data structure representation need, which was nested, in columnar databases instead of trying to apply flattening strategies and then recombination in current columnar data representation solution space.
 
-The creation of nested columnar structure was so successful, that opensource projects like Parquet were born. Later (after 4 years from Dremel publication), Google publicised another paper proving that [Storing and Querying Tree-Structured Records in Dremel](https://storage.googleapis.com/pub-tools-public-publication-data/pdf/43119.pdf) are performant and scalable.
+The creation of nested columnar structure was so successful, that opensource projects like Parquet used it. Later (after 4 years from Dremel publication), Google publicised another paper proving that nested structures were performant and scalable[3].
 
 ### Dremel's Nested Structure
 
 In this section, I will explore Dremel's nested structure and via several examples, showcase core Definition and Repetition concepts, which allow for nested structures to be represented in columnar data.
 
-**Note!** A lot of information in this section will be copy pasted from this great Twitter [blog post on this very topic](https://blog.twitter.com/engineering/en_us/a/2013/dremel-made-simple-with-parquet). I'm copying just to have all information in one place without needing to jump between pages and also adding additional examples for better clarity.
+**Note!** A lot of information in this section will be copy pasted from great Twitter blog post called "Dremel made simple with Parquet"[4]. I'm copying just to have all information in one place without needing to jump between pages. Also adding additional examples for better clarity.
 
 #### The schema
 
@@ -813,6 +813,14 @@ one: {
   ]
 }
 ```
+
+### Resources
+
+1. [Dremel made simple with Parquet](https://blog.twitter.com/engineering/en_us/a/2013/dremel-made-simple-with-parquet)
+2. [Dremel: Interactive Analysis of Web-Scale Datasets](https://storage.googleapis.com/pub-tools-public-publication-data/pdf/36632.pdf)
+3. [Storing and Querying Tree-Structured Records in Dremel](https://storage.googleapis.com/pub-tools-public-publication-data/pdf/43119.pdf)
+4. [Dremel made simple with Parquet](https://blog.twitter.com/engineering/en_us/a/2013/dremel-made-simple-with-parquet)
+
 
 ## Encoding
 
