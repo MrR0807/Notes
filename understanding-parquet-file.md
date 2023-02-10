@@ -262,7 +262,7 @@ Figure 4.6 summarizes a list of features and design principles that altogether d
 
 ### Hybrid layout
 
-Going back to Parquet. Which layout does it utilise? The answer is both - otherwise known as hybrid layout.
+Let's go back to Parquet. Which layout does it utilise? The answer is both - otherwise known as hybrid layout.
 
 **Note!** There are multiple different implementations of hybrid layout currently, but I'm going to cover only one of them which Parquet is based upon.
 
@@ -271,6 +271,12 @@ Hybrid layout was first suggested in academic paper called "Weaving Relations fo
 > a new layout for data records that combines the best of the two worlds and exhibits performance superior to both placement schemes by eliminating unnecessary accesses to main memory. For a given relation, PAX stores the same data on each page as NSM. Within each page, however, PAX groups all the values of a particular attribute together on a minipage.
 
 A visualisation of hybrid layout using previous example would like so:
+
+| Block 1           | Block 2           | Block 3           | ... | Block 10            |
+|-------------------|-------------------|-------------------|-----|---------------------|
+| 1, 2, 3, 4 | John, Adam, Eve, Maria | 26, 41, 29, 55  | ...   | 10000, 10000, 1000, 7500 |
+
+
 
 
 
