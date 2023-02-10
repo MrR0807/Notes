@@ -262,20 +262,25 @@ Figure 4.6 summarizes a list of features and design principles that altogether d
 
 ### Hybrid layout
 
+Going back to Parquet. Which layout does it utilise? The answer is both - otherwise known as hybrid layout.
+
+**Note!** There are multiple different implementations of hybrid layout currently, but I'm going to cover only one of them which Parquet is based upon.
+
+Hybrid layout was first suggested in academic paper called "Weaving Relations for Cache Performance"[1]. Within the paper, the first hybrid layout is described - PAX or Partition Attributes Across. According to the paper, PAX is:
+
+> a new layout for data records that combines the best of the two worlds and exhibits performance superior to both placement schemes by eliminating unnecessary accesses to main memory. For a given relation, PAX stores the same data on each page as NSM. Within each page, however, PAX groups all the values of a particular attribute together on a minipage.
 
 
 
-There is a third layout, which is based both on row and columnar layouts. 
 
 
-It was important to overview two extremes of data layout to 
+Results of PAX layout: 
+
+> We evaluated PAX against NSM and DSM using (a) predicate selection queries on numeric data and (b) a variety of queries on TPC-H datasets on top of the Shore storage manager. We vary query parameters including selectivity, projectivity, number of predicates, distance between the projected attribute and the attribute in the predicate, and degree of the relation. The experimental results show that, when compared to NSM, PAX (a) incurs 50-75% fewer second-level cache misses due to data accesses when executing a main-memory workload, (b) executes range selection queries and updates in 17-25% less elapsed time, and (c) executes TPC-H queries involving I/O 11-42% faster than NSM on the platform we studied. When compared to DSM, PAX executes queries faster and its execution time remains stable as more attributes are involved in the query, while DSM’s execution time increases due to the high record reconstruction cost.
 
 
 
-Getting back to Parquet. Which layout does it utilise? The answer is neither, because Parquet is based on Hybrid layout. This layout dates back to what is called PAX schema 
 
-
-It was important to overview row and column oriented layouts to understand their drawbacks and benefits. 
 
 
 
