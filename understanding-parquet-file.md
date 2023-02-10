@@ -472,7 +472,7 @@ In this section, I will explore Dremel's nested structure and via several exampl
 
 #### The schema
 
-To store in a columnar format we first need to describe the data structures using a schema. This is done using a model similar to **Protocol buffers (Protobuf)**.
+To store in a nested format we first need to describe the data structures using a schema. This is done using a model similar to **Protocol buffers (Protobuf)**.
 
 **Sidenote!** I'm guessing Parquet schema is similar to Google's Protobuf's schema, because they (Parquet developers) did not want to deviate from Google's Dremel paper, which naturally represented the nested structure schema in their used encoding format which was/is Protobuf. Nevertheless, as we'll see, there are differences.
 
@@ -497,7 +497,6 @@ message AddressBook {
 ```
 
 Lists (or Sets) can be represented by a repeating field:
-
 
 | Schema: List of Strings                                   | Data: ["a", "b", "c", ...]                                   |
 |-----------------------------------------------------------|--------------------------------------------------------------|
@@ -751,7 +750,7 @@ Because it is repeated, there are two things to remember. `a` can have an array 
 * `a:null` - in this particular case, `a` D:0 R:0
 * `a:[1,2,3,4,5]` - D:1 R:1
 
-`a` in this case it is very similar to "Example One" `optional b`. It is either a `null` or not, hence D is either 0 or 1. While R is 1, which indicates at what level array is.
+`a` in this example is very similar to "Example One" `optional b`. It is either a `null` or not, hence D is either 0 or 1. While R is 1, which indicates at what level array is.
 
 ##### Example three
 
@@ -772,7 +771,7 @@ From `b` perspective:
 * `a:null` - D:0 R:0
 * `a.b:null`- D:1 R:0
 * `a.b:1` - D:2 R:0
-* `a.b:1, a.b:2` - The first is D:2, R:0 (becaues it signals array start), the following `a.b:2` D:2 R:1 (because it tells which level array it belongs to).
+* `a.b:1, a.b:2` - The first entry is D:2, R:0 (becaues it signals array start), the following entry - `a.b:2` is D:2 R:1 (because it tells at which array level it belongs to).
 
 ##### Example four
 
@@ -788,12 +787,12 @@ message Out {
 }
 ```
 
-To make it easier, lets build from the start:
-* one: null - d:0 r:0
-* one.two: null - d:1 r:0
-* one.two: [] - d:2 r:1
-* one.two.three: [null] - d:3 r:1
-* one.two.three: [[]] - d:4 r:2
+To make it easier, lets build all possible values:
+* `one: null` - d:0 r:0
+* `one.two: null` - d:1 r:0
+* `one.two: []` - d:2 r:1
+* `one.two.three: [null]` - d:3 r:1
+* `one.two.three: [[]]` - d:4 r:2
 
 Different perspective to this structure:
 
