@@ -315,25 +315,11 @@ With row groups of 4.
 1,2,3,4,John,Adam,Eve,Maria,26,41,29,55,1000,2000,2500,1500,5,6,7,8,Chris,Emma,Ava,Liam,67,80,18,19,3000,3500,10000,10000,9,10,Lucas,Peter,37,61,1000,7500
 ```
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-Results of PAX layout: 
+Such layout as described in the paper turned out be performant[3]: 
 
 > We evaluated PAX against NSM and DSM using (a) predicate selection queries on numeric data and (b) a variety of queries on TPC-H datasets on top of the Shore storage manager. We vary query parameters including selectivity, projectivity, number of predicates, distance between the projected attribute and the attribute in the predicate, and degree of the relation. The experimental results show that, when compared to NSM, PAX (a) incurs 50-75% fewer second-level cache misses due to data accesses when executing a main-memory workload, (b) executes range selection queries and updates in 17-25% less elapsed time, and (c) executes TPC-H queries involving I/O 11-42% faster than NSM on the platform we studied. When compared to DSM, PAX executes queries faster and its execution time remains stable as more attributes are involved in the query, while DSM’s execution time increases due to the high record reconstruction cost.
+
+**Note!**. Projection (projectivity) means choosing which columns (or expressions) the query shall return. Selection (selectivity) means which rows are to be returned. If the query is: `sql select name, salary from TABLE where age>30;` then `name` and `salary` are **projection** part while `where age >30` is the **selection** part.
 
 
 
