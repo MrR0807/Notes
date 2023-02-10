@@ -33,7 +33,7 @@ Google BigQuery book why Parquet was created.
 
 ## File's metadata importance
 
-## Columnar data layout
+## Row, Columnar, Hybrid data layouts
 
 Say we have a familiar, traditional database layout (or CSV file for that matter) with entries like so:
 
