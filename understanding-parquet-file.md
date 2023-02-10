@@ -321,9 +321,15 @@ Such layout as described in the paper turned out be performant[3]:
 
 **Note!**. Projection (projectivity) means choosing which columns (or expressions) the query shall return. Selection (selectivity) means which rows are to be returned. If the query is: `sql select name, salary from TABLE where age>30;` then `name` and `salary` are **projection** part while `where age >30` is the **selection** part.
 
+Below find some of the performance comparison between PAX, NSM and DSM layouts[3].
 
+![PAX-NSM-DSM-1](https://github.com/MrR0807/Notes/blob/master/PAX-NSM-DSM-1.png)
 
+![PAX-NSM-DSM-2](https://github.com/MrR0807/Notes/blob/master/PAX-NSM-DSM-2.png)
 
+![PAX-NSM-DSM-3](https://github.com/MrR0807/Notes/blob/master/PAX-NSM-DSM-3.png)
+
+![PAX-NSM-DSM-4](https://github.com/MrR0807/Notes/blob/master/PAX-NSM-DSM-4.png)
 
 
 
