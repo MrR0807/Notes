@@ -251,6 +251,12 @@ As stated in previous section, simply storing data in columns wasn't/isn’t suf
 
 **One of the most important factors in achieving good performance is preserving I/O bandwidth (by e.g. using sequential access wherever possible and avoiding random accesses). Thus even when we look at techniques such as compression, the main motivation is that moving compressed data uses less bandwidth (improving performance), not that the reduced sizes save on storage costs.**
 
+Are These Column-store Specific Features and optimizations? Some of the features and concepts described above can be applied with some variations to row-store systems as well. In fact, most of these design features have been inspired by earlier research in row-store systems and over the years several notable eorts both in academia and industry tried to achieve similar eects for individual features with add-on designs in traditional row stores, i.e., designs that would not disturb the fundamental rowstore architecture significantly[1].
+
+Figure 4.6 summarizes a list of features and design principles that altogether define modern column-stores along with pointers to similar but isolated features that have appeared in the past in the context of row-stores[1].
+
+![columnar-vs-row-optimizations](https://github.com/MrR0807/Notes/blob/master/columnar-vs-row-optimizations.jpeg)
+
 
 
 
