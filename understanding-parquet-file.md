@@ -1342,9 +1342,6 @@ Value b: LaLaLaLaLaLaLaLaLaLaLaLaLaLaLaLaLaLaLaLaLaLaLaLaLaLaLaLaLaLaLaLaLaLaLaL
 
 What fun!
 
-
-**BIG TODO**
-
 ### Conclusion
 
 Correct encoding solves several problems:
