@@ -249,6 +249,13 @@ As stated in previous section, simply storing data in columns wasn't/isn’t suf
 
 ![columnar-vs-row](https://github.com/MrR0807/Notes/blob/master/column-vs-row.jpeg)
 
+**One of the most important factors in achieving good performance is preserving I/O bandwidth (by e.g. using sequential access wherever possible and avoiding random accesses). Thus even when we look at techniques such as compression, the main motivation is that moving compressed data uses less bandwidth (improving performance), not that the reduced sizes save on storage costs.**
+
+
+
+
+
+
 
 
 
