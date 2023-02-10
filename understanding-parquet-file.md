@@ -360,7 +360,7 @@ Lastly, I'd like to just add on top what is outlined in the quote - remember "Co
 6. [Demystifying the Parquet File Format](https://towardsdatascience.com/demystifying-the-parquet-file-format-13adb0206705)
 7. [Practical File System Design](http://www.nobius.org/dbg/practical-file-system-design.pdf)
 8. [Row vs Column Oriented Databases](https://dataschool.com/data-modeling-101/row-vs-column-oriented-databases/)
-9. Data intensive book
+9. [Designing Data-Intensive Applications](https://www.amazon.com/Designing-Data-Intensive-Applications-Reliable-Maintainable/dp/1449373321)
 10. [The design and implementation of modern column-oriented database systems](https://blog.acolyer.org/2018/09/26/the-design-and-implementation-of-modern-column-oriented-database-systems/)
 
 
