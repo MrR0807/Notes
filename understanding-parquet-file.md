@@ -251,42 +251,13 @@ As stated in previous section, simply storing data in columns wasn't/isn’t suf
 
 **One of the most important factors in achieving good performance is preserving I/O bandwidth (by e.g. using sequential access wherever possible and avoiding random accesses). Thus even when we look at techniques such as compression, the main motivation is that moving compressed data uses less bandwidth (improving performance), not that the reduced sizes save on storage costs.**
 
-Are These Column-store Specific Features and optimizations? Some of the features and concepts described above can be applied with some variations to row-store systems as well. In fact, most of these design features have been inspired by earlier research in row-store systems and over the years several notable eorts both in academia and industry tried to achieve similar eects for individual features with add-on designs in traditional row stores, i.e., designs that would not disturb the fundamental rowstore architecture significantly[1].
+You should also ask yourself, don't all these optimizations require more CPU cycles? Yes, but as previously discussed, **changes in hardware (CPU faster 10,000x vs. Disk transfer speed 100x vs. disk-head seek 10x) created a space where there is abundance of untapped CPU cycles compared to other aspects of reading/writing data. This means that now we have more CPU cycles to spare in decompressing compressed data fast** which is preferable to transferring uncompressed and thus bigger data at slow speeds (in terms of waisted CPU cycles) through the memory hierarchy[1].
+
+Are These Column-store Specific Features and optimizations? Some of the features and concepts described above can be applied with some variations to row-store systems as well. In fact, most of these design features have been inspired by earlier research in row-store systems and over the years several notable efforts both in academia and industry tried to achieve similar effects for individual features with add-on designs in traditional row stores, i.e., designs that would not disturb the fundamental rowstore architecture significantly[1].
 
 Figure 4.6 summarizes a list of features and design principles that altogether define modern column-stores along with pointers to similar but isolated features that have appeared in the past in the context of row-stores[1].
 
 ![columnar-vs-row-optimizations](https://github.com/MrR0807/Notes/blob/master/columnar-vs-row-optimizations.jpeg)
-
-
-
-
-
-
-
-
-
-All these optimizations, like costs CPU cycles, but if you remember from "History" section, CPU efficiency increase 1000x times while disk seeks only 10x. It means there are CPU cycles abundancy which can be exploited.
-
-"Exploiting extra CPU cycles. Usually, the bottom line goal of a database system is performance, i.e., processing one or more queries as fast as possible, not compression ratio. Disk space is cheap, and is getting cheaper rapidly. However, compression does improve performance (in addition to reducing disk space); if data is compressed, then less time is spent in I/O during query processing as less data is read from disk into memory (and from memory to CPU). Another important motivation here is that as CPUs are getting much faster compared to memory bandwidth, the cost of accessing data costs more in terms of CPU cycles than it did in the past. Intuitively, this means that now we have more CPU cycles to spare in decompressing compressed data fast which is preferable to transferring uncompressed and thus bigger data at slow speeds (in terms of waisted CPU cycles) through the memory hierarchy"
-
-
-
-
-
-
-
-
-
-### Stuff without a place
-
-
-"Since data transfer costs from storage
-(or through a storage hierarchy) are often the major performance bottlenecks in database systems, while at the same time database schemas
-are becoming more and more complex with fat tables with hundreds
-of attributes being common, a column-store is likely to be much more
-efficient at executing queries, as the one in our example, that touch
-only a subset of a table’s attributes."
-
 
  
 
