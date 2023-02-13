@@ -33,6 +33,31 @@ Google BigQuery book why Parquet was created.
 
 ## File's metadata importance
 
+This section will use a lot from [1], but instead of `bash` scripts and thought practices, I'll build a simple database in Java.
+
+One of key components in Parquet is metadata. Metadata allows for quick seek of information.....
+
+On the most fundamental level, a database needs to do two things: when you give it some data, it should store the data, and when you ask it again later, it should give the data back to you[1].
+
+log-structured storage engines, because it is very familiar to Parquet compared to something like page-oriented storage engines such as B-trees.
+
+### Simple database
+
+
+
+
+
+
+### Resources
+
+1. [The Design and Implementation of Modern Column-Oriented Database Systems](https://stratos.seas.harvard.edu/files/stratos/files/columnstoresfntdbs.pdf)
+
+
+
+
+
+
+
 ## Row, Columnar, Hybrid data layouts
 
 Say we have a familiar, traditional database layout (or CSV file for that matter) with entries like so:
