@@ -54,11 +54,89 @@ On the most fundamental level, a database needs to do two things: when you give 
 Let's start with simple case:
 
 ```java
+public class SimpleDatabase {
+
+	private static final Path DATABASE_PATH = Path.of("database.txt");
+	private static final String ENTRY_TEMPLATE = "index:%d{%s}";
+	private static final Pattern INDEX_PATTERN_MATCHER = Pattern.compile("index:(\\d+)");
+
+	public static void main(String[] args) throws IOException {
+
+		final var simpleDatabase = new SimpleDatabase();
+		simpleDatabase.writeToDatabase(1, """
+				{"name":"John", "age":26, "salary":1000}""");
+		simpleDatabase.writeToDatabase(2, """
+				{"name":"John", "age":27, "salary":2000}""");
+		simpleDatabase.writeToDatabase(3, """
+				{"name":"John", "age":28, "salary":3000}""");
+		simpleDatabase.writeToDatabase(4, """
+				{"name":"Marry", "age":26, "salary":1000}""");
+		simpleDatabase.writeToDatabase(5, """
+				{"name":"Marry", "age":27, "salary":2000}""");
 
 
+		System.out.println("-".repeat(10));
+		System.out.println(simpleDatabase.readAllFromDatabase());
+		System.out.println("-".repeat(10));
 
+
+		System.out.println("*".repeat(10));
+		System.out.println(simpleDatabase.readBy(3));
+		System.out.println("*".repeat(10));
+	}
+
+	private void writeToDatabase(long index, String data) throws IOException {
+
+		final var entry = ENTRY_TEMPLATE.formatted(index, data);
+		Files.write(DATABASE_PATH, List.of(entry), StandardOpenOption.APPEND, StandardOpenOption.CREATE);
+	}
+
+	private List<String> readAllFromDatabase() throws IOException {
+		return Files.readAllLines(DATABASE_PATH);
+	}
+
+	private Optional<String> readBy(long indexToFind) throws IOException {
+
+		try (var lines = Files.lines(DATABASE_PATH)) {
+			return lines
+					.map(SimpleDatabase::fromLine)
+					.filter(indexAndLine -> indexAndLine.index == indexToFind)
+					.findFirst()
+					.map(IndexAndLine::line);
+		}
+	}
+
+	private static IndexAndLine fromLine(String line) {
+
+		final var matcher = INDEX_PATTERN_MATCHER.matcher(line);
+
+		if (matcher.find()) {
+
+			final var index = matcher.group(1);
+			return new IndexAndLine(Long.parseLong(index), line);
+		}
+
+		throw new RuntimeException("Database is corrupted");
+	}
+
+	private record IndexAndLine(long index, String line) {
+	}
+
+}
+```
+
+Running `main` should print:
 
 ```
+----------
+[index:1{{"name":"John", "age":26, "salary":1000}}, index:2{{"name":"John", "age":27, "salary":2000}}, index:3{{"name":"John", "age":28, "salary":3000}}, index:4{{"name":"Marry", "age":26, "salary":1000}}, index:5{{"name":"Marry", "age":27, "salary":2000}}]
+----------
+**********
+Optional[index:3{{"name":"John", "age":28, "salary":3000}}]
+**********
+```
+
+
 
 
 
