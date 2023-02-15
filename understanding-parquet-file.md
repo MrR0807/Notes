@@ -150,17 +150,41 @@ This implementation creates a key-value store. The underlying storage format is 
 
 The `writeToDatabase` has pretty good performance for something that is so simple, because appending to a file is generally very efficient[1]. Similarly to what `writeToDatabase` does, many databases internally use a log, which is an append-only data file (e.g. Write Ahead Log). Real databases have more issues to deal with (such as concurrency control, reclaiming disk space so that the log doesn’t grow forever, and handling errors and partially written records), but the basic principle is the same[1].
 
-On the other hand, `readAllFromDatabase` and `readBy` has a terrible performance if you have a large number of records in your database.
+On the other hand, `readAllFromDatabase` and `readBy` has a terrible performance if you have a large number of records in your database. Because `readAllFromDatabase` actually loads all of the data to memory. This means that big files (e.g. terabyte size) just won't fit. `readBy` is smarter, because it is streaming information without having to load it to memory, unfortunately it does this sequentially, essentially doing full table scan in SQL terms.  
 
 Let's generate a lot of data for this database and try searching:
 
 ```java
+public static void main(String[] args) throws IOException {
 
+	final var simpleDatabase = new SimpleDatabase();
 
+	for (int i = 0; i < (Integer.MAX_VALUE / 1000); i++) {
 
+		simpleDatabase.writeToDatabase(i, """
+			"name":"John", "age":26, "salary":10000001290193103912""");
+	}
+}
 ```
 
+For me, this has generated a file "weighting" around 150 MB.
 
+Let's try searching the the first and the last entries:
+
+```java
+public static void main(String[] args) throws IOException {
+
+	final var simpleDatabase = new SimpleDatabase();
+
+	final var now = Instant.now();
+	System.out.println(simpleDatabase.readBy(2147482));
+	final var after = Instant.now();
+
+	System.out.println(Duration.between(now, after).toMillis());
+}
+```
+
+Running this, takes around `600 - 800 ms`. While searching for the first index takes about `10 - 15 ms`.
 
 
 
