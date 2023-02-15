@@ -4,7 +4,7 @@ Books to read:
 * ~~Gradle Effective Implementations Guide~~
 * ~~Kafka in Action~~
 * Testing Web APIs
-* Kafka: The Definitive Guide, 2nd Edition
+* ~~Kafka: The Definitive Guide, 2nd Edition~~
 * Kafka Streams in Action
 * Java Concurrency in Practice
 * ~~Designing Data-Intensive Applications: The Big Ideas Behind Reliable, Scalable, and Maintainable Systems~~
