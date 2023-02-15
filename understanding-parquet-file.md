@@ -33,7 +33,7 @@ Google BigQuery book why Parquet was created.
 
 ## File's metadata importance
 
-This section will use a lot from [1], but instead of `bash` scripts and thought practices, I'll build a simple database in Java and explore simplified metadata and indexes. Also, I will not implement compaction, because Parquet does not formulate such practices. However, those practices could be implemented in downstream specialised databases which input Parquet files.
+This section will use ideas from Designing Data-Intensive Applications book[1], and instead of `bash` scripts and thought practices, I'll build a simple database in Java and explore simplified metadata and indexes. Also, I will not implement compaction, because Parquet does not formulate such practices. However, those practices could be implemented in downstream specialised databases which Parquet files are input.
 
 
 
@@ -53,7 +53,7 @@ log-structured storage engines, because it is very familiar to Parquet compared 
 
 ### Resources
 
-1. [The Design and Implementation of Modern Column-Oriented Database Systems](https://stratos.seas.harvard.edu/files/stratos/files/columnstoresfntdbs.pdf)
+1. [Designing Data-Intensive Applications](https://www.amazon.com/Designing-Data-Intensive-Applications-Reliable-Maintainable/dp/1449373321)
 
 
 
