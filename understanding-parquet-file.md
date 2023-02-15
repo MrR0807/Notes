@@ -43,13 +43,22 @@ Instead of `bash` scripts and thought practices, I'll build a simple database in
 
 One of key components in Parquet is metadata. Metadata allows for quick seek of information.....
 
-On the most fundamental level, a database needs to do two things: when you give it some data, it should store the data, and when you ask it again later, it should give the data back to you[1].
-
 log-structured storage engines, because it is very familiar to Parquet compared to something like page-oriented storage engines such as B-trees.
+
+There are two families of storage engines: log-structured storage engines, and page-oriented storage engines such as B-trees[1]. In upcoming sections I'll build a simple log-structured storage to emphasize metadata.
 
 ### Simple database
 
+On the most fundamental level, a database needs to do two things: when you give it some data, it should store the data, and when you ask it again later, it should give the data back to you[1].
 
+Let's start with simple case:
+
+```java
+
+
+
+
+```
 
 
 
