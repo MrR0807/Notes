@@ -136,7 +136,7 @@ Optional[index:3{"name":"John", "age":28, "salary":3000}]
 **********
 ```
 
-And there should be new file - `database.txt` with content:
+And there should be a new file - `database.txt` with content:
 
 ```
 index:1{"name":"John", "age":26, "salary":1000}
@@ -152,7 +152,13 @@ The `writeToDatabase` has pretty good performance for something that is so simpl
 
 On the other hand, `readAllFromDatabase` and `readBy` has a terrible performance if you have a large number of records in your database.
 
+Let's generate a lot of data for this database and try searching:
 
+```java
+
+
+
+```
 
 
 
