@@ -64,15 +64,15 @@ public class SimpleDatabase {
 
 		final var simpleDatabase = new SimpleDatabase();
 		simpleDatabase.writeToDatabase(1, """
-				{"name":"John", "age":26, "salary":1000}""");
+				"name":"John", "age":26, "salary":1000""");
 		simpleDatabase.writeToDatabase(2, """
-				{"name":"John", "age":27, "salary":2000}""");
+				"name":"John", "age":27, "salary":2000""");
 		simpleDatabase.writeToDatabase(3, """
-				{"name":"John", "age":28, "salary":3000}""");
+				"name":"John", "age":28, "salary":3000""");
 		simpleDatabase.writeToDatabase(4, """
-				{"name":"Marry", "age":26, "salary":1000}""");
+				"name":"Marry", "age":26, "salary":1000""");
 		simpleDatabase.writeToDatabase(5, """
-				{"name":"Marry", "age":27, "salary":2000}""");
+				"name":"Marry", "age":27, "salary":2000""");
 
 
 		System.out.println("-".repeat(10));
@@ -129,12 +129,29 @@ Running `main` should print:
 
 ```
 ----------
-[index:1{{"name":"John", "age":26, "salary":1000}}, index:2{{"name":"John", "age":27, "salary":2000}}, index:3{{"name":"John", "age":28, "salary":3000}}, index:4{{"name":"Marry", "age":26, "salary":1000}}, index:5{{"name":"Marry", "age":27, "salary":2000}}]
+[index:1{"name":"John", "age":26, "salary":1000}, index:2{"name":"John", "age":27, "salary":2000}, index:3{"name":"John", "age":28, "salary":3000}, index:4{"name":"Marry", "age":26, "salary":1000}, index:5{"name":"Marry", "age":27, "salary":2000}]
 ----------
 **********
-Optional[index:3{{"name":"John", "age":28, "salary":3000}}]
+Optional[index:3{"name":"John", "age":28, "salary":3000}]
 **********
 ```
+
+And there should be new file - `database.txt` with content:
+
+```
+index:1{"name":"John", "age":26, "salary":1000}
+index:2{"name":"John", "age":27, "salary":2000}
+index:3{"name":"John", "age":28, "salary":3000}
+index:4{"name":"Marry", "age":26, "salary":1000}
+index:5{"name":"Marry", "age":27, "salary":2000}
+```
+
+This implementation creates a key-value store. The underlying storage format is very simple: a text file where each line contains a key-value pair, separated by a comma (roughly like a CSV file, ignoring escaping issues)[1].  Every call to `writeToDatabase` appends to the end of the file, so if you update a key several times, the old versions of the value are not overwritten — you need to look at the last occurrence of a key in a file to find the latest value.
+
+
+
+
+
 
 
 
