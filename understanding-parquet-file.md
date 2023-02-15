@@ -150,6 +150,8 @@ This implementation creates a key-value store. The underlying storage format is 
 
 The `writeToDatabase` has pretty good performance for something that is so simple, because appending to a file is generally very efficient[1]. Similarly to what `writeToDatabase` does, many databases internally use a log, which is an append-only data file (e.g. Write Ahead Log). Real databases have more issues to deal with (such as concurrency control, reclaiming disk space so that the log doesn’t grow forever, and handling errors and partially written records), but the basic principle is the same[1].
 
+On the other hand, `readAllFromDatabase` and `readBy` has a terrible performance if you have a large number of records in your database.
+
 
 
 
