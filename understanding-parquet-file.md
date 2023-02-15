@@ -150,7 +150,9 @@ This implementation creates a key-value store. The underlying storage format is 
 
 The `writeToDatabase` has pretty good performance for something that is so simple, because appending to a file is generally very efficient[1]. Similarly to what `writeToDatabase` does, many databases internally use a log, which is an append-only data file (e.g. Write Ahead Log). Real databases have more issues to deal with (such as concurrency control, reclaiming disk space so that the log doesn’t grow forever, and handling errors and partially written records), but the basic principle is the same[1].
 
-On the other hand, `readAllFromDatabase` and `readBy` has a terrible performance if you have a large number of records in your database. Because `readAllFromDatabase` actually loads all of the data to memory. This means that big files (e.g. terabyte size) just won't fit. `readBy` is smarter, because it is streaming information without having to load it to memory, unfortunately it does this sequentially, essentially doing full table scan in SQL terms.  
+On the other hand, `readAllFromDatabase` and `readBy` has a terrible performance if you have a large number of records in your database. Because `readAllFromDatabase` actually loads all of the data to memory. This means that big files (e.g. terabyte size) just won't fit. `readBy` is smarter, because it is streaming information without having to load it to memory, unfortunately it does this sequentially, essentially doing full table scan in SQL terms.
+
+In algorithmic terms, the cost of a lookup is `O(n)`: if you double the number of records n in your database, a lookup takes twice as long[1].
 
 Let's generate a lot of data for this database and try searching:
 
@@ -186,9 +188,11 @@ public static void main(String[] args) throws IOException {
 
 Running this, takes around `600 - 800 ms`. While searching for the first index takes about `10 - 15 ms`.
 
+### Index
 
+In order to efficiently find the value for a particular key in the database, we need a different data structure: an index. The general idea behind them is to keep some additional metadata on the side, which acts as a signpost and helps you to locate the data you want. If you want to search the same data in several different ways, you may need several different indexes on different parts of the data[1].
 
-
+An index is an additional structure that is derived from the primary data. Many data‐ bases allow you to add and remove indexes, and this doesn’t affect the contents of the database; it only affects the performance of queries. Maintaining additional structures incurs overhead, especially on writes. For writes, it’s hard to beat the performance of simply appending to a file, because that’s the simplest possible write operation. Any kind of index usually slows down writes, because the index also needs to be updated every time data is written[1].
 
 
 
