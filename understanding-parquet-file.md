@@ -146,7 +146,7 @@ index:4{"name":"Marry", "age":26, "salary":1000}
 index:5{"name":"Marry", "age":27, "salary":2000}
 ```
 
-This implementation creates a key-value store. The underlying storage format is very simple: a text file where each line contains a key-value pair, separated by a comma (roughly like a CSV file, ignoring escaping issues)[1].  Every call to `writeToDatabase` appends to the end of the file, so if you update a key several times, the old versions of the value are not overwritten — you need to look at the last occurrence of a key in a file to find the latest value.
+This implementation creates a key-value store. The underlying storage format is very simple: a text file where each line contains a key-value pair, separated by a comma (roughly like a CSV file, ignoring escaping issues).  Every call to `writeToDatabase` appends to the end of the file, so if you update a key several times, the old versions of the value are not overwritten — you need to look at the last occurrence of a key in a file to find the latest value[1]. This is pretty much how Parquet represents its data as well as in, it just appends data to the end of the file without trying to update by some key or any other complicated data manipulation.
 
 
 
