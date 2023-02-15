@@ -33,7 +33,10 @@ Google BigQuery book why Parquet was created.
 
 ## File's metadata importance
 
-This section will use a lot from [1], but instead of `bash` scripts and thought practices, I'll build a simple database in Java.
+This section will use a lot from [1], but instead of `bash` scripts and thought practices, I'll build a simple database in Java and explore simplified metadata and indexes. Also, I will not implement compaction, because Parquet does not formulate such practices. However, those practices could be implemented in downstream specialised databases which input Parquet files.
+
+
+
 
 One of key components in Parquet is metadata. Metadata allows for quick seek of information.....
 
