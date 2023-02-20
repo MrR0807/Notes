@@ -205,6 +205,10 @@ Let’s say our data storage consists only of appending to a file, as in the pre
 
 #### Implementation
 
+In order to know offset position during our writes and then read from given offset positions, I will have to rewrite Java database from ground up. This is because `Files` abstractions lack any such controls and deemed them low level. There are a couple of options:
+* RandomAccessFile[4].
+* SeekableByteChannel[5].
+
 
 
 
@@ -223,6 +227,8 @@ As you can see, there is a fundemantal rewrite of how Java database works now. I
 1. [Designing Data-Intensive Applications](https://www.amazon.com/Designing-Data-Intensive-Applications-Reliable-Maintainable/dp/1449373321)
 2. [Topic Compaction](https://developer.confluent.io/learn-kafka/architecture/compaction/)
 3. [Apache Iceberg:Position Delete Files](https://iceberg.apache.org/spec/#position-delete-files)
+4. [Java Documentation. RandomAccessFile](https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/io/RandomAccessFile.html)
+5. [Java Documentation. SeekableByteChannel](https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/nio/channels/SeekableByteChannel.html)
 
 
 
