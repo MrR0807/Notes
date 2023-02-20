@@ -481,7 +481,7 @@ public class SimpleDatabase implements AutoCloseable {
 }
 ```
 
-If I read the last entry `2147483` or the first, the speed is pretty much constant - data is fetched between `10 - 20 ms`. This is possible, because file is no longer being traversed from start to finish. The database only needs to fetch offset according to index and seek file to the exact position. Blazing fast. The downside, as already stated in "Encoding" chapter, Java serialization and desrialization framework is notoriously slow. Let's time how long it takes for in-memory map to get serialized along with look up of last entry:
+If I read the last entry `2147483` or the first, the speed is pretty much constant - data is fetched between `10 - 20 ms`. This is possible, because file is no longer being traversed from start to finish. The database only needs to fetch offset according to index and seek file to the exact position. Blazing fast. The downside, as already stated in "Encoding" chapter, Java serialization and desrialization framework is notoriously slow. Let's time how long it takes for in-memory map to get deserialized along with look up of last entry:
 
 ```java
 public SimpleDatabase(DatabaseInternals databaseInternals) throws IOException {
@@ -496,14 +496,14 @@ public SimpleDatabase(DatabaseInternals databaseInternals) throws IOException {
 ```
 
 Running several times, for me, it shows that preparing in-memory metadata hashmap takes about `14000 ms`. There are several ways to improve this:
-* Because indexes are ordered we no longer need to keep an index of all the keys in memory, but only couple of hundreds for example and read more data than required. This will shrink the `metadata.ser` and less memory required.
+* Because indexes are ordered we no longer need to keep an index of all the keys in memory, but only every couple of hundreds for example and read more data than required. This will shrink the `metadata.ser` however will slightly increase read part.
 * Use a more advanced encoding framework, e.g. Avro.
 
 #### Serializing and deserializing metadata with Avro
 
-Avro, as we've found out, is one of the fastest encoding frameworks. Let's try to leverage it and see whether it improves our Simple Database startup.
+Avro, as we've found out (in "Encoding" chapter), is one of the fastest encoding frameworks. Let's try to leverage it and see whether it improves our Simple Database startup.
 
-Let's firstly rewrite all data so we have offset metadata in Avro format:
+Let's firstly rewrite all data so we have offset metadata in Avro format. Full class:
 
 ```java
 public class SimpleDatabaseWithAvro implements AutoCloseable {
@@ -581,80 +581,25 @@ public class SimpleDatabaseWithAvro implements AutoCloseable {
 ```
 
 
+And reading part. I'm just adding different main, the class is absolutely the same:
 
 
 ```java
-public class SimpleDatabaseWithAvro implements AutoCloseable {
+public static void main(String[] args) throws Exception {
 
-	private static final Path DATABASE_PATH = Path.of("database.txt");
-	private static final String METADATA_FILE_NAME = "metadata.avro";
-	private static final Path METADATA_PATH = Path.of(METADATA_FILE_NAME);
-	private final Map<Utf8, Long> avroIndexOffsetMap;
+	try (var simpleDatabase = new SimpleDatabaseWithAvro(new DatabaseInternals(DATABASE_PATH))) {
 
-	private long lastIndex;
-	private final DatabaseInternals databaseInternals;
-
-	private static final Schema SCHEMA = new Schema.Parser().parse("""
-			{
-			  "type": "map",
-			  "values": "long",
-			  "default": {}
-			}""");
-
-	public SimpleDatabaseWithAvro(DatabaseInternals databaseInternals) throws IOException {
-
-		this.databaseInternals = databaseInternals;
-		this.lastIndex =  databaseInternals.readLastIndex();
 		final var now = Instant.now();
-		this.avroIndexOffsetMap = readMetadata();
+		final var offset = simpleDatabase.avroIndexOffsetMap.get(new Utf8("2147483"));
+		final var entries = simpleDatabase.databaseInternals.readBlock(offset);
+		System.out.println(entries);
 		final var after = Instant.now();
-		System.out.println("Reading metadata: " + Duration.between(now, after).toMillis());
-	}
-
-	private static Map<Utf8, Long> readMetadata() throws IOException {
-		if (METADATA_PATH.toFile().exists()) {
-
-			final var reader = new GenericDatumReader<Map>(SCHEMA);
-			try (final var fileReader = new DataFileReader<>(Path.of("metadata.avro").toFile(), reader)) {
-				return (Map<Utf8, Long>) fileReader.next();
-			}
-		} else {
-
-			return new HashMap<>();
-		}
-	}
-
-	public static void main(String[] args) throws Exception {
-
-		try (var simpleDatabase = new SimpleDatabaseWithAvro(new DatabaseInternals(DATABASE_PATH))) {
-
-			final var now = Instant.now();
-			final var offset = simpleDatabase.avroIndexOffsetMap.get(new Utf8("2147483"));
-			final var entries = simpleDatabase.databaseInternals.readBlock(offset);
-			System.out.println(entries);
-			final var after = Instant.now();
-			System.out.println("Reading data: " + Duration.between(now, after).toMillis());
-		}
-	}
-
-	private static void serializeMetadata(Map<Long, Long> metadata) throws IOException {
-
-		final var metadataWriter = new GenericDatumWriter<Map>(SCHEMA);
-
-		try (final var metadataFileWriter = new DataFileWriter<>(metadataWriter)) {
-			metadataFileWriter.create(SCHEMA, METADATA_PATH.toFile());
-			metadataFileWriter.append(metadata);
-		}
-	}
-
-	@Override
-	public void close() throws Exception {
-		databaseInternals.close();
+		System.out.println("Reading data: " + Duration.between(now, after).toMillis());
 	}
 }
 ```
 
-Running this several times returns me that metadata is read in `800 - 1500 ms`. This is a 10-18x improvement. Remember from "Columnar data layout" chapter, shrinking the size of metadata file is not to save space, but to optimise disk transfer part. Oh, and `metadata.avro` file is about 25 MB.
+Running this several times returns me that metadata is read in `800 - 1500 ms`. This is a 10-18x improvement. Remember from "Columnar data layout" chapter, shrinking the size of metadata file is not to primarily save space, but to optimise disk transfer part. Oh, and `metadata.avro` file is about 25 MB.
 
 #### Ranges of indexes
 
