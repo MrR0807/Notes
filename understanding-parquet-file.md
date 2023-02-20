@@ -215,13 +215,191 @@ In order to know offset position during our writes and then read from given offs
 It is clearly stated in stackoverflow post that `java.nio` with `FileChannel` is faster by about >250% compared with `FileInputStream/FileOuputStream`[6], however, the difference between `RandomAccessFile` and `SeekableByteChannel` is not conclusive or well documented. I have found several instances, which claim that `SeekableByteChannel` is faster[7], but this is yet to be tested in another time. Anyway, I have chose to use `SeekableByteChannel`.
 
 ```java
+public class DatabaseInternals implements AutoCloseable {
+
+	private static final int DEFAULT_BUFFER_SIZE = 8192;
+	private static final int END_OF_THE_LINE_HEX = 0x0A;
+	private static final int COLON_HEX = 0x3a;
+	private static final int CURLY_BRACELETS_HEX = 0x7b;
+	private final int lastBlockLength;
+	private final long totalBlockCount;
+	private final long fileSize;
+	private final SeekableByteChannel seekableByteChannel;
+
+	private static final Pattern ENTRY_PATTERN_MATCHER = Pattern.compile("""
+			index:(\\d+)\\{"name":"([\\w\\s]+)",\\s"age":(\\d+),\\s"salary":(\\d+)""");
+
+	public DatabaseInternals(Path file) {
+
+		try {
+			this.seekableByteChannel = Files.newByteChannel(file, StandardOpenOption.READ, StandardOpenOption.WRITE, StandardOpenOption.CREATE);
+			final var size = seekableByteChannel.size();
+
+			int lastBlockLength = (int) size % DEFAULT_BUFFER_SIZE;
+			long totalBlockCount;
+
+			if (lastBlockLength > 0) {
+				totalBlockCount = size / DEFAULT_BUFFER_SIZE + 1;
+			} else {
+				totalBlockCount = size / DEFAULT_BUFFER_SIZE;
+				if (size > 0) {
+					lastBlockLength = DEFAULT_BUFFER_SIZE;
+				}
+			}
+
+			this.lastBlockLength = lastBlockLength;
+			this.totalBlockCount = totalBlockCount;
+			this.fileSize = size;
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+	}
+
+	public List<Entry> readBlock(long offset) throws IOException {
+
+		final var buffer = ByteBuffer.allocate(DEFAULT_BUFFER_SIZE);
+		seekableByteChannel.position(offset);
+		seekableByteChannel.read(buffer);
+		buffer.flip();
+		final var entries = readRecord(buffer);
+		buffer.clear();
+		return entries;
+	}
+
+	public long readLastIndex() throws IOException {
+
+		if (seekableByteChannel.size() == 0) {
+			return 0;
+		}
+
+		final var buffer = ByteBuffer.allocate(DEFAULT_BUFFER_SIZE);
+		if (fileSize > DEFAULT_BUFFER_SIZE) {
+			seekableByteChannel.position(DEFAULT_BUFFER_SIZE * (totalBlockCount - 2));
+			seekableByteChannel.read(buffer);
+		} else {
+			seekableByteChannel.position(0);
+			seekableByteChannel.read(buffer);
+		}
+
+		buffer.flip();
+		final var lastRecordPosition = readLastRecordPosition(buffer);
+		buffer.position( (int) lastRecordPosition.startOffset);
+		return readLastRecordIndex(buffer);
+	}
+
+	private static EntryPosition readLastRecordPosition(ByteBuffer buffer) {
+		int lineStart = buffer.position() - 1;
+		int lineEnd = 0;
+
+		while (buffer.hasRemaining()) {
+
+			final var x = buffer.get();
+			if (END_OF_THE_LINE_HEX == x) {
+				lineEnd = buffer.position();
+				byte[] s = new byte[lineEnd - lineStart];
+				final var slice = buffer.slice(lineStart, lineEnd - lineStart);
+				slice.get(s);
+			}
+
+			if (buffer.position() == lineEnd + 1) {
+				lineStart = buffer.position() - 1;
+			}
+		}
+
+		return new EntryPosition(lineStart, lineEnd);
+	}
+
+	private static long readLastRecordIndex(ByteBuffer buffer) {
+		int startOfIndex = 0;
+		int endOfIndex = 0;
+
+		while (buffer.hasRemaining()) {
+			final var b = buffer.get();
+
+			if (b == COLON_HEX) {
+				startOfIndex = buffer.position();
+			}
+
+			if (b == CURLY_BRACELETS_HEX) {
+				endOfIndex = buffer.position() - 1;
+				break;
+			}
+		}
+
+		final var slice = buffer.slice(startOfIndex, endOfIndex - startOfIndex);
+		byte[] indexValue = new byte[endOfIndex - startOfIndex];
+		slice.get(indexValue);
+		return Long.parseLong(new String(indexValue, StandardCharsets.UTF_8));
+	}
+
+	private static List<Entry> readRecord(ByteBuffer buffer) {
+		int lineStart = buffer.position() - 1;
+		int lineEnd = 0;
+		final var entries = new ArrayList<Entry>();
+
+		while (buffer.hasRemaining()) {
+
+			final var x = buffer.get();
+			if (END_OF_THE_LINE_HEX == x) {
+				lineEnd = buffer.position();
+				byte[] lineBytes = new byte[lineEnd - lineStart];
+				final var slice = buffer.slice(lineStart, lineEnd - lineStart);
+				slice.get(lineBytes);
+				final var entry = fromLine(new String(lineBytes, StandardCharsets.UTF_8));
+				entries.add(entry);
+			}
+
+			if (buffer.position() == lineEnd + 1) {
+				lineStart = buffer.position() - 1;
+			}
+		}
+		return entries;
+	}
+
+	private static Entry fromLine(String line) {
+
+		final var matcher = ENTRY_PATTERN_MATCHER.matcher(line);
+
+		if (matcher.find()) {
+
+			final var index = matcher.group(1);
+			final var name = matcher.group(2);
+			final var age = matcher.group(3);
+			final var salary = matcher.group(4);
+
+			return new Entry(Long.parseLong(index), name, Integer.parseInt(age), Integer.parseInt(salary));
+		}
+
+		throw new RuntimeException("Database is corrupted");
+	}
+
+	private record Entry(long index, String name, int age, int salary) {
+
+	}
+	public record EntryPosition(long startOffset, long endOffset) {
+
+	}
+
+	private static final String ENTRY_TEMPLATE = "index:%d{%s}\n";
+
+	public EntryPosition write(long index, String data) throws IOException {
+
+		final var entry = ENTRY_TEMPLATE.formatted(index, data);
+		long startOffset = seekableByteChannel.position();
+		seekableByteChannel.write(ByteBuffer.wrap(entry.getBytes()));
+		return new EntryPosition(startOffset, seekableByteChannel.position());
+	}
 
 
+	@Override
+	public void close() throws Exception {
 
-
+		seekableByteChannel.close();
+	}
+}
 ```
 
-I will not explain the implementation details and if you want to read more about `java.nio.channels` usage there are great blogs[8][9][10][11] and a book[12].
+I will not explain the implementation details and if you want to read more about `java.nio.channels` usage there are great blogs[8][9][10][11] and a book[12]. Also, this implementation is not super optimised and readable, but I might improve it over time. For now, it is a good starting point.
 
 Let's generate same data, but this time with metadata:
 
