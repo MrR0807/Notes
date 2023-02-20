@@ -203,7 +203,7 @@ Let’s start with indexes for key-value data. This is not the only kind of data
 
 Key-value stores are quite similar to the dictionary type that you can find in most programming languages, and which is usually implemented as a hash map (hash table)[1].
 
-Let’s say our data storage consists only of appending to a file, as in the preceding example. Then the simplest possible indexing strategy is this: keep an in-memory hash map where every key is mapped to a byte offset in the data file—the location at which the value can be found. Whenever you append a new key-value pair to the file, you also update the hash map to reflect the offset of the data you just wrote (this works both for inserting new keys and for updating existing keys). When you want to look up a value, use the hash map to find the offset in the data file, seek to that location, and read the value [1].
+Let’s say our data storage consists only of appending to a file, as in the preceding example. Then the simplest possible indexing strategy is this: keep an in-memory hash map where every key is mapped to a byte offset in the data file - the location at which the value can be found. Whenever you append a new key-value pair to the file, you also update the hash map to reflect the offset of the data you just wrote (this works both for inserting new keys and for updating existing keys). When you want to look up a value, use the hash map to find the offset in the data file, seek to that location, and read the value [1].
 
 
 #### Implementation
@@ -221,7 +221,38 @@ It is clearly stated in stackoverflow post that `java.nio` with `FileChannel` is
 
 ```
 
-I will not explain the implementation details and if you want to read more about `java.nio.channels` usage there are great blogs[8][9][10][11] and a book[12]. 
+I will not explain the implementation details and if you want to read more about `java.nio.channels` usage there are great blogs[8][9][10][11] and a book[12].
+
+Let's generate same data, but this time with metadata:
+
+```java
+public static void main(String[] args) throws Exception {
+
+	try (var simpleDatabase = new SimpleDatabase(new DatabaseInternals(DATABASE_PATH))) {
+
+		for (int i = 0; i < (Integer.MAX_VALUE / 1000); i++) {
+
+			final var write = simpleDatabase.databaseInternals.write(++simpleDatabase.lastIndex, """
+				"name":"John", "age":26, "salary":2147483646""");
+			simpleDatabase.indexOffsetMap.put(simpleDatabase.lastIndex, write.startOffset());
+		}
+
+		serializeMetadata(simpleDatabase.indexOffsetMap);
+	}
+}
+
+private static void serializeMetadata(Map<Long, Long> metadata) throws IOException {
+
+	try (final var out = new ObjectOutputStream(new FileOutputStream(METADATA_FILE_NAME))) {
+		out.writeObject(metadata);
+	}
+}
+```
+
+Again, the `database.txt` file is the same size (around 130MB), however, there is a new file - `metadata.ser` which weights around 60MB. If you think that is a lot, well, we had a database in production, where indexes were 7x the size of the table. Anyway, we will shrink it down in upcoming iterations.
+
+
+
 
 
 ### Resources
