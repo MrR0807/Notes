@@ -202,7 +202,11 @@ Key-value stores are quite similar to the dictionary type that you can find in m
 
 Let’s say our data storage consists only of appending to a file, as in the preceding example. Then the simplest possible indexing strategy is this: keep an in-memory hash map where every key is mapped to a byte offset in the data file—the location at which the value can be found. Whenever you append a new key-value pair to the file, you also update the hash map to reflect the offset of the data you just wrote (this works both for inserting new keys and for updating existing keys). When you want to look up a value, use the hash map to find the offset in the data file, seek to that location, and read the value [1].
 
-A hashmap index implementation for our Java database:
+
+#### Implementation
+
+
+
 
 ```java
 
