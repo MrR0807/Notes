@@ -36,7 +36,7 @@ Google BigQuery book why Parquet was created.
 In this section will use the idea from Designing Data-Intensive Applications book[1] to portrait metadata usefulness. In named book, author explores metadata concept by introducing a simple, bash database.  
 
 
-Instead of `bash` scripts and thought practices, I'll build a simple database in Java and explore simplified metadata and indexes. Also, I will not implement compaction, because Parquet does not formulate such practices. However, those practices could be implemented in downstream specialised databases which Parquet files are input.
+Instead of `bash` scripts and thought practices, I'll build a simple database in Java and explore simplified metadata and indexes. Also, I will not implement compaction, because Parquet does not formulate such practices. However, those practices could be implemented in downstream specialised databases for which Parquet files acts as an input.
 
 
 
