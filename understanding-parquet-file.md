@@ -146,15 +146,15 @@ index:4{"name":"Marry", "age":26, "salary":1000}
 index:5{"name":"Marry", "age":27, "salary":2000}
 ```
 
-This implementation creates a key-value store. The underlying storage format is very simple: a text file where each line contains a key-value pair, separated by a comma (roughly like a CSV file, ignoring escaping issues).  Every call to `writeToDatabase` appends to the end of the file, so if you update a key several times, the old versions of the value are not overwritten — you need to look at the last occurrence of a key in a file to find the latest value[1]. This is pretty much how Parquet represents its data as well as in, it just appends data to the end of the file without trying to update by some key or executing any other complicated data manipulation like compaction[2] or Apache Iceberg's position delete files .
+This implementation creates a key-value store. The underlying storage format is very simple: a text file where each line contains a key-value pair, separated by a comma (roughly like a CSV file, ignoring escaping issues).  Every call to `writeToDatabase` appends to the end of the file, so if you update a key several times, the old versions of the value are not overwritten — you need to look at the last occurrence of a key in a file to find the latest value[1]. This is pretty much how Parquet represents its data as well as in, it just appends data to the end of the file without trying to update by some key or executing any other complicated data manipulation like compaction[2] or Apache Iceberg's position delete files[3].
 
 The `writeToDatabase` has pretty good performance for something that is so simple, because appending to a file is generally very efficient[1]. Similarly to what `writeToDatabase` does, many databases internally use a log, which is an append-only data file (e.g. Write Ahead Log). Real databases have more issues to deal with (such as concurrency control, reclaiming disk space so that the log doesn’t grow forever, and handling errors and partially written records), but the basic principle is the same[1].
 
-On the other hand, `readAllFromDatabase` and `readBy` has a terrible performance if you have a large number of records in your database. Because `readAllFromDatabase` actually loads all of the data to memory. This means that big files (e.g. terabyte size) just won't fit. `readBy` is smarter, because it is streaming information without having to load it to memory, unfortunately it does this sequentially, essentially doing full table scan in SQL terms.
+On the other hand, `readAllFromDatabase` and `readBy` has a terrible performance if you have a large number of records in your database:
+* `readAllFromDatabase` actually loads all of the data to memory. This means that big files (e.g. terabyte size) just won't fit. 
+* `readBy` is smarter, because it is streaming information without having to load it to memory, unfortunately it does this sequentially, essentially doing full table scan talking in SQL terms. In algorithmic terms, the cost of a lookup is `O(n)`: if you double the number of records n in your database, a lookup takes twice as long[1].
 
-In algorithmic terms, the cost of a lookup is `O(n)`: if you double the number of records n in your database, a lookup takes twice as long[1].
-
-Let's generate a lot of data for this database and try searching:
+Let's generate some amount of data for this database and try small searching experiment:
 
 ```java
 public static void main(String[] args) throws IOException {
@@ -186,7 +186,7 @@ public static void main(String[] args) throws IOException {
 }
 ```
 
-Running this, takes around `600 - 800 ms`. While searching for the first index takes about `10 - 15 ms`.
+Searching for the last entry (with `index:2147482`) takes around `600 - 800 ms`. While searching for the first index takes about `10 - 15 ms`.
 
 ### Index
 
