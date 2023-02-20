@@ -1,6 +1,6 @@
 # Parquet file anatomy
 
-When I've started delving into Parquet, I quickly found out that there is a huge gap of concise and in depth overview of what Parquet really is, why it exists and what kind of problems it solves. To my disappointment, official Parquet documentation is quite shallow and lacks any depth. There aren't any books solely on this particular topic as well. This is why I've decided to try to compile others insights, knowledge and my own insights into this document.
+When I've started delving into Parquet, I quickly found out that there is a huge gap of concise and in depth overview of what Parquet really is, why it exists and what kind of problems it solves. To my disappointment, official Parquet documentation is quite shallow and lacks any depth. There aren't any books solely on this particular topic as well. This is why I've decided to try to compile different insights, knowledge and my own observations into this document.
 
 Let's start our journey with quotes, which describe Parquet.
 
