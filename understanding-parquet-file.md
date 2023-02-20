@@ -209,6 +209,8 @@ In order to know offset position during our writes and then read from given offs
 * RandomAccessFile[4].
 * SeekableByteChannel[5].
 
+It is clearly stated in stackoverflow post that `java.nio` with `FileChannel` is faster by about >250% compared with `FileInputStream/FileOuputStream`[6], however, the difference between `RandomAccessFile` and `SeekableByteChannel` is not conclusive or well documented. I have found several instances, which claim that `SeekableByteChannel` is faster[7], but this is yet to be tested in another time. Anyway, I have chose to use `SeekableByteChannel`.
+
 
 
 
@@ -229,6 +231,8 @@ As you can see, there is a fundemantal rewrite of how Java database works now. I
 3. [Apache Iceberg:Position Delete Files](https://iceberg.apache.org/spec/#position-delete-files)
 4. [Java Documentation. RandomAccessFile](https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/io/RandomAccessFile.html)
 5. [Java Documentation. SeekableByteChannel](https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/nio/channels/SeekableByteChannel.html)
+6. [Java NIO FileChannel versus FileOutputstream performance / usefulness](https://stackoverflow.com/questions/1605332/java-nio-filechannel-versus-fileoutputstream-performance-usefulness)
+7. https://mechanical-sympathy.blogspot.com/2011/12/java-sequential-io-performance.html
 
 
 
