@@ -218,7 +218,7 @@ It is clearly stated in stackoverflow post that `java.nio` with `FileChannel` is
 
 ```
 
-As you can see, there is a fundemantal rewrite of how Java database works now. Instead of relying on `Files` abstractions of, I had to implement it using [SeekableByteChannel](https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/nio/channels/SeekableByteChannel.html) and [ByteBuffer](https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/nio/ByteBuffer.html).
+As you can see, there is a fundemantal rewrite of how Java database works now. Instead of relying on `Files` abstractions of, I had to implement it using [SeekableByteChannel](https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/nio/channels/SeekableByteChannel.html) and [ByteBuffer](https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/nio/ByteBuffer.html). I will not go too deep into the implementation details of internals, but there are great blog posts on `java.nio.channels` usage[8][9][10][11] and a book[12]. 
 
 
 ### Resources
@@ -230,6 +230,11 @@ As you can see, there is a fundemantal rewrite of how Java database works now. I
 5. [Java Documentation. SeekableByteChannel](https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/nio/channels/SeekableByteChannel.html)
 6. [Java NIO FileChannel versus FileOutputstream performance / usefulness](https://stackoverflow.com/questions/1605332/java-nio-filechannel-versus-fileoutputstream-performance-usefulness)
 7. https://mechanical-sympathy.blogspot.com/2011/12/java-sequential-io-performance.html
+8. https://www.happycoders.eu/java/filechannel-memory-mapped-io-locks/
+9. https://blogs.oracle.com/javamagazine/post/java-nio-nio2-buffers-channels-async-future-callback
+10. https://docs.oracle.com/javase/tutorial/essential/io/file.html
+11. [Java Documentation. Package java.nio.channels] https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/nio/channels/package-summary.html
+12. [Java NIO](https://www.oreilly.com/library/view/java-nio/0596002882/)
 
 
 
