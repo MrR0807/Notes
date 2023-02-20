@@ -555,7 +555,7 @@ public class SimpleDatabaseWithAvro implements AutoCloseable {
 			for (int i = 0; i < (Integer.MAX_VALUE / 1000); i++) {
 
 				final var write = simpleDatabase.databaseInternals.write(++simpleDatabase.lastIndex, """
-			"name":"John", "age":26, "salary":2147483646""");
+					"name":"John", "age":26, "salary":2147483646""");
 				indexOffsetMap.put(simpleDatabase.lastIndex, write.startOffset());
 			}
 
@@ -602,6 +602,7 @@ public static void main(String[] args) throws Exception {
 Running this several times returns me that metadata is read in `800 - 1500 ms`. This is a 10-18x improvement. Remember from "Columnar data layout" chapter, shrinking the size of metadata file is not to primarily save space, but to optimise disk transfer part. Oh, and `metadata.avro` file is about 25 MB.
 
 #### Ranges of indexes
+
 
 
 
