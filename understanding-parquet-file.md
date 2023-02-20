@@ -325,6 +325,39 @@ Running several times, for me, it shows that preparing in-memory metadata hashma
 
 Avro, as we've found out, is one of the fastest encoding frameworks. Let's try to leverage it and see whether it improves our Simple Database startup.
 
+Let's firstly rewrite all data:
+
+```java
+public static void main(String[] args) throws Exception {
+
+	final var indexOffsetMap = new HashMap<Long, Long>();
+
+	try (var simpleDatabase = new SimpleDatabaseWithAvro(new DatabaseInternals(DATABASE_PATH))) {
+
+		for (int i = 0; i < (Integer.MAX_VALUE / 1000); i++) {
+
+			final var write = simpleDatabase.databaseInternals.write(++simpleDatabase.lastIndex, """
+			"name":"John", "age":26, "salary":2147483646""");
+			indexOffsetMap.put(simpleDatabase.lastIndex, write.startOffset());
+		}
+
+		serializeMetadata(indexOffsetMap);
+	}
+}
+
+private static void serializeMetadata(Map<Long, Long> metadata) throws IOException {
+
+	final var metadataWriter = new GenericDatumWriter<Map>(SCHEMA);
+
+	try (final var metadataFileWriter = new DataFileWriter<>(metadataWriter)) {
+		metadataFileWriter.create(SCHEMA, METADATA_PATH.toFile());
+		metadataFileWriter.append(metadata);
+	}
+}
+```
+
+
+
 
 #### Ranges of indexes
 
