@@ -249,7 +249,61 @@ private static void serializeMetadata(Map<Long, Long> metadata) throws IOExcepti
 }
 ```
 
-Again, the `database.txt` file is the same size (around 130MB), however, there is a new file - `metadata.ser` which weights around 60MB. If you think that is a lot, well, we had a database in production, where indexes were 7x the size of the table. Anyway, we will shrink it down in upcoming iterations.
+Again, the `database.txt` file is the same size (around 130MB) and has the same content, however, there is a new file - `metadata.ser` which weights around 60MB. If you think that is a lot for a metadata file, well, we had a database in production, where indexes were 7x the size of the table. True story. Anyway, we will shrink it down in upcoming iterations.
+
+```java
+public class SimpleDatabase implements AutoCloseable {
+
+	private static final Path DATABASE_PATH = Path.of("database.txt");
+	private static final String METADATA_FILE_NAME = "metadata.ser";
+	private final Map<Long, Long> indexOffsetMap;
+
+	private long lastIndex;
+	private final DatabaseInternals databaseInternals;
+
+	public SimpleDatabase(DatabaseInternals databaseInternals) throws IOException {
+
+		this.databaseInternals = databaseInternals;
+		this.lastIndex =  databaseInternals.readLastIndex();
+		this.indexOffsetMap = readMetadata();
+	}
+
+	private static Map<Long, Long> readMetadata() {
+		try (final var in = new ObjectInputStream(new FileInputStream(METADATA_FILE_NAME))){
+			return (Map<Long, Long>) in.readObject();
+		} catch (IOException | ClassNotFoundException e) {
+			// Do nothing;
+		}
+		return new HashMap<>();
+	}
+
+	public static void main(String[] args) throws Exception {
+
+		try (var simpleDatabase = new SimpleDatabase(new DatabaseInternals(DATABASE_PATH))) {
+
+			final var now = Instant.now();
+			final var offset = simpleDatabase.indexOffsetMap.get(2147482L);
+			simpleDatabase.databaseInternals.readBlock(offset);
+			final var after = Instant.now();
+			System.out.println("Reading data: " + Duration.between(now, after).toMillis());
+		}
+	}
+
+	private static void serializeMetadata(Map<Long, Long> metadata) throws IOException {
+
+		try (final var out = new ObjectOutputStream(new FileOutputStream(METADATA_FILE_NAME))) {
+			out.writeObject(metadata);
+		}
+	}
+
+	@Override
+	public void close() throws Exception {
+		databaseInternals.close();
+	}
+}
+```
+
+If I read the last entry `2147482` or the first, the speed is pretty much constant - data is fetched between `10 - 20 ms`. This is happening, because file is no longer being traversed from start to finish. The database only needs to  
 
 
 
