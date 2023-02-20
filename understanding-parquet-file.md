@@ -58,7 +58,8 @@ public class SimpleDatabase {
 
 	private static final Path DATABASE_PATH = Path.of("database.txt");
 	private static final String ENTRY_TEMPLATE = "index:%d{%s}";
-	private static final Pattern INDEX_PATTERN_MATCHER = Pattern.compile("index:(\\d+)");
+	private static final Pattern ENTRY_PATTERN_MATCHER = Pattern.compile("""
+			index:(\\d+)\\{"name":"([\\w\\s]+)",\\s"age":(\\d+),\\s"salary":(\\d+)""");
 
 	public static void main(String[] args) throws IOException {
 
