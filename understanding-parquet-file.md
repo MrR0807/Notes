@@ -323,7 +323,7 @@ Running several times, for me, it shows that preparing in-memory metadata hashma
 
 #### Serializing and deserializing metadata with Avro
 
-Avro, as we've found out, is one of the fastest encoding frameworks. 
+Avro, as we've found out, is one of the fastest encoding frameworks. Let's try to leverage it and see whether it improves our Simple Database startup.
 
 
 #### Ranges of indexes
