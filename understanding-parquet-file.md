@@ -282,7 +282,7 @@ public class SimpleDatabase implements AutoCloseable {
 		try (var simpleDatabase = new SimpleDatabase(new DatabaseInternals(DATABASE_PATH))) {
 
 			final var now = Instant.now();
-			final var offset = simpleDatabase.indexOffsetMap.get(2147482L);
+			final var offset = simpleDatabase.indexOffsetMap.get(2147483L);
 			simpleDatabase.databaseInternals.readBlock(offset);
 			final var after = Instant.now();
 			System.out.println("Reading data: " + Duration.between(now, after).toMillis());
@@ -303,8 +303,21 @@ public class SimpleDatabase implements AutoCloseable {
 }
 ```
 
-If I read the last entry `2147482` or the first, the speed is pretty much constant - data is fetched between `10 - 20 ms`. This is happening, because file is no longer being traversed from start to finish. The database only needs to  
+If I read the last entry `2147483` or the first, the speed is pretty much constant - data is fetched between `10 - 20 ms`. This is possible, because file is no longer being traversed from start to finish. The database only needs to fetch offset according to index and seek file to the exact position. Blazing fast. The downside, as already stated in "Encoding" chapter, Java serialization and desrialization framework is notoriously slow. Let's time how long it takes for in-memory map to get serialized along with look up of last entry:
 
+```java
+public SimpleDatabase(DatabaseInternals databaseInternals) throws IOException {
+
+	this.databaseInternals = databaseInternals;
+	this.lastIndex =  databaseInternals.readLastIndex();
+	final var now = Instant.now();
+	this.indexOffsetMap = readMetadata();
+	final var after = Instant.now();
+	System.out.println("Reading metadata: " + Duration.between(now, after).toMillis());
+}
+```
+
+Running several times, for me, it shows that preparing in-memory metadata hashmap takes about `14000 ms`.
 
 
 
