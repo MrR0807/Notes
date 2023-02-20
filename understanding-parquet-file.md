@@ -95,33 +95,35 @@ public class SimpleDatabase {
 		return Files.readAllLines(DATABASE_PATH);
 	}
 
-	private Optional<String> readBy(long indexToFind) throws IOException {
+	private Optional<Entry> readBy(long indexToFind) throws IOException {
 
 		try (var lines = Files.lines(DATABASE_PATH)) {
 			return lines
 					.map(SimpleDatabase::fromLine)
-					.filter(indexAndLine -> indexAndLine.index == indexToFind)
-					.findFirst()
-					.map(IndexAndLine::line);
+					.filter(entry -> entry.index == indexToFind)
+					.findFirst();
 		}
 	}
 
-	private static IndexAndLine fromLine(String line) {
+	private static Entry fromLine(String line) {
 
-		final var matcher = INDEX_PATTERN_MATCHER.matcher(line);
+		final var matcher = ENTRY_PATTERN_MATCHER.matcher(line);
 
 		if (matcher.find()) {
 
 			final var index = matcher.group(1);
-			return new IndexAndLine(Long.parseLong(index), line);
+			final var name = matcher.group(2);
+			final var age = matcher.group(3);
+			final var salary = matcher.group(4);
+
+			return new Entry(Long.parseLong(index), name, Integer.parseInt(age), Integer.parseInt(salary));
 		}
 
 		throw new RuntimeException("Database is corrupted");
 	}
 
-	private record IndexAndLine(long index, String line) {
+	private record Entry(long index, String name, int age, int salary) {
 	}
-
 }
 ```
 
@@ -132,7 +134,7 @@ Running `main` should print:
 [index:1{"name":"John", "age":26, "salary":1000}, index:2{"name":"John", "age":27, "salary":2000}, index:3{"name":"John", "age":28, "salary":3000}, index:4{"name":"Marry", "age":26, "salary":1000}, index:5{"name":"Marry", "age":27, "salary":2000}]
 ----------
 **********
-Optional[index:3{"name":"John", "age":28, "salary":3000}]
+Optional[Entry[index=3, name=John, age=28, salary=3000]]
 **********
 ```
 
