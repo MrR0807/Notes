@@ -580,6 +580,7 @@ public class SimpleDatabaseWithAvro implements AutoCloseable {
 }
 ```
 
+**NOTE!** You might have noticed that I write data as `Map<Long, Long>` but read as `Map<Utf8, Long>`. Well, Avro, according to its documentation assumes that all map keys are to be strings.
 
 And reading part. I'm just adding different main, the class is absolutely the same:
 
