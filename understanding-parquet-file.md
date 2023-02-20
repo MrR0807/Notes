@@ -317,7 +317,12 @@ public SimpleDatabase(DatabaseInternals databaseInternals) throws IOException {
 }
 ```
 
-Running several times, for me, it shows that preparing in-memory metadata hashmap takes about `14000 ms`.
+Running several times, for me, it shows that preparing in-memory metadata hashmap takes about `14000 ms`. There are several ways to improve this:
+* Because indexes are ordered we no longer need to keep an index of all the keys in memory, but only couple of hundreds for example and read more data than required. This will shrink the `metadata.ser` and less memory required.
+* Use a more advanced encoding framework, e.g. Avro.
+
+
+
 
 
 
