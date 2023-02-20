@@ -221,7 +221,7 @@ It is clearly stated in stackoverflow post that `java.nio` with `FileChannel` is
 
 ```
 
-I will not go too deep into the implementation details of internals, but there are great blog posts on `java.nio.channels` usage[8][9][10][11] and a book[12]. 
+I will not explain the implementation details and if you want to read more about `java.nio.channels` usage there are great blogs[8][9][10][11] and a book[12]. 
 
 
 ### Resources
