@@ -604,7 +604,28 @@ Running this several times returns me that metadata is read in `800 - 1500 ms`. 
 
 #### Ranges of indexes
 
+Instead of saving each index's offset location, let's write every 1000 index's offset to metadata. The class is is completely the same as previous section, just main method is different:
 
+```java
+public static void main(String[] args) throws Exception {
+
+	final var indexOffsetMap = new HashMap<Long, Long>();
+
+	try (var simpleDatabase = new SimpleDatabaseWithAvro(new DatabaseInternals(DATABASE_PATH))) {
+
+		for (int i = 0; i < (Integer.MAX_VALUE / 1000); i++) {
+
+			final var write = simpleDatabase.databaseInternals.write(++simpleDatabase.lastIndex, """
+					"name":"John", "age":26, "salary":2147483646""");
+			if (i % 1000 == 0) {
+				indexOffsetMap.put(simpleDatabase.lastIndex, write.startOffset());
+			}
+		}
+
+		serializeMetadata(indexOffsetMap);
+	}
+}
+```
 
 
 
