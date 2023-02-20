@@ -167,12 +167,12 @@ public static void main(String[] args) throws IOException {
 	for (int i = 0; i < (Integer.MAX_VALUE / 1000); i++) {
 
 		simpleDatabase.writeToDatabase(i, """
-			"name":"John", "age":26, "salary":10000001290193103912""");
+			"name":"John", "age":26, "salary":2147483646""");
 	}
 }
 ```
 
-For me, this has generated a file "weighting" around 150 MB.
+For me, this has generated a file "weighting" around 130 MB.
 
 Let's try searching the the first and the last entries:
 
@@ -189,7 +189,7 @@ public static void main(String[] args) throws IOException {
 }
 ```
 
-Searching for the last entry (with `index:2147482`) takes around `600 - 800 ms`. While searching for the first index takes about `10 - 15 ms`.
+Searching for the last entry (with `index:2147482`) takes around `1000 - 1500 ms`. While searching for the first entry it takes about `30 - 40 ms`.
 
 ### Index
 
