@@ -211,6 +211,8 @@ A hashmap index implementation for our Java database:
 
 ```
 
+As you can see, there is a fundemantal rewrite of how Java database works now. Instead of relying on `Files` abstractions of, I had to implement it using [SeekableByteChannel](https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/nio/channels/SeekableByteChannel.html) and [ByteBuffer](https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/nio/ByteBuffer.html).
+
 
 ### Resources
 
