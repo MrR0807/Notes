@@ -155,9 +155,9 @@ The `writeToDatabase` has pretty good performance for something that is so simpl
 
 On the other hand, `readAllFromDatabase` and `readBy` has a terrible performance if you have a large number of records in your database:
 * `readAllFromDatabase` actually loads all of the data to memory. This means that big files (e.g. terabyte size) just won't fit. 
-* `readBy` is smarter, because it is streaming information without having to load it to memory, unfortunately it does this sequentially, essentially doing full table scan talking in SQL terms. In algorithmic terms, the cost of a lookup is `O(n)`: if you double the number of records n in your database, a lookup takes twice as long[1].
+* `readBy` is smarter, because it is streaming information without having to load it to memory, unfortunately it does this sequentially. Essentially doing full table scan talking in SQL terms. In algorithmic terms, the cost of a lookup is `O(n)`: if you double the number of records n in your database, a lookup takes twice as long[1].
 
-Let's generate some amount of data for this database and try small searching experiment:
+Let's generate more data for this database and do a short searching experiment:
 
 ```java
 public static void main(String[] args) throws IOException {
@@ -172,7 +172,7 @@ public static void main(String[] args) throws IOException {
 }
 ```
 
-For me, this has generated a file "weighting" around 130 MB.
+For me, this has generated a file with size of around 130 MB.
 
 Let's try searching the the first and the last entries:
 
@@ -412,6 +412,8 @@ public class DatabaseInternals implements AutoCloseable {
 }
 ```
 
+I will explain initial parts and then continue to add once the methods are used in further examples. TODO.
+
 I will not explain the implementation details and if you want to read more about `java.nio.channels` usage there are great blogs[8][9][10][11] and a book[12]. Also, this implementation is not super optimised and readable, but I might improve it over time. For now, it is a good starting point.
 
 Let's generate same data, but this time with metadata:
@@ -494,7 +496,7 @@ public class SimpleDatabase implements AutoCloseable {
 }
 ```
 
-If I read the last entry `2147483` or the first, the speed is pretty much constant - data is fetched between `10 - 20 ms`. This is possible, because file is no longer being traversed from start to finish. The database only needs to fetch offset according to index and seek file to the exact position. Blazing fast. The downside, as already stated in "Encoding" chapter, Java serialization and desrialization framework is notoriously slow. Let's time how long it takes for in-memory map to get deserialized along with look up of last entry:
+If I read the last entry `2147483` or the first, the speed is pretty much constant - data is fetched between `10 - 20 ms`. This is possible, because the file is no longer being traversed from start to finish. The database only needs to fetch offset according to an index and seek file to the exact position. Blazing fast. The downside, as already stated in "Encoding" chapter, Java serialization and desrialization framework is notoriously slow. Let's time how long it takes for in-memory map to get deserialized along with look up of last entry:
 
 ```java
 public SimpleDatabase(DatabaseInternals databaseInternals) throws IOException {
@@ -509,12 +511,12 @@ public SimpleDatabase(DatabaseInternals databaseInternals) throws IOException {
 ```
 
 Running several times, for me, it shows that preparing in-memory metadata hashmap takes about `14000 ms`. There are several ways to improve this:
+* Use a more compact encoding framework, e.g. Avro.
 * Because indexes are ordered we no longer need to keep an index of all the keys in memory, but only every couple of hundreds for example and read more data than required. This will shrink the `metadata.ser` however will slightly increase read part.
-* Use a more advanced encoding framework, e.g. Avro.
 
 #### Serializing and deserializing metadata with Avro
 
-Avro, as we've found out (in "Encoding" chapter), is one of the fastest encoding frameworks. Let's try to leverage it and see whether it improves our Simple Database startup.
+Avro, as we've found out (in "Encoding" chapter), is one of the efficient encoding frameworks. Let's try to leverage it and see whether it improves our Simple Database startup.
 
 Let's firstly rewrite all data so we have offset metadata in Avro format. Full class:
 
@@ -593,9 +595,9 @@ public class SimpleDatabaseWithAvro implements AutoCloseable {
 }
 ```
 
-**NOTE!** You might have noticed that I wrote data as `Map<Long, Long>` but read as `Map<Utf8, Long>`. Well, Avro, according to its documentation assumes that all map keys are to be strings. And automatic deserialization returns keys as their type.
+**NOTE!** You might have noticed that I wrote data as `Map<Long, Long>` but read as `Map<Utf8, Long>`. Well, Avro, according to its documentation, assumes that all map keys are to be strings. And automatic deserialization returns keys of their class type - `org.apache.avro.util.Utf8`.
 
-Below is the reading part. I'm just adding different main, but the class is absolutely the same:
+Below is the reading part. I'm just adding a different main, but the class is absolutely the same:
 
 
 ```java
@@ -613,7 +615,7 @@ public static void main(String[] args) throws Exception {
 }
 ```
 
-Running this several times returns me that metadata in `800 - 1500 ms`. This is a 10-18x improvement. Remember from "Columnar data layout" chapter, shrinking the size of metadata file is not to primarily save space, but to optimise disk transfer part. Oh, and `metadata.avro` file is about 25 MB.
+Running this several times show that metadata is read in `800 - 1500 ms`. This is a 10-18x improvement! Remember from "Columnar data layout" chapter - shrinking the size of metadata file is primarily not to save space, but to optimise disk transfer. Oh, and `metadata.avro` file is about 25 MB.
 
 #### Ranges of indexes
 
@@ -640,7 +642,7 @@ public static void main(String[] args) throws Exception {
 }
 ```
 
-The difference is that `metadata.avro` file's size is 25 KB. Reading part is only a little different:
+This creates a `metadata.avro` file with size of 25 KB. Reading part is only a little different:
 
 ```java
 public static void main(String[] args) throws Exception {
@@ -660,11 +662,11 @@ public static void main(String[] args) throws Exception {
 }
 ```
 
-Because we saved offsets every 1000, then last entry, which id is `2147483`, will be in last range which starts from `2147000`. Hence the `final var offsetToLook = (indexToSearch % 1000) * 1000;`, which returns exactly that. The remaining code is exactly the same. Running this several times yields me these results:
+Because we saved offsets every 1000, then last entry, with id `2147483`, will be in `2147000` index, containing last range's starting offset. Hence the `final var offsetToLook = (indexToSearch / 1000) * 1000;`, returns exactly that. The remaining code is the same. Running this several times yields me these results:
 * Reading metadata takes: `200 - 500 ms`.
 * Finding correct entry with index `2147483`: `15-30ms`.
 
-In this exercise we have improved metadata ingestion speed, shrank `metadata.avro` file size 1000x times and did not lose a lot of searching part. 
+In this exercise we have improved metadata ingestion speed, shrank `metadata.avro` file size 1000x times and did not lose out a lot in searching part.
 
 #### Multiple files
 
