@@ -651,7 +651,7 @@ public static void main(String[] args) throws Exception {
 		final var offsetToLook = (indexToSearch / 1000) * 1000;
 
 		final var now = Instant.now();
-		final var offset = simpleDatabase.avroIndexOffsetMap.get(new Utf8(String.valueOf(offsetToLook)));
+		final var offset = simpleDatabase.avroIndexOffsetMap.getOrDefault(new Utf8(String.valueOf(offsetToLook)), 0L);
 		final var entry = simpleDatabase.databaseInternals.findEntryFrom(offset, indexToSearch);
 		System.out.println(entry);
 		final var after = Instant.now();
