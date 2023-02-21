@@ -219,12 +219,9 @@ public class DatabaseInternals implements AutoCloseable {
 
 	private static final int DEFAULT_BUFFER_SIZE = 8192;
 	private static final int END_OF_THE_LINE_HEX = 0x0A;
-	private static final int COLON_HEX = 0x3a;
-	private static final int CURLY_BRACELETS_HEX = 0x7b;
-	private final int lastBlockLength;
 	private final long totalBlockCount;
-	private final long fileSize;
 	private final SeekableByteChannel seekableByteChannel;
+	private final ByteBuffer buffer = ByteBuffer.allocate(DEFAULT_BUFFER_SIZE);
 
 	private static final Pattern ENTRY_PATTERN_MATCHER = Pattern.compile("""
 			index:(\\d+)\\{"name":"([\\w\\s]+)",\\s"age":(\\d+),\\s"salary":(\\d+)""");
@@ -234,105 +231,108 @@ public class DatabaseInternals implements AutoCloseable {
 		try {
 			this.seekableByteChannel = Files.newByteChannel(file, StandardOpenOption.READ, StandardOpenOption.WRITE, StandardOpenOption.CREATE);
 			final var size = seekableByteChannel.size();
-
-			int lastBlockLength = (int) size % DEFAULT_BUFFER_SIZE;
-			long totalBlockCount;
+			final var lastBlockLength = size % DEFAULT_BUFFER_SIZE;
 
 			if (lastBlockLength > 0) {
-				totalBlockCount = size / DEFAULT_BUFFER_SIZE + 1;
+				this.totalBlockCount = size / DEFAULT_BUFFER_SIZE + 1;
 			} else {
-				totalBlockCount = size / DEFAULT_BUFFER_SIZE;
-				if (size > 0) {
-					lastBlockLength = DEFAULT_BUFFER_SIZE;
-				}
+				this.totalBlockCount = size / DEFAULT_BUFFER_SIZE;
 			}
-
-			this.lastBlockLength = lastBlockLength;
-			this.totalBlockCount = totalBlockCount;
-			this.fileSize = size;
 		} catch (IOException e) {
 			throw new RuntimeException(e);
 		}
 	}
 
-	public List<Entry> readBlock(long offset) throws IOException {
+	public Optional<Entry> findEntryFrom(long offset, long index) throws IOException {
 
-		final var buffer = ByteBuffer.allocate(DEFAULT_BUFFER_SIZE);
-		seekableByteChannel.position(offset);
-		seekableByteChannel.read(buffer);
-		buffer.flip();
-		final var entries = readRecord(buffer);
-		buffer.clear();
-		return entries;
+		var newOffset = offset;
+
+		//Recursion is not the answer
+
+		while (true) {
+
+			buffer.clear();
+			readIntoBufferFromOffset(buffer, newOffset);
+
+			if (buffer.limit() == 0) {
+				break;
+			}
+
+			final var entriesAndLastValidOffset = readRecord(buffer);
+			final var maybeFoundEntry = entriesAndLastValidOffset.entries.stream()
+					.filter(entry -> entry.index == index)
+					.findFirst();
+
+			if (maybeFoundEntry.isPresent()) {
+				return maybeFoundEntry;
+			} else {
+				newOffset += entriesAndLastValidOffset.lastCorrectOffset;
+			}
+		}
+
+		return Optional.empty();
 	}
 
+	public List<Entry> readBlock(long offset) throws IOException {
+
+		buffer.clear();
+		readIntoBufferFromOffset(buffer, offset);
+		final var entriesAndLastValidOffset = readRecord(buffer);
+		return entriesAndLastValidOffset.entries;
+	}
+
+	/**
+	 * This is complicated from the first view, but let me explain. Firstly we check whether the file is empty or not. If empty, return.
+	 * Next I read the last block. Remember from constructor, that blocks start from 1. If a file contains 10 bytes, totalBlockCount would be equal to 1,
+	 * and if I did not have subtraction it would evaluate to `DEFAULT_BUFFER_SIZE * totalBlockCount` = 8192 and I would start reading at the end of the file.
+	 * Next I check whether first entry starts at the correct point.
+	 */
 	public long readLastIndex() throws IOException {
 
 		if (seekableByteChannel.size() == 0) {
 			return 0;
 		}
+		buffer.clear();
 
-		final var buffer = ByteBuffer.allocate(DEFAULT_BUFFER_SIZE);
-		if (fileSize > DEFAULT_BUFFER_SIZE) {
-			seekableByteChannel.position(DEFAULT_BUFFER_SIZE * (totalBlockCount - 2));
-			seekableByteChannel.read(buffer);
+		final var offsetOfLastBlock = DEFAULT_BUFFER_SIZE * (totalBlockCount - 1);
+		readIntoBufferFromOffset(buffer, offsetOfLastBlock);
+		if (startsWithValidEntry(buffer)) {
+			buffer.rewind();
+			final var entriesAndLastValidOffsets = readRecord(buffer);
+			final var lastEntry = entriesAndLastValidOffsets.entries.get(entriesAndLastValidOffsets.entries.size() - 1);
+			return lastEntry.index;
 		} else {
-			seekableByteChannel.position(0);
-			seekableByteChannel.read(buffer);
+			// Read before last block to find last valid entry's new line offset
+			buffer.clear();
+			readIntoBufferFromOffset(buffer, DEFAULT_BUFFER_SIZE * (totalBlockCount - 2));
+			final var lastNewLineOffset = seekToLastNewLine(buffer);
+			// Start reading from correct starting offset
+			buffer.clear();
+			readIntoBufferFromOffset(buffer, (DEFAULT_BUFFER_SIZE * (totalBlockCount - 1)) - (DEFAULT_BUFFER_SIZE - lastNewLineOffset));
+			final var entriesAndLastValidOffsets = readRecord(buffer);
+			final var lastEntry = entriesAndLastValidOffsets.entries.get(entriesAndLastValidOffsets.entries.size() - 1);
+			return lastEntry.index;
 		}
+	}
 
+	private void readIntoBufferFromOffset(ByteBuffer buffer, long offset) throws IOException {
+		seekableByteChannel.position(offset);
+		seekableByteChannel.read(buffer);
 		buffer.flip();
-		final var lastRecordPosition = readLastRecordPosition(buffer);
-		buffer.position( (int) lastRecordPosition.startOffset);
-		return readLastRecordIndex(buffer);
 	}
 
-	private static EntryPosition readLastRecordPosition(ByteBuffer buffer) {
-		int lineStart = buffer.position() - 1;
-		int lineEnd = 0;
+	private boolean startsWithValidEntry(ByteBuffer buffer) {
 
-		while (buffer.hasRemaining()) {
-
-			final var x = buffer.get();
-			if (END_OF_THE_LINE_HEX == x) {
-				lineEnd = buffer.position();
-				byte[] s = new byte[lineEnd - lineStart];
-				final var slice = buffer.slice(lineStart, lineEnd - lineStart);
-				slice.get(s);
-			}
-
-			if (buffer.position() == lineEnd + 1) {
-				lineStart = buffer.position() - 1;
-			}
+		try {
+			readRecord(buffer);
+			return true;
+		} catch (InvalidParameterException e) {
+			return false;
 		}
-
-		return new EntryPosition(lineStart, lineEnd);
 	}
 
-	private static long readLastRecordIndex(ByteBuffer buffer) {
-		int startOfIndex = 0;
-		int endOfIndex = 0;
+	private static EntriesAndLastValidOffset readRecord(ByteBuffer buffer) {
 
-		while (buffer.hasRemaining()) {
-			final var b = buffer.get();
-
-			if (b == COLON_HEX) {
-				startOfIndex = buffer.position();
-			}
-
-			if (b == CURLY_BRACELETS_HEX) {
-				endOfIndex = buffer.position() - 1;
-				break;
-			}
-		}
-
-		final var slice = buffer.slice(startOfIndex, endOfIndex - startOfIndex);
-		byte[] indexValue = new byte[endOfIndex - startOfIndex];
-		slice.get(indexValue);
-		return Long.parseLong(new String(indexValue, StandardCharsets.UTF_8));
-	}
-
-	private static List<Entry> readRecord(ByteBuffer buffer) {
 		int lineStart = buffer.position() - 1;
 		int lineEnd = 0;
 		final var entries = new ArrayList<Entry>();
@@ -353,7 +353,13 @@ public class DatabaseInternals implements AutoCloseable {
 				lineStart = buffer.position() - 1;
 			}
 		}
-		return entries;
+		return new EntriesAndLastValidOffset(entries, lineEnd);
+	}
+
+	private record Entry(long index, String name, int age, int salary) {
+	}
+
+	private record EntriesAndLastValidOffset(List<Entry> entries, long lastCorrectOffset) {
 	}
 
 	private static Entry fromLine(String line) {
@@ -370,14 +376,18 @@ public class DatabaseInternals implements AutoCloseable {
 			return new Entry(Long.parseLong(index), name, Integer.parseInt(age), Integer.parseInt(salary));
 		}
 
-		throw new RuntimeException("Database is corrupted");
+		throw new InvalidParameterException("Database is corrupted");
 	}
 
-	private record Entry(long index, String name, int age, int salary) {
-
-	}
-	public record EntryPosition(long startOffset, long endOffset) {
-
+	private static long seekToLastNewLine(ByteBuffer buffer) {
+		int lineEnd = 0;
+		while (buffer.hasRemaining()) {
+			final var x = buffer.get();
+			if (END_OF_THE_LINE_HEX == x) {
+				lineEnd = buffer.position();
+			}
+		}
+		return lineEnd;
 	}
 
 	private static final String ENTRY_TEMPLATE = "index:%d{%s}\n";
@@ -390,6 +400,9 @@ public class DatabaseInternals implements AutoCloseable {
 		return new EntryPosition(startOffset, seekableByteChannel.position());
 	}
 
+	public record EntryPosition(long startOffset, long endOffset) {
+
+	}
 
 	@Override
 	public void close() throws Exception {
@@ -627,12 +640,31 @@ public static void main(String[] args) throws Exception {
 }
 ```
 
-The difference is that `metadata.avro` file's size is 25 KB. Reading part is also a little bit different:
+The difference is that `metadata.avro` file's size is 25 KB. Reading part is only a little different:
 
 ```java
+public static void main(String[] args) throws Exception {
 
+	try (var simpleDatabase = new SimpleDatabaseWithAvro(new DatabaseInternals(DATABASE_PATH))) {
 
+		final var indexToSearch = 2147483;
+		final var offsetToLook = (indexToSearch / 1000) * 1000;
+
+		final var now = Instant.now();
+		final var offset = simpleDatabase.avroIndexOffsetMap.get(new Utf8(String.valueOf(offsetToLook)));
+		final var entry = simpleDatabase.databaseInternals.findEntryFrom(offset, indexToSearch);
+		System.out.println(entry);
+		final var after = Instant.now();
+		System.out.println("Reading data: " + Duration.between(now, after).toMillis());
+	}
+}
 ```
+
+Because we saved offsets every 1000, then last entry, which id is `2147483`, will be in last range which starts from `2147000`. Hence the `final var offsetToLook = (indexToSearch % 1000) * 1000;`, which returns exactly that. The remaining code is exactly the same. Running this several times yields me these results:
+* Reading metadata takes: `200 - 500 ms`.
+* Finding correct entry with index `2147483`: `15-30ms`.
+
+In this exercise we have improved metadata ingestion speed, shrank `metadata.avro` file size 1000x times and did not lose a lot of searching part. 
 
 
 
