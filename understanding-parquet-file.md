@@ -580,9 +580,9 @@ public class SimpleDatabaseWithAvro implements AutoCloseable {
 }
 ```
 
-**NOTE!** You might have noticed that I write data as `Map<Long, Long>` but read as `Map<Utf8, Long>`. Well, Avro, according to its documentation assumes that all map keys are to be strings.
+**NOTE!** You might have noticed that I wrote data as `Map<Long, Long>` but read as `Map<Utf8, Long>`. Well, Avro, according to its documentation assumes that all map keys are to be strings. And automatic deserialization returns keys as their type.
 
-And reading part. I'm just adding different main, the class is absolutely the same:
+Below is the reading part. I'm just adding different main, but the class is absolutely the same:
 
 
 ```java
@@ -600,7 +600,7 @@ public static void main(String[] args) throws Exception {
 }
 ```
 
-Running this several times returns me that metadata is read in `800 - 1500 ms`. This is a 10-18x improvement. Remember from "Columnar data layout" chapter, shrinking the size of metadata file is not to primarily save space, but to optimise disk transfer part. Oh, and `metadata.avro` file is about 25 MB.
+Running this several times returns me that metadata in `800 - 1500 ms`. This is a 10-18x improvement. Remember from "Columnar data layout" chapter, shrinking the size of metadata file is not to primarily save space, but to optimise disk transfer part. Oh, and `metadata.avro` file is about 25 MB.
 
 #### Ranges of indexes
 
