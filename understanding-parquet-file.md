@@ -666,6 +666,12 @@ Because we saved offsets every 1000, then last entry, which id is `2147483`, wil
 
 In this exercise we have improved metadata ingestion speed, shrank `metadata.avro` file size 1000x times and did not lose a lot of searching part. 
 
+#### Multiple files
+
+#### Looking for name
+
+##### Bloom Filter
+
 
 
 
