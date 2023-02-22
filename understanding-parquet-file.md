@@ -37,16 +37,7 @@ In this section I will use the idea from Designing Data Intensive Applications b
 
 Instead of `bash` scripts and thought exercises, I'll build a simple database in Java and explore simplified metadata and index concepts. 
 
-In named book, author also explores compaction, SSTables, LSM trees etc. I will not do that in this chapter, mainly because Parquet does not utlise any of those practices. Despite that, they are useful concepts to understand, because databases which can process Parquet files might apply them, hence reading "Designing Data Intensive Applications" book's "Storage and Retrieval"
-
-
-
-
-One of key components in Parquet is metadata. Metadata allows for quick seek of information.....
-
-log-structured storage engines, because it is very familiar to Parquet compared to something like page-oriented storage engines such as B-trees.
-
-There are two families of storage engines: log-structured storage engines, and page-oriented storage engines such as B-trees[1]. In upcoming sections I'll build a simple log-structured storage to emphasize metadata.
+In named book, author also explores compaction, SSTables, LSM trees etc. I will not do that in this chapter, mainly because Parquet does not utlise any of those practices. Despite that, they are useful concepts to understand, because databases which can process Parquet files might apply them, hence reading "Designing Data Intensive Applications" book's "Storage and Retrieval" is a good prerequisite.
 
 ### Simple database
 
