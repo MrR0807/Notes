@@ -33,10 +33,11 @@ Google BigQuery book why Parquet was created.
 
 ## File's metadata importance
 
-In this section will use the idea from Designing Data-Intensive Applications book[1] to portrait metadata usefulness. In named book, author explores metadata concept by introducing a simple, bash database.  
+In this section I will use the idea from Designing Data Intensive Applications book[1] to portray metadata usefulness. In named book, author explores metadata concept by introducing a simple, bash database. 
 
+Instead of `bash` scripts and thought exercises, I'll build a simple database in Java and explore simplified metadata and index concepts. 
 
-Instead of `bash` scripts and thought practices, I'll build a simple database in Java and explore simplified metadata and indexes. Also, I will not implement compaction, because Parquet does not formulate such practices. However, those practices could be implemented in downstream specialised databases for which Parquet files acts as an input.
+In named book, author also explores compaction, SSTables, LSM trees etc. I will not do that in this chapter, mainly because Parquet does not utlise any of those practices. Despite that, they are useful concepts to understand, because databases which can process Parquet files might apply them, hence reading "Designing Data Intensive Applications" book's "Storage and Retrieval"
 
 
 
