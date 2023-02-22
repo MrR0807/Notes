@@ -626,6 +626,11 @@ Because we saved offsets every 1000, then last entry, with id `2147483`, will be
 
 In this exercise we have improved metadata ingestion speed, shrank `metadata.avro` file size 1000x times and did not lose out a lot in searching part.
 
+#### Non existing index
+
+Say, 
+
+
 #### Multiple files
 
 Most modern databases do not contain all data in one file. For example, MySQL has a configuration called `innodb_file_per_table`, which stores data and indexes for a single table in a single data file. Furtheremore, when partitioning gets involved, each table can be separated into more files. Let's create two files instead of one to represent this scenario and explore what happens.
