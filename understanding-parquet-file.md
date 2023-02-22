@@ -628,7 +628,7 @@ In this exercise we have improved metadata ingestion speed, shrank `metadata.avr
 
 #### Non existing index
 
-Say, 
+Say, I would search for an index which does not exist - `7777777`. Our current database implementation would have to scan through all entries. 
 
 
 #### Multiple files
@@ -642,7 +642,6 @@ Create data with metadata:
 
 
 ```
-
 
 #### Looking for name
 
