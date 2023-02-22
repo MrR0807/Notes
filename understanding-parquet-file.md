@@ -20,675 +20,16 @@ What is not explicitly emphasized that Parquet is built on top of several soluti
 
 Components that I'm going to address:
 * MapReduce
-* File's metadata importance
 * Columnar data layout
 * Nested columnar data layout (Google's Dremel)
 * Encoding (e.g. Avro, Thrift)
+* File's metadata importance
 
 ## MapReduce
 
 TODO.
 
 Google BigQuery book why Parquet was created.
-
-## File's metadata importance
-
-In this section I will use the idea from Designing Data Intensive Applications book[1] to portray metadata usefulness. In named book, author explores metadata concept by introducing a simple, bash database. 
-
-Instead of `bash` scripts and thought exercises, I'll build a simple database in Java and explore simplified metadata and index concepts. 
-
-In named book, author also explores compaction, SSTables, LSM trees etc. I will not do that in this chapter, mainly because Parquet does not utlise any of those practices. Despite that, they are useful concepts to understand, because databases which can process Parquet files might apply them, hence reading "Designing Data Intensive Applications" book's "Storage and Retrieval" is a good prerequisite.
-
-### Simple database
-
-On the most fundamental level, a database needs to do two things: when you give it some data, it should store the data, and when you ask it again later, it should give the data back to you[1].
-
-Let's start with simple case:
-
-```java
-public class SimpleDatabase {
-
-	private static final Path DATABASE_PATH = Path.of("database.txt");
-	private static final String ENTRY_TEMPLATE = "index:%d{%s}";
-	private static final Pattern ENTRY_PATTERN_MATCHER = Pattern.compile("""
-			index:(\\d+)\\{"name":"([\\w\\s]+)",\\s"age":(\\d+),\\s"salary":(\\d+)""");
-
-	public static void main(String[] args) throws IOException {
-
-		final var simpleDatabase = new SimpleDatabase();
-		simpleDatabase.writeToDatabase(1, """
-				"name":"John", "age":26, "salary":1000""");
-		simpleDatabase.writeToDatabase(2, """
-				"name":"John", "age":27, "salary":2000""");
-		simpleDatabase.writeToDatabase(3, """
-				"name":"John", "age":28, "salary":3000""");
-		simpleDatabase.writeToDatabase(4, """
-				"name":"Marry", "age":26, "salary":1000""");
-		simpleDatabase.writeToDatabase(5, """
-				"name":"Marry", "age":27, "salary":2000""");
-
-
-		System.out.println("-".repeat(10));
-		System.out.println(simpleDatabase.readAllFromDatabase());
-		System.out.println("-".repeat(10));
-
-
-		System.out.println("*".repeat(10));
-		System.out.println(simpleDatabase.readBy(3));
-		System.out.println("*".repeat(10));
-	}
-
-	private void writeToDatabase(long index, String data) throws IOException {
-
-		final var entry = ENTRY_TEMPLATE.formatted(index, data);
-		Files.write(DATABASE_PATH, List.of(entry), StandardOpenOption.APPEND, StandardOpenOption.CREATE);
-	}
-
-	private List<String> readAllFromDatabase() throws IOException {
-		return Files.readAllLines(DATABASE_PATH);
-	}
-
-	private Optional<Entry> readBy(long indexToFind) throws IOException {
-
-		try (var lines = Files.lines(DATABASE_PATH)) {
-			return lines
-					.map(SimpleDatabase::fromLine)
-					.filter(entry -> entry.index == indexToFind)
-					.findFirst();
-		}
-	}
-
-	private static Entry fromLine(String line) {
-
-		final var matcher = ENTRY_PATTERN_MATCHER.matcher(line);
-
-		if (matcher.find()) {
-
-			final var index = matcher.group(1);
-			final var name = matcher.group(2);
-			final var age = matcher.group(3);
-			final var salary = matcher.group(4);
-
-			return new Entry(Long.parseLong(index), name, Integer.parseInt(age), Integer.parseInt(salary));
-		}
-
-		throw new RuntimeException("Database is corrupted");
-	}
-
-	private record Entry(long index, String name, int age, int salary) {
-	}
-}
-```
-
-Running `main` should print:
-
-```
-----------
-[index:1{"name":"John", "age":26, "salary":1000}, index:2{"name":"John", "age":27, "salary":2000}, index:3{"name":"John", "age":28, "salary":3000}, index:4{"name":"Marry", "age":26, "salary":1000}, index:5{"name":"Marry", "age":27, "salary":2000}]
-----------
-**********
-Optional[Entry[index=3, name=John, age=28, salary=3000]]
-**********
-```
-
-And there should be a new file - `database.txt` with content:
-
-```
-index:1{"name":"John", "age":26, "salary":1000}
-index:2{"name":"John", "age":27, "salary":2000}
-index:3{"name":"John", "age":28, "salary":3000}
-index:4{"name":"Marry", "age":26, "salary":1000}
-index:5{"name":"Marry", "age":27, "salary":2000}
-```
-
-This implementation creates a key-value store. The underlying storage format is very simple: a text file where each line contains a key-value pair, separated by a comma (roughly like a CSV file, ignoring escaping issues).  Every call to `writeToDatabase` appends to the end of the file, so if you update a key several times, the old versions of the value are not overwritten — you need to look at the last occurrence of a key in a file to find the latest value[1]. This is pretty much how Parquet represents its data as well as in, it just appends data to the end of the file without trying to update by some key or executing any other complicated data manipulation like compaction[2] or Apache Iceberg's position delete files[3].
-
-The `writeToDatabase` has pretty good performance for something that is so simple, because appending to a file is generally very efficient[1]. Similarly to what `writeToDatabase` does, many databases internally use a log, which is an append-only data file (e.g. Write Ahead Log). Real databases have more issues to deal with (such as concurrency control, reclaiming disk space so that the log doesn’t grow forever, and handling errors and partially written records), but the basic principle is the same[1].
-
-On the other hand, `readAllFromDatabase` and `readBy` has a terrible performance if you have a large number of records in your database:
-* `readAllFromDatabase` actually loads all of the data to memory. This means that big files (e.g. terabyte size) just won't fit. 
-* `readBy` is smarter, because it is streaming information without having to load it to memory, unfortunately it does this sequentially. Essentially doing full table scan talking in SQL terms. In algorithmic terms, the cost of a lookup is `O(n)`: if you double the number of records n in your database, a lookup takes twice as long[1].
-
-Let's generate more data for this database and do a short searching experiment:
-
-```java
-public static void main(String[] args) throws IOException {
-
-	final var simpleDatabase = new SimpleDatabase();
-
-	for (int i = 0; i < (Integer.MAX_VALUE / 1000); i++) {
-
-		simpleDatabase.writeToDatabase(i, """
-			"name":"John", "age":26, "salary":2147483646""");
-	}
-}
-```
-
-For me, this has generated a file with size of around 130 MB.
-
-Let's try searching the the first and the last entries:
-
-```java
-public static void main(String[] args) throws IOException {
-
-	final var simpleDatabase = new SimpleDatabase();
-
-	final var now = Instant.now();
-	System.out.println(simpleDatabase.readBy(2147482));
-	final var after = Instant.now();
-
-	System.out.println(Duration.between(now, after).toMillis());
-}
-```
-
-Searching for the last entry (with `index:2147482`) takes around `1000 - 1500 ms`. While searching for the first entry it takes about `30 - 40 ms`.
-
-### Index
-
-In order to efficiently find the value for a particular key in the database, we need a different data structure: an index. The general idea behind them is to keep some additional metadata on the side, which acts as a signpost and helps you to locate the data you want. If you want to search the same data in several different ways, you may need several different indexes on different parts of the data[1].
-
-An index is an additional structure that is derived from the primary data. Many databases allow you to add and remove indexes, and this doesn’t affect the contents of the database; it only affects the performance of queries. Maintaining additional structures incurs overhead, especially on writes. For writes, it’s hard to beat the performance of simply appending to a file, because that’s the simplest possible write operation. Any kind of index usually slows down writes, because the index also needs to be updated every time data is written[1].
-
-#### Hash Indexes
-
-Let’s start with indexes for key-value data. This is not the only kind of data you can index, but it’s very common, and it’s a useful building block for more complex indexes[1].
-
-Key-value stores are quite similar to the dictionary type that you can find in most programming languages, and which is usually implemented as a hash map (hash table)[1].
-
-Let’s say our data storage consists only of appending to a file, as in the preceding example. Then the simplest possible indexing strategy is this: keep an in-memory hash map where every key is mapped to a byte offset in the data file - the location at which the value can be found. Whenever you append a new key-value pair to the file, you also update the hash map to reflect the offset of the data you just wrote (this works both for inserting new keys and for updating existing keys). When you want to look up a value, use the hash map to find the offset in the data file, seek to that location, and read the value [1].
-
-
-#### Implementation
-
-In order to know offset position during our writes and then read from given offset positions, I will have to rewrite Java database from ground up. This is because `Files` abstractions lack any such controls and deemed them too low level. There are a couple of options for rewrite:
-* `RandomAccessFile`[4].
-* `SeekableByteChannel`[5].
-
-It is clearly stated in stackoverflow post that `java.nio` with `FileChannel` is faster by about >250% compared with `FileInputStream/FileOuputStream`[6], however, the difference between `RandomAccessFile` and `SeekableByteChannel` is not conclusive or well documented. I have found several instances, which claim that `SeekableByteChannel` is faster[7], but this is yet to be tested in another time. Anyway, I have chose to use `SeekableByteChannel`.
-
-```java
-public class DatabaseInternals implements AutoCloseable {
-
-	private static final int DEFAULT_BUFFER_SIZE = 8192;
-	private static final int END_OF_THE_LINE_HEX = 0x0A;
-	private final long totalBlockCount;
-	private final SeekableByteChannel seekableByteChannel;
-	private final ByteBuffer buffer = ByteBuffer.allocate(DEFAULT_BUFFER_SIZE);
-
-	private static final Pattern ENTRY_PATTERN_MATCHER = Pattern.compile("""
-			index:(\\d+)\\{"name":"([\\w\\s]+)",\\s"age":(\\d+),\\s"salary":(\\d+)""");
-
-	public DatabaseInternals(Path file) {
-
-		try {
-			this.seekableByteChannel = Files.newByteChannel(file, StandardOpenOption.READ, StandardOpenOption.WRITE, StandardOpenOption.CREATE);
-			final var size = seekableByteChannel.size();
-			final var lastBlockLength = size % DEFAULT_BUFFER_SIZE;
-
-			if (lastBlockLength > 0) {
-				this.totalBlockCount = size / DEFAULT_BUFFER_SIZE + 1;
-			} else {
-				this.totalBlockCount = size / DEFAULT_BUFFER_SIZE;
-			}
-		} catch (IOException e) {
-			throw new RuntimeException(e);
-		}
-	}
-
-	public Optional<Entry> findEntryFrom(long offset, long index) throws IOException {
-
-		var newOffset = offset;
-
-		//Recursion is not the answer
-
-		while (true) {
-
-			buffer.clear();
-			readIntoBufferFromOffset(buffer, newOffset);
-
-			if (buffer.limit() == 0) {
-				break;
-			}
-
-			final var entriesAndLastValidOffset = readRecord(buffer);
-			final var maybeFoundEntry = entriesAndLastValidOffset.entries.stream()
-					.filter(entry -> entry.index == index)
-					.findFirst();
-
-			if (maybeFoundEntry.isPresent()) {
-				return maybeFoundEntry;
-			} else {
-				newOffset += entriesAndLastValidOffset.lastCorrectOffset;
-			}
-		}
-
-		return Optional.empty();
-	}
-
-	public List<Entry> readBlock(long offset) throws IOException {
-
-		buffer.clear();
-		readIntoBufferFromOffset(buffer, offset);
-		final var entriesAndLastValidOffset = readRecord(buffer);
-		return entriesAndLastValidOffset.entries;
-	}
-
-	/**
-	 * This is complicated from the first view, but let me explain. Firstly we check whether the file is empty or not. If empty, return.
-	 * Next I read the last block. Remember from constructor, that blocks start from 1. If a file contains 10 bytes, totalBlockCount would be equal to 1,
-	 * and if I did not have subtraction it would evaluate to `DEFAULT_BUFFER_SIZE * totalBlockCount` = 8192 and I would start reading at the end of the file.
-	 * Next I check whether first entry starts at the correct point.
-	 */
-	public long readLastIndex() throws IOException {
-
-		if (seekableByteChannel.size() == 0) {
-			return 0;
-		}
-		buffer.clear();
-
-		final var offsetOfLastBlock = DEFAULT_BUFFER_SIZE * (totalBlockCount - 1);
-		readIntoBufferFromOffset(buffer, offsetOfLastBlock);
-		if (startsWithValidEntry(buffer)) {
-			buffer.rewind();
-			final var entriesAndLastValidOffsets = readRecord(buffer);
-			final var lastEntry = entriesAndLastValidOffsets.entries.get(entriesAndLastValidOffsets.entries.size() - 1);
-			return lastEntry.index;
-		} else {
-			// Read before last block to find last valid entry's new line offset
-			buffer.clear();
-			readIntoBufferFromOffset(buffer, DEFAULT_BUFFER_SIZE * (totalBlockCount - 2));
-			final var lastNewLineOffset = seekToLastNewLine(buffer);
-			// Start reading from correct starting offset
-			buffer.clear();
-			readIntoBufferFromOffset(buffer, (DEFAULT_BUFFER_SIZE * (totalBlockCount - 1)) - (DEFAULT_BUFFER_SIZE - lastNewLineOffset));
-			final var entriesAndLastValidOffsets = readRecord(buffer);
-			final var lastEntry = entriesAndLastValidOffsets.entries.get(entriesAndLastValidOffsets.entries.size() - 1);
-			return lastEntry.index;
-		}
-	}
-
-	private void readIntoBufferFromOffset(ByteBuffer buffer, long offset) throws IOException {
-		seekableByteChannel.position(offset);
-		seekableByteChannel.read(buffer);
-		buffer.flip();
-	}
-
-	private boolean startsWithValidEntry(ByteBuffer buffer) {
-
-		try {
-			readRecord(buffer);
-			return true;
-		} catch (InvalidParameterException e) {
-			return false;
-		}
-	}
-
-	private static EntriesAndLastValidOffset readRecord(ByteBuffer buffer) {
-
-		int lineStart = buffer.position() - 1;
-		int lineEnd = 0;
-		final var entries = new ArrayList<Entry>();
-
-		while (buffer.hasRemaining()) {
-
-			final var x = buffer.get();
-			if (END_OF_THE_LINE_HEX == x) {
-				lineEnd = buffer.position();
-				byte[] lineBytes = new byte[lineEnd - lineStart];
-				final var slice = buffer.slice(lineStart, lineEnd - lineStart);
-				slice.get(lineBytes);
-				final var entry = fromLine(new String(lineBytes, StandardCharsets.UTF_8));
-				entries.add(entry);
-			}
-
-			if (buffer.position() == lineEnd + 1) {
-				lineStart = buffer.position() - 1;
-			}
-		}
-		return new EntriesAndLastValidOffset(entries, lineEnd);
-	}
-
-	private record Entry(long index, String name, int age, int salary) {
-	}
-
-	private record EntriesAndLastValidOffset(List<Entry> entries, long lastCorrectOffset) {
-	}
-
-	private static Entry fromLine(String line) {
-
-		final var matcher = ENTRY_PATTERN_MATCHER.matcher(line);
-
-		if (matcher.find()) {
-
-			final var index = matcher.group(1);
-			final var name = matcher.group(2);
-			final var age = matcher.group(3);
-			final var salary = matcher.group(4);
-
-			return new Entry(Long.parseLong(index), name, Integer.parseInt(age), Integer.parseInt(salary));
-		}
-
-		throw new InvalidParameterException("Database is corrupted");
-	}
-
-	private static long seekToLastNewLine(ByteBuffer buffer) {
-		int lineEnd = 0;
-		while (buffer.hasRemaining()) {
-			final var x = buffer.get();
-			if (END_OF_THE_LINE_HEX == x) {
-				lineEnd = buffer.position();
-			}
-		}
-		return lineEnd;
-	}
-
-	private static final String ENTRY_TEMPLATE = "index:%d{%s}\n";
-
-	public EntryPosition write(long index, String data) throws IOException {
-
-		final var entry = ENTRY_TEMPLATE.formatted(index, data);
-		long startOffset = seekableByteChannel.position();
-		seekableByteChannel.write(ByteBuffer.wrap(entry.getBytes()));
-		return new EntryPosition(startOffset, seekableByteChannel.position());
-	}
-
-	public record EntryPosition(long startOffset, long endOffset) {
-
-	}
-
-	@Override
-	public void close() throws Exception {
-
-		seekableByteChannel.close();
-	}
-}
-```
-
-I will explain initial parts and then continue to add once the methods are used in further examples. TODO.
-
-I will not explain the implementation details and if you want to read more about `java.nio.channels` usage there are great blogs[8][9][10][11] and a book[12]. Also, this implementation is not super optimised and readable, but I might improve it over time. For now, it is a good starting point.
-
-Let's generate same data, but this time with metadata:
-
-```java
-public static void main(String[] args) throws Exception {
-
-	try (var simpleDatabase = new SimpleDatabase(new DatabaseInternals(DATABASE_PATH))) {
-
-		for (int i = 0; i < (Integer.MAX_VALUE / 1000); i++) {
-
-			final var write = simpleDatabase.databaseInternals.write(++simpleDatabase.lastIndex, """
-				"name":"John", "age":26, "salary":2147483646""");
-			simpleDatabase.indexOffsetMap.put(simpleDatabase.lastIndex, write.startOffset());
-		}
-
-		serializeMetadata(simpleDatabase.indexOffsetMap);
-	}
-}
-
-private static void serializeMetadata(Map<Long, Long> metadata) throws IOException {
-
-	try (final var out = new ObjectOutputStream(new FileOutputStream(METADATA_FILE_NAME))) {
-		out.writeObject(metadata);
-	}
-}
-```
-
-Again, the `database.txt` file is the same size (around 130MB) and has the same content, however, there is a new file - `metadata.ser` which weights around 60MB. If you think that is a lot for a metadata file, well, we had a database in production, where indexes were 7x the size of the table. True story. Anyway, we will shrink it down in upcoming iterations.
-
-```java
-public class SimpleDatabase implements AutoCloseable {
-
-	private static final Path DATABASE_PATH = Path.of("database.txt");
-	private static final String METADATA_FILE_NAME = "metadata.ser";
-	private final Map<Long, Long> indexOffsetMap;
-
-	private long lastIndex;
-	private final DatabaseInternals databaseInternals;
-
-	public SimpleDatabase(DatabaseInternals databaseInternals) throws IOException {
-
-		this.databaseInternals = databaseInternals;
-		this.lastIndex =  databaseInternals.readLastIndex();
-		this.indexOffsetMap = readMetadata();
-	}
-
-	private static Map<Long, Long> readMetadata() {
-		try (final var in = new ObjectInputStream(new FileInputStream(METADATA_FILE_NAME))){
-			return (Map<Long, Long>) in.readObject();
-		} catch (IOException | ClassNotFoundException e) {
-			// Do nothing;
-		}
-		return new HashMap<>();
-	}
-
-	public static void main(String[] args) throws Exception {
-
-		try (var simpleDatabase = new SimpleDatabase(new DatabaseInternals(DATABASE_PATH))) {
-
-			final var now = Instant.now();
-			final var offset = simpleDatabase.indexOffsetMap.get(2147483L);
-			simpleDatabase.databaseInternals.readBlock(offset);
-			final var after = Instant.now();
-			System.out.println("Reading data: " + Duration.between(now, after).toMillis());
-		}
-	}
-
-	private static void serializeMetadata(Map<Long, Long> metadata) throws IOException {
-
-		try (final var out = new ObjectOutputStream(new FileOutputStream(METADATA_FILE_NAME))) {
-			out.writeObject(metadata);
-		}
-	}
-
-	@Override
-	public void close() throws Exception {
-		databaseInternals.close();
-	}
-}
-```
-
-If I read the last entry `2147483` or the first, the speed is pretty much constant - data is fetched between `10 - 20 ms`. This is possible, because the file is no longer being traversed from start to finish. The database only needs to fetch offset according to an index and seek file to the exact position. Blazing fast. The downside, as already stated in "Encoding" chapter, Java serialization and desrialization framework is notoriously slow. Let's time how long it takes for in-memory map to get deserialized along with look up of last entry:
-
-```java
-public SimpleDatabase(DatabaseInternals databaseInternals) throws IOException {
-
-	this.databaseInternals = databaseInternals;
-	this.lastIndex =  databaseInternals.readLastIndex();
-	final var now = Instant.now();
-	this.indexOffsetMap = readMetadata();
-	final var after = Instant.now();
-	System.out.println("Reading metadata: " + Duration.between(now, after).toMillis());
-}
-```
-
-Running several times, for me, it shows that preparing in-memory metadata hashmap takes about `14000 ms`. There are several ways to improve this:
-* Use a more compact encoding framework, e.g. Avro.
-* Because indexes are ordered we no longer need to keep an index of all the keys in memory, but only every couple of hundreds for example and read more data than required. This will shrink the `metadata.ser` however will slightly increase read part.
-
-#### Serializing and deserializing metadata with Avro
-
-Avro, as we've found out (in "Encoding" chapter), is one of the efficient encoding frameworks. Let's try to leverage it and see whether it improves our Simple Database startup.
-
-Let's firstly rewrite all data so we have offset metadata in Avro format. Full class:
-
-```java
-public class SimpleDatabaseWithAvro implements AutoCloseable {
-
-	private static final Path DATABASE_PATH = Path.of("database.txt");
-	private static final String METADATA_FILE_NAME = "metadata.avro";
-	private static final Path METADATA_PATH = Path.of(METADATA_FILE_NAME);
-	private final Map<Utf8, Long> avroIndexOffsetMap;
-
-	private long lastIndex;
-	private final DatabaseInternals databaseInternals;
-
-	private static final Schema SCHEMA = new Schema.Parser().parse("""
-			{
-			  "type": "map",
-			  "values": "long",
-			  "default": {}
-			}""");
-
-	public SimpleDatabaseWithAvro(DatabaseInternals databaseInternals) throws IOException {
-
-		this.databaseInternals = databaseInternals;
-		this.lastIndex =  databaseInternals.readLastIndex();
-		final var now = Instant.now();
-		this.avroIndexOffsetMap = readMetadata();
-		final var after = Instant.now();
-		System.out.println("Reading metadata: " + Duration.between(now, after).toMillis());
-	}
-
-	private static Map<Utf8, Long> readMetadata() throws IOException {
-		if (METADATA_PATH.toFile().exists()) {
-
-			final var reader = new GenericDatumReader<Map>(SCHEMA);
-			try (final var fileReader = new DataFileReader<>(Path.of("metadata.avro").toFile(), reader)) {
-				return (Map<Utf8, Long>) fileReader.next();
-			}
-		} else {
-
-			return new HashMap<>();
-		}
-	}
-
-	public static void main(String[] args) throws Exception {
-
-		final var indexOffsetMap = new HashMap<Long, Long>();
-
-		try (var simpleDatabase = new SimpleDatabaseWithAvro(new DatabaseInternals(DATABASE_PATH))) {
-
-			for (int i = 0; i < (Integer.MAX_VALUE / 1000); i++) {
-
-				final var write = simpleDatabase.databaseInternals.write(++simpleDatabase.lastIndex, """
-					"name":"John", "age":26, "salary":2147483646""");
-				indexOffsetMap.put(simpleDatabase.lastIndex, write.startOffset());
-			}
-
-			serializeMetadata(indexOffsetMap);
-		}
-	}
-
-	private static void serializeMetadata(Map<Long, Long> metadata) throws IOException {
-
-		final var metadataWriter = new GenericDatumWriter<Map>(SCHEMA);
-
-		try (final var metadataFileWriter = new DataFileWriter<>(metadataWriter)) {
-			metadataFileWriter.create(SCHEMA, METADATA_PATH.toFile());
-			metadataFileWriter.append(metadata);
-		}
-	}
-
-	@Override
-	public void close() throws Exception {
-		databaseInternals.close();
-	}
-}
-```
-
-**NOTE!** You might have noticed that I wrote data as `Map<Long, Long>` but read as `Map<Utf8, Long>`. Well, Avro, according to its documentation, assumes that all map keys are to be strings. And automatic deserialization returns keys of their class type - `org.apache.avro.util.Utf8`.
-
-Below is the reading part. I'm just adding a different main, but the class is absolutely the same:
-
-
-```java
-public static void main(String[] args) throws Exception {
-
-	try (var simpleDatabase = new SimpleDatabaseWithAvro(new DatabaseInternals(DATABASE_PATH))) {
-
-		final var now = Instant.now();
-		final var offset = simpleDatabase.avroIndexOffsetMap.get(new Utf8("2147483"));
-		final var entries = simpleDatabase.databaseInternals.readBlock(offset);
-		System.out.println(entries);
-		final var after = Instant.now();
-		System.out.println("Reading data: " + Duration.between(now, after).toMillis());
-	}
-}
-```
-
-Running this several times show that metadata is read in `800 - 1500 ms`. This is a 10-18x improvement! Remember from "Columnar data layout" chapter - shrinking the size of metadata file is primarily not to save space, but to optimise disk transfer. Oh, and `metadata.avro` file is about 25 MB.
-
-#### Ranges of indexes
-
-Instead of saving each index's offset location, let's write every 1000 index's offset to metadata. The class is completely the same as previous section, just main method is different:
-
-```java
-public static void main(String[] args) throws Exception {
-
-	final var indexOffsetMap = new HashMap<Long, Long>();
-
-	try (var simpleDatabase = new SimpleDatabaseWithAvro(new DatabaseInternals(DATABASE_PATH))) {
-
-		for (int i = 0; i < (Integer.MAX_VALUE / 1000); i++) {
-
-			final var write = simpleDatabase.databaseInternals.write(++simpleDatabase.lastIndex, """
-				"name":"John", "age":26, "salary":2147483646""");
-			if (simpleDatabase.lastIndex % 1000 == 0) {
-				indexOffsetMap.put(simpleDatabase.lastIndex, write.startOffset());
-			}
-		}
-
-		serializeMetadata(indexOffsetMap);
-	}
-}
-```
-
-This creates a `metadata.avro` file with size of 25 KB. Reading part is only a little different:
-
-```java
-public static void main(String[] args) throws Exception {
-
-	try (var simpleDatabase = new SimpleDatabaseWithAvro(new DatabaseInternals(DATABASE_PATH))) {
-
-		final var indexToSearch = 2147483;
-		final var offsetToLook = (indexToSearch / 1000) * 1000;
-
-		final var now = Instant.now();
-		final var offset = simpleDatabase.avroIndexOffsetMap.getOrDefault(new Utf8(String.valueOf(offsetToLook)), 0L);
-		final var entry = simpleDatabase.databaseInternals.findEntryFrom(offset, indexToSearch);
-		System.out.println(entry);
-		final var after = Instant.now();
-		System.out.println("Reading data: " + Duration.between(now, after).toMillis());
-	}
-}
-```
-
-Because we saved offsets every 1000, then last entry, with id `2147483`, will be in `2147000` index, containing last range's starting offset. Hence the `final var offsetToLook = (indexToSearch / 1000) * 1000;`, returns exactly that. The remaining code is the same. Running this several times yields me these results:
-* Reading metadata takes: `200 - 500 ms`.
-* Finding correct entry with index `2147483`: `15-30ms`.
-
-In this exercise we have improved metadata ingestion speed, shrank `metadata.avro` file size 1000x times and did not lose out a lot in searching part.
-
-#### Multiple files
-
-#### Looking for name
-
-##### Bloom Filter
-
-
-
-
-### Resources
-
-1. [Designing Data-Intensive Applications](https://www.amazon.com/Designing-Data-Intensive-Applications-Reliable-Maintainable/dp/1449373321)
-2. [Topic Compaction](https://developer.confluent.io/learn-kafka/architecture/compaction/)
-3. [Apache Iceberg:Position Delete Files](https://iceberg.apache.org/spec/#position-delete-files)
-4. [Java Documentation. RandomAccessFile](https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/io/RandomAccessFile.html)
-5. [Java Documentation. SeekableByteChannel](https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/nio/channels/SeekableByteChannel.html)
-6. [Java NIO FileChannel versus FileOutputstream performance / usefulness](https://stackoverflow.com/questions/1605332/java-nio-filechannel-versus-fileoutputstream-performance-usefulness)
-7. https://mechanical-sympathy.blogspot.com/2011/12/java-sequential-io-performance.html
-8. https://www.happycoders.eu/java/filechannel-memory-mapped-io-locks/
-9. https://blogs.oracle.com/javamagazine/post/java-nio-nio2-buffers-channels-async-future-callback
-10. https://docs.oracle.com/javase/tutorial/essential/io/file.html
-11. [Java Documentation. Package java.nio.channels] https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/nio/channels/package-summary.html
-12. [Java NIO](https://www.oreilly.com/library/view/java-nio/0596002882/)
-
-
-
-
-
-
 
 ## Row, Columnar, Hybrid data layouts
 
@@ -2015,6 +1356,663 @@ In this last section I'm just going to add several benchmarks which tried to mea
 * [Performance evaluation of object serialization libraries in XML, JSON and binary formats](https://www.semanticscholar.org/paper/Performance-evaluation-of-object-serialization-in-Maeda/676669064d37a904d503dc8c99338766cbdd96e7)
 
 The results are a mixed bag and most of the time it seems that implementation details of particular language and library is more important rather than protocols itself.
+
+## File's metadata importance
+
+In this section I will use the idea from Designing Data Intensive Applications book[1] to portray metadata usefulness. In named book, author explores metadata concept by introducing a simple, bash database. 
+
+Instead of `bash` scripts and thought exercises, I'll build a simple database in Java and explore simplified metadata and index concepts. 
+
+In named book, author also explores compaction, SSTables, LSM trees etc. I will not do that in this chapter, mainly because Parquet does not utlise any of those practices. Despite that, they are useful concepts to understand, because databases which can process Parquet files might apply them, hence reading "Designing Data Intensive Applications" book's "Storage and Retrieval" is a good prerequisite.
+
+### Simple database
+
+On the most fundamental level, a database needs to do two things: when you give it some data, it should store the data, and when you ask it again later, it should give the data back to you[1].
+
+Let's start with simple case:
+
+```java
+public class SimpleDatabase {
+
+	private static final Path DATABASE_PATH = Path.of("database.txt");
+	private static final String ENTRY_TEMPLATE = "index:%d{%s}";
+	private static final Pattern ENTRY_PATTERN_MATCHER = Pattern.compile("""
+			index:(\\d+)\\{"name":"([\\w\\s]+)",\\s"age":(\\d+),\\s"salary":(\\d+)""");
+
+	public static void main(String[] args) throws IOException {
+
+		final var simpleDatabase = new SimpleDatabase();
+		simpleDatabase.writeToDatabase(1, """
+				"name":"John", "age":26, "salary":1000""");
+		simpleDatabase.writeToDatabase(2, """
+				"name":"John", "age":27, "salary":2000""");
+		simpleDatabase.writeToDatabase(3, """
+				"name":"John", "age":28, "salary":3000""");
+		simpleDatabase.writeToDatabase(4, """
+				"name":"Marry", "age":26, "salary":1000""");
+		simpleDatabase.writeToDatabase(5, """
+				"name":"Marry", "age":27, "salary":2000""");
+
+
+		System.out.println("-".repeat(10));
+		System.out.println(simpleDatabase.readAllFromDatabase());
+		System.out.println("-".repeat(10));
+
+
+		System.out.println("*".repeat(10));
+		System.out.println(simpleDatabase.readBy(3));
+		System.out.println("*".repeat(10));
+	}
+
+	private void writeToDatabase(long index, String data) throws IOException {
+
+		final var entry = ENTRY_TEMPLATE.formatted(index, data);
+		Files.write(DATABASE_PATH, List.of(entry), StandardOpenOption.APPEND, StandardOpenOption.CREATE);
+	}
+
+	private List<String> readAllFromDatabase() throws IOException {
+		return Files.readAllLines(DATABASE_PATH);
+	}
+
+	private Optional<Entry> readBy(long indexToFind) throws IOException {
+
+		try (var lines = Files.lines(DATABASE_PATH)) {
+			return lines
+					.map(SimpleDatabase::fromLine)
+					.filter(entry -> entry.index == indexToFind)
+					.findFirst();
+		}
+	}
+
+	private static Entry fromLine(String line) {
+
+		final var matcher = ENTRY_PATTERN_MATCHER.matcher(line);
+
+		if (matcher.find()) {
+
+			final var index = matcher.group(1);
+			final var name = matcher.group(2);
+			final var age = matcher.group(3);
+			final var salary = matcher.group(4);
+
+			return new Entry(Long.parseLong(index), name, Integer.parseInt(age), Integer.parseInt(salary));
+		}
+
+		throw new RuntimeException("Database is corrupted");
+	}
+
+	private record Entry(long index, String name, int age, int salary) {
+	}
+}
+```
+
+Running `main` should print:
+
+```
+----------
+[index:1{"name":"John", "age":26, "salary":1000}, index:2{"name":"John", "age":27, "salary":2000}, index:3{"name":"John", "age":28, "salary":3000}, index:4{"name":"Marry", "age":26, "salary":1000}, index:5{"name":"Marry", "age":27, "salary":2000}]
+----------
+**********
+Optional[Entry[index=3, name=John, age=28, salary=3000]]
+**********
+```
+
+And there should be a new file - `database.txt` with content:
+
+```
+index:1{"name":"John", "age":26, "salary":1000}
+index:2{"name":"John", "age":27, "salary":2000}
+index:3{"name":"John", "age":28, "salary":3000}
+index:4{"name":"Marry", "age":26, "salary":1000}
+index:5{"name":"Marry", "age":27, "salary":2000}
+```
+
+This implementation creates a key-value store. The underlying storage format is very simple: a text file where each line contains a key-value pair, separated by a comma (roughly like a CSV file, ignoring escaping issues).  Every call to `writeToDatabase` appends to the end of the file, so if you update a key several times, the old versions of the value are not overwritten — you need to look at the last occurrence of a key in a file to find the latest value[1]. This is pretty much how Parquet represents its data as well as in, it just appends data to the end of the file without trying to update by some key or executing any other complicated data manipulation like compaction[2] or Apache Iceberg's position delete files[3].
+
+The `writeToDatabase` has pretty good performance for something that is so simple, because appending to a file is generally very efficient[1]. Similarly to what `writeToDatabase` does, many databases internally use a log, which is an append-only data file (e.g. Write Ahead Log). Real databases have more issues to deal with (such as concurrency control, reclaiming disk space so that the log doesn’t grow forever, and handling errors and partially written records), but the basic principle is the same[1].
+
+On the other hand, `readAllFromDatabase` and `readBy` has a terrible performance if you have a large number of records in your database:
+* `readAllFromDatabase` actually loads all of the data to memory. This means that big files (e.g. terabyte size) just won't fit. 
+* `readBy` is smarter, because it is streaming information without having to load it to memory, unfortunately it does this sequentially. Essentially doing full table scan talking in SQL terms. In algorithmic terms, the cost of a lookup is `O(n)`: if you double the number of records n in your database, a lookup takes twice as long[1].
+
+Let's generate more data for this database and do a short searching experiment:
+
+```java
+public static void main(String[] args) throws IOException {
+
+	final var simpleDatabase = new SimpleDatabase();
+
+	for (int i = 0; i < (Integer.MAX_VALUE / 1000); i++) {
+
+		simpleDatabase.writeToDatabase(i, """
+			"name":"John", "age":26, "salary":2147483646""");
+	}
+}
+```
+
+For me, this has generated a file with size of around 130 MB.
+
+Let's try searching the the first and the last entries:
+
+```java
+public static void main(String[] args) throws IOException {
+
+	final var simpleDatabase = new SimpleDatabase();
+
+	final var now = Instant.now();
+	System.out.println(simpleDatabase.readBy(2147482));
+	final var after = Instant.now();
+
+	System.out.println(Duration.between(now, after).toMillis());
+}
+```
+
+Searching for the last entry (with `index:2147482`) takes around `1000 - 1500 ms`. While searching for the first entry it takes about `30 - 40 ms`.
+
+### Index
+
+In order to efficiently find the value for a particular key in the database, we need a different data structure: an index. The general idea behind them is to keep some additional metadata on the side, which acts as a signpost and helps you to locate the data you want. If you want to search the same data in several different ways, you may need several different indexes on different parts of the data[1].
+
+An index is an additional structure that is derived from the primary data. Many databases allow you to add and remove indexes, and this doesn’t affect the contents of the database; it only affects the performance of queries. Maintaining additional structures incurs overhead, especially on writes. For writes, it’s hard to beat the performance of simply appending to a file, because that’s the simplest possible write operation. Any kind of index usually slows down writes, because the index also needs to be updated every time data is written[1].
+
+#### Hash Indexes
+
+Let’s start with indexes for key-value data. This is not the only kind of data you can index, but it’s very common, and it’s a useful building block for more complex indexes[1].
+
+Key-value stores are quite similar to the dictionary type that you can find in most programming languages, and which is usually implemented as a hash map (hash table)[1].
+
+Let’s say our data storage consists only of appending to a file, as in the preceding example. Then the simplest possible indexing strategy is this: keep an in-memory hash map where every key is mapped to a byte offset in the data file - the location at which the value can be found. Whenever you append a new key-value pair to the file, you also update the hash map to reflect the offset of the data you just wrote (this works both for inserting new keys and for updating existing keys). When you want to look up a value, use the hash map to find the offset in the data file, seek to that location, and read the value [1].
+
+
+#### Implementation
+
+In order to know offset position during our writes and then read from given offset positions, I will have to rewrite Java database from ground up. This is because `Files` abstractions lack any such controls and deemed them too low level. There are a couple of options for rewrite:
+* `RandomAccessFile`[4].
+* `SeekableByteChannel`[5].
+
+It is clearly stated in stackoverflow post that `java.nio` with `FileChannel` is faster by about >250% compared with `FileInputStream/FileOuputStream`[6], however, the difference between `RandomAccessFile` and `SeekableByteChannel` is not conclusive or well documented. I have found several instances, which claim that `SeekableByteChannel` is faster[7], but this is yet to be tested in another time. Anyway, I have chose to use `SeekableByteChannel`.
+
+```java
+public class DatabaseInternals implements AutoCloseable {
+
+	private static final int DEFAULT_BUFFER_SIZE = 8192;
+	private static final int END_OF_THE_LINE_HEX = 0x0A;
+	private final long totalBlockCount;
+	private final SeekableByteChannel seekableByteChannel;
+	private final ByteBuffer buffer = ByteBuffer.allocate(DEFAULT_BUFFER_SIZE);
+
+	private static final Pattern ENTRY_PATTERN_MATCHER = Pattern.compile("""
+			index:(\\d+)\\{"name":"([\\w\\s]+)",\\s"age":(\\d+),\\s"salary":(\\d+)""");
+
+	public DatabaseInternals(Path file) {
+
+		try {
+			this.seekableByteChannel = Files.newByteChannel(file, StandardOpenOption.READ, StandardOpenOption.WRITE, StandardOpenOption.CREATE);
+			final var size = seekableByteChannel.size();
+			final var lastBlockLength = size % DEFAULT_BUFFER_SIZE;
+
+			if (lastBlockLength > 0) {
+				this.totalBlockCount = size / DEFAULT_BUFFER_SIZE + 1;
+			} else {
+				this.totalBlockCount = size / DEFAULT_BUFFER_SIZE;
+			}
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+	}
+
+	public Optional<Entry> findEntryFrom(long offset, long index) throws IOException {
+
+		var newOffset = offset;
+
+		//Recursion is not the answer
+
+		while (true) {
+
+			buffer.clear();
+			readIntoBufferFromOffset(buffer, newOffset);
+
+			if (buffer.limit() == 0) {
+				break;
+			}
+
+			final var entriesAndLastValidOffset = readRecord(buffer);
+			final var maybeFoundEntry = entriesAndLastValidOffset.entries.stream()
+					.filter(entry -> entry.index == index)
+					.findFirst();
+
+			if (maybeFoundEntry.isPresent()) {
+				return maybeFoundEntry;
+			} else {
+				newOffset += entriesAndLastValidOffset.lastCorrectOffset;
+			}
+		}
+
+		return Optional.empty();
+	}
+
+	public List<Entry> readBlock(long offset) throws IOException {
+
+		buffer.clear();
+		readIntoBufferFromOffset(buffer, offset);
+		final var entriesAndLastValidOffset = readRecord(buffer);
+		return entriesAndLastValidOffset.entries;
+	}
+
+	/**
+	 * This is complicated from the first view, but let me explain. Firstly we check whether the file is empty or not. If empty, return.
+	 * Next I read the last block. Remember from constructor, that blocks start from 1. If a file contains 10 bytes, totalBlockCount would be equal to 1,
+	 * and if I did not have subtraction it would evaluate to `DEFAULT_BUFFER_SIZE * totalBlockCount` = 8192 and I would start reading at the end of the file.
+	 * Next I check whether first entry starts at the correct point.
+	 */
+	public long readLastIndex() throws IOException {
+
+		if (seekableByteChannel.size() == 0) {
+			return 0;
+		}
+		buffer.clear();
+
+		final var offsetOfLastBlock = DEFAULT_BUFFER_SIZE * (totalBlockCount - 1);
+		readIntoBufferFromOffset(buffer, offsetOfLastBlock);
+		if (startsWithValidEntry(buffer)) {
+			buffer.rewind();
+			final var entriesAndLastValidOffsets = readRecord(buffer);
+			final var lastEntry = entriesAndLastValidOffsets.entries.get(entriesAndLastValidOffsets.entries.size() - 1);
+			return lastEntry.index;
+		} else {
+			// Read before last block to find last valid entry's new line offset
+			buffer.clear();
+			readIntoBufferFromOffset(buffer, DEFAULT_BUFFER_SIZE * (totalBlockCount - 2));
+			final var lastNewLineOffset = seekToLastNewLine(buffer);
+			// Start reading from correct starting offset
+			buffer.clear();
+			readIntoBufferFromOffset(buffer, (DEFAULT_BUFFER_SIZE * (totalBlockCount - 1)) - (DEFAULT_BUFFER_SIZE - lastNewLineOffset));
+			final var entriesAndLastValidOffsets = readRecord(buffer);
+			final var lastEntry = entriesAndLastValidOffsets.entries.get(entriesAndLastValidOffsets.entries.size() - 1);
+			return lastEntry.index;
+		}
+	}
+
+	private void readIntoBufferFromOffset(ByteBuffer buffer, long offset) throws IOException {
+		seekableByteChannel.position(offset);
+		seekableByteChannel.read(buffer);
+		buffer.flip();
+	}
+
+	private boolean startsWithValidEntry(ByteBuffer buffer) {
+
+		try {
+			readRecord(buffer);
+			return true;
+		} catch (InvalidParameterException e) {
+			return false;
+		}
+	}
+
+	private static EntriesAndLastValidOffset readRecord(ByteBuffer buffer) {
+
+		int lineStart = buffer.position() - 1;
+		int lineEnd = 0;
+		final var entries = new ArrayList<Entry>();
+
+		while (buffer.hasRemaining()) {
+
+			final var x = buffer.get();
+			if (END_OF_THE_LINE_HEX == x) {
+				lineEnd = buffer.position();
+				byte[] lineBytes = new byte[lineEnd - lineStart];
+				final var slice = buffer.slice(lineStart, lineEnd - lineStart);
+				slice.get(lineBytes);
+				final var entry = fromLine(new String(lineBytes, StandardCharsets.UTF_8));
+				entries.add(entry);
+			}
+
+			if (buffer.position() == lineEnd + 1) {
+				lineStart = buffer.position() - 1;
+			}
+		}
+		return new EntriesAndLastValidOffset(entries, lineEnd);
+	}
+
+	private record Entry(long index, String name, int age, int salary) {
+	}
+
+	private record EntriesAndLastValidOffset(List<Entry> entries, long lastCorrectOffset) {
+	}
+
+	private static Entry fromLine(String line) {
+
+		final var matcher = ENTRY_PATTERN_MATCHER.matcher(line);
+
+		if (matcher.find()) {
+
+			final var index = matcher.group(1);
+			final var name = matcher.group(2);
+			final var age = matcher.group(3);
+			final var salary = matcher.group(4);
+
+			return new Entry(Long.parseLong(index), name, Integer.parseInt(age), Integer.parseInt(salary));
+		}
+
+		throw new InvalidParameterException("Database is corrupted");
+	}
+
+	private static long seekToLastNewLine(ByteBuffer buffer) {
+		int lineEnd = 0;
+		while (buffer.hasRemaining()) {
+			final var x = buffer.get();
+			if (END_OF_THE_LINE_HEX == x) {
+				lineEnd = buffer.position();
+			}
+		}
+		return lineEnd;
+	}
+
+	private static final String ENTRY_TEMPLATE = "index:%d{%s}\n";
+
+	public EntryPosition write(long index, String data) throws IOException {
+
+		final var entry = ENTRY_TEMPLATE.formatted(index, data);
+		long startOffset = seekableByteChannel.position();
+		seekableByteChannel.write(ByteBuffer.wrap(entry.getBytes()));
+		return new EntryPosition(startOffset, seekableByteChannel.position());
+	}
+
+	public record EntryPosition(long startOffset, long endOffset) {
+
+	}
+
+	@Override
+	public void close() throws Exception {
+
+		seekableByteChannel.close();
+	}
+}
+```
+
+I will explain initial parts and then continue to add once the methods are used in further examples. TODO.
+
+I will not explain the implementation details and if you want to read more about `java.nio.channels` usage there are great blogs[8][9][10][11] and a book[12]. Also, this implementation is not super optimised and readable, but I might improve it over time. For now, it is a good starting point.
+
+Let's generate same data, but this time with metadata:
+
+```java
+public static void main(String[] args) throws Exception {
+
+	try (var simpleDatabase = new SimpleDatabase(new DatabaseInternals(DATABASE_PATH))) {
+
+		for (int i = 0; i < (Integer.MAX_VALUE / 1000); i++) {
+
+			final var write = simpleDatabase.databaseInternals.write(++simpleDatabase.lastIndex, """
+				"name":"John", "age":26, "salary":2147483646""");
+			simpleDatabase.indexOffsetMap.put(simpleDatabase.lastIndex, write.startOffset());
+		}
+
+		serializeMetadata(simpleDatabase.indexOffsetMap);
+	}
+}
+
+private static void serializeMetadata(Map<Long, Long> metadata) throws IOException {
+
+	try (final var out = new ObjectOutputStream(new FileOutputStream(METADATA_FILE_NAME))) {
+		out.writeObject(metadata);
+	}
+}
+```
+
+Again, the `database.txt` file is the same size (around 130MB) and has the same content, however, there is a new file - `metadata.ser` which weights around 60MB. If you think that is a lot for a metadata file, well, we had a database in production, where indexes were 7x the size of the table. True story. Anyway, we will shrink it down in upcoming iterations.
+
+```java
+public class SimpleDatabase implements AutoCloseable {
+
+	private static final Path DATABASE_PATH = Path.of("database.txt");
+	private static final String METADATA_FILE_NAME = "metadata.ser";
+	private final Map<Long, Long> indexOffsetMap;
+
+	private long lastIndex;
+	private final DatabaseInternals databaseInternals;
+
+	public SimpleDatabase(DatabaseInternals databaseInternals) throws IOException {
+
+		this.databaseInternals = databaseInternals;
+		this.lastIndex =  databaseInternals.readLastIndex();
+		this.indexOffsetMap = readMetadata();
+	}
+
+	private static Map<Long, Long> readMetadata() {
+		try (final var in = new ObjectInputStream(new FileInputStream(METADATA_FILE_NAME))){
+			return (Map<Long, Long>) in.readObject();
+		} catch (IOException | ClassNotFoundException e) {
+			// Do nothing;
+		}
+		return new HashMap<>();
+	}
+
+	public static void main(String[] args) throws Exception {
+
+		try (var simpleDatabase = new SimpleDatabase(new DatabaseInternals(DATABASE_PATH))) {
+
+			final var now = Instant.now();
+			final var offset = simpleDatabase.indexOffsetMap.get(2147483L);
+			simpleDatabase.databaseInternals.readBlock(offset);
+			final var after = Instant.now();
+			System.out.println("Reading data: " + Duration.between(now, after).toMillis());
+		}
+	}
+
+	private static void serializeMetadata(Map<Long, Long> metadata) throws IOException {
+
+		try (final var out = new ObjectOutputStream(new FileOutputStream(METADATA_FILE_NAME))) {
+			out.writeObject(metadata);
+		}
+	}
+
+	@Override
+	public void close() throws Exception {
+		databaseInternals.close();
+	}
+}
+```
+
+If I read the last entry `2147483` or the first, the speed is pretty much constant - data is fetched between `10 - 20 ms`. This is possible, because the file is no longer being traversed from start to finish. The database only needs to fetch offset according to an index and seek file to the exact position. Blazing fast. The downside, as already stated in "Encoding" chapter, Java serialization and desrialization framework is notoriously slow. Let's time how long it takes for in-memory map to get deserialized along with look up of last entry:
+
+```java
+public SimpleDatabase(DatabaseInternals databaseInternals) throws IOException {
+
+	this.databaseInternals = databaseInternals;
+	this.lastIndex =  databaseInternals.readLastIndex();
+	final var now = Instant.now();
+	this.indexOffsetMap = readMetadata();
+	final var after = Instant.now();
+	System.out.println("Reading metadata: " + Duration.between(now, after).toMillis());
+}
+```
+
+Running several times, for me, it shows that preparing in-memory metadata hashmap takes about `14000 ms`. There are several ways to improve this:
+* Use a more compact encoding framework, e.g. Avro.
+* Because indexes are ordered we no longer need to keep an index of all the keys in memory, but only every couple of hundreds for example and read more data than required. This will shrink the `metadata.ser` however will slightly increase read part.
+
+#### Serializing and deserializing metadata with Avro
+
+Avro, as we've found out (in "Encoding" chapter), is one of the efficient encoding frameworks. Let's try to leverage it and see whether it improves our Simple Database startup.
+
+Let's firstly rewrite all data so we have offset metadata in Avro format. Full class:
+
+```java
+public class SimpleDatabaseWithAvro implements AutoCloseable {
+
+	private static final Path DATABASE_PATH = Path.of("database.txt");
+	private static final String METADATA_FILE_NAME = "metadata.avro";
+	private static final Path METADATA_PATH = Path.of(METADATA_FILE_NAME);
+	private final Map<Utf8, Long> avroIndexOffsetMap;
+
+	private long lastIndex;
+	private final DatabaseInternals databaseInternals;
+
+	private static final Schema SCHEMA = new Schema.Parser().parse("""
+			{
+			  "type": "map",
+			  "values": "long",
+			  "default": {}
+			}""");
+
+	public SimpleDatabaseWithAvro(DatabaseInternals databaseInternals) throws IOException {
+
+		this.databaseInternals = databaseInternals;
+		this.lastIndex =  databaseInternals.readLastIndex();
+		final var now = Instant.now();
+		this.avroIndexOffsetMap = readMetadata();
+		final var after = Instant.now();
+		System.out.println("Reading metadata: " + Duration.between(now, after).toMillis());
+	}
+
+	private static Map<Utf8, Long> readMetadata() throws IOException {
+		if (METADATA_PATH.toFile().exists()) {
+
+			final var reader = new GenericDatumReader<Map>(SCHEMA);
+			try (final var fileReader = new DataFileReader<>(Path.of("metadata.avro").toFile(), reader)) {
+				return (Map<Utf8, Long>) fileReader.next();
+			}
+		} else {
+
+			return new HashMap<>();
+		}
+	}
+
+	public static void main(String[] args) throws Exception {
+
+		final var indexOffsetMap = new HashMap<Long, Long>();
+
+		try (var simpleDatabase = new SimpleDatabaseWithAvro(new DatabaseInternals(DATABASE_PATH))) {
+
+			for (int i = 0; i < (Integer.MAX_VALUE / 1000); i++) {
+
+				final var write = simpleDatabase.databaseInternals.write(++simpleDatabase.lastIndex, """
+					"name":"John", "age":26, "salary":2147483646""");
+				indexOffsetMap.put(simpleDatabase.lastIndex, write.startOffset());
+			}
+
+			serializeMetadata(indexOffsetMap);
+		}
+	}
+
+	private static void serializeMetadata(Map<Long, Long> metadata) throws IOException {
+
+		final var metadataWriter = new GenericDatumWriter<Map>(SCHEMA);
+
+		try (final var metadataFileWriter = new DataFileWriter<>(metadataWriter)) {
+			metadataFileWriter.create(SCHEMA, METADATA_PATH.toFile());
+			metadataFileWriter.append(metadata);
+		}
+	}
+
+	@Override
+	public void close() throws Exception {
+		databaseInternals.close();
+	}
+}
+```
+
+**NOTE!** You might have noticed that I wrote data as `Map<Long, Long>` but read as `Map<Utf8, Long>`. Well, Avro, according to its documentation, assumes that all map keys are to be strings. And automatic deserialization returns keys of their class type - `org.apache.avro.util.Utf8`.
+
+Below is the reading part. I'm just adding a different main, but the class is absolutely the same:
+
+
+```java
+public static void main(String[] args) throws Exception {
+
+	try (var simpleDatabase = new SimpleDatabaseWithAvro(new DatabaseInternals(DATABASE_PATH))) {
+
+		final var now = Instant.now();
+		final var offset = simpleDatabase.avroIndexOffsetMap.get(new Utf8("2147483"));
+		final var entries = simpleDatabase.databaseInternals.readBlock(offset);
+		System.out.println(entries);
+		final var after = Instant.now();
+		System.out.println("Reading data: " + Duration.between(now, after).toMillis());
+	}
+}
+```
+
+Running this several times show that metadata is read in `800 - 1500 ms`. This is a 10-18x improvement! Remember from "Columnar data layout" chapter - shrinking the size of metadata file is primarily not to save space, but to optimise disk transfer. Oh, and `metadata.avro` file is about 25 MB.
+
+#### Ranges of indexes
+
+Instead of saving each index's offset location, let's write every 1000 index's offset to metadata. The class is completely the same as previous section, just main method is different:
+
+```java
+public static void main(String[] args) throws Exception {
+
+	final var indexOffsetMap = new HashMap<Long, Long>();
+
+	try (var simpleDatabase = new SimpleDatabaseWithAvro(new DatabaseInternals(DATABASE_PATH))) {
+
+		for (int i = 0; i < (Integer.MAX_VALUE / 1000); i++) {
+
+			final var write = simpleDatabase.databaseInternals.write(++simpleDatabase.lastIndex, """
+				"name":"John", "age":26, "salary":2147483646""");
+			if (simpleDatabase.lastIndex % 1000 == 0) {
+				indexOffsetMap.put(simpleDatabase.lastIndex, write.startOffset());
+			}
+		}
+
+		serializeMetadata(indexOffsetMap);
+	}
+}
+```
+
+This creates a `metadata.avro` file with size of 25 KB. Reading part is only a little different:
+
+```java
+public static void main(String[] args) throws Exception {
+
+	try (var simpleDatabase = new SimpleDatabaseWithAvro(new DatabaseInternals(DATABASE_PATH))) {
+
+		final var indexToSearch = 2147483;
+		final var offsetToLook = (indexToSearch / 1000) * 1000;
+
+		final var now = Instant.now();
+		final var offset = simpleDatabase.avroIndexOffsetMap.getOrDefault(new Utf8(String.valueOf(offsetToLook)), 0L);
+		final var entry = simpleDatabase.databaseInternals.findEntryFrom(offset, indexToSearch);
+		System.out.println(entry);
+		final var after = Instant.now();
+		System.out.println("Reading data: " + Duration.between(now, after).toMillis());
+	}
+}
+```
+
+Because we saved offsets every 1000, then last entry, with id `2147483`, will be in `2147000` index, containing last range's starting offset. Hence the `final var offsetToLook = (indexToSearch / 1000) * 1000;`, returns exactly that. The remaining code is the same. Running this several times yields me these results:
+* Reading metadata takes: `200 - 500 ms`.
+* Finding correct entry with index `2147483`: `15-30ms`.
+
+In this exercise we have improved metadata ingestion speed, shrank `metadata.avro` file size 1000x times and did not lose out a lot in searching part.
+
+#### Multiple files
+
+#### Looking for name
+
+##### Bloom Filter
+
+
+
+
+### Resources
+
+1. [Designing Data-Intensive Applications](https://www.amazon.com/Designing-Data-Intensive-Applications-Reliable-Maintainable/dp/1449373321)
+2. [Topic Compaction](https://developer.confluent.io/learn-kafka/architecture/compaction/)
+3. [Apache Iceberg:Position Delete Files](https://iceberg.apache.org/spec/#position-delete-files)
+4. [Java Documentation. RandomAccessFile](https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/io/RandomAccessFile.html)
+5. [Java Documentation. SeekableByteChannel](https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/nio/channels/SeekableByteChannel.html)
+6. [Java NIO FileChannel versus FileOutputstream performance / usefulness](https://stackoverflow.com/questions/1605332/java-nio-filechannel-versus-fileoutputstream-performance-usefulness)
+7. https://mechanical-sympathy.blogspot.com/2011/12/java-sequential-io-performance.html
+8. https://www.happycoders.eu/java/filechannel-memory-mapped-io-locks/
+9. https://blogs.oracle.com/javamagazine/post/java-nio-nio2-buffers-channels-async-future-callback
+10. https://docs.oracle.com/javase/tutorial/essential/io/file.html
+11. [Java Documentation. Package java.nio.channels] https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/nio/channels/package-summary.html
+12. [Java NIO](https://www.oreilly.com/library/view/java-nio/0596002882/)
+
+
+
+
 
 ## Conclusion
 
