@@ -787,7 +787,7 @@ public static void main(String[] args) throws Exception {
 		for (int i = 0; i < (Integer.MAX_VALUE / 1000); i++) {
 
 			final var write = simpleDatabase.databaseInternals.write(++simpleDatabase.lastIndex, """
-			"name":"John", "age":26, "salary":2147483646""");
+					"name":"John", "age":26, "salary":2147483646""");
 			bloomFilter.put("John");
 			if (simpleDatabase.lastIndex % 1000 == 0) {
 				indexOffsetMap.put(simpleDatabase.lastIndex, write.startOffset());
@@ -795,7 +795,7 @@ public static void main(String[] args) throws Exception {
 		}
 
 		final var bloomFilterBytes = new ByteArrayOutputStream();
-		bloomFilter.writeTo(new BufferedOutputStream(bloomFilterBytes));
+		bloomFilter.writeTo(bloomFilterBytes);
 
 		final var record = new GenericData.Record(FULL_SCHEMA);
 		record.put("min", 0);
@@ -808,6 +808,35 @@ public static void main(String[] args) throws Exception {
 	}
 }
 ```
+
+Reading:
+
+```java
+public static void main(String[] args) throws Exception {
+
+	try (var simpleDatabase = new SimpleDatabaseWithAvro(new DatabaseInternals(DATABASE_PATH))) {
+
+		final var nameToLookFor = "Mary";
+
+		final var partialMetadata = simpleDatabase.readPartialMetadata();
+		final var bloomFilterData = (ByteBuffer) partialMetadata.get("bloomFilter");
+
+		final var bloomFilter = BloomFilter.readFrom(new ByteArrayInputStream(bloomFilterData.array()), Funnels.stringFunnel(StandardCharsets.UTF_8));
+		final var doesBloomFilterContainThisValue = bloomFilter.mightContain(nameToLookFor);
+
+		System.out.println("Data set contains this value: " + (doesBloomFilterContainThisValue ? "Might be in the data set" : "No, move on"));
+
+		if (bloomFilter.mightContain(nameToLookFor)) {
+			final var now = Instant.now();
+			final var entry = simpleDatabase.databaseInternals.findFirstEntryWhere(nameToLookFor);
+			System.out.println(entry);
+			final var after = Instant.now();
+			System.out.println("Reading data: " + Duration.between(now, after).toMillis());
+		}
+	}
+}
+```
+
 
 
 
