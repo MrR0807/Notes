@@ -772,6 +772,8 @@ Let's explore another issue. Searching by indexes is fast. However, if I'd like 
 
 There are great blog post about Bloom Filter[14][16], hence I will not repeated how they work. But essentially Bloom Filter enables you to quickly determine whether in a given set of data a particular entry exists. In our case, we'd like to determine if a given database file contains entry with searchable name.
 
+**Note!** I will use Google Guava library's bloom filter implementation.
+
 Building metadata with Bloom filter:
 
 ```java
