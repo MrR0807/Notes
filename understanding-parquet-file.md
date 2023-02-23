@@ -766,7 +766,8 @@ public static void main(String[] args) throws Exception {
 
 #### Looking for name
 
-Let's explore another issue. Searching by indexes is fast. However, if I'd like to search index by name and we had several files, I would have to traverse each fully. 
+Let's explore another issue. Searching by indexes is fast. However, if I'd like to search entry by name and we had several million files, I would have to traverse each file fully. One of the solutions is to add another index like we did with `index` column. But having several million files would mean that each index map would have to be loaded into memory and searched.  
+
 
 
 ##### Bloom Filter
