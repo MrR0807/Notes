@@ -770,7 +770,7 @@ Let's explore another issue. Searching by indexes is fast. However, if I'd like 
 
 ##### Bloom Filter
 
-There are great blog post about Bloom Filter[14][16], hence I will not repeated how they work. But essentially Bloom Filter enables you to quickly determine whether given set of data, contains particular entry. In our case, we'd like to determine if given database file contains given name entry or not.
+There are great blog post about Bloom Filter[14][16], hence I will not repeated how they work. But essentially Bloom Filter enables you to quickly determine whether in a given set of data a particular entry exists. In our case, we'd like to determine if a given database file contains entry with searchable name.
 
 Building metadata with Bloom filter:
 
