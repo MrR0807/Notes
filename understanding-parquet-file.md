@@ -628,7 +628,7 @@ In this exercise we have improved metadata ingestion speed, shrank `metadata.avr
 
 #### Non existing index
 
-Say, I would search for an index which does not exist - `7777777`. Our current database implementation would have to scan through all entries. You could argue that if does not exist within `HashMap` metadata, then it does not exist. This is fair enough argument when you have several hundred files, or enough memory to keep all metadata. But what if you have millions of files? 
+Say, I would search for an index which does not exist - `7777777`. Our current database implementation would have to scan through all entries. You could argue that if does not exist within `HashMap` metadata, then it does not exist. This is fair enough argument when you have several hundred files, or enough memory to keep all metadata. But what if you have millions of files? The obvious step is to add more metadata. In this case, adding min and max index range for particular database file would help to evaluate very fast whether there is an index in given range or not. This way we could  
 
 
 #### Multiple files
