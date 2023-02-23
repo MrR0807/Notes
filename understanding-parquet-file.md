@@ -764,9 +764,14 @@ public static void main(String[] args) throws Exception {
 }
 ```
 
+
+
+
+
+
 #### Looking for name
 
-Let's explore another issue. 
+Let's explore another issue. Searching by indexes is fast enough. However, if I'd like to search index by name and we had several files, I would have to 
 
 
 ##### Bloom Filter
@@ -789,6 +794,7 @@ Let's explore another issue.
 11. [Java Documentation. Package java.nio.channels] https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/nio/channels/package-summary.html
 12. [Java NIO](https://www.oreilly.com/library/view/java-nio/0596002882/)
 13. https://dev.mysql.com/doc/refman/5.6/en/innodb-file-per-table-tablespaces.html
+14. https://martin.kleppmann.com/2020/12/02/bloom-filter-hash-graph-sync.html
 
 
 
