@@ -882,6 +882,10 @@ public Optional<Entry> findFirstEntryWhere(String name) throws IOException {
 }
 ```
 
+#### Parquet Metadata
+
+
+
 
 
 ### Resources
