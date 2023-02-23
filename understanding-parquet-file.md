@@ -764,14 +764,9 @@ public static void main(String[] args) throws Exception {
 }
 ```
 
-
-
-
-
-
 #### Looking for name
 
-Let's explore another issue. Searching by indexes is fast enough. However, if I'd like to search index by name and we had several files, I would have to 
+Let's explore another issue. Searching by indexes is fast. However, if I'd like to search index by name and we had several files, I would have to traverse each fully. 
 
 
 ##### Bloom Filter
