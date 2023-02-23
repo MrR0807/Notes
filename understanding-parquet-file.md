@@ -777,9 +777,39 @@ There are great blog post about Bloom Filter[14][16], hence I will not repeated 
 Building metadata with Bloom filter:
 
 ```java
+public static void main(String[] args) throws Exception {
 
+	final var bloomFilter = BloomFilter.<String>create(Funnels.stringFunnel(StandardCharsets.UTF_8), (Integer.MAX_VALUE / 1000));
+	final var indexOffsetMap = new HashMap<Long, Long>();
 
+	try (var simpleDatabase = new SimpleDatabaseWithAvro(new DatabaseInternals(DATABASE_PATH))) {
+
+		for (int i = 0; i < (Integer.MAX_VALUE / 1000); i++) {
+
+			final var write = simpleDatabase.databaseInternals.write(++simpleDatabase.lastIndex, """
+			"name":"John", "age":26, "salary":2147483646""");
+			bloomFilter.put("John");
+			if (simpleDatabase.lastIndex % 1000 == 0) {
+				indexOffsetMap.put(simpleDatabase.lastIndex, write.startOffset());
+			}
+		}
+
+		final var bloomFilterBytes = new ByteArrayOutputStream();
+		bloomFilter.writeTo(new BufferedOutputStream(bloomFilterBytes));
+
+		final var record = new GenericData.Record(FULL_SCHEMA);
+		record.put("min", 0);
+		record.put("max", simpleDatabase.lastIndex);
+		//ByteBuffer is required otherwise exception: ByteArrayOutputStream cannot be cast to class java.nio.ByteBuffer
+		record.put("bloomFilter", ByteBuffer.wrap(bloomFilterBytes.toByteArray()));
+		record.put("index", indexOffsetMap);
+
+		serializeMetadata(record);
+	}
+}
 ```
+
+
 
 
 
