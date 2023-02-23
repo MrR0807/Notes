@@ -840,8 +840,7 @@ public static void main(String[] args) throws Exception {
 Running with `Mary`, it returns:
 
 ```
-
-
+Data set contains this value: No, move on
 ```
 
 Running with `John`, it returns:
@@ -853,7 +852,35 @@ Reading data: 33
 ```
 
 
+```java
+public Optional<Entry> findFirstEntryWhere(String name) throws IOException {
 
+	var newOffset = 0;
+
+	while (true) {
+
+		buffer.clear();
+		readIntoBufferFromOffset(buffer, newOffset);
+
+		if (buffer.limit() == 0) {
+			break;
+		}
+
+		final var entriesAndLastValidOffset = readRecord(buffer);
+		final var maybeFoundEntry = entriesAndLastValidOffset.entries.stream()
+				.filter(entry -> entry.name.equals(name))
+				.findFirst();
+
+		if (maybeFoundEntry.isPresent()) {
+			return maybeFoundEntry;
+		} else {
+			newOffset += entriesAndLastValidOffset.lastCorrectOffset;
+		}
+	}
+
+	return Optional.empty();
+}
+```
 
 
 
