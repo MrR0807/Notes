@@ -766,11 +766,18 @@ public static void main(String[] args) throws Exception {
 
 #### Looking for name
 
-Let's explore another issue. Searching by indexes is fast. However, if I'd like to search entry by name and we had several million files, I would have to traverse each file fully. One of the solutions is to add another index like we did with `index` column. But having several million files would mean that each index map would have to be loaded into memory and searched.  
-
-
+Let's explore another issue. Searching by indexes is fast. However, if I'd like to search entry by name and we had several million files, I would have to traverse each file fully. One of the solutions is to add another index like we did with `index` column. But having several million files would mean that each index map would have to be loaded into memory and searched. The problem is not new and databases like Cassandra[15] solved it using Bloom filters.
 
 ##### Bloom Filter
+
+There are great blog post about Bloom Filter[14][16], hence I will not repeated how they work. But essentially Bloom Filter enables you to quickly determine whether given set of data, contains particular entry. In our case, we'd like to determine if given database file contains given name entry or not.
+
+Building metadata with Bloom filter:
+
+```java
+
+
+```
 
 
 
@@ -791,6 +798,8 @@ Let's explore another issue. Searching by indexes is fast. However, if I'd like 
 12. [Java NIO](https://www.oreilly.com/library/view/java-nio/0596002882/)
 13. https://dev.mysql.com/doc/refman/5.6/en/innodb-file-per-table-tablespaces.html
 14. https://martin.kleppmann.com/2020/12/02/bloom-filter-hash-graph-sync.html
+15. https://cassandra.apache.org/doc/latest/cassandra/operating/bloom_filters.html#:~:text=Bloom%20filters%20are%20a%20probabilistic,exists%20in%20the%20given%20file.
+16. https://llimllib.github.io/bloomfilter-tutorial/
 
 
 
