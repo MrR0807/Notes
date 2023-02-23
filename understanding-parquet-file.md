@@ -837,6 +837,20 @@ public static void main(String[] args) throws Exception {
 }
 ```
 
+Running with `Mary`, it returns:
+
+```
+
+
+```
+
+Running with `John`, it returns:
+
+```
+Data set contains this value: Might be in the data set
+Optional[Entry[index=1, name=John, age=26, salary=2147483646]]
+Reading data: 33
+```
 
 
 
