@@ -632,6 +632,8 @@ Say, I would search for an index which does not exist - `7777777`. Our current d
 
 Below is a crude implementation. Note that now, I have two different Avro schemas to read only what is required - one for partial metadata and other for full metadata. Partial metadata is read firstly and if it contains the required index it will read full metadata and try searching for this particular index. This could be scaled further, by having a special metadata file containing only min/max values and file names, this way million files could be skip and  
 
+Writing data:
+
 ```java
 public class SimpleDatabaseWithAvro implements AutoCloseable {
 
@@ -694,26 +696,25 @@ public class SimpleDatabaseWithAvro implements AutoCloseable {
 
 	public static void main(String[] args) throws Exception {
 
+		final var indexOffsetMap = new HashMap<Long, Long>();
+
 		try (var simpleDatabase = new SimpleDatabaseWithAvro(new DatabaseInternals(DATABASE_PATH))) {
 
-			final var indexToSearch = 7777777L;
-			final var offsetToLook = (indexToSearch / 1000) * 1000;
+			for (int i = 0; i < (Integer.MAX_VALUE / 1000); i++) {
 
-			final var partialMetadata = simpleDatabase.readPartialMetadata();
-			final var min = (long) partialMetadata.get("min");
-			final var max = (long) partialMetadata.get("max");
-
-			if (min <= indexToSearch && indexToSearch <= max) {
-				final var fullMetadata = simpleDatabase.readFullMetadata();
-				final var indexMap = (Map<Utf8, Long>) fullMetadata.get("index");
-
-				final var now = Instant.now();
-				final var offset = indexMap.getOrDefault(new Utf8(String.valueOf(offsetToLook)), 0L);
-				final var entry = simpleDatabase.databaseInternals.findEntryFrom(offset, indexToSearch);
-				System.out.println(entry);
-				final var after = Instant.now();
-				System.out.println("Reading data: " + Duration.between(now, after).toMillis());
+				final var write = simpleDatabase.databaseInternals.write(++simpleDatabase.lastIndex, """
+				"name":"John", "age":26, "salary":2147483646""");
+				if (simpleDatabase.lastIndex % 1000 == 0) {
+					indexOffsetMap.put(simpleDatabase.lastIndex, write.startOffset());
+				}
 			}
+
+			final var record = new GenericData.Record(FULL_SCHEMA);
+			record.put("min", 0);
+			record.put("max", simpleDatabase.lastIndex);
+			record.put("index", indexOffsetMap);
+
+			serializeMetadata(record);
 		}
 	}
 
@@ -730,6 +731,35 @@ public class SimpleDatabaseWithAvro implements AutoCloseable {
 	@Override
 	public void close() throws Exception {
 		databaseInternals.close();
+	}
+}
+```
+
+Reading data is the same as previous just `main` method is different.
+
+```java
+public static void main(String[] args) throws Exception {
+
+	try (var simpleDatabase = new SimpleDatabaseWithAvro(new DatabaseInternals(DATABASE_PATH))) {
+
+		final var indexToSearch = 7777777L;
+		final var offsetToLook = (indexToSearch / 1000) * 1000;
+
+		final var partialMetadata = simpleDatabase.readPartialMetadata();
+		final var min = (long) partialMetadata.get("min");
+		final var max = (long) partialMetadata.get("max");
+
+		if (min <= indexToSearch && indexToSearch <= max) {
+			final var fullMetadata = simpleDatabase.readFullMetadata();
+			final var indexMap = (Map<Utf8, Long>) fullMetadata.get("index");
+
+			final var now = Instant.now();
+			final var offset = indexMap.getOrDefault(new Utf8(String.valueOf(offsetToLook)), 0L);
+			final var entry = simpleDatabase.databaseInternals.findEntryFrom(offset, indexToSearch);
+			System.out.println(entry);
+			final var after = Instant.now();
+			System.out.println("Reading data: " + Duration.between(now, after).toMillis());
+		}
 	}
 }
 ```
