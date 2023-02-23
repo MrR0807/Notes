@@ -630,7 +630,7 @@ In this exercise we have improved metadata ingestion speed, shrank `metadata.avr
 
 Say, I would search for an index which does not exist - `7777777`. Our current database implementation would have to scan through all entries. You could argue that if does not exist within `HashMap` metadata, then it does not exist. This is fair enough argument when you have several hundred files, or enough memory to keep all metadata. But what if you have millions of files? The obvious step is to add more metadata. In this case, adding min and max index range for particular database file would help to evaluate very fast whether there is an index in given range or not. This way we could also read only partial metadata, without loading all `HashMap` index metadata. 
 
-Below is a crude implementation. Note that now, I have two different Avro schemas to read only what is required - one for partial metadata and other for full metadata:
+Below is a crude implementation. Note that now, I have two different Avro schemas to read only what is required - one for partial metadata and other for full metadata. Partial metadata is read firstly and if it contains the required index it will read full metadata and try searching for this particular index. This could be scaled further, by having a special metadata file containing only min/max values and file names, this way million files could be skip and  
 
 ```java
 public class SimpleDatabaseWithAvro implements AutoCloseable {
