@@ -628,7 +628,111 @@ In this exercise we have improved metadata ingestion speed, shrank `metadata.avr
 
 #### Non existing index
 
-Say, I would search for an index which does not exist - `7777777`. Our current database implementation would have to scan through all entries. You could argue that if does not exist within `HashMap` metadata, then it does not exist. This is fair enough argument when you have several hundred files, or enough memory to keep all metadata. But what if you have millions of files? The obvious step is to add more metadata. In this case, adding min and max index range for particular database file would help to evaluate very fast whether there is an index in given range or not. This way we could  
+Say, I would search for an index which does not exist - `7777777`. Our current database implementation would have to scan through all entries. You could argue that if does not exist within `HashMap` metadata, then it does not exist. This is fair enough argument when you have several hundred files, or enough memory to keep all metadata. But what if you have millions of files? The obvious step is to add more metadata. In this case, adding min and max index range for particular database file would help to evaluate very fast whether there is an index in given range or not. This way we could also read only partial metadata, without loading all `HashMap` index metadata. 
+
+Below is a crude implementation. Note that now, I have two different Avro schemas to read only what is required - one for partial metadata and other for full metadata:
+
+```java
+public class SimpleDatabaseWithAvro implements AutoCloseable {
+
+	private static final Path DATABASE_PATH = Path.of("database.txt");
+	private static final String METADATA_FILE_NAME = "metadata.avro";
+	private static final Path METADATA_PATH = Path.of(METADATA_FILE_NAME);
+
+	private long lastIndex;
+	private final DatabaseInternals databaseInternals;
+
+	private static final Schema FULL_SCHEMA = new Schema.Parser().parse("""
+			{
+			  "type": "record",
+			  "name": "metadata",
+			  "fields" : [
+			    {"name": "min", "type": "long"},
+			    {"name": "max", "type": "long"},
+			    {"name": "index", "type": {"type": "map", "values": "long"}}
+			  ]
+			}""");
+
+	private static final Schema MIN_MAX_SCHEMA = new Schema.Parser().parse("""
+			{
+			  "type": "record",
+			  "name": "metadata",
+			  "fields" : [
+			    {"name": "min", "type": "long"},
+			    {"name": "max", "type": "long"}
+			  ]
+			}""");
+
+	public SimpleDatabaseWithAvro(DatabaseInternals databaseInternals) throws IOException {
+
+		this.databaseInternals = databaseInternals;
+		this.lastIndex = databaseInternals.readLastIndex();
+	}
+
+	private GenericRecord readPartialMetadata() throws IOException {
+
+		return readMetadata(MIN_MAX_SCHEMA);
+	}
+
+	private GenericRecord readFullMetadata() throws IOException {
+
+		return readMetadata(FULL_SCHEMA);
+	}
+
+	private static GenericRecord readMetadata(Schema schema) throws IOException {
+		if (METADATA_PATH.toFile().exists()) {
+
+			final var reader = new GenericDatumReader<GenericRecord>(schema);
+			try (final var fileReader = new DataFileReader<>(Path.of("metadata.avro").toFile(), reader)) {
+				return fileReader.next();
+			}
+		} else {
+
+			return new GenericData.Record(schema);
+		}
+	}
+
+	public static void main(String[] args) throws Exception {
+
+		try (var simpleDatabase = new SimpleDatabaseWithAvro(new DatabaseInternals(DATABASE_PATH))) {
+
+			final var indexToSearch = 7777777L;
+			final var offsetToLook = (indexToSearch / 1000) * 1000;
+
+			final var partialMetadata = simpleDatabase.readPartialMetadata();
+			final var min = (long) partialMetadata.get("min");
+			final var max = (long) partialMetadata.get("max");
+
+			if (min <= indexToSearch && indexToSearch <= max) {
+				final var fullMetadata = simpleDatabase.readFullMetadata();
+				final var indexMap = (Map<Utf8, Long>) fullMetadata.get("index");
+
+				final var now = Instant.now();
+				final var offset = indexMap.getOrDefault(new Utf8(String.valueOf(offsetToLook)), 0L);
+				final var entry = simpleDatabase.databaseInternals.findEntryFrom(offset, indexToSearch);
+				System.out.println(entry);
+				final var after = Instant.now();
+				System.out.println("Reading data: " + Duration.between(now, after).toMillis());
+			}
+		}
+	}
+
+	private static void serializeMetadata(GenericRecord metadata) throws IOException {
+
+		final var metadataWriter = new GenericDatumWriter<GenericRecord>(FULL_SCHEMA);
+
+		try (final var metadataFileWriter = new DataFileWriter<>(metadataWriter)) {
+			metadataFileWriter.create(FULL_SCHEMA, METADATA_PATH.toFile());
+			metadataFileWriter.append(metadata);
+		}
+	}
+
+	@Override
+	public void close() throws Exception {
+		databaseInternals.close();
+	}
+}
+```
 
 
 #### Multiple files
