@@ -770,9 +770,11 @@ Let's explore another issue. Searching by indexes is fast. However, if I'd like 
 
 ##### Bloom Filter
 
-There are great blog posts about Bloom Filter[14][16], hence I will not repeated how they work. But essentially Bloom Filter enables you to very quickly determine whether in a given set of data a particular entry exists. In our case, we'd like to determine if a given database file contains entry with searchable name.
+There is a lot of information about Bloom Filter[14][16], hence I will not deep dive into how it works. But essentially Bloom Filter enables us to very quickly determine whether in a given set of data a particular entry exists or not. More precisely, false positive matches are possible, but false negatives are not or in other words, a query returns either "possibly in set" or **"definitely not in set"**.
 
-**Note!** I will use Google Guava library's bloom filter implementation.
+In our case, we'd like to determine if a given database file contains entry with searchable name.
+
+**Note!** I will use Google Guava library's bloom filter implementation instead of building one from ground up.
 
 Building metadata with Bloom filter:
 
@@ -824,7 +826,7 @@ public static void main(String[] args) throws Exception {
 		final var bloomFilter = BloomFilter.readFrom(new ByteArrayInputStream(bloomFilterData.array()), Funnels.stringFunnel(StandardCharsets.UTF_8));
 		final var doesBloomFilterContainThisValue = bloomFilter.mightContain(nameToLookFor);
 
-		System.out.println("Data set contains this value: " + (doesBloomFilterContainThisValue ? "Might be in the data set" : "No, move on"));
+		System.out.println("Does data set contains this value? " + (doesBloomFilterContainThisValue ? "Might be in the data set" : "No, move on"));
 
 		if (bloomFilter.mightContain(nameToLookFor)) {
 			final var now = Instant.now();
@@ -840,13 +842,13 @@ public static void main(String[] args) throws Exception {
 Running with `Mary`, it returns:
 
 ```
-Data set contains this value: No, move on
+Does data set contains this value? No, move on
 ```
 
 Running with `John`, it returns:
 
 ```
-Data set contains this value: Might be in the data set
+Does data set contains this value? Might be in the data set
 Optional[Entry[index=1, name=John, age=26, salary=2147483646]]
 Reading data: 33
 ```
