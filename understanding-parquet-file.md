@@ -886,6 +886,8 @@ public Optional<Entry> findFirstEntryWhere(String name) throws IOException {
 
 #### Parquet Metadata
 
+Having this information, let's get back to Parquet. Let's generate data and inspect it's metadata.
+
 
 
 
