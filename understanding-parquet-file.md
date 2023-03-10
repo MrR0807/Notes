@@ -13,6 +13,14 @@ On the most fundamental level, a database needs to do two things: when you give 
 Let's start with simple case:
 
 ```java
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
+import java.util.List;
+import java.util.Optional;
+import java.util.regex.Pattern;
+
 public class SimpleDatabase {
 
 	private static final Path DATABASE_PATH = Path.of("database.txt");
