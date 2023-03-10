@@ -181,6 +181,19 @@ In order to know offset position during our writes and then read from given offs
 It is clearly stated in stackoverflow post that `java.nio` with `FileChannel` is faster by about >250% compared with `FileInputStream/FileOuputStream`[6], however, the difference between `RandomAccessFile` and `SeekableByteChannel` is not conclusive or well documented. I have found several instances, which claim that `SeekableByteChannel` is faster[7], but this is yet to be confirmed. Despite that, I have chose to use `SeekableByteChannel`.
 
 ```java
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.channels.SeekableByteChannel;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
+import java.security.InvalidParameterException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+import java.util.regex.Pattern;
+
 public class DatabaseInternals implements AutoCloseable {
 
 	private static final int DEFAULT_BUFFER_SIZE = 8192;
@@ -380,9 +393,28 @@ public class DatabaseInternals implements AutoCloseable {
 
 I will explain initial parts and then continue to add explanations once the methods are used in further examples. 
 
+First things first, the `constructor`:
 
+```java
+public DatabaseInternals(Path file) {
 
+	try {
+		this.seekableByteChannel = Files.newByteChannel(file, StandardOpenOption.READ, StandardOpenOption.WRITE, StandardOpenOption.CREATE);
+		final var size = seekableByteChannel.size();
+		final var lastBlockLength = size % DEFAULT_BUFFER_SIZE;
 
+		if (lastBlockLength > 0) {
+			this.totalBlockCount = size / DEFAULT_BUFFER_SIZE + 1;
+		} else {
+			this.totalBlockCount = size / DEFAULT_BUFFER_SIZE;
+		}
+	} catch (IOException e) {
+		throw new RuntimeException(e);
+	}
+}
+```
+
+The standard way of creating a `SeekableByteChannel` is via `Files::newByteChannel` method. The remaining part is calculating how many "blocks" there is.
 
 
 
