@@ -452,7 +452,37 @@ In simple words, when a file is smaller than the size of `DEFAULT_BUFFER_SIZE`, 
 
 The `else` branch of the code indicates that the file size is divisible without reminder or when `fileSize == DEFAULT_BUFFER_SIZE`. For example when file is of size 8192 then there is just one block. When 16384, then there are two blocks. And so on.
 
+As stated before, `totalBlockCount` is used in `readLastIndex` method. Let's analyse it. But before it, simple usage pattern needs to be explained about `SeekableByteChannel`. 
 
+```java
+public long readLastIndex() throws IOException {
+
+	if (seekableByteChannel.size() == 0) {
+		return 0;
+	}
+	buffer.clear();
+
+	final var offsetOfLastBlock = DEFAULT_BUFFER_SIZE * (totalBlockCount - 1);
+	readIntoBufferFromOffset(buffer, offsetOfLastBlock);
+	if (startsWithValidEntry(buffer)) {
+		buffer.rewind();
+		final var entriesAndLastValidOffsets = readRecord(buffer);
+		final var lastEntry = entriesAndLastValidOffsets.entries.get(entriesAndLastValidOffsets.entries.size() - 1);
+		return lastEntry.index;
+	} else {
+		// Read before last block to find last valid entry's new line offset
+		buffer.clear();
+		readIntoBufferFromOffset(buffer, DEFAULT_BUFFER_SIZE * (totalBlockCount - 2));
+		final var lastNewLineOffset = seekToLastNewLine(buffer);
+		// Start reading from correct starting offset
+		buffer.clear();
+		readIntoBufferFromOffset(buffer, (DEFAULT_BUFFER_SIZE * (totalBlockCount - 1)) - (DEFAULT_BUFFER_SIZE - lastNewLineOffset));
+		final var entriesAndLastValidOffsets = readRecord(buffer);
+		final var lastEntry = entriesAndLastValidOffsets.entries.get(entriesAndLastValidOffsets.entries.size() - 1);
+		return lastEntry.index;
+	}
+}
+```
 
 
 
