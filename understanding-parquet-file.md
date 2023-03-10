@@ -414,7 +414,9 @@ public DatabaseInternals(Path file) {
 }
 ```
 
-The standard way of creating a `SeekableByteChannel` is via `Files::newByteChannel` method. The remaining part is calculating how many "blocks" there is. The `totalBlockCount` helps to speedily seek to the end of the file and find the last index. Let's look at few examples to understand calculation better. 
+The standard way of creating a `SeekableByteChannel` is via `Files::newByteChannel` method. The remaining part is calculating how many "blocks" there is within the file. The `totalBlockCount` helps to speedily seek to the end of the file and find the last index as we'll see soon. While the block I'm refering to is just an arbitrary number of bytes which will be allocated to read a part of file into a memory. If the file is smaller than the allocated block or the last part of the file is smaller, then obviously it will contain less data than the full size, but most of the time it will be read in those defined chunks.
+
+Let's look at few examples to understand calculation better. 
 
 Say we have a file of 8000 bytes size. The `DEFAULT_BUFFER_SIZE` is 8192. I'm going to exchange real values instead of variables.
 
