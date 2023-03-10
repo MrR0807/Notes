@@ -139,7 +139,7 @@ public static void main(String[] args) throws IOException {
 }
 ```
 
-For me, this has generated a file with size of around 130 MB.
+Before running this code, you can delete the `database.txt` file. Running this has generated a file with size of around 130 MB.
 
 Let's try searching the the first and the last entries:
 
@@ -174,11 +174,11 @@ Let’s say our data storage consists only of appending to a file, as in the pre
 
 #### Implementation
 
-In order to know offset position during our writes and then read from given offset positions, I will have to rewrite Java database from ground up. This is because `Files` abstractions lack any such controls and deemed them too low level. There are a couple of options for rewrite:
+In order to know offset position during our writes and then read from given offset positions, I will have to rewrite Java database from ground up. This is because `Files` methods lack any such controls. There are a couple of options for rewrite:
 * `RandomAccessFile`[4].
 * `SeekableByteChannel`[5].
 
-It is clearly stated in stackoverflow post that `java.nio` with `FileChannel` is faster by about >250% compared with `FileInputStream/FileOuputStream`[6], however, the difference between `RandomAccessFile` and `SeekableByteChannel` is not conclusive or well documented. I have found several instances, which claim that `SeekableByteChannel` is faster[7], but this is yet to be confirmed. Anyway, I have chose to use `SeekableByteChannel`.
+It is clearly stated in stackoverflow post that `java.nio` with `FileChannel` is faster by about >250% compared with `FileInputStream/FileOuputStream`[6], however, the difference between `RandomAccessFile` and `SeekableByteChannel` is not conclusive or well documented. I have found several instances, which claim that `SeekableByteChannel` is faster[7], but this is yet to be confirmed. Despite that, I have chose to use `SeekableByteChannel`.
 
 ```java
 public class DatabaseInternals implements AutoCloseable {
@@ -378,7 +378,18 @@ public class DatabaseInternals implements AutoCloseable {
 }
 ```
 
-I will explain initial parts and then continue to add once the methods are used in further examples. TODO.
+I will explain initial parts and then continue to add explanations once the methods are used in further examples. 
+
+
+
+
+
+
+
+
+
+
+
 
 I will not explain the implementation details and if you want to read more about `java.nio.channels` usage there are great blogs[8][9][10][11] and a book[12]. Also, this implementation is not super optimised and readable, but I might improve it over time. For now, it is a good starting point.
 
