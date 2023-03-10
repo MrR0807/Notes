@@ -414,7 +414,22 @@ public DatabaseInternals(Path file) {
 }
 ```
 
-The standard way of creating a `SeekableByteChannel` is via `Files::newByteChannel` method. The remaining part is calculating how many "blocks" there is.
+The standard way of creating a `SeekableByteChannel` is via `Files::newByteChannel` method. The remaining part is calculating how many "blocks" there is. The `totalBlockCount` helps to speedily seek to the end of the file and find the last index. Let's look at few examples to understand calculation better. 
+
+Say we have a file of 8000 bytes size. The `DEFAULT_BUFFER_SIZE` is 8192. I'm going to exchange real values instead of variables.
+
+```java
+final var size = 8000;
+final var lastBlockLength = 8000 % 8192;
+
+if (lastBlockLength > 0) {
+	this.totalBlockCount = 8000 / 8192 + 1;
+} else {
+	this.totalBlockCount = 8000 / 8192;
+}
+```
+
+
 
 
 
