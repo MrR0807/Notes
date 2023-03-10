@@ -420,14 +420,39 @@ Say we have a file of 8000 bytes size. The `DEFAULT_BUFFER_SIZE` is 8192. I'm go
 
 ```java
 final var size = 8000;
+// This will be equal to 8000
 final var lastBlockLength = 8000 % 8192;
 
-if (lastBlockLength > 0) {
+if (8000 > 0) {
+	// This will be equal to 1, because 8000 / 8192 = 0 and then + 1
 	this.totalBlockCount = 8000 / 8192 + 1;
 } else {
 	this.totalBlockCount = 8000 / 8192;
 }
 ```
+
+Let's take another example:
+
+```java
+final var size = 10_000;
+// This will be equal to 1808
+final var lastBlockLength = 10_000 % 8192;
+
+if (1808 > 0) {
+	// This will be equal to 2, because 10_000 / 8192 = 1 and then + 1
+	var totalBlockCount = 10_000 / 8192 + 1;
+} else {
+	var totalBlockCount = 10_000 / 8192;
+}
+```
+
+
+
+
+
+
+In a simple words, when a file is smaller or bigger than the size of `DEFAULT_BUFFER_SIZE`, then `totalBlockCount` is still equals one, even if the block is not full.
+
 
 
 
