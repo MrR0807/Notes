@@ -448,12 +448,9 @@ if (1808 > 0) {
 }
 ```
 
+In simple words, when a file is smaller than the size of `DEFAULT_BUFFER_SIZE`, then `totalBlockCount` equals to one, even if the block is not full. While in other cases, it is `size / DEFAULT_BUFFER_SIZE + 1`, because the last block, as provided by `lastBlockLength` is smaller than the `DEFAULT_BUFFER_SIZE`, but it is still a block.
 
-
-
-
-
-In a simple words, when a file is smaller or bigger than the size of `DEFAULT_BUFFER_SIZE`, then `totalBlockCount` is still equals one, even if the block is not full.
+While the `else` branch of the code indicates that the file size is divisible without reminder or when `fileSize == DEFAULT_BUFFER_SIZE`.
 
 
 
