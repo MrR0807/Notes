@@ -170,7 +170,7 @@ In order to know offset position during our writes and then read from given offs
 * `RandomAccessFile`[4].
 * `SeekableByteChannel`[5].
 
-It is clearly stated in stackoverflow post that `java.nio` with `FileChannel` is faster by about >250% compared with `FileInputStream/FileOuputStream`[6], however, the difference between `RandomAccessFile` and `SeekableByteChannel` is not conclusive or well documented. I have found several instances, which claim that `SeekableByteChannel` is faster[7], but this is yet to be tested in another time. Anyway, I have chose to use `SeekableByteChannel`.
+It is clearly stated in stackoverflow post that `java.nio` with `FileChannel` is faster by about >250% compared with `FileInputStream/FileOuputStream`[6], however, the difference between `RandomAccessFile` and `SeekableByteChannel` is not conclusive or well documented. I have found several instances, which claim that `SeekableByteChannel` is faster[7], but this is yet to be confirmed. Anyway, I have chose to use `SeekableByteChannel`.
 
 ```java
 public class DatabaseInternals implements AutoCloseable {
