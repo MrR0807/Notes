@@ -414,7 +414,7 @@ public DatabaseInternals(Path file) {
 }
 ```
 
-The standard way of creating a `SeekableByteChannel` is via `Files::newByteChannel` method. The remaining part is calculating how many "blocks" there is within the file. The `totalBlockCount` helps to speedily seek to the end of the file and find the last index as we'll see soon. While the block I'm refering to is just an arbitrary number of bytes which will be allocated to read a part of file into a memory. If the file is smaller than the allocated block or the last part of the file is smaller, then obviously it will contain less data than the full size, but most of the time it will be read in those defined chunks.
+The standard way of creating a `SeekableByteChannel` is via `Files::newByteChannel` method. The remaining part is calculating how many "blocks" there is within the file. The `totalBlockCount` helps to speedily seek to the end of the file and find the last index as we'll see soon. While the block I'm refering to is just an arbitrary number of bytes which will be allocated to read a part of a file into a memory. If the file is smaller than the allocated block or the last part of the file is smaller, then obviously it will contain less data than the full size, but most of the time information will be read in those defined chunks.
 
 Let's look at few examples to understand calculation better. 
 
@@ -448,9 +448,11 @@ if (1808 > 0) {
 }
 ```
 
-In simple words, when a file is smaller than the size of `DEFAULT_BUFFER_SIZE`, then `totalBlockCount` equals to one, even if the block is not full. While in other cases, it is `size / DEFAULT_BUFFER_SIZE + 1`, because the last block, as provided by `lastBlockLength` is smaller than the `DEFAULT_BUFFER_SIZE`, but it is still a block.
+In simple words, when a file is smaller than the size of `DEFAULT_BUFFER_SIZE`, then `totalBlockCount` equals to one, which makes total sense, because there is one block even if it is not full. While in other cases, it is `size / DEFAULT_BUFFER_SIZE + 1`, because the last block, as provided by `lastBlockLength` is smaller than the `DEFAULT_BUFFER_SIZE`, but it is still a block.
 
-While the `else` branch of the code indicates that the file size is divisible without reminder or when `fileSize == DEFAULT_BUFFER_SIZE`.
+The `else` branch of the code indicates that the file size is divisible without reminder or when `fileSize == DEFAULT_BUFFER_SIZE`. For example when file is of size 8192 then there is just one block. When 16384, then there are two blocks. And so on.
+
+
 
 
 
