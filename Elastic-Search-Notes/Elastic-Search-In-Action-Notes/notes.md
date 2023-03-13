@@ -521,7 +521,67 @@ Response:
 
 Note the response will consist of all documents returned if not asked explicitly to suppress them. We can set size=0 as the root level to stop the response containing documents.
 
+```json
+GET covid/_search
+{
+  "size": 0,
+  "aggs": { 
+    ...
+  }
+}
+```
 
+#### USING OTHER METRICS
+
+```shell
+GET covid/_search
+{
+  "size": 0,
+  "aggs": {
+    "max_deaths": {
+      "max": {
+        "field": "deaths"
+      }
+    } 
+  }
+}
+```
+
+In the similar vein, if we want to find the maximum number of deaths across all countries in our COVID data, we use a max aggregation.
+
+```shell
+GET covid/_search
+{
+  "size": 0,
+  "aggs": {
+    "all_stats": {
+      "stats": { #A stats query returns all five core metrics in one go
+        "field": "deaths"
+      }
+    } 
+  }
+}
+```
+
+This stats query returns:
+
+```json
+"aggregations" : {
+  "all_stats" : {
+    "count" : 20,
+    "min" : 30772.0,
+    "max" : 561142.0,
+    "avg" : 163689.1,
+    "sum" : 3273782.0
+  } 
+}
+```
+
+### 2.4.2 Bucketing
+
+Bucketing is all about segregating data into various groups or so-called buckets. For example, we can add these groups to our buckets: a survey of adult  groups according to their age bracket (20–, 31–40, 41–50).
+
+#### HISTOGRAM BUCKETS
 
 
 
