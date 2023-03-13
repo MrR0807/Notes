@@ -1,3 +1,5 @@
+# Chapter 1. Overview
+
 To satisfy full-text search requirements along with other advanced functions, search engines came into existence with an approach different from that of a relational database query. The data undergoes an analysis phase in a search engine before it gets stored for later retrieval. This upfront analysis helps answer queries with ease.
 
 ### 1.4.1 Core areas
@@ -158,6 +160,31 @@ GET books/_search
   }
 }
 ```
+
+### 2.2.4 Indexing more documents using the `_bulk` API
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
