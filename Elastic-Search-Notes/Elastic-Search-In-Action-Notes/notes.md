@@ -583,15 +583,99 @@ Bucketing is all about segregating data into various groups or so-called buckets
 
 #### HISTOGRAM BUCKETS
 
+The histogram bucketing aggregation creates a list of buckets on a numerical value by going over all the documents.
 
+```shell
+GET covid/_search
+{
+  "size": 0,
+  "aggs": {
+    "critical_patients_as_histogram": {#A The user-defined name of the report
+      "histogram": {#B The type of the bucketing aggregation - histogram
+        "field": "critical", #C The field the aggregation applied on
+        "interval": 2500 #D The bucket interval
+      }
+    } 
+  }
+}
+```
 
+```json
+"aggregations": {
+  "critical_patients_as_histogram" : {
+    "buckets" : [
+      {
+       "key" : 0.0,
+       "doc_count" : 8
+      }, 
+      {
+       "key" : 2500.0,
+       "doc_count" : 6
+      },
+      {
+       "key" : 5000.0,
+       "doc_count" : 0
+      }, 
+      {
+       "key" : 7500.0,
+       "doc_count" : 6
+      }
+    ]
+  } 
+}
+```
 
+#### RANGE BUCKETS
 
+The range bucketing defines a set of buckets based on predefined ranges. For example, say we want to segregate the number of COVID casualties by country (casualties up to 60000, 60000–70000, 70000–80000, 80000–120000).
 
+```shell
+GET covid/_search
+{
+  "size": 0,
+  "aggs": {
+    "range_countries": {
+      "range": {            #A The range bucketing aggregation
+        "field": "deaths",  #B Field on which we apply the agg
+        "ranges": [         #C Define the custom ranges
+          {"to": 60000},
+          {"from": 60000,"to": 70000},
+          {"from": 70000,"to": 80000},
+          {"from": 80000,"to": 120000}
+        ] 
+      }
+    } 
+  }
+}
+```
 
+# Chapter 3. Architecture
 
+## 3.1 A 10,000 foot overview
 
+### 3.1.1 Data in
 
+The data can be indexed into Elasticsearch from multiple sources and in various ways: extracting from a database, copying files from file systems, or even loading from other systems including real-time streaming systems and so on.
+
+### 3.1.2 Processing the data
+
+The basic unit of information is represented by a JSON document in Elasticsearch.
+
+```json
+{
+  "title":"Is Remote Working the New Norm?",
+  "author":"John Doe",
+  "synopsis":"Covid changed lives. It changed the way we work..",
+  "publish_date":"2021-01-01",
+  "number_of_words":3500
+}
+```
+
+#### COLLECTING THE DATA
+
+To house the data, Elasticsearch creates a set of buckets based on each type of data. The news articles, for instance, will be housed in a bucket called  news, which is a name we chose. In Elasticsearch lingo, we call this bucket an **index**. **An index is a logical collection of documents. Index in  Elastic Search is what table in database.**
+
+During the process of indexing the data, Elasticsearch analyzes the incoming data field-by-field.
 
 
 
