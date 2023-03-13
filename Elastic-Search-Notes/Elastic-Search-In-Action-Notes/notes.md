@@ -250,12 +250,14 @@ GET books/_search
 Result:
 
 ```json
-"hits": [{
-  "_score" : 7.300332,
-  "_source" : {
-  "title" : "Effective Java",
-  "synopsis" : "A must-have book for every Java programmer and Java ...",
-}]}
+{
+  "hits": [{
+    "_score" : 7.300332,
+    "_source" : {
+    "title" : "Effective Java",
+    "synopsis" : "A must-have book for every Java programmer and Java ...",
+  }]
+}
 ```
 
 #### PHRASES WITH MISSING WORDS
@@ -371,15 +373,153 @@ GET books/_search
 }
 ```
 
+### 2.3.2 The must (must) clause
 
+```shell
+GET books/_search
+{
+  "query": {
+    "bool": { #A A boolean query
+      "must": [{# A must clause - the documents must match to the criteria
+          "match": {#A One of the queries - a match query
+            "author": "Joshua Bloch"
+          }
+      }] 
+    }
+  } 
+}
+```
 
+``must`` clause accepts a set of multiple queries.
 
+```shell
+GET books/_search
+{
+  "query": {
+    "bool": {
+      "must": [
+        { #A Must query with two leaf queries
+          "match": {#B A match query finding books authored by Joshua
+            "author": "Joshua Bloch"
+           }
+        },
+        {
+           "match_phrase": {#C A second query searching for a phrase
+             "synopsis": "best Java programming books"
+           }
+        }     
+      ]
+    } 
+  }
+}
+```
 
+### 2.3.3 The must not (must_not) clause
 
+```shell
+GET books/_search
+{
+  "query": {
+    "bool": {
+      "must": [ #A Must clause
+        { 
+          "match": { 
+            "author": "Joshua" 
+          } 
+        }
+      ],
+      "must_not": [ #B A must_not clause with a range query 
+        { 
+          "range": { 
+            "amazon_rating": { 
+              "lt": 4.7
+            }
+          }
+        }
+      ]
+    } 
+  }
+}
+```
 
+### 2.3.4 The should (should) clause
 
+The ``should`` clause behaves like an ``OR`` operator. That is, the search words are matched against the ``should`` query, and if they match, the relevancy score is bumped up.
 
+```shell
+GET books/_search
+{
+  "query": {
+    "bool": {
+      "must": [{"match": {"author": "Joshua"}}], 
+      "must_not":[{"range":{"amazon_rating":{"lt":4.7}}}], 
+      "should": [{"match": {"tags": "Software"}}]
+    } 
+  }
+}
+```
 
+### 2.3.5 The filter (filter) clause
+
+``filter`` clause works exactly like the ``must`` clause except it doesn’t affect the score. Any results that don’t match the ``filter`` criteria are dropped.
+
+```shell
+GET books/_search
+{
+  "query": {
+    "bool": {
+      "must": [{"match": {"author": "Joshua"}}], 
+      "must_not":[{"range":{"amazon_rating":{"lt":4.7}}}], 
+      "should": [{"match": {"tags": "Software"}}], 
+      "filter": [{"range":{"release_date":{"gte": "2015-01-01"}}}]}
+  } 
+}
+```
+
+## 2.4 Aggregations
+
+Analytics enables organizations to find insights into the data. So far, we've looked at searching for the documents from a given corpus of documents. Analytics is looking at the big picture and analyzing the data from a very high level to draw conclusions about it. We use aggregation APIs to provide analytics in Elasticsearch. Aggregations fall into three categories:
+* Metric aggregations — Simple aggregations like sum, min, max, and average fall into this category of aggregations. They provide an aggregate value across a set of document data.
+* Bucket aggregations — Bucket aggregations help collect data into buckets, segregated by intervals like days, age groups, etc. These help us build histograms, pie charts and other visualizations.
+* Pipeline aggregations — Pipeline aggregations work on the output from the other aggregations.
+
+Data snippet:
+
+```shell
+POST covid/_bulk
+{"index":{}}
+{"country":"USA","date":"2021-03-26","deaths":561142,"recovered":23275268}
+{"index":{}}
+{"country":"Brazil","date":"2021-03-26","deaths":307326,"recovered":10824095}
+...
+```
+
+### 2.4.1 Metrics
+
+```shell
+GET covid/_search # _search endpoint used for aggregations too
+{
+  "aggs": { #A Writing an aggregation query, short for aggregations is the cue for type of operation
+    "critical_patients": { #B User defined query output name
+      "sum": { #C The sum metric - sum of all the critical patients
+        "field": "critical" #D The field on which the aggregation is applied
+      } 
+    }
+  } 
+}
+```
+
+Response:
+
+```shell
+"aggregations" : {
+  "critical_patients" : {
+    "value" : 88090.0
+  }
+}
+```
+
+Note the response will consist of all documents returned if not asked explicitly to suppress them. We can set size=0 as the root level to stop the response containing documents.
 
 
 
