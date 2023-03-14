@@ -677,13 +677,46 @@ To house the data, Elasticsearch creates a set of buckets based on each type of 
 
 During the process of indexing the data, Elasticsearch analyzes the incoming data field-by-field.
 
+#### ANALYZING THE DATA
 
+The data represented as text is analysed during the text analysis phase. The text is broken down into words (called tokens) using a set of rules. Fundamentally, two processes happen during the analysis process: **tokenization and normalization.**
 
+Tokenization is the process of breaking the text into tokens based on a set of rules. Example:
 
+Untokenized String: Covid changed our lives. It changed the way we work..
+Tokenized String: `[Covid,changed,our,lives,it,changed,the,way,we,work]`
 
+**Normalization** helps build a rich user experience by creating additional data around the tokens. It is a process of reducing (stemming) these tokens to root words or creating synonyms for the tokens. For example:
+* The *lives* token can be stemmed to create alternate words like life;
+* The *covid* token can be stemmed to produce corona, coronavirus, and sars.
 
+### 3.1.3 Data out
 
+When a search query is issued, if the field is a full-text field, it undergoes an analysis phase similar to what was performed during the indexing of that field. That is, the query is tokenized and normalized as per the same analyzers associated with those fields.
 
+## 3.2 The building blocks
+
+### 3.2.1 Document
+
+A document is the basic unit of information that gets indexed by Elasticsearch for storage.
+
+#### DOCUMENT OPERATION APIS
+
+You can index or retrieve documents one by one using the single document APIs or batch them up using multi-document APIs:
+* Single document APIs — Perform actions on individual documents, one by one;
+* Multiple document APIs — Work with multiple documents in one go (bulk).
+
+### 3.2.2 Removal of types
+
+The data we persist has a specific shape: a movie document has properties related to a movie, data for a car has properties related to cars, or an employee document has data relevant to the context of employment and business. We are expected to index these JSON documents into respective buckets or collections: movie documents consisting of movie data need to be held in an index named *movies*, for example. So, in essence we index a document of type *Movie* into  movies index, *Car* into cars index and so on.
+
+Only a single index per document type.
+
+Document’s fields, though they may be in various types, exist in the same index. That means a field in one type (Cars, PeformanceCars, CarItems etc) having a *text* data type cannot have a different type, say *date*, in another type.
+
+Beginning with version 6.0, a single type per index was introduced, meaning the cars index is expected to hold just car documents.
+
+However, APIs were upgraded from 7.0.0: you are advised to use _doc as the endpoint going forward. The type of the document is replaced by a default  document type _doc, which later on has become a permanent fixture in the url as an endpoint. Hence, the URL becomes ``PUT cars/_doc/1``.
 
 
 
