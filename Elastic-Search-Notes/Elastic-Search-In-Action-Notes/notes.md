@@ -815,9 +815,51 @@ Multiple node roles can be set as shown in the following example:
 node.roles: [master, data, ingest, ml]
 ```
 
+## 3.3 Inverted indexes
 
+If you look at the back of any book, usually you’ll find an index which maps keywords to the pages where they are found. This is actually nothing but a physical representation of an inverted index.
 
+### 3.3.1 Example
 
+Say we have two documents with one text field greeting:
+
+```json
+ //Document 1
+{
+  "greeting":"Hello, World"
+}
+//Document 2
+{
+  "greeting":"Hello, Mate"
+}
+```
+
+In Elasticsearch, the analysis process is a complex function carried out by an analyzer module. The analyzer module is further composed of character filters, a tokenizer, and token filters. When the first document is indexed, as in the greeting field (a text field), an inverted index is created. Every full-text field is backed up by an inverted index. The value of the greeting “Hello, World” is analyzed so that it gets tokenized and normalized into two words, hello and world, by the end of the process. But there are few steps in between.
+
+`<h2>Hello WORLD</h2> -> Hello WORLD -> [Hello, WORLD] -> [hello, world]`
+
+After these steps, an inverted index is created for this field.
+
+| Word  | Frequency | Document ID |
+|-------|-----------|-------------|
+| hello | 1         | 1           |
+| world | 1         | 1           |
+
+After ingesting second document:
+
+| Word  | Frequency | Document ID |
+|-------|-----------|-------------|
+| hello | 2         | 1,2         |
+| world | 1         | 1           |
+| mate  | 1         | 2           |
+
+## 3.4 Relevancy
+
+Modern search engines not only return results based on our query’s criteria but also analyze and return the most relevant results.
+
+### 3.4.1 Relevancy algorithms
+
+Stack Overflow applies a set of relevancy algorithms to sort the results it returns to the user. Similarly, Elasticsearch returns the results for full-text queries sorted, usually, by a score it calls a relevancy score. Relevancy is a positive floating-point number that determines the ranking of the search results. Elasticsearch uses the **BM25 (Best Match)** relevancy algorithm by default for scoring the return results so the client can expect relevant results.
 
 
 
