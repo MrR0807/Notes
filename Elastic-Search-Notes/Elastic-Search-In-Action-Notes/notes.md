@@ -738,6 +738,97 @@ The data stream itself is nothing more than an alias for the time-series (rollin
 
 Data streams are created using a matching indexing template. Templates are the blueprints consisting of settings and configuration values when creating resources like indices.
 
+### 3.2.5 Shards and replicas
+
+Shards are the software components holding data, creating the supported data structures (like inverted index), managing queries, and analysing the data in Elasticsearch.
+
+During the process of indexing, the document travels through to the shard. Shards creates immutable file segments to hold the document on to a durable file system.
+
+As duplicate copies of shards, the replica shards serve the redundancy and high availability in an application. By serving the read requests, replicas enable distributing the read load during peak times.
+
+#### DISTRIBUTION OF SHARDS AND REPLICAS
+
+Say, we have created an index `virus_mutations` for holding the Corona virus mutations’ data. According to our strategy, this index will be catered by three shards. When we started our first node (Node A), not all shards would’ve been created for the index. This usually happens when the server is just starting up. Once the Node A has come up, based on the settings, three shards are created on this node for the ``virus_mutations``. We know that all these shards are on a single node, and for whatever the reason, if this single node crashes, we will lose everything. To avoid data loss, we decided to start a second node to join the existing cluster. Once the the new node (Node B) is created and added to the cluster, Elasticsearch distributes the original three shards as follows:
+* The shard 2 and shard 3 are removed from Node A;
+* The shard 2 and shard 3 are then moved to Node B.
+
+#### HEALTH STATUS OF A CLUSTER
+
+There are three states for a cluster:
+* Red - not all shards are assigned and ready;
+* Yellow - shards are assigned and ready but replicas aren't assigned and ready;
+* Green - shards and replicas are all assigned and ready.
+
+#### REBALANCING SHARDS
+
+#### SHARD SIZING
+
+The industry’s best practice is to size an individual shard with no more than 50 GB. But I have seen shards going up to 400 GB in size too. In fact,  GitHub’s indices are spread across 128 shards with 120 GB each. My personal advice is to keep them between 25 GB and 40 GB keeping the node’s heap memory in mind.
+
+There is also one more parameter to consider for sizing the shards: the heap memory. As we know, the nodes have a limited set of computing resources such as memory and disk space. Each Elasticsearch instance can be tweaked to use heap memory based on the available memory. My advice is to host up to 20 shards per GB of heap memory.
+
+### 3.2.6 Nodes and clusters
+
+#### Manage your node disk space judiciously
+
+To counteract read performance, we can add additional replicas but with that comes higher memory and disk space requirements. While it is not unusual to create clusters with terabytes or even petabytes when working with Elasticsearch, we must give forethought to our data sizing requirements.
+
+For example, if we have a three-shards-and-15-replicas-per-shard strategy with each shard sized at 50 GB, we must ensure all the 15 replicas have enough capacity for not only storing the documents on disk but also for heap memory. This means:
+
+Shards memory: 3 ✕ 50 GB/shard = 150 GB
+Replicas memory/per shard: 15 ✕ 50 GB/replica = 750 GB/per shard
+(Replicas memory for 3 shards = 3 x 750 GB = 2250 GB)
+Total memory for both shards and replicas on a given node = 150GB + 750GB = 900 GB (Grand total for 20 nodes = 18 TB)
+
+That is, a whopping 18 TB that is required for one index with three-shards-and-15-replicas-per-shard strategy. In addition to this initial disk space, we also need further disk space for running the server smoothly. So, we must work through the capacity requirements judiciously.
+
+#### MULTI-NODE MULTI CLUSTERS
+
+Bundling all sorts of data into a single cluster is not unusual, but it might not be a best practice. It might be a better strategy to create multiple clusters for varied data shapes with customized configurations for each cluster. For example, a business-critical data cluster might be running on an on-premise cluster with higher memory and disk space options configured, while an application-monitoring data cluster will have a slightly different setup.
+
+#### NODE ROLES
+
+Master node - Its primary responsibility is cluster management.
+Data node - Responsible for document persistence and retrieval. 
+Ingest node - Responsible for the transformation of data via pipeline ingestion before indexing.
+Machine learning node - Handles machine learning jobs and requests.
+Transform node - Handles transformations requests.
+Coordination node - This role is the default role. It takes care of incoming client’s requests.
+
+**Master Node**: A master node is involved in high-level operations such as creating and deleting indexes, node operations, and other admin-related jobs for cluster management. These admin operations are light-weight processes; hence, one master is enough for an entire cluster. If this master node crashes, the cluster will elect one of the other nodes as the master so the baton continues.
+**Data Node**: A data node is where the actual indexing, searching, deleting, and other document-related operations happen. These nodes host the indexed 
+documents. Once an index request is received, they jump into action to save the document to its index by calling a writer on the Lucene segment. As you can imagine, they talk to the disk frequently during CRUD operations and, hence, they are disk I/O and memory-intensive operations.  There are specific variants of a data node role that will come to use when we deploy multi-tiered deployments. They are **data_hot**, **data_warm**, **data_cold** and **data_frozen** roles.
+**Ingest node**: An ingest node handles the ingest operations such as transformations and enrichment before the indexing kicks in.
+**Transform node**: The transform node role is the latest addition to the list. It’s used for the aggregated summary of data.
+**Coordinating node**: While these roles are assigned to a node by the user on purpose (or by default), there’s one special role that all the nodes take on irrespective of the user’s intervention: a coordinating node. After accepting the requests, the coordinator asks the other nodes in the cluster for the processing of the request. It awaits the response before collecting and collating the results and sending them back to the client. It essentially acts as a work manager, distributing the in-coming requests to appropriate nodes and responding back to the client. It's just a smart load balancer.
+
+#### CONFIGURING ROLES
+
+When we start up the Elasticsearch in development mode, the node is by default set with master, data, and ingest roles (and of course each node is by default a coordinator - there is no special flag to enable or disable a coordinator). We can configure these roles as per our needs, for example, in a cluster of 10 nodes, we can enable one node as a master, 6 as data nodes, 2 as ingest nodes and so on.
+
+All we need to do is tweak a `node.roles` setting in the `elasticsearch.yml` configuration file to configure a role on a node.
+
+Multiple node roles can be set as shown in the following example:
+
+```yaml
+// This node dons four roles: master, data, ingest, and machine learning
+node.roles: [master, data, ingest, ml]
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
