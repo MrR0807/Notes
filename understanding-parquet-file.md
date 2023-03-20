@@ -4,7 +4,7 @@ In this section I will use the idea from Designing Data Intensive Applications b
 
 Instead of `bash` scripts and thought exercises, I'll build a simple database in Java and explore simplified metadata and index concepts. 
 
-In named book, author also explores compaction, SSTables, LSM trees etc. I will not do that in this chapter, mainly because Parquet does not utlise any of those practices. Despite that, they are useful concepts to understand, because databases which can process Parquet files might apply them, hence reading "Designing Data Intensive Applications" book's "Storage and Retrieval" is a good prerequisite.
+In named book, author also explores compaction, SSTables, LSM trees etc. I will not do that in this chapter, mainly because Parquet does not utlise any of those techniques. Despite that, they are useful concepts to understand, because databases which can process Parquet files might apply them, hence reading "Designing Data Intensive Applications" book's chapter "Storage and Retrieval" is a good prerequisite.
 
 ### Simple database
 
