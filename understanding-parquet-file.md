@@ -452,7 +452,25 @@ In simple words, when a file is smaller than the size of `DEFAULT_BUFFER_SIZE`, 
 
 The `else` branch of the code indicates that the file size is divisible without reminder or when `fileSize == DEFAULT_BUFFER_SIZE`. For example when file is of size 8192 then there is just one block. When 16384, then there are two blocks. And so on.
 
-As stated before, `totalBlockCount` is used in `readLastIndex` method. Let's analyse it. But before it, simple usage pattern needs to be explained about `SeekableByteChannel`. 
+As stated before, `totalBlockCount` is used in `readLastIndex` method. Let's analyse it. But before it, simple usage pattern needs to be explained about `SeekableByteChannel`.
+
+#### Quick introduction to `ByteBuffer` and `SeekableByteChannel`
+
+More elaborate information can be found in these sources[8][9][10][11][12]. However, in short:
+* 
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 ```java
 public long readLastIndex() throws IOException {
@@ -1030,7 +1048,7 @@ Having this information, let's get back to Parquet. Let's generate data and insp
 12. [Java NIO](https://www.oreilly.com/library/view/java-nio/0596002882/)
 13. https://dev.mysql.com/doc/refman/5.6/en/innodb-file-per-table-tablespaces.html
 14. https://martin.kleppmann.com/2020/12/02/bloom-filter-hash-graph-sync.html
-15. https://cassandra.apache.org/doc/latest/cassandra/operating/bloom_filters.html#:~:text=Bloom%20filters%20are%20a%20probabilistic,exists%20in%20the%20given%20file.
+15. https://cassandra.apache.org/doc/latest/cassandra/operating/bloom_filters.html
 16. https://llimllib.github.io/bloomfilter-tutorial/
 
 
