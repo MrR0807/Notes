@@ -739,8 +739,14 @@ GET logs/_search
 }
 ```
 
+## Executing Asynchronous Search Queries
 
+Instead of GET to `_search` API, do a POST to `_async` API. Then we'll get an ID. With the ID, we can check the status of `_async` search. You can get partial results with `_async` search. This is useful when search is taking a long time. Lastly, we can delete the search.
 
+Flow:
+submit search -> get ID -> check status of the search -> retrieve partial results -> delete search.
+
+If the `async` call is under <2sec, then it will be execute as `sync` call.
 
 
 
