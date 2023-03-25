@@ -841,6 +841,32 @@ PUT _cluster/settings
 }
 ```
 
+### Lab
+
+```shell
+PUT _cluster/settings
+{
+  "persistent": {
+    "cluster": {
+      "remote": {
+        "es2": {
+          "seeds": ["10.0.1.102:9300"]
+        },
+        "es3": {
+          "seeds": ["10.0.1.103:9300"]
+        }
+      }
+    }
+  }
+}
+
+GET es2:metricbeat-7.13.4/_search
+
+GET es3:metricbeat-7.13.4/_search
+
+GET metricbeat-7.13.4,es2:metricbeat-7.13.4,es3:metricbeat-7.13.4/_search
+```
+
 
 
 
