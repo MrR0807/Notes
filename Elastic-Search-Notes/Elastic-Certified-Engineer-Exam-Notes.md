@@ -108,11 +108,11 @@ GET earthquakes-1
 Will create an index with defined template.
 
 
-# Data Visualizer
+## Data Visualizer
 
 Understand the fields of a dataset by quickly uploading and analyzing it in order to determine whether to ingest it into Elasticsearch.
 
-# Index Lifecycle Management (ILM)
+## Index Lifecycle Management (ILM)
 
 Automatically manage your indices based on your usage requirements:
 * phases - prioritize your data based on how you use it with hot, warm, cold and delete phases
@@ -274,7 +274,7 @@ GET applogs-1
 }
 ```
 
-# Creating Data Streams
+## Creating Data Streams
 
 Data Streams - store and search time series data spread across multiple indices with a single resource.
 
@@ -337,7 +337,7 @@ GET _data_stream/weblogs
 
 # Introduction to Searching Data
 
-# Understanding the ElasticSearch Query DSL
+## Understanding the ElasticSearch Query DSL
 
 ## Analyzed vs Non-Analyzed
 
@@ -402,7 +402,7 @@ GET shakespeare/_search
 }
 ```
 
-**!!Avoid using term-level queries on analyzed fields!!**
+**Avoid using term-level queries on analyzed fields**
 
 When you autocomplete on searchable field. You can see the field type: "keyword" or "text". If it is keyword, 
 that means it is non-analyzable type.
