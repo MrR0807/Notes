@@ -756,6 +756,26 @@ GET _async_search/FmVwOE4wRnpPVEstWnFoekxTZXo1MEEccDEzdkptZ0FUQXF6ZlFRZDh0YVhyUT
 DELETE _async_search/FmVwOE4wRnpPVEstWnFoekxTZXo1MEEccDEzdkptZ0FUQXF6ZlFRZDh0YVhyUToxMTQ0OA
 ```
 
+### Lab
+
+```shell
+DELETE _async_search/FnBrdFFoSm1ZUkN5OUR3bzd2c2U3cXccQzg0WXpYd29SQ3lXcm9uTG9HUHVxQToxMTUxMQ==
+
+GET _async_search/FnBrdFFoSm1ZUkN5OUR3bzd2c2U3cXccQzg0WXpYd29SQ3lXcm9uTG9HUHVxQToxMTUxMQ==
+
+GET _async_search/status/FnBrdFFoSm1ZUkN5OUR3bzd2c2U3cXccQzg0WXpYd29SQ3lXcm9uTG9HUHVxQToxMTUxMQ==
+
+POST filebeat-7.13.4/_async_search?wait_for_completion_timeout=0
+{
+  "size": 100, 
+  "query": {
+    "match": {
+      "message": "SSH"
+    }
+  }
+}
+```
+
 
 
 
