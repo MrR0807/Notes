@@ -546,6 +546,96 @@ GET shakespeare/_search
 
 This will return only one result, because it matches exact query.
 
+## Compound Search Queries
+
+### Boolean Query
+
+Search for documents matching a boolean combination of queries. With boolean queries, the scores of `must` and `should` clauses will be added together to calculate the final relevancy score for each result:
+* `must` - The search term must appear and is scored;
+* `should` - The search term should appear and is scored. you can configure how many should clauses must match;
+* `must_not` - The search term must not appear and is not scored;
+* `filter` - The search term must appear but is not scored.
+
+```shell
+GET ecommerce/_search
+
+GET ecommerce/_search
+{
+  "query": {
+    "bool": {
+      "must": [
+        {
+          "range": {
+            "taxful_total_price": {
+              "lte": 20
+            }
+          }
+        }
+      ],
+      "should": [
+        {
+          "term": {
+            "category.keyword": {
+              "value": "Men's Clothing"
+            }
+          }
+        },
+        {
+          "term": {
+            "category.keyword": {
+              "value": "Men's Shoes"
+            }
+          }
+        }
+      ],
+      "minimum_should_match": 1,
+      "must_not": [
+        {
+          "match": {
+            "products.product_name": "sweatshirt"
+          }
+        }
+      ],
+      "filter": [
+        {
+          "range": {
+            "order_date": {
+              "gte": "now/d",
+              "lte": "now"
+            }
+          }
+        }
+      ]
+    }
+  }
+}
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
