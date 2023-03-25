@@ -776,9 +776,70 @@ POST filebeat-7.13.4/_async_search?wait_for_completion_timeout=0
 }
 ```
 
+## Cross-Cluster Search
+
+Run a search request against 1 or more remote clusters. You can search remote clusters that are 1 major version behind or ahead of the coordinating node. 
+
+Create a new cluster in Playground. And then link them:
+
+```shell
+# private remote cluster IP 172.31.26.160
+# There are two ports that Elastic uses: 9200 (http), 9300 (inter-node communication)
 
 
+# This searchs both clusters
+GET filebeat-7.13.4,cluster_2:filebeat-7.13.4/_search
+{
+  "query": {
+    "range": {
+      "@timestamp": {
+        "gte": "now-1h",
+        "lte": "now"
+      }
+    }
+  }
+}
 
+
+# This searches the local cluster
+GET filebeat-7.13.4/_search
+{
+  "query": {
+    "range": {
+      "@timestamp": {
+        "gte": "now-1h",
+        "lte": "now"
+      }
+    }
+  }
+}
+
+# This searches the remote cluster
+GET cluster_2:filebeat-7.13.4/_search
+{
+  "query": {
+    "range": {
+      "@timestamp": {
+        "gte": "now-1h",
+        "lte": "now"
+      }
+    }
+  }
+}
+
+PUT _cluster/settings
+{
+  "persistent": {
+    "cluster": {
+      "remote": {
+        "cluster_2": {
+          "seeds": ["172.31.26.160:9300"]
+        }
+      }
+    }
+  }
+}
+```
 
 
 
