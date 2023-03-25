@@ -533,7 +533,18 @@ It will return results containing:
 
 ElasticSearch tries to overlap the search query and result. Not necessarily all words have to be in the "text_entry".
 
+```shell
+GET shakespeare/_search
+{
+  "query": {
+    "match_phrase": {
+      "text_entry": "wherefore art thou romeo"
+    }
+  }
+}
+```
 
+This will return only one result, because it matches exact query.
 
 
 
