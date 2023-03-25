@@ -783,11 +783,11 @@ Run a search request against 1 or more remote clusters. You can search remote cl
 Create a new cluster in Playground. And then link them:
 
 ```shell
-# private remote cluster IP 172.31.26.160
+# Private remote cluster IP 172.31.26.160
 # There are two ports that Elastic uses: 9200 (http), 9300 (inter-node communication)
 
 
-# This searchs both clusters
+# This searches both clusters
 GET filebeat-7.13.4,cluster_2:filebeat-7.13.4/_search
 {
   "query": {
