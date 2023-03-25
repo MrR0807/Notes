@@ -506,6 +506,34 @@ GET ecommerce/_search
 }
 ```
 
+## Full-Text Queries
+
+* The query is processed using the same analyzer as the text field.
+* Text fields can be indexed and searched using custom analyzers.
+* Avoid using full-text queries on non-analyzed fields.
+
+```shell
+GET shakespeare/_search
+{
+  "query": {
+    "match": {
+      "text_entry": "wherefore art thou romeo"
+    }
+  }
+}
+```
+
+It will return results containing:
+* "text_entry" : "O Romeo, Romeo! wherefore art thou Romeo?"
+* "text_entry" : "Why, Romeo, art thou mad?"
+* "text_entry" : "now art thou sociable, now art thou Romeo; now art"
+* "text_entry" : "Art thou not Romeo and a Montague?"
+* "text_entry" : "Wherefore is that? and what art thou that darest"
+* "text_entry" : "Thou art Dromio, thou art my man, thou art thyself."
+
+ElasticSearch tries to overlap the search query and result. Not necessarily all words have to be in the "text_entry".
+
+
 
 
 
