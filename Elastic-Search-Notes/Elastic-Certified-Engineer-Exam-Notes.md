@@ -612,6 +612,133 @@ GET ecommerce/_search
 ```
 
 
+### Lab
+
+```shell
+GET _cat/indices
+
+GET logs/_search
+
+GET logs/_search
+{
+  "query": {
+    "bool": {
+      "must": [
+        {
+          "match_phrase_prefix": {
+            "request": "apm-server"
+          }
+        },
+        {
+          "terms": {
+            "extension.keyword": [
+              "rpm",
+              "deb"
+            ]
+          }
+        },
+        {
+          "term": {
+            "machine.os.keyword": {
+              "value": "osx"
+            }
+          }
+        }
+      ],
+      "filter": [
+        {
+          "range": {
+            "bytes": {
+              "gte": 1024,
+              "lte": 8192
+            }
+          }
+        }
+      ]
+    }
+  }
+}
+
+
+GET logs/_search
+{
+  "query": {
+    "bool": {
+      "must": [
+        {
+          "term": {
+            "response.keyword": {
+              "value": "200"
+            }
+          }
+        }
+      ],
+      "should": [
+        {
+          "term": {
+            "tags.keyword": {
+              "value": "success"
+            }
+          }
+        },
+        {
+          "term": {
+            "tags.keyword": {
+              "value": "security"
+            }
+          }
+        },
+        {
+          "term": {
+            "tags.keyword": {
+              "value": "info"
+            }
+          }
+        }
+      ],
+      "minimum_should_match": 2
+      , "must_not": [
+        {
+          "match": {
+            "machine.os": "win"
+          }
+        }
+      ]
+    }
+  }
+}
+
+
+
+
+GET logs/_search
+{
+  "query": {
+    "bool": {
+      "must": [
+        {
+          "terms": {
+            "geo.src": [
+              "US",
+              "CN"
+            ]
+          }
+        }
+      ],
+      "must_not": [
+        {
+          "term": {
+            "response.keyword": {
+              "value": "200"
+            }
+          }
+        }
+      ]
+    }
+  }
+}
+```
+
 
 
 
