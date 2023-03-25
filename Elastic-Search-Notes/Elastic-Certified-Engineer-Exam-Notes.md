@@ -748,6 +748,14 @@ submit search -> get ID -> check status of the search -> retrieve partial result
 
 If the `async` call is under <2sec, then it will be execute as `sync` call.
 
+```shell
+
+POST ecommerce/_async_search
+GET _async_search/status/FmVwOE4wRnpPVEstWnFoekxTZXo1MEEccDEzdkptZ0FUQXF6ZlFRZDh0YVhyUToxMTQ0OA
+GET _async_search/FmVwOE4wRnpPVEstWnFoekxTZXo1MEEccDEzdkptZ0FUQXF6ZlFRZDh0YVhyUToxMTQ0OA
+DELETE _async_search/FmVwOE4wRnpPVEstWnFoekxTZXo1MEEccDEzdkptZ0FUQXF6ZlFRZDh0YVhyUToxMTQ0OA
+```
+
 
 
 
