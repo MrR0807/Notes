@@ -861,7 +861,16 @@ Modern search engines not only return results based on our query’s criteria bu
 
 Stack Overflow applies a set of relevancy algorithms to sort the results it returns to the user. Similarly, Elasticsearch returns the results for full-text queries sorted, usually, by a score it calls a relevancy score. Relevancy is a positive floating-point number that determines the ranking of the search results. Elasticsearch uses the **BM25 (Best Match)** relevancy algorithm by default for scoring the return results so the client can expect relevant results.
 
+### 3.4.2 Relevancy (similarity) algorithms
 
+Elasticsearch employs a handful of relevance algorithms, the default being the Okapi Best Matching 25 (BM25) algorithm. Elasticsearch provides a module  called similarity that lets us apply the most appropriate algorithms if the default isn’t suited for our requirements.
+
+#### THE OKAPI BM25 ALGORITHM
+
+There are three main factors involved in associating a relevancy score with the results:
+* The term frequency (TF) - Term frequency (TF) represents the number of times the search word appears in the current document’s field. In other words if we search Java and in three different titles: Head First Java, Effective Java, Mastering Java: Learning Core Java and Enterprise Java With Examples the last one would have the highest;
+* Inverse document frequency (IDF) - The number of times the search word appears across the whole set of documents is the document frequency. If the  document frequency of a word is higher, we can deduce that the search word is indeed common across the whole index. This means that if the word appears  multiple times across all the documents in an index, it is a common term and, accordingly, it’s not that relevant. The words that appear often are not  significant. Words like a, an, the, it, and so forth are pretty common in a natural language; hence, they can be ignored.
+* Field length norm - The field-length norm provides a score based on the length of that field: the search word occurring multiple times in a short field is more relevant. For example, a field with 100 words having 5 occurrences of a search word is less relevant than a field with 10 words with 3  occurrences.
 
 
 
