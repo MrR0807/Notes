@@ -1185,6 +1185,59 @@ GET earthquakes/_search
 }
 ```
 
+### Lab
+
+```shell
+GET ecommerce/_search
+
+GET ecommerce/_search
+{
+  "size": 0,
+  "aggs": {
+    "orders_per_day": {
+      "date_histogram": {
+        "field": "order_date",
+        "calendar_interval": "day"
+      },
+      "aggs": {
+        "tatal_sales_before_tax_per_day": {
+          "sum": {
+            "field": "taxless_total_price"
+          }
+        }
+      }
+    }
+  }
+}
+
+
+GET ecommerce/_search
+{
+  "size": 0,
+  "aggs": {
+    "orders_per_day": {
+      "date_histogram": {
+        "field": "order_date",
+        "calendar_interval": "day"
+      }
+    }
+  }
+}
+
+
+GET ecommerce/_search
+{
+  "size": 0,
+  "aggs": {
+    "total_lifetime_sales_before_tax": {
+      "sum": {
+        "field": "taxless_total_price"
+      }
+    }
+  }
+}
+```
+
 
 
 
