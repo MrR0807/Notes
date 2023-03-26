@@ -1238,10 +1238,196 @@ GET ecommerce/_search
 }
 ```
 
+## Pipeline Aggregations
 
 
+**Parent Pipeline Aggregation** - takes the output of a parent aggregation. Using the output of a parent aggregation, parent pipeline aggregations create new buckets or new values for existing buckets.
 
+**Sibling Pipeline Aggregation** - takes the output of a sibling aggregation. Using the ouput of a sibling aggregation, sibling pipeline aggregations create new outputs at the same elvel as the sibling aggregation.
 
+Parent aggregation:
+
+```shell
+GET earthquakes/_search
+{
+  "size": 0,
+  "query": {
+    "term": {
+      "Type": {
+        "value": "Nuclear Explosion"
+      }
+    }
+  },
+  "aggs": {
+    "per_year": {
+      "date_histogram": {
+        "field": "Date",
+        "calendar_interval": "year"
+      },
+      "aggs": {
+        "max_mag": {
+          "max": {
+            "field": "Magnitude"
+          }
+        },
+        "change_in_max_magnitude_parent_agg_whatever_name": {
+          "derivative": {
+            "buckets_path": "max_mag"
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+Result:
+
+```shell
+"aggregations" : {
+    "per_year" : {
+      "buckets" : [
+        {
+          "key_as_string" : "01/01/1966",
+          "key" : -126230400000,
+          "doc_count" : 1,
+          "max_mag" : {
+            "value" : 5.62
+          }
+        },
+        {
+          "key_as_string" : "01/01/1967",
+          "key" : -94694400000,
+          "doc_count" : 0,
+          "max_mag" : {
+            "value" : null
+          },
+          "change_in_max_magnitude_parent_agg_whatever_name" : {
+            "value" : null
+          }
+        },
+        {
+          "key_as_string" : "01/01/1968",
+          "key" : -63158400000,
+          "doc_count" : 2,
+          "max_mag" : {
+            "value" : 5.63
+          },
+          "change_in_max_magnitude_parent_agg_whatever_name" : {
+            "value" : null
+          }
+        },
+        {
+          "key_as_string" : "01/01/1969",
+          "key" : -31536000000,
+          "doc_count" : 1,
+          "max_mag" : {
+            "value" : 5.82
+          },
+          "change_in_max_magnitude_parent_agg_whatever_name" : {
+            "value" : 0.1900000000000004
+          }
+        },
+```
+
+Now I want to do a stats calculation across all buckets. Hence I need to do a sibling aggregation:
+
+```shell
+GET earthquakes/_search
+{
+  "size": 0,
+  "query": {
+    "term": {
+      "Type": {
+        "value": "Nuclear Explosion"
+      }
+    }
+  },
+  "aggs": {
+    "per_year": {
+      "date_histogram": {
+        "field": "Date",
+        "calendar_interval": "year"
+      },
+      "aggs": {
+        "max_mag": {
+          "max": {
+            "field": "Magnitude"
+          }
+        },
+        "change_in_max_magnitude_parent_agg_whatever_name": {
+          "derivative": {
+            "buckets_path": "max_mag"
+          }
+        }
+      }
+    },
+    "something_name_stats": {
+      "stats_bucket": {
+        "buckets_path": "per_year>change_in_max_magnitude_parent_agg_whatever_name"
+      }
+    }
+  }
+}
+```
+
+Result:
+
+```shell
+ "aggregations" : {
+    "per_year" : {
+      "buckets" : [
+        {
+          "key_as_string" : "01/01/1966",
+          "key" : -126230400000,
+          "doc_count" : 1,
+          "max_mag" : {
+            "value" : 5.62
+          }
+        },
+        {
+          "key_as_string" : "01/01/1967",
+          "key" : -94694400000,
+          "doc_count" : 0,
+          "max_mag" : {
+            "value" : null
+          },
+          "change_in_max_magnitude_parent_agg_whatever_name" : {
+            "value" : null
+          }
+        },
+        {
+          "key_as_string" : "01/01/1968",
+          "key" : -63158400000,
+          "doc_count" : 2,
+          "max_mag" : {
+            "value" : 5.63
+          },
+          "change_in_max_magnitude_parent_agg_whatever_name" : {
+            "value" : null
+          }
+        },
+        {
+          "key_as_string" : "01/01/1969",
+          "key" : -31536000000,
+          "doc_count" : 1,
+          "max_mag" : {
+            "value" : 5.82
+          },
+          "change_in_max_magnitude_parent_agg_whatever_name" : {
+            "value" : 0.1900000000000004
+          }
+        },
+        ...
+ 
+ "something_name_stats" : {
+      "count" : 25,
+      "min" : -0.7999999999999998,
+      "max" : 1.0,
+      "avg" : -0.04359999999999999,
+      "sum" : -1.0899999999999999
+    }
+```
 
 
 
