@@ -867,20 +867,323 @@ GET es3:metricbeat-7.13.4/_search
 GET metricbeat-7.13.4,es2:metricbeat-7.13.4,es3:metricbeat-7.13.4/_search
 ```
 
+# Aggregating Data
+
+## Metrics Aggregation
+
+Computes numeric values. Metrics aggregations are either single or multi-value aggregations that can operate on a variaty of non-analyzed fields to produce a numerical value. 
+
+```shell
+# For aggregation we still use the same _search
+
+GET ecommerce/_search
+{
+  "size": 0, # simplify the output, because we don't care about hits and results
+  "aggs": {
+    "total_sales": {
+      "sum": {
+        "field": "taxless_total_price"
+      }
+    }
+  }
+}
+```
+
+```shell
+GET _cat/indices
+
+GET earthquakes/_search
+
+# These are single value aggregations
+GET earthquakes/_search
+{
+  "size": 0, 
+  "aggs": {
+    "does_not_matter_what_name_is_here": {
+      "avg": {
+        "field": "Magnitude"
+      }
+    },
+    "another": {
+      "max": {
+        "field": "Magnitude"
+      }
+    }
+  }
+}
+
+# These are multi-value aggregations
+
+GET earthquakes/_search
+{
+  "size": 0,
+  "aggs": {
+    "NAME": {
+      "stats": {
+        "field": "Magnitude"
+      }
+    }
+  }
+}
+
+GET earthquakes/_search
+{
+  "size": 0
+  , "aggs": {
+    "NAME": {
+      "terms": {
+        "field": "Type"
+      }
+    }
+  }
+}
+```
+
+## Bucket Aggregations
+
+Creates buckets of documents. Establish a criterion to categorize documents into groups or buckets.
+
+```shell
+GET earthquakes/_search
+{
+  "size": 0,
+  "aggs": {
+    "NAME": {
+      "date_histogram": {
+        "field": "Date",
+        "calendar_interval": "month"
+      }
+    }
+  }
+}
+
+GET earthquakes/_search
+{
+  "size": 0,
+  "aggs": {
+    "NAME": {
+      "terms": {
+        "field": "Type",
+        "size": 10
+      }
+    }
+  }
+}
+```
+
+## Writing Sub-Aggregations
+
+Aggregates per bucket or per previous aggregation. Each bucket of a parent pipeline aggregation can have sub-aggregations performed on it.
+
+```shell
+GET ecommerce/_search
+{
+  "size": 0,
+  "aggs": {
+    "total_sales_per_day": { # any name
+      "date_histogram": { # bucket agg
+        "field": "order_date",
+        "calendar_interval": "day"
+      },
+      "aggs": { # sub-agg
+        "total_sales": { # any name
+          "sum": { # metrics agg
+            "field": "taxless_total_price"
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+```shell
+GET earthquakes/_search
+{
+  "size": 0,
+  "aggs": {
+    "NAME": {
+      "date_histogram": {
+        "field": "Date",
+        "calendar_interval": "month"
+      }
+    }
+  }
+}
+```
+
+This returns:
 
 
+```shell
+ "aggregations" : {
+    "NAME" : {
+      "buckets" : [
+        {
+          "key_as_string" : "01/01/1965",
+          "key" : -157766400000,
+          "doc_count" : 13
+        },
+        {
+          "key_as_string" : "02/01/1965",
+          "key" : -155088000000,
+          "doc_count" : 54
+        },
+        {
+          "key_as_string" : "03/01/1965",
+          "key" : -152668800000,
+          "doc_count" : 38
+        },
+        ...
+```
+
+Adding sub-aggregation:
+
+```shell
+GET earthquakes/_search
+{
+  "size": 0,
+  "aggs": {
+    "NAME": {
+      "date_histogram": {
+        "field": "Date",
+        "calendar_interval": "month"
+      },
+      "aggs": {
+        "avg_magnituted_whatever": {
+          "avg": {
+            "field": "Magnitude"
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+Generates:
+
+```shell
+ "aggregations" : {
+    "NAME" : {
+      "buckets" : [
+        {
+          "key_as_string" : "01/01/1965",
+          "key" : -157766400000,
+          "doc_count" : 13,
+          "avg_magnituted_whatever" : {
+            "value" : 6.123076923076923
+          }
+        },
+        {
+          "key_as_string" : "02/01/1965",
+          "key" : -155088000000,
+          "doc_count" : 54,
+          "avg_magnituted_whatever" : {
+            "value" : 5.955555555555556 # This is per month
+          }
+        },
+        ...
+```
 
 
+```shell
+GET earthquakes/_search
+{
+  "size": 0,
+  "aggs": {
+    "per_year": {
+      "date_histogram": {
+        "field": "Date",
+        "calendar_interval": "year"
+      },
+      "aggs": {
+        "types": {
+          "terms": {
+            "field": "Type",
+            "size": 10
+          }
+        }
+      }
+    }
+  }
+}
+```
 
+Generates:
 
+```shell
+"aggregations" : {
+    "per_year" : {
+      "buckets" : [
+        {
+          "key_as_string" : "01/01/1965",
+          "key" : -157766400000,
+          "doc_count" : 339,
+          "types" : {
+            "doc_count_error_upper_bound" : 0,
+            "sum_other_doc_count" : 0,
+            "buckets" : [
+              {
+                "key" : "Earthquake",
+                "doc_count" : 339
+              }
+            ]
+          }
+        },
+        {
+          "key_as_string" : "01/01/1966",
+          "key" : -126230400000,
+          "doc_count" : 234,
+          "types" : {
+            "doc_count_error_upper_bound" : 0,
+            "sum_other_doc_count" : 0,
+            "buckets" : [
+              {
+                "key" : "Earthquake",
+                "doc_count" : 233
+              },
+              {
+                "key" : "Nuclear Explosion",
+                "doc_count" : 1
+              }
+            ]
+          }
+        },
+        ...
+```
 
+Nest even further:
 
-
-
-
-
-
-
+```shell
+GET earthquakes/_search
+{
+  "size": 0,
+  "aggs": {
+    "per_year": {
+      "date_histogram": {
+        "field": "Date",
+        "calendar_interval": "year"
+      },
+      "aggs": {
+        "types": {
+          "terms": {
+            "field": "Type",
+            "size": 10
+          },
+          "aggs": {
+            "max_magniture": {
+              "max": {
+                "field": "Magnitude"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+```
 
 
 
