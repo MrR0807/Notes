@@ -1429,8 +1429,254 @@ Result:
     }
 ```
 
+# Developing Search Applications
+
+## Highlighting Search Terms
+
+Emphasize the search terms. Customize the way Elasticsearch highlights matched search terms.
+
+```shell
+GET _cat/indices
+
+GET ecommerce/_search
+{
+  "query": {
+    "match": {
+      "products.product_name": "sweatshirt"
+    }
+  },
+  "highlight": {
+    "fields": {
+      "products.product_name": {}
+    }
+  }
+}
+```
+
+In result you'll find:
+
+```shell
+...
+{
+        "_index" : "kibana_sample_data_ecommerce",
+        "_type" : "_doc",
+        "_id" : "gQQX8YYBWsApnhApPNfF",
+        "_score" : 4.0964375,
+        "_source" : {
+          "category" : [
+            "Men's Clothing"
+          ],
+          "currency" : "EUR",
+          "customer_first_name" : "Yuri",
+          "customer_full_name" : "Yuri Reese",
+          "customer_gender" : "MALE",
+          "customer_id" : 21,
+          "customer_last_name" : "Reese",
+          "customer_phone" : "",
+          "day_of_week" : "Saturday",
+          "day_of_week_i" : 5,
+          "email" : "yuri@reese-family.zzz",
+          "manufacturer" : [
+            "Elitelligence"
+          ],
+          "order_date" : "2023-04-01T18:18:43+00:00",
+          "order_id" : 591810,
+          "products" : [
+            {
+              "base_price" : 25.99,
+              "discount_percentage" : 0,
+              "quantity" : 1,
+              "manufacturer" : "Elitelligence",
+              "tax_amount" : 0,
+              "product_id" : 12713,
+              "category" : "Men's Clothing",
+              "sku" : "ZO0587405874",
+              "taxless_price" : 25.99,
+              "unit_discount_amount" : 0,
+              "min_price" : 13.51,
+              "_id" : "sold_product_591810_12713",
+              "discount_amount" : 0,
+              "created_on" : "2016-12-31T18:18:43+00:00",
+              "product_name" : "Sweatshirt - black",
+              "price" : 25.99,
+              "taxful_price" : 25.99,
+              "base_unit_price" : 25.99
+            },
+            {
+              "base_price" : 22.99,
+              "discount_percentage" : 0,
+              "quantity" : 1,
+              "manufacturer" : "Elitelligence",
+              "tax_amount" : 0,
+              "product_id" : 19513,
+              "category" : "Men's Clothing",
+              "sku" : "ZO0590305903",
+              "taxless_price" : 22.99,
+              "unit_discount_amount" : 0,
+              "min_price" : 11.27,
+              "_id" : "sold_product_591810_19513",
+              "discount_amount" : 0,
+              "created_on" : "2016-12-31T18:18:43+00:00",
+              "product_name" : "Sweatshirt - oliv",
+              "price" : 22.99,
+              "taxful_price" : 22.99,
+              "base_unit_price" : 22.99
+            }
+          ],
+          "sku" : [
+            "ZO0587405874",
+            "ZO0590305903"
+          ],
+          "taxful_total_price" : 48.98,
+          "taxless_total_price" : 48.98,
+          "total_quantity" : 2,
+          "total_unique_products" : 2,
+          "type" : "order",
+          "user" : "yuri",
+          "geoip" : {
+            "country_iso_code" : "FR",
+            "location" : {
+              "lon" : 7,
+              "lat" : 43.6
+            },
+            "region_name" : "Alpes-Maritimes",
+            "continent_name" : "Europe",
+            "city_name" : "Cannes"
+          },
+          "event" : {
+            "dataset" : "sample_ecommerce"
+          }
+        },
+        "highlight" : {
+          "products.product_name" : [
+            "<em>Sweatshirt</em> - black",
+            "<em>Sweatshirt</em> - oliv"
+          ]
+        }
+      }
+...
+```
+
+```shell
+GET _cat/indices
+
+GET ecommerce/_search
+{
+  "query": {
+    "match": {
+      "products.product_name": "sweatshirt"
+    }
+  },
+  "highlight": {
+    "pre_tags": "<b>",
+    "post_tags": "</b>",
+    "fields": {
+      "products.product_name": {}
+    }
+  }
+}
+```
 
 
+```shell
+{
+        "_index" : "kibana_sample_data_ecommerce",
+        "_type" : "_doc",
+        "_id" : "gQQX8YYBWsApnhApPNfF",
+        "_score" : 4.0964375,
+        "_source" : {
+          "category" : [
+            "Men's Clothing"
+          ],
+          "currency" : "EUR",
+          "customer_first_name" : "Yuri",
+          "customer_full_name" : "Yuri Reese",
+          "customer_gender" : "MALE",
+          "customer_id" : 21,
+          "customer_last_name" : "Reese",
+          "customer_phone" : "",
+          "day_of_week" : "Saturday",
+          "day_of_week_i" : 5,
+          "email" : "yuri@reese-family.zzz",
+          "manufacturer" : [
+            "Elitelligence"
+          ],
+          "order_date" : "2023-04-01T18:18:43+00:00",
+          "order_id" : 591810,
+          "products" : [
+            {
+              "base_price" : 25.99,
+              "discount_percentage" : 0,
+              "quantity" : 1,
+              "manufacturer" : "Elitelligence",
+              "tax_amount" : 0,
+              "product_id" : 12713,
+              "category" : "Men's Clothing",
+              "sku" : "ZO0587405874",
+              "taxless_price" : 25.99,
+              "unit_discount_amount" : 0,
+              "min_price" : 13.51,
+              "_id" : "sold_product_591810_12713",
+              "discount_amount" : 0,
+              "created_on" : "2016-12-31T18:18:43+00:00",
+              "product_name" : "Sweatshirt - black",
+              "price" : 25.99,
+              "taxful_price" : 25.99,
+              "base_unit_price" : 25.99
+            },
+            {
+              "base_price" : 22.99,
+              "discount_percentage" : 0,
+              "quantity" : 1,
+              "manufacturer" : "Elitelligence",
+              "tax_amount" : 0,
+              "product_id" : 19513,
+              "category" : "Men's Clothing",
+              "sku" : "ZO0590305903",
+              "taxless_price" : 22.99,
+              "unit_discount_amount" : 0,
+              "min_price" : 11.27,
+              "_id" : "sold_product_591810_19513",
+              "discount_amount" : 0,
+              "created_on" : "2016-12-31T18:18:43+00:00",
+              "product_name" : "Sweatshirt - oliv",
+              "price" : 22.99,
+              "taxful_price" : 22.99,
+              "base_unit_price" : 22.99
+            }
+          ],
+          "sku" : [
+            "ZO0587405874",
+            "ZO0590305903"
+          ],
+          "taxful_total_price" : 48.98,
+          "taxless_total_price" : 48.98,
+          "total_quantity" : 2,
+          "total_unique_products" : 2,
+          "type" : "order",
+          "user" : "yuri",
+          "geoip" : {
+            "country_iso_code" : "FR",
+            "location" : {
+              "lon" : 7,
+              "lat" : 43.6
+            },
+            "region_name" : "Alpes-Maritimes",
+            "continent_name" : "Europe",
+            "city_name" : "Cannes"
+          },
+          "event" : {
+            "dataset" : "sample_ecommerce"
+          }
+        },
+        "highlight" : {
+          "products.product_name" : [
+            "<b>Sweatshirt</b> - black",
+            "<b>Sweatshirt</b> - oliv"
+          ]
+        }
+      }
+```
 
 
 
