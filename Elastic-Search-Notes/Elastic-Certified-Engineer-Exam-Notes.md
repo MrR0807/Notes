@@ -1678,6 +1678,227 @@ GET ecommerce/_search
       }
 ```
 
+## Sorting Search Results
+
+Meaningfully organize search results. You can sort by multi-value fields.
+
+
+```shell
+GET ecommerce/_search
+{
+  "query": {
+    "match": {
+      "products.product_name": "sweatshirt"
+    }
+  }
+  , "sort": [
+    {
+      "customer_last_name.keyword": {
+      }
+    }
+  ]
+}
+```
+
+By default it is `ASC`.
+
+Sorting by aggregating data:
+
+```shell
+GET ecommerce/_search
+{
+  "query": {
+    "match": {
+      "products.product_name": "sweatshirt"
+    }
+  }
+  , "sort": [
+    {
+      "customer_last_name.keyword": {
+      }
+    },
+    {
+      "customer_first_name.keyword": {}
+    },
+    {
+      "products.price": {
+        "mode": "sum"
+      }
+    }
+  ]
+}
+```
+
+Because there are multiple items in products array, we can add products prices and then sort. Result:
+
+```shell
+ "hits" : [
+      {
+        "_index" : "kibana_sample_data_ecommerce",
+        "_type" : "_doc",
+        "_id" : "bQQX8YYBWsApnhApQti6",
+        "_score" : null,
+        "_source" : {
+          "category" : [
+            "Men's Shoes",
+            "Men's Clothing"
+          ],
+          "currency" : "EUR",
+          "customer_first_name" : "Muniz",
+          "customer_full_name" : "Muniz Abbott",
+          "customer_gender" : "MALE",
+          "customer_id" : 37,
+          "customer_last_name" : "Abbott",
+          "customer_phone" : "",
+          "day_of_week" : "Saturday",
+          "day_of_week_i" : 5,
+          "email" : "muniz@abbott-family.zzz",
+          "manufacturer" : [
+            "Angeldale",
+            "Elitelligence"
+          ],
+          "order_date" : "2023-03-11T16:00:29+00:00",
+          "order_id" : 563460,
+          "products" : [
+            {
+              "base_price" : 79.99,
+              "discount_percentage" : 0,
+              "quantity" : 1,
+              "manufacturer" : "Angeldale",
+              "tax_amount" : 0,
+              "product_id" : 2036,
+              "category" : "Men's Shoes",
+              "sku" : "ZO0682506825",
+              "taxless_price" : 79.99,
+              "unit_discount_amount" : 0,
+              "min_price" : 39.99,
+              "_id" : "sold_product_563460_2036",
+              "discount_amount" : 0,
+              "created_on" : "2016-12-10T16:00:29+00:00",
+              "product_name" : "Lace-ups - Midnight Blue",
+              "price" : 79.99,
+              "taxful_price" : 79.99,
+              "base_unit_price" : 79.99
+            },
+            {
+              "base_price" : 20.99,
+              "discount_percentage" : 0,
+              "quantity" : 1,
+              "manufacturer" : "Elitelligence",
+              "tax_amount" : 0,
+              "product_id" : 17157,
+              "category" : "Men's Clothing",
+              "sku" : "ZO0594505945",
+              "taxless_price" : 20.99,
+              "unit_discount_amount" : 0,
+              "min_price" : 10.29,
+              "_id" : "sold_product_563460_17157",
+              "discount_amount" : 0,
+              "created_on" : "2016-12-10T16:00:29+00:00",
+              "product_name" : "Sweatshirt - off white",
+              "price" : 20.99,
+              "taxful_price" : 20.99,
+              "base_unit_price" : 20.99
+            }
+          ],
+          "sku" : [
+            "ZO0682506825",
+            "ZO0594505945"
+          ],
+          "taxful_total_price" : 100.98,
+          "taxless_total_price" : 100.98,
+          "total_quantity" : 2,
+          "total_unique_products" : 2,
+          "type" : "order",
+          "user" : "muniz",
+          "geoip" : {
+            "country_iso_code" : "MA",
+            "location" : {
+              "lon" : -8,
+              "lat" : 31.6
+            },
+            "region_name" : "Marrakech-Tensift-Al Haouz",
+            "continent_name" : "Africa",
+            "city_name" : "Marrakesh"
+          },
+          "event" : {
+            "dataset" : "sample_ecommerce"
+          }
+        },
+        "sort" : [
+          "Abbott",
+          "Muniz",
+          100.984375
+        ]
+      },
+```
+
+Notice new `sort` field.
+
+It is possible to sort by metafields as well. Metafields start with underscore.
+
+Searching a metafield example:
+
+```shell
+GET ecommerce/_search
+{
+  "query": {
+    "match": {
+      "products.product_name": "sweatshirt"
+    }
+  }
+  , "sort": [
+    {
+      "customer_last_name.keyword": {
+      }
+    },
+    {
+      "customer_first_name.keyword": {}
+    },
+    {
+      "products.price": {
+        "mode": "sum"
+      }
+    },
+     "_score"
+  ]
+}
+```
+
+Or:
+
+```shell
+GET ecommerce/_search
+{
+  "query": {
+    "match": {
+      "products.product_name": "sweatshirt"
+    }
+  },
+  "sort": [
+    {
+      "_score": {
+        "order": "asc"
+      }
+    },
+    {
+      "customer_last_name.keyword": {}
+    },
+    {
+      "customer_first_name.keyword": {}
+    },
+    {
+      "products.price": {
+        "mode": "sum"
+      }
+    }
+  ]
+}
+```
+
+
+
+
 
 
 
