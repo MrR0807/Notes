@@ -1208,11 +1208,9 @@ PUT census/_doc/1
 
 The wildcard data is another special data type that belongs to the keywords family which supports searching data using wildcards and regular expressions.
 
-/////////Hrererrerer
-
 ##### Mapping unstructured content
 
-You can map a field containing unstructured content to either a text or keyword family field.
+You can map a field containing unstructured content to either a `text` or `keyword` family field.
 
 Use the ``text`` field type if:
 * The content is human-readable, such as an email body or product description.
@@ -1286,11 +1284,9 @@ In addition to setting the field as JSON’s boolean type (true or false), the f
 
 ### 4.5.6 The range data type
 
-The range data types represent lower and upper bounds for a field. For example, if we want to select a group of volunteers for a vaccine trial, we can 
-segregate the volunteers based on some categories such as age 25–50, 51–70. 
+The range data types represent lower and upper bounds for a field. For example, if we want to select a group of volunteers for a vaccine trial, we can  segregate the volunteers based on some categories such as age 25–50, 51–70. 
 
-The range is defined by operators such as lte (less than or equal to) and lt (less than) for upper bounds and gte (greater than or equal to) and gt 
-(greater than) for lower bounds.
+The range is defined by operators such as lte (less than or equal to) and lt (less than) for upper bounds and gte (greater than or equal to) and gt  (greater than) for lower bounds.
 
 #### THE DATE_RANGE TYPE EXAMPLE
 
@@ -1305,7 +1301,8 @@ PUT trainings
       "training_dates":{ #B The training_dates is declared as date_range type
         "type": "date_range"
       }
-} }
+    } 
+  }
 }
 ```
 
@@ -1336,8 +1333,7 @@ PUT trainings/_doc/3 #E First document
 }
 ```
 
-The data_range type field expects two values: an upper bound and a lower bound. In addition to date_range, we can create other ranges like ip_range, 
-float_range, double_range, integer_range, and so on.
+The data_range type field expects two values: an upper bound and a lower bound. In addition to date_range, we can create other ranges like ip_range,  float_range, double_range, integer_range, and so on.
 
 ### 4.5.7 The IP (ip) address data type
 
@@ -1358,8 +1354,7 @@ PUT networks
 
 ### 4.6.1 The Geopoint (geo_point) data type
 
-With the advent of smartphones and devices, location services and searching for nearest items have become more common. Location data is expressed as a 
-geo_point data type, which represents longitude and latitude.
+With the advent of smartphones and devices, location services and searching for nearest items have become more common. Location data is expressed as a  geo_point data type, which represents longitude and latitude.
 
 ```shell
 PUT restaurants/_doc/1
@@ -1372,8 +1367,7 @@ PUT restaurants/_doc/1
 }
 ```
 
-We can fetch restaurants using a geo_bounding_box query which is used for searching data involving geographical addresses. It takes inputs of top_left and 
- bottom_right points to create a boxed up area around our point of interest.
+We can fetch restaurants using a geo_bounding_box query which is used for searching data involving geographical addresses. It takes inputs of top_left and bottom_right points to create a boxed up area around our point of interest.
 
 ```shell
 GET restaurants/_search
@@ -1395,8 +1389,7 @@ GET restaurants/_search
 }
 ```
 
-The query searches the restaurants that fall in a geo bounding box, represented as two geopoints (top_left and bottom_right in the query). This query 
-fetches our restaurant because the geo bounding box encompasses our restaurant.
+The query searches the restaurants that fall in a geo bounding box, represented as two geopoints (top_left and bottom_right in the query). This query  fetches our restaurant because the geo bounding box encompasses our restaurant.
 
 We can provide the location information in various formats.
 
@@ -1409,8 +1402,7 @@ We can provide the location information in various formats.
 
 ### 4.6.2 The object data type
 
-Often we find data in a hierarchical manner - for example - an email object consisting of top level fields like subject as well as inner object to hold 
- attachments, which in turn may have few more properties such as attachment file name, its type and so on.
+Often we find data in a hierarchical manner - for example - an email object consisting of top level fields like subject as well as inner object to hold  attachments, which in turn may have few more properties such as attachment file name, its type and so on.
 
 ```shell
 PUT emails {
@@ -1785,8 +1777,7 @@ PUT emails {
 }
 ```
 
-The subject field now has three types associated with it: text, keyword, and completion. If you want to access these, you have to use the format subject.kw 
-for the keyword type field or subject.comp for the completion type.
+The subject field now has three types associated with it: text, keyword, and completion. If you want to access these, you have to use the format subject.kw for the keyword type field or subject.comp for the completion type.
 
 
 
