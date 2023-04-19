@@ -1407,14 +1407,14 @@ Often we find data in a hierarchical manner - for example - an email object cons
 ```shell
 PUT emails {
   "mappings": {
-    "properties": {#A The top level properties for the emails index
+    "properties": { #A The top level properties for the emails index
       "to": {
         "type": "text"
       },
       "subject":{
         "type": "text"
       },
-      "attachments":{#B The inner object consisting of second level properties "properties": {
+      "attachments":{ #B The inner object consisting of second level properties "properties": {
           "filename":{
             "type":"text"
           },
@@ -1444,13 +1444,11 @@ Once the command is executed successfully, we can check the schema by invoking `
 }
 ```
 
-When you fetch the mapping (GET emails/_mapping), while all other fields show their associated data types, the ``attachments`` wouldn’t. **The object type of 
-an inner object is inferred by Elasticsearch as default.**
+When you fetch the mapping (GET `emails/_mapping`), while all other fields show their associated data types, the ``attachments`` wouldn’t. **The object type of an inner object is inferred by Elasticsearch as default.**
 
 #### LIMITATION OF AN OBJECT TYPE
 
-In our earlier emails example, the attachments field was declared as an object. While we create the email with just one attachment object, there’s nothing 
-stopping us creating multiple of these attachments.
+In our earlier emails example, the attachments field was declared as an object. While we create the email with just one attachment object, there’s nothing stopping us creating multiple of these attachments.
 
 ```shell
 PUT emails/_doc/2
@@ -1483,8 +1481,7 @@ GET myemails/_search #A Bool query search for a match with a filename and filety
 }
 ```
 
-However, this returns results. And this is where the object data type breaks down, i.e., it can’t honour the relationships between the inner objects. The 
-reason for this is that the inner objects are not stored as individual documents, they are flattened as shown below:
+However, this returns results. And this is where the object data type breaks down, i.e., it can’t honour the relationships between the inner objects. The reason for this is that the inner objects are not stored as individual documents, they are flattened as shown below:
 
 ```shell
 {
@@ -1496,8 +1493,7 @@ reason for this is that the inner objects are not stored as individual documents
 
 ### 4.6.3 The nested data type
 
-We can fix this issue by introducing a new type called nested data type. The nested type is a specialized form of an object type where the relationship 
-between the arrays of objects in a document is maintained.
+We can fix this issue by introducing a new type called nested data type. The nested type is a specialized form of an object type where the relationship  between the arrays of objects in a document is maintained.
 
 Going with the same example of our emails and attachments, this time let’s define the attachments fields as nested data type, rather than letting Elasticsearch derive it as an object type.
 
@@ -1522,9 +1518,7 @@ PUT emails_nested
 }
 ```
 
-In addition to creating the attachments as nested types, we declared the ``filename`` as a ``keyword`` type for a reason. The value, for example: ``file1.
- txt``, gets tokenized and gets split up as ``file1`` and ``txt``. As a result, search query may get matched with a ``txt`` and ``confidential`` or ``txt`` 
-and ``private`` as both records have ``txt`` as common token. To avoid this, we simply use the ``filename`` field as a ``keyword`` field.
+In addition to creating the attachments as nested types, we declared the ``filename`` as a ``keyword`` type for a reason. The value, for example: ``file1.txt``, gets tokenized and gets split up as ``file1`` and ``txt``. As a result, search query may get matched with a ``txt`` and ``confidential`` or ``txt`` and ``private`` as both records have ``txt`` as common token. To avoid this, we simply use the ``filename`` field as a ``keyword`` field.
 
 
 ```shell
@@ -1548,14 +1542,11 @@ GET emails_nested/_search
 
 ### 4.6.4 Flattened (flattened) data type
 
-So far we’ve looked at indexing the individual fields parsed from a JSON document. Each of the fields is treated as an individual and independent field 
- when analyzing and storing it. However, sometimes we may not need to index all the subfields as individual fields thus going through the analysis process.
+So far we’ve looked at indexing the individual fields parsed from a JSON document. Each of the fields is treated as an individual and independent field when analyzing and storing it. However, sometimes we may not need to index all the subfields as individual fields thus going through the analysis process.
 
-A ``flattened`` data type holds information in the form of one or more subfields, each subfield’s value indexed as a keyword. That is, none of the values are 
- treated as text fields, thus do not undergo the text analysis process.
+A ``flattened`` data type holds information in the form of one or more subfields, each subfield’s value indexed as a keyword. That is, none of the values are treated as text fields, thus do not undergo the text analysis process.
 
-Let’s consider an example of a doctor taking running notes about his/her patient during the consultation. The mapping consists of two fields: the name of 
- the patient and the doctor notes.
+Let’s consider an example of a doctor taking running notes about his/her patient during the consultation. The mapping consists of two fields: the name of the patient and the doctor notes.
 
 
 ```shell
@@ -1600,18 +1591,15 @@ GET consultations/_search
 }
 ```
 
-The flattened data types come handy especially when we are expecting a lot of fields on an adhoc basis and having to define the mapping definitions for all 
- of them beforehand isn’t feasible. **Be mindful that the subfiles of a flattened field are always ``keyword`` types.**
+The flattened data types come handy especially when we are expecting a lot of fields on an adhoc basis and having to define the mapping definitions for all of them beforehand isn’t feasible. **Be mindful that the subfiles of a flattened field are always ``keyword`` types.**
 
 ### 4.6.5 The Join (join) data type
 
 If you are from a relational database world, you would know the relationships between data - the joins that enable the parent-child relationships.
 
-While maintaining and managing relationships in Elasticsearch is advised under caution, Elasticsearch provides a join data type to consider parent-child 
- relationships should we need them.
+While maintaining and managing relationships in Elasticsearch is advised under caution, Elasticsearch provides a join data type to consider parent-child relationships should we need them.
 
-Let’s learn about join data in action by considering an example of doctor - patients (one-to- many) relationship: one doctor can have multiple patients and 
- each patient is assigned to one doctor.
+Let’s learn about join data in action by considering an example of doctor - patients (one-to-many) relationship: one doctor can have multiple patients and each patient is assigned to one doctor.
 
 ```shell
 PUT doctors {
@@ -1664,8 +1652,7 @@ PUT doctors/_doc/3?routing=mary
 }
 ```
 
-**The parents and associated children will be indexed into the same shard to avoid the multi-shard search overheads. And as the documents should co-exist, we 
- need to use a mandatory routing parameter in the URL. Routing is a function that would determine the shard where the document will reside.**
+**The parents and associated children will be indexed into the same shard to avoid the multi-shard search overheads. And as the documents should co-exist, we need to use a mandatory routing parameter in the URL. Routing is a function that would determine the shard where the document will reside.**
 
 ```shell
 GET doctors/_search
@@ -1679,13 +1666,11 @@ GET doctors/_search
 }
 ```
 
-When we wish to fetch the patients belonging to a doctor, we use a search query called parent_id that would expect the child type (patient) and the 
- parent’s ID (Dr Montgomery document ID is 1). This query will return Dr Montgomery’s patients - Mr and Mrs Doe.
+When we wish to fetch the patients belonging to a doctor, we use a search query called parent_id that would expect the child type (patient) and the parent’s ID (Dr Montgomery document ID is 1). This query will return Dr Montgomery’s patients - Mr and Mrs Doe.
 
 ### 4.6.6 Search as you type data type
 
-Most search engines suggest words and phrases as we type in a search bar. Elasticsearch provides a convenient data type - ``search_as_you_type`` - to 
- support this feature.
+Most search engines suggest words and phrases as we type in a search bar. Elasticsearch provides a convenient data type - ``search_as_you_type`` - to support this feature.
 
 ```shell
 PUT tech_books
@@ -1715,10 +1700,9 @@ PUT tech_books4/_doc/3
 }
 ```
 
-As the title field’s type is of search_as_you_type data type, Elasticsearch creates a set of subfields called ngrams, in addition to the root field(title), 
-with various shingle token filters. For example:
-* title._2gram: For example, the 2grams for “action” word are: ["ac","ct","ti","io","on"]
-* title._3gram: For example, the 3grams for “action” word ar: ["act", "cti","tio","ion"]
+As the title field’s type is of search_as_you_type data type, Elasticsearch creates a set of subfields called ngrams, in addition to the root field(title), with various shingle token filters. For example:
+* `title._2gram`: For example, the 2grams for “action” word are: ["ac","ct","ti","io","on"]
+* `title._3gram`: For example, the 3grams for “action” word ar: ["act", "cti","tio","ion"]
 
 ```shell
 GET tech_books4/_search
@@ -1733,24 +1717,19 @@ GET tech_books4/_search
 }
 ```
 
-This query should return the Elasticsearch in Action and Elastic Stack in Action books. We use a multi match query because we are searching for a value 
-across multiple fields - title, title._2gram, title._3gram, title._index_prefix.
+This query should return the Elasticsearch in Action and Elastic Stack in Action books. We use a multi match query because we are searching for a value  across multiple fields - title, `title._2gram`, `title._3gram`, `title._index_prefix`.
 
 #### Ngrams, Edge ngrams and Shingles
 
-The ngrams are a sequence of words for a given size. You can have 2-ngrams, 3-ngrams etc. For example, if the word is “action”, the 3-ngram (ngrams for size3) 
-are: ["act", "cti","tio","ion"] and bi-grams (size 2) are: ["ac", "ct","ti","io","on"] and so on.
+The ngrams are a sequence of words for a given size. You can have 2-ngrams, 3-ngrams etc. For example, if the word is “action”, the 3-ngram (ngrams for size3) are: ["act", "cti","tio","ion"] and bi-grams (size 2) are: ["ac", "ct","ti","io","on"] and so on.
 
-Edge ngrams, on the other hand, are ngrams of every word, where the start of the n-gram is anchored to the beginning of the word. Considering the “action” 
-word as our example, the edge n-gram produces: ["a", "ac","act","acti","actio","action"].
+Edge ngrams, on the other hand, are ngrams of every word, where the start of the n-gram is anchored to the beginning of the word. Considering the “action” word as our example, the edge n-gram produces: ["a", "ac","act","acti","actio","action"].
 
-Shingles on the other hand are word n-grams. For example, the sentence “Elasticsearch in Action” will outputting:
-["Elasticsearch", "Elasticsearch in", "Elasticsearch in Action", "in", "in Action", "Action"]
+Shingles on the other hand are word n-grams. For example, the sentence “Elasticsearch in Action” will outputting: ["Elasticsearch", "Elasticsearch in", "Elasticsearch in Action", "in", "in Action", "Action"]
 
 ## 4.7 Multiple data types
 
-We learned that each field in a document is associated with a data type. However, Elasticsearch is flexible to let us define the fields with multiple data 
-types too.
+We learned that each field in a document is associated with a data type. However, Elasticsearch is flexible to let us define the fields with multiple data types too.
 
 ```shell
 {
@@ -1777,7 +1756,11 @@ PUT emails {
 }
 ```
 
-The subject field now has three types associated with it: text, keyword, and completion. If you want to access these, you have to use the format subject.kw for the keyword type field or subject.comp for the completion type.
+The subject field now has three types associated with it: text, keyword, and completion. If you want to access these, you have to use the format `subject.kw` for the keyword type field or `subject.comp` for the completion type.
+
+# Chapter 5. Working with documents
+
+Elasticsearch classifies the APIs into two categories: single document APIs and multi-document APIs.
 
 
 
