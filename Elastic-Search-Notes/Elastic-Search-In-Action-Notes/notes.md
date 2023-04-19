@@ -1762,6 +1762,114 @@ The subject field now has three types associated with it: text, keyword, and com
 
 Elasticsearch classifies the APIs into two categories: single document APIs and multi-document APIs.
 
+## 5.1 Indexing documents
+
+#### DOCUMENT IDENTIFIERS
+
+Each document that we index can have an identifier, usually specified by the user. These identifiers, similar to a primary key in a relational database, are associated with that document for its lifetime.
+
+On the other hand, there are times when the client (user) doesn’t really need to give an identifier to the document. Each of these messages doesn’t need to have a sequence of identifiers. They can exist with a random ID, albeit a unique one. In this case, the system generates a random identifier (UUID) for the document that’s getting indexed.
+
+Document APIs allow us to index documents with and without an identifier. There is a subtle difference in using the HTTP verb such as POST or PUT, however.
+* If a document has an identifier provided by the client, we use the HTTP PUT method to invoke a document API for indexing the document.
+* If the document does not have an identifier provided by the client, we use the HTTP POST method when indexing. In which case, the document inherits the system-generated identifier once indexed.
+
+#### INDEXING A DOCUMENT WITH AN IDENTIFIER (PUT)
+
+```shell
+PUT <index_name>/_doc/<identifier>
+```
+
+```shell
+PUT movies/_doc/1 #A Document indexing url 
+{ #B Body of the request
+  "title":"The Godfather",
+  "synopsis":"The aging patriarch of an organized crime dynasty transfers control of his clandestine empire to his reluctant son"
+}
+```
+
+#### INDEXING A DOCUMENT WITHOUT AN IDENTIFIER (POST)
+
+```shell
+POST myindex/_doc #A The URL has no identifier attached to it 
+{
+  "title":"Elasticsearch in Action" #B The request body is a JSON document 
+}
+```
+
+#### USING `_CREATE` TO AVOID OVERRIDING A DOCUMENT
+
+```shell
+PUT movies/_doc/1
+{
+  "tweet":"Elasticsearch in Action 2e is here!" #A Not a movie but a tweet 
+}
+```
+
+In the example, we are indexing a document with a tweet into a movies index with a document ID of 1. Hold on a second; didn’t we already have a movie document (The Godfather) with that ID in our store? Yes, we do. Elasticsearch has no control on such overwriting operations. **The responsibility is passed down to the application or to the user.**
+
+We can use the ``_create`` endpoint in place of ``_doc`` when indexing a document to avoid overriding the existing one.
+
+```shell
+PUT movies/_create/100 {
+  "title":"Mission Impossible",
+  "director":"James Cameron" 
+}
+```
+
+```shell
+PUT movies/_create/100 #A Index a tweet in place of an existing movie 
+{
+  "tweet":"A movie with popcorn is so cool!" #B Not a movie but a tweet 
+}
+```
+
+```shell
+{
+    "type" : "version_conflict_engine_exception",
+    "reason":"[100]:version conflict,document already exists(current version[1])"
+}
+```
+
+Elasticsearch didn’t let the data be overwritten.
+
+Elasticsearch, by default, auto-creates a required index if the index doesn't already exist. If we want to restrict this feature, we need to set a flag called ``action.auto_create_index`` to ``false``.
+
+### 5.1.2 Mechanics of indexing
+
+Shards are Lucene instances that hold the physical data that’s logically associated with an index.
+
+When we index a document, the engine decides which shard it will be housed in, based on the routing algorithm. Each shard comes with heap memory, and when a document is indexed, the document is first pushed into the shard's in-memory buffer. The document is held in this in-memory buffer until a refresh occurs.
+Lucene’s scheduler issues a refresh every 1 second to collect all the documents available in the in-memory buffer, and creates a new segment with these documents. The segment consists of the document data and inverted indexes. The data is first written to the filesystem cache and then committed to the physical disk.
+
+Apache Lucene is an intelligent library when dealing with data writes and reads. After pushing the documents to a new segment (during the refresh operation), it waits until three segments are formed. It uses a three-segments-merge pattern to merge the segments to create new segments: that is, whenever the three segments are ready, Lucene will instantiate a new one by merging these three segments. And awaits for three more segments to be created so it can create a new one and so on.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
