@@ -1844,7 +1844,26 @@ Lucene’s scheduler issues a refresh every 1 second to collect all the document
 
 Apache Lucene is an intelligent library when dealing with data writes and reads. After pushing the documents to a new segment (during the refresh operation), it waits until three segments are formed. It uses a three-segments-merge pattern to merge the segments to create new segments: that is, whenever the three segments are ready, Lucene will instantiate a new one by merging these three segments. And awaits for three more segments to be created so it can create a new one and so on.
 
+### 5.1.3 Customizing the refresh
 
+Documents that get indexed live in memory until the refresh cycle kicks in. The documents get moved as segments into the filesystem during the refresh process and, thus, are available to search.
+
+The good news is that we can configure this refresh setup. We can reset the time interval from the default 1 second to, say, 60 seconds.
+
+```shell
+PUT movies/_settings {
+"index":{ "refresh_interval":"60s"} 
+}
+```
+
+To switch off the refresh operation completely, set the value to -1. The in-memory buffer will accumulate the incoming documents if the refresh operation is off. The use case for this scenario might be that we are migrating tons of documents from a database into Elasticsearch, and we don’t want the data to be searchable until the migration completes successfully.
+
+We can also control the refresh operation from the client side for CRUD operations on documents by setting the refresh query parameter.
+
+The refresh query parameter can expect three values:
+* refresh=false
+* refresh=true
+* refresh=wait_for
 
 
 
