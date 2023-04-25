@@ -1976,19 +1976,240 @@ GET movies/_source/3?_source_includes=rating*&_source_excludes=rating_amazon
 
 We’ve enabled a wildcard field, ``_source_includes=rating*``, in this query to fetch all the attributes that are prefixed with the word rating.
 
+## 5.4 Updating documents
 
+Similar to indexing documents, Elasticsearch provides two types of update queries: one for working against single documents and other for working on  multiple documents:
+* ``_update`` API will update a single document
+* ``_update_by_query`` will allow us to modify multiple documents in one go
 
+### 5.4.1 Document update mechanics
 
+Elasticsearch first fetches the document, modifies it, and then re- indexes it. Essentially, it replaces the old document with a new document. Behind the scenes, Elasticsearch creates a new document for updates. During this update, Elasticsearch increments the version of the document once the update  operation completes. When the newer version of the document (with the modified values or new fields) is ready, it marks the older version for deletion.
 
+### 5.4.2 The _update API
 
+All update operations are performed using the ``_update`` API. The format is simple, and it goes like this:
 
+```shell
+POST <index_name>/_update/<id>
+```
 
+#### ADDING NEW FIELDS
 
+To amend the document with new fields, we pass a request body consisting of the new fields to the `_update` API. The new fields are wrapped in a doc object as the API expects in that manner.
 
+```shell
+POST movies/_update/1 {
+  "doc": {
+  "actors":["Marldon Brando","Al Pacino","James Cann"], "director":"Frances Ford Coppola"
+  } 
+}
+```
 
+#### MODIFYING THE EXISTING FIELDS
 
+```shell
+POST movies/_update/1 {
+  "doc": {
+    "title":"The Godfather (Original)"
+  } 
+}
+```
 
+When it comes to updating an element in an array (like adding a new actor to the list of actors field), we must provide both new and old values together.
 
+```shell
+POST movies/_update/1 #A Updating the document ID 1 
+{
+    "doc": { #B the updates must be enclosed in the doc object "actors":
+        ["Marldon Brando", "Al Pacino", "James Cann", "Robert Duvall"] #C Old and new values together
+    } 
+}
+```
+
+### 5.4.3 Scripted updates
+
+In addition to doing this on a field-by-field basis, we can also execute updates using scripts. Scripted updates allow us to update the document based on some conditions.
+
+Scripts are provided in a request body using the same `_update` endpoint, with the updates wrapped in a script object which in turn consist of the source as the key.
+
+#### UPDATE ACTORS USING A SCRIPT
+
+Let’s update our movie document by adding an additional actor to the existing array.
+
+```shell
+POST movies/_update/1 {
+    "script": {
+      "source": "ctx._source.actors.add('Diane Keaton')"#A Additional actor
+    } 
+}
+```
+
+#### REMOVING AN ACTOR
+
+The ``remove`` method takes an integer that points to the index of the actor we want to remove.
+
+```shell
+POST movies/_update/1 
+{
+  "script":{
+    "source": "ctx._source.actors.remove(ctx._source.actors.indexOf('Diane Keaton'))"
+  }
+}
+```
+
+#### ADDING A NEW FIELD
+
+Here we add a new field, ``imdb_user_rating``, with a value of 9.2:
+
+```shell
+POST movies/_update/1 {
+    "script": {
+      "source": "ctx._source.imdb_user_rating = 9.2"
+    } 
+}
+```
+
+#### REMOVING A FIELD
+
+```shell
+POST movies/_update/1 {
+    "script": {
+      "source": "ctx._source.remove('metacritic_rating')"
+    }
+}
+```
+
+Note that if you try to remove a nonexistent field, you will not get an error message letting you know you are trying to remove a field that doesn’t exist on the schema.
+
+#### ADDING MULTIPLE FIELDS
+
+```shell
+POST movies/_update/1 {
+    "script": {
+        "source": """
+          ctx._source.runtime_in_minutes = 175;
+          ctx._source.metacritic_rating= 100;
+          ctx._source.tomatometer = 97;
+          ctx._source.boxoffice_gross_in_millions = 134.8;
+          """
+    }
+}
+```
+
+Each key-value pair is segregated with a semicolon (;).
+
+#### ADDING A CONDITIONAL UPDATE SCRIPT
+
+```shell
+POST movies/_update/1 {
+"script": {
+    "source": """ 
+    if(ctx._source.boxoffice_gross_in_millions > 125)
+      {ctx._source.blockbuster = true} 
+    else
+      {ctx._source.blockbuster = false}
+    """
+  } 
+}
+```
+
+The if clause in the listing checks for the value of the field ``boxoffice_gross_in_millions``. It then creates a new blockbuster field automatically.
+
+#### ANATOMY OF A SCRIPT
+
+The source is where we provide the logic, while the params are the parameters that the script expects separated by a vertical bar (or pipe) character. We can provide the language our script is written in (for example, one of painless, expression, moustache, or java, where the default is painless).
+
+#### PASSING DATA TO THE SCRIPTS
+
+```shell
+POST movies/_update/1 {
+    "script": { #A Business logic goes here
+        "source": """ #B checking the value against params
+        if(ctx._source.boxoffice_gross_in_millions > params.gross_earnings_threshold) 
+          {ctx._source.blockbuster = true}
+        else
+          {ctx._source.blockbuster = false}
+        """,
+        "params": {#C provide the parameter values
+          "gross_earnings_threshold":150 
+        }
+    }
+}
+```
+
+The script has two notable changes from the previous version:
+* The if clause is now compared against a value read from the params object (params.gross_earnings_threshold), and
+* The `gross_earnings_threshold` is set to 150 via the params block
+
+### 5.4.4 Replacing documents
+
+```shell
+PUT movies/_doc/1
+{
+  "title":”Avatar”
+}
+```
+
+### 5.4.5 Upsert
+
+Let’s say we want to update gross_earnings for the movie Top Gun. Remember, we don’t have this movie in our store yet.
+
+```shell
+POST movies/_update/5 {
+  "script": {
+    "source": "ctx._source.gross_earnings = '357.1m'"
+  },
+  "upsert": {
+    "title":"Top Gun",
+    "gross_earnings":"357.5m" 
+  }
+}
+```
+
+### 5.4.6 Updating by a query
+
+Sometimes we wish to update a set of documents matching to a search criteria - for example update all movies whose rating is above 4 stars as popular movies. We can run a query to search for such a set of documents and apply the updates on those by using the `_update_by_query` endpoint. Say, we need to update all the movies with the actor’s name matching Al Pacino to Oscar Winner Al Pacino in all the movies that he acted in.
+
+```shell
+POST movies/_update_by_query #A We search for the docs and update the set {
+  "query": { #B Search query - search all movies of Pacino "match": {
+    "actors": "Al Pacino" 
+  }
+  },
+  "script": { #C Apply the following script logic for the matching documents
+    "source": """
+      ctx._source.actors.add('Oscar Winner Al Pacino'); 
+      ctx._source.actors.remove(ctx._source.actors.indexOf('Al Pacino'))
+      """,
+      "lang": "painless"
+    }
+}
+```
+
+## 5.5 Deleting documents
+
+When you want to delete documents, there are essentially two methods: using an ID or using a query. In the former case, we can delete a single document, while in the latter, we can delete multiple documents in one go.
+
+### 5.5.1 Deleting with an ID
+
+```shell
+DELETE <index_name>/_doc/<id>
+```
+
+### 5.5.2 Deleting by query (`_delete_by_query`)
+
+```shell
+POST movies/_delete_by_query {
+  "query":{
+    "match":{
+      "director":"James Cameron" 
+    }
+  } 
+}
+```
+
+Similar to the basic search queries we can pass a variety of attributes like ``term``, ``range``, ``match``.
 
 
 
