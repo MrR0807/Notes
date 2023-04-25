@@ -1865,12 +1865,116 @@ The refresh query parameter can expect three values:
 * refresh=true
 * refresh=wait_for
 
+## 5.2 Retrieving documents
 
+Elasticsearch provides two types of document APIs for retrieving documents:
+* The single document API that returns one document given an ID, and
+* The multi-document API that returns multiple documents given an array of IDs.
 
+### 5.2.1 Using the single document API
 
+```shell
+GET <index_name>/_doc/<id>
+```
 
+The JSON response has two parts: the metadata and the original document. The metadata consists of `_id`, `_type`, `_version`, and so on. The original document is enclosed under the _source attribute.
 
+If the document is not found, we’ll get a response with the attribute found set to false.
 
+```shell
+{
+  "_index" : "movies", "_type" : "_doc", "_id" : "999", "found" : false
+}
+```
+
+### 5.2.2 Retrieving multiple documents
+
+Elasticsearch exposes a multi-document API (``_mget``).
+
+```shell
+GET movies/_mget
+{
+"ids" : ["1", "12", "19", "34"] 
+}
+```
+
+```shell
+GET _mget # A _mget call with no index mentioned in the url 
+{
+"docs":[ 
+  {
+    "_index":"classic_movies", #B The index is provided here
+    "_id":11 
+  },
+  {
+    "_index":"international_movies", #C index 2 
+    "_id":22
+  }, 
+  {
+    "_index":"top100_movies", #D index 3
+    "_id":33 
+  }
+]}
+```
+
+```shell
+GET classic_movies/_search
+{
+"query": {
+  "ids": {
+    "values": [1,2,3,4]
+    } 
+  }
+}
+```
+
+## 5.3 Manipulating responses
+
+The response returned to the client can contain a lot of information, and the client may not be interested in receiving all of it.
+
+### 5.3.1 Removing metadata from the response
+
+We can fetch just the source (original document) without the metadata by:
+
+```shell
+GET <index_name>/_source/<id>
+```
+
+Notice that the ``_doc`` endpoint is replaced with ``_source``.
+
+### 5.3.2 Suppressing the source document
+
+```shell
+GET movies/_doc/1?_source=false
+```
+
+Only the metadata will be returned.
+
+### 5.3.3 Including and excluding fields
+
+```shell
+GET movies/_doc/3?_source_includes=title,rating,genre
+```
+
+This returns the document with these three fields.
+
+#### Exclude fields (_source_excludes)
+
+We can exclude fields that we don’t want to be returned in the response using the ``_source_excludes`` parameter.
+
+```shell
+GET movies/_source/3?_source_excludes=actors,synopsis
+```
+
+#### Include and exclude fields
+
+We can mix and match what the return attributes we wish to have in our response.
+
+```shell
+GET movies/_source/3?_source_includes=rating*&_source_excludes=rating_amazon
+```
+
+We’ve enabled a wildcard field, ``_source_includes=rating*``, in this query to fetch all the attributes that are prefixed with the word rating.
 
 
 
