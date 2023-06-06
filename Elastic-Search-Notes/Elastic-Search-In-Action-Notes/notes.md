@@ -2211,8 +2211,202 @@ POST movies/_delete_by_query {
 
 Similar to the basic search queries we can pass a variety of attributes like ``term``, ``range``, ``match``.
 
+## 5.7 Reindexing documents
 
+```shell
+POST _reindex
+{
+    "source": {"index": "<source_index>"},
+    "dest": {"index": "<destination_index>"} 
+}
+```
 
+```shell
+POST _reindex
+{
+    "source": {"index": "movies"},
+    "dest": {"index": "movies_new"} 
+}
+```
+
+# Chapter 6. Indexing operations
+
+Indices come with three sets of configurations: settings, mappings, and aliases. Each of these configurations modify the index in one form or another.
+
+For example, we use settings for creating the number of shards and replicas as well as other properties for the index.
+
+## 6.1 Indexing operations
+
+A newly created index is associated with a set number of shards and replicas along with other attributes by default.
+
+## 6.2 Creating indices
+
+### 6.2.1 Creating indices implicity (automatic creation)
+
+When we index a document for the first time, Elasticsearch won't make any complaints about a non existing index; instead, it happily creates one for us. 
+When an index is created this way, Elasticsearch uses default settings such as setting the number of primary and replica shards to one.
+
+Each index is made of **mappings, settings, and aliases**. This will be reflected in the response.
+
+```shell
+PUT _cluster/settings #A Updates the settings across the whole cluster
+{
+  "persistent": { #B The changes can be persistent or transient.
+    "action.auto_create_index":false #C Shuts down autocreation
+  }
+}
+```
+
+The ``persistent`` property indicates that the settings will be permanent. On the contrary, using the ``transient`` property saves the settings only until the next reboot of the Elasticsearch server.
+
+While disabling this feature sounds cool, **in reality this is not advisable**. Although we are restricting automatic creation, there may be an instance of an application or Kibana that may need to create an index for administrative purposes; Kibana creates hidden indices often.
+
+Having said that, there is a mechanism to tweak this property beyond binary options. This setting allows the automatic creation of hidden indices with admin as the prefix.
+
+```shell
+action.auto_create_index: .admin*, cars*, *books*, -x*,-y*,+z*
+```
+
+### 6.2.2 Creating indices explicitly
+
+```shell
+PUT <index_name>
+```
+
+### 6.2.3 Index with custom settings
+
+For this purpose, Elasticsearch exposes the `_settings` API to update the settings on a live index. However, as we mentioned, not all properties can be altered on a live index, only dynamic properties.
+
+#### STATIC SETTINGS
+
+Static settings can only be applied during the process of index creation and cannot be changed while the index is in operation. These are properties like the number of shards, compression codec, data checks on startup, and others.
+
+#### DYNAMIC SETTINGS
+
+Dynamic settings are those settings that we can modify on a live (the index that’s in operation) index. For example, we can change properties like number of replicas, allowing or disallowing writes, refresh intervals, and others on indices that are in operation.
+
+```shell
+PUT cars_with_custom_settings #A
+{
+  "settings":{ #B
+    "number_of_shards":3, #C
+    "number_of_replicas":5, #D
+    "codec": "best_compression", #E
+    "max_script_fields":128, #F
+    "refresh_interval": "60s" #G
+  } 
+}
+```
+
+```shell
+PUT cars_with_custom_settings/_settings
+{
+  "settings": {
+    "number_of_replicas": 2
+  }
+}
+```
+
+Fetch index settings:
+```shell
+GET cars_with_custom_settings/_settings
+```
+
+You can also fetch settings of multiple indices:
+```shell
+GET cars1,cars2,cars3/_settings #A
+GET cars*/_settings #B
+```
+
+Fetching a single attribute:
+```shell
+GET cars_with_custom_settings/_settings/index.number_of_shards
+```
+
+### 6.2.4 Index with mappings
+
+```shell
+PUT cars_with_mappings
+{
+  "mappings": { #A The mappings object encloses the properties.
+    "properties": { #B The fields with data types of the car are declared here.
+      "make":{
+        "type": "text" #C Declaring the make as a text type
+      },
+      "model":{
+        "type": "text"
+      },
+      "registration_year":{#D Declaring the registration_year as a date type
+        "type": "date",
+        "format": "dd-MM-yyyy" #E The field’s custom format
+      }
+    } 
+  }
+}
+```
+
+We can also combine both settings and mappings.
+
+```shell
+PUT cars_with_settings_and_mappings #A Index with both settings and mappings
+{
+  "settings": { #B Settings on the index
+    "number_of_replicas": 3
+  },
+  "mappings": { #C Mappings schema definition
+    "properties": {
+      .. 
+    }
+  } 
+}
+```
+
+### 6.2.5 Index with aliases
+
+Aliases are alternate names given to indices for various purposes such as:
+* Searching or aggregating data from multiple indices (as a single alias)
+* Enabling zero downtime during re-indexing
+
+We can group multiple indices and assign an alias to them so one can write queries against a single alias rather than dozen indices.
+
+```shell
+PUT cars_for_aliases #A Creates an index with an alias
+{
+  "aliases": {
+    "my_new_cars_alias": {} #B Points the alias to the index
+  }
+}
+```
+
+However, there’s another way to create aliases rather than using the index APIs: using an alias API.
+
+```PUT|POST <index_name>/_alias/<alias_name>```
+
+```shell
+PUT cars_for_aliases/_alias/my_new_cars_alias
+```
+
+Create a single alias pointing to multiple indices:
+
+```shell
+PUT cars1,cars2,cars3/_alias/multi_cars_alias
+```
+
+```shell
+PUT cars*/_alias/wildcard_cars_alias #A All indices prefixed with cars
+```
+
+GET ``cars`` returns the index with all aliases created on that index.
+
+Fetch the alias details:
+
+```shell
+GET my_cars_alias/_alias #A Fetch alias details for single index 
+```
+
+```shell
+GET all_cars_alias,my_cars_alias/_alias #A Fetch aliases associated with multiple indexes
+```
 
 
 
