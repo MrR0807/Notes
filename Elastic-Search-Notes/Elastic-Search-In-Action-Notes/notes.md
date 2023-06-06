@@ -2408,19 +2408,590 @@ GET my_cars_alias/_alias #A Fetch alias details for single index
 GET all_cars_alias,my_cars_alias/_alias #A Fetch aliases associated with multiple indexes
 ```
 
+#### MIGRATING DATA WITH ZERO DOWNTIME USING ALIASES
 
+1. Create an alias called vintage_cars_alias to refer to the current index vintage_cars.
+2. Because the new properties are incompatible with the existing index, create a new index, say vintage_cars_new with the new settings.
+3. Copy (i.e., reindex) the data from the old index (vintage_cars) to the new index (vintage_cars_new).
+4. Recreate your existing alias (vintage_cars_alias), which pointed to the old index, to refer to the new index. Thus, vintage_cars_alias will now be pointed to vintage_cars_new.
+5. Now all the queries that were executed against the vintage_cars_alias are carried out on the new index.
 
+#### MULTIPLE ALIASING OPERATIONS USING THE _ALIASES API
 
+In addition to working with aliases using the ``_alias`` API, there is another API for working on multiple aliasing actions: the ``_aliases`` API. It combines a few actions such as adding and removing aliases, as well as deleting the indices, all in one go. Whereas the ``_alias`` API is used for creating an alias, the ``_aliases`` API helps create multiple actions on indices related to aliasing.
 
+```shell
+POST _aliases #A Uses the _aliases API to execute multiple actions
+{
+  "actions": [#B Lists the individual actions
+    {
+      "remove": {#C Removes the alias that points to an old index
+        "index": "vintage_cars",
+        "alias": "vintage_cars_alias"
+      }
+    }, {
+      "add": { #D Adds an alias that points to a new index
+          "index": "vintage_cars_new",
+          "alias": "vintage_cars_alias"
+      }
+   } 
+  ]
+}
+```
 
+Create an alias for multiple indices using the same `_aliases` API by using the indices parameter to set up the list of indices.
 
+```shell
+POST _aliases
+{
+  "actions": [
+    {
+      "add": {
+        "indices": ["vintage_cars","power_cars","rare_cars","luxury_cars"],
+        "alias": "high_end_cars_alais"
+      }
+    } 
+  ]
+}
+```
 
+## 6.3 Reading indices
 
+### 6.3.1 Reading public indices
 
+```shell
+GET cars1,cars2,cars3  #A Retrieves details of three indices
+```
 
+```shell
+GET ca* #A Returns all indices prefixed with ca
+```
 
+```shell
+GET mov*,stu* #A Gets all indices prefixed with mov and stu
+```
 
+```shell
+GET cars/_settings #A Gets the settings from the _settings endpoint
+GET cars/_mapping  #B Gets the mappings from the _mapping endpoint
+GET cars/_alias    #C Gets the aliases from the _alias endpoint
+```
 
+### 6.3.2 Reading hidden indices
 
+Hidden indices are usually reserved for system management.
 
+We can create a hidden index by simply executing the command ``PUT .old_cars``.
 
+The ``GET _all`` or ``GET *`` calls fetch all the indices including the hidden indices.
+
+## 6.4 Deleting indices
+
+```shell
+DELETE cars
+```
+
+### DELETING MULTIPLE INDICES
+
+```shell
+DELETE cars,movies,order
+```
+
+### DELETING ONLY ALIASES
+
+```shell
+DELETE cars/_alias/cars_alias  #A Delete the cars_alias
+```
+
+## 6.5 Closing and opening indices
+
+### 6.5.1 Closing indices
+
+Closing the index means that any operations on it will cease. There will be no indexing of documents or search and analytic queries.
+
+The close index API (``_close``) shuts down the index.
+
+```shell
+POST <index_name>/_close
+```
+
+#### CLOSING ALL OR MULTIPLE INDICES
+
+We can close multiple indices by using comma-separated indices (including wildcards).
+
+```shell
+POST cars1,*mov*,students*/_close?wait_for_active_shards=index-setting
+```
+
+#### AVOID DESTABILIZING THE SYSTEM
+
+As you can imagine, closing (or opening) all indices may destabilize the system. It’s one of those super admin capabilities that if executed without forethought, could lead to disastrous results, including taking the system down or making it irreparable. Hence, only administrators should turn this feature off (especially in production). This is done by setting a flag called `action.destructive_requires_name` to `true` in the `elasticsearch.yml` configuration file.
+
+### 6.5.2 Opening indices
+
+Opening an index kick starts the shards back into business; they are open for indexing and searching once ready.
+
+```shell
+POST cars/_open
+```
+
+## 6.6 Index templates
+
+Copying the same settings across various indices, especially one by one, is tedious and at times erroneous too. If we define an indexing template with a schema upfront, creating a new index will implicitly be molded from this schema if the index name matches the template.
+
+One use case for an indexing template might be to create a set of patterns based on environments. For example, indices for a development environment would have 3 shards and 2 replicas, while indices for a production environment would have 10 shards with 5 replicas each.
+
+Additionally, we can create a template based on a glob (global command) pattern, such as wildcards, prefixes, and others.
+
+### 6.6.1 Creating index templates
+
+Since Elasticsearch version 7.8, the index templates can be classified into two categories: 
+* composable index templates (or simply index templates) - are composed of zero or more component templates
+* component templates - a template on its own, it's not very useful if it’s not associated with an index template. They can, however, be associated with many index templates
+
+For example: 
+
+Index Template A composed of Component Template 1, Component Template 2, Component Template 3.
+Index Template B composed of no component templates.
+Index Template C composed of Component Template 1, Component Template 2.
+Index Template D composed of Component Template 2, Component Template 3, Component Template 4.
+
+Rules when creating templates:
+* An index created with configurations explicitly takes precedence over the configurations defined in the template or in component templates.
+* Legacy templates carry a lower priority than the composable templates.
+
+#### CREATING COMPOSABLE (INDEX) TEMPLATES
+
+To create an index template, we use an ``_index_template`` endpoint, providing all the required mappings, settings, and aliases as an index pattern in this template.
+
+Let’s say our requirement is to create a template for cars, represented with a pattern having wildcards: \*cars\*. This template will have certain properties and settings, such `created_by` and `created_at` properties, as well as shards and replica numbers. Any index that gets matched with this template during its creation inherits the configurations defined in the template.
+
+```shell
+POST _index_template/cars_template
+{
+  "index_patterns": ["*cars*"],
+  "priority": 1,
+  "template": {
+    "mappings": {
+      "properties":{
+        "created_at":{
+          "type":"date"
+        },
+        "created_by":{
+          "type":"text"
+        }
+      } 
+    }
+  } 
+}
+```
+
+#### CREATING COMPONENT TEMPLATES
+
+A component template is nothing but a reusable block of configurations that we can use to make up more index templates. The component templates are of no value unless they are clubbed with index templates.
+
+They are exposed via a ``_component_template`` endpoint.
+
+```shell
+POST _component_template/dev_settings_component_template
+{
+  "template":{
+    "settings":{
+      "number_of_shards":3,
+      "number_of_replicas":3
+    }
+  } 
+}
+```
+
+We use the ``_component_template`` endpoint to create a template. The body of the request holds the template information in a ``template`` object. Once executed, the ``dev_settings_component_template`` becomes available for use elsewhere in the index templates.
+
+```shell
+POST _component_template/dev_mapping_component_template
+{
+  "template": {
+    "mappings": {
+      "properties": {
+        "created_by": {
+          "type": "text"
+        },
+        "version": {
+          "type": "float"
+        }
+      } 
+    }
+  } 
+}
+```
+
+The ``dev_mapping_component_template`` consists of a mapping schema predefined with two properties, ``created_by`` and ``version``.
+
+```shell
+POST _index_template/composed_cars_template
+{
+    "index_patterns": ["*cars*"],
+    "priority": 200,
+    "composed_of": ["dev_settings_component_template", "dev_mapping_component_template"]
+}
+```
+
+The highlighted composed_of tag is a collection of all component templates.
+
+Once this script executes and we create an index with cars in the index name (``vintage_cars``, ``my_cars_old``, ``cars_sold_in_feb``, etc), the index gets created with the configuration derived from both component templates.
+
+## 6.7 Monitoring and managing indices
+
+### 6.7.1 Index statistics
+
+The ``_stats`` API helps us retrieve statistics of an index, both for primary shards and for replica shards.
+
+``GET cars/_stats``
+
+```shell
+{
+  "_shards": {
+    "total": 2,
+    "successful": 1,
+    "failed": 0
+  },
+  "_all": {
+    "primaries": {},
+    "total": {}
+  },
+  "indices": {
+    "cars": {
+      "uuid": "1fajlfaflkj"
+      "primaries": {},
+      "total": {}
+    }
+  }
+}
+```
+
+#### UNDERSTANDING THE RESPONSE
+
+The response consists of two blocks primarily:
+* The ``_all`` block, where we see the aggregated statistics of all indices combined
+* The ``indices`` block, where we see the statistics for the individual indices
+
+Both these blocks consist of two buckets of statistics: the ``primaries`` bucket contains the statistics related to just the primary shards, while the ``total`` bucket indicates the statistics for both primary and replica shards.
+
+### 6.7.2 Multiple indices and statistics
+
+```shell
+GET cars1,cars2,cars3/_stats
+```
+
+```shell
+GET cars*/_stats
+```
+
+```shell
+GET */_stats # Fetch statistics for all indices
+```
+
+```shell
+GET cars/_stats/segments # Only segments stats from statistics endpoint
+```
+
+## 6.8 Advanced operations
+
+### 6.8.1 Splitting an index
+
+Sometimes the indices may be overloaded with data so additional shards need to be added to the index to manage memory and distribute them evenly.
+
+For example, if an index (cars) with 5 primary shards is overloaded, we can split the index into a new index with more primary shards, say 15 shards. This operation of expanding indices from a small size to a larger size is called **splitting**. Splitting is nothing more than creating a new index with more shards and copying the data from the old index into the new index.
+
+Elasticsearch provides a ``_split`` API for splitting an index.
+
+**Before we invoke the split operation on the all_cars index, we must make sure the index is disabled for indexing business (the index is changed to a read-only index)**.
+
+```shell
+PUT all_cars/_settings #A Uses the settings API
+{
+  "settings":{
+    "index.blocks.write":"true" #B Closes the index for writing operations
+  }
+}
+```
+
+Now that the prerequisite of making the index non operational is complete, we can move to the next step of splitting it by invoking the split API.
+
+```shell
+POST <source_index>/_split/<target_index>
+```
+
+```shell
+POST all_cars/_split/all_cars_new #A
+{
+  "settings": {
+    "index.number_of_shards": 12 #B
+  }
+}
+```
+
+Rules and conditions:
+* The target index must not exist before this operation.
+* The number of shards in the target index must be a multiple of the number of shards in the source index. If source has 3 shards then multiples of 3 are valid (6, 9, 12 ...).
+* The target index's primary shards can never be less than source.
+* The target index's node must have adequate space.
+
+### 6.8.2 Shrinking an index
+
+Elasticsearch exposes ``_shrink`` API for this purpose.
+
+Similar to what we did with a splitting operation, the first step is to make sure our all_cars index is read-only, so we’ll set the ``index.blocks.write`` property to ``true``.
+
+```shell
+PUT all_cars/_settings
+{
+  "settings": {
+    "index.blocks.write": true,
+    "index.routing.allocation.require._name": "node1"
+  }
+}
+```
+
+```shell
+PUT all_cars/_shrink/all_cars_new2 #A
+{
+  "settings":{
+    "index.blocks.write":null,#B
+    "index.routing.allocation.require._name":null,#C
+    "index.number_of_shards":1,#D
+    "index.number_of_replicas":5
+  } 
+}
+```
+
+The source index was set with two properties: read-only and the allocation index node name. These settings will be carried over to the new target index if we do not reset them. Hence, in the script, we nullify these properties so the target index wouldn’t have these restrictions imposed on when it’s created.
+
+There are also a bunch of actions that must be done prior to shrinking indices. The following list provides these actions:
+* The source index must be switched off (made read-only) for indexing. Although not mandatory, but advised, we can turn off the replicas too before shrinking kicks in.
+* The target index mustn’t be created or exists before the shrinking activity.
+* All target index shards must reside on the same shard. There is a property called `index.routing.allocation.require.<node_name>` on the index that we must set with the node name to achieve this.
+* The target index’s shard number can only be a factor of the source index’s shard number. Our all_cars index with 50 shards can only be shrunk to 25, 10, 5, or 1 shard.
+* The target index’s node satisfies the memory requirements.
+
+### 6.8.3 Rolling over an index alias
+
+Unlike a splitting operation, in a rollover, the documents are not copied to the new index. The old index becomes read-only, and any new documents will be indexed into this rolled over index going forward.
+
+The rollover operation is heavily used when dealing with time-series data. The time-series data (data that’s usually generated for a specific period like every day, weekly, or monthly) is usually held in an index created for a particular time period.
+
+Elasticsearch performs a few steps to rollover the cars_2021-000001 index.
+1. Elasticsearch creates an alias pointing to the index. Before Elasticsearch creates this alias, we must make sure the index is writable by setting `is_write_index` to true. The idea behind this step is that the alias must have at least one writable backing index.
+2. Elasticsearch invokes a rollover command on the alias using the `_roller` API. This creates a new rollover index (for example, cars_2021-000002).
+
+#### CREATING AN ALIAS FOR ROLLOVER OPERATIONS
+
+```shell
+POST _aliases #A
+{
+  "actions": [ #B
+    {
+        "add": { #C
+          "index": "cars_2021-000001", #D 
+          "alias": "latest_cars_a",
+          "is_write_index": true
+        } 
+    }
+  ] 
+}
+```
+
+If the alias points to multiple indices, at least one must be a writable index.
+
+#### ISSUING A ROLLOVER OPERATION
+
+Now that we have an alias created, the next step is to invoke the rollover API endpoint.
+
+```shell
+POST latest_cars_a/_rollover
+```
+
+As you can clearly see, the `_rollover` endpoint is invoked on the alias not the index.
+
+```shell
+{
+    "acknowledged" : true,
+    "shards_acknowledged" : true,
+    "old_index" : "latest_cars-000001", #A Old index name 
+    "new_index" : "latest_cars-000002", #B New index name "rolled_over" : true,
+    "dry_run" : false,
+    "conditions" : { }
+}
+```
+
+Naming convetions for rolling api.
+
+```shell
+POST <index_alias>/_rollover
+or
+POST <index_alias>/_rollover/<target_index_name>
+```
+
+Specifying a target index name as given in the second option lets the rollover API create the index with the given parameter as the target index name. However, the first option, where we don’t provide an index name, has a special convention: <index_name>-00000N. The number (after the dash) is **always made up of 6 digits with padded zeros**.
+
+* Can we automatically rollover the index when the shard’s size has crossed a certain threshold?
+* Can we instantiate a new index for everyday logs?
+
+Although we have seen the mechanism of rollover in this section, we can satisfy these questions using the relatively new index life-cycle management (ILM) feature.
+
+As the name suggests, the ILM is all about managing the indices based on a life-cycle policy. The policy is a definition that declares some rules that are executed by the engine when the conditions of the rules are met. For example, we can define rules based on rolling over the current index to a new index when:
+* The index reaches a certain size (say 40 GB, for example)
+* The number of documents in the index crossed, say, 10,000
+* The day is rolled over
+
+### 6.9.1 About the index life cycle
+
+There are five stages in index life cycle. 
+
+* Hot — The index is in full operation mode. It is available for both read and write, thus enabling the index for both indexing and querying.
+* Warm — The index is in read-only mode. Indexing is switched off but open for querying so that the search and aggregation queries can still be served by this index.
+* Cold — The index is in read-only mode. Similar to the warm phase, where indexing is switched off, and it's open for querying, albeit the queries are expected to be infrequent. When the index is in this phase, the search queries might result in slow response times.
+* Frozen — This is similar to the cold phase, where the index is switched off for indexing but querying is allowed. However, the queries are more infrequent or even rare. When the index is in this phase, users may seem to notice longer response times for their queries.
+* Delete — This is the index’s final stage, where the index gets deleted permanently. As such, the data is erased and resources are freed. Usually, it’s expected that we take a snapshot of the index before deleting so that the data from the snapshot can be restored at some point in the future.
+
+Transitioning from the hot phase into every other phase is optional. That is, once created in the hot phase, the index can remain in that phase or transition to any of the other four phases.
+
+### 6.9.2 Managing life cycle manually
+
+Elasticsearch exposes an API for working with the index life-cycle policy, and the format goes like this: ``_ilm/policy/<index_policy_name>``. The process is split into two steps:
+* defining a life cycle policy.
+* associating policy with an index for execution.
+
+```shell
+PUT _ilm/policy/hot_delete_policy #A
+{
+  "policy": { #B
+    "phases": {
+      "hot": { #C
+        "min_age": "1d", #D
+        "actions": {    #E
+          "set_priority": {  #F
+            "priority": 250
+          }
+        } 
+      },
+      "delete": {  #G
+        "actions": {
+          "delete" : { }
+        }
+      } 
+    }
+  } 
+}
+```
+
+Here’s what the definition states:
+* Hot phase — The index is expected to live for at least one day before carrying out the actions. The actions block defined in the “actions” object sets a priority (250 in this example). The indices with a higher priority are acted on first during node recovery.
+* Delete phase — The index is deleted once the hot phase completes all the actions. As there is no min_age on the delete phase, the delete action kicks in immediately once the hot phase finishes.
+
+#### STEP 2: ASSOCIATING THE POLICY WITH AN INDEX
+
+```shell
+PUT hot_delete_policy_index
+{
+  "settings": { #A We use settings object to set the property
+    "index.lifecycle.name":"hot_delete_policy" # Name of the policy
+  }
+}
+```
+
+### 6.9.3 Life cycle with rollover
+
+In this section, we’ll set conditions on a time-series index to magically roll when those conditions are met. Let’s say we want to the index to be rolled over based on the following conditions:
+* On each new day.
+* When the maximum number of documents hits 10,000.
+* When the maximum index size reaches 10 GB.
+
+```shell
+PUT _ilm/policy/hot_simple_policy
+{
+"policy": {
+    "phases": {
+      "hot": {   #A declares a hot phase
+        "min_age": "0ms", #B index enters this phase instantly
+        "actions": {
+          "rollover": {   #C index rolls over if any of the conditions are met
+            "max_age": "1d",
+            "max_docs": 10000,
+            "max_size": "10gb"
+          } 
+        }
+      } 
+    }
+  } 
+}
+```
+
+In our policy, we declared one phase, the hot phase, with rollover as the action to be performed when any of the conditions declared in the rollover actions are met. For example, if the maximum number of documents is 10,000 or the size of the index exceeds 10 GB or if the index is one day old, the index rolls over. As we declared the minimum age (min_age) to be 0ms, as soon as the index is created, it gets moved into the hot phase instantly and then rolled over.
+
+```shell
+PUT _index_template/mysql_logs_template
+{
+  "index_patterns": ["mysql-*"], #A The index pattern for all mysql indices
+  "template":{
+    "settings":{
+      "index.lifecycle.name":"hot_simple_policy", #B Attaching the policy
+      "index.lifecycle.rollover_alias":"mysql-logs-alias" #C Attaching an alias
+    }
+  } 
+}
+```
+
+The final step is to create an index matching the index pattern defined in the index template, with a number as a suffix so the rollover indices are generated correctly.
+
+```shell
+PUT mysql-index-000001   #A
+{
+  "aliases": {
+    "mysql-logs-alias": {
+      "is_write_index": true
+    } 
+  }
+}
+```
+
+By default, policies are scanned every 10 minutes. You need to update the cluster settings using the `_cluster` endpoint if you want to alter this scan period.
+
+```shell
+PUT _ilm/policy/hot_warm_delete_policy
+{
+"policy": {
+    "phases": {
+      "hot": {
+        "min_age": "1d", #A The index waits for one day before becoming hot
+        "actions": {
+          "rollover": {  #B Rolls over when one of the conditions are met
+            "max_size": "40gb",
+            "max_age": "6d"
+          },
+          "set_priority": { #C Sets the priority
+            "priority": 50
+          }
+        } 
+      },
+      "warm": {
+        "min_age": "7d", #D Waits for 7 days before carrying out the actions
+        "actions": {
+          "shrink": {    #E Shrinks the index
+            "number_of_shards": 1
+          }
+        } 
+      },
+      "delete": {      #F Deletes the index
+        "min_age": "30d", #G Before deleting, stays in this phase for 30 days
+        "actions": {
+          "delete": {}
+        }
+      } 
+    }
+  } 
+}
+```
+
+* Hot phase — The index enters into this phase after one day because the min_age attribute was set to 1d. After one day, the index moves into the roll-over stage and waits for the conditions to be satisfied: the maximum size is 40 GB ("max_size": "40gb") or the age is older than 6 days ("max_age": "6d"). Once any of these conditions are met, the index transitions from the hot phase to the warm phase.
+* Warm phase — When the index enters the warm phase, it stays in the warm phase for about one week ("min_age": "7d") before any of its actions are implemented. After the seventh day, the index gets shrunk to one node ("number_of_shards": 1), then enters the delete phase.
+* Delete phase — The index stays in this phase for 30 days ("min_age": "30d"). Once this time lapses, the index is deleted permanently.
