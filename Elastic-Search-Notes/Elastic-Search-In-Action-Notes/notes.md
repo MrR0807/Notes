@@ -2995,3 +2995,943 @@ PUT _ilm/policy/hot_warm_delete_policy
 * Hot phase — The index enters into this phase after one day because the min_age attribute was set to 1d. After one day, the index moves into the roll-over stage and waits for the conditions to be satisfied: the maximum size is 40 GB ("max_size": "40gb") or the age is older than 6 days ("max_age": "6d"). Once any of these conditions are met, the index transitions from the hot phase to the warm phase.
 * Warm phase — When the index enters the warm phase, it stays in the warm phase for about one week ("min_age": "7d") before any of its actions are implemented. After the seventh day, the index gets shrunk to one node ("number_of_shards": 1), then enters the delete phase.
 * Delete phase — The index stays in this phase for 30 days ("min_age": "30d"). Once this time lapses, the index is deleted permanently.
+
+# Chapter 7
+
+In a nutshell, Elasticsearch cleans the text fields, breaks the text data into individual tokens, and enriches the tokens before storing them in the inverted indices.
+
+The groundwork is carried out in the name of text analysis by employing so-called analyzers.
+
+There are a handful of analyzers out of the box. For example, the standard (default) analyzer lets us work easily on English text by tokenizing the words using whitespace and punctuation as well as lowercasing the final tokens. If we want to stop indexing a set of predefined values (either common words like “a”, “an”, “the”, “and”, “if”, and so on or, perhaps, swear words), we can customize the analyzer to do so.
+
+While this analysis process is highly customizable, the out-of-the-box analyzers fit the bill for most circumstances.
+
+## 7.1 Overview
+
+### 7.1.1 Querying unstructured data
+
+Unstructured data is nothing but our day-to-day human language. It consists of free text (like a movie synopsis), a research article, an email body, blog post, and so on.
+
+To build an intelligent and never disappointing search engine, extra assistance is given to the engine during the data indexing process in the name of text analysis and carried out by software modules called **analyzers**.
+
+## 7.2 Analyzer module
+
+The analyzer is a software module essentially tasked with two functions: tokenization and normalization.
+
+### 7.2.1 Tokenization
+
+Tokenization is a process of splitting sentences into individual words. The words can also be split based on nonletters, colons, or some other custom separators.
+
+### 7.2.2 Normalization
+
+Normalization is where the tokens (words) are massaged, transformed, modified, and enriched in the form of stemming, synonyms, stop words, and other features.
+
+Stemming is an operation where the words are reduced (stemmed) to their root words (for example, “author” is a root word for “authors”, “authoring”, and “authored”).
+
+In addition to stemming, normalization also deals with finding appropriate synonyms before adding them to the inverted index. For example, “author” may have additional synonyms such as “wordsmith”, “novelist”, “writer”, and so on.
+
+### 7.2.3 Anatomy of an analyzer
+
+All text fields go through this pipe: the raw text is cleaned by the character filters, and the resulting text is passed on to the tokenizer. The tokenizer then splits the text into tokens (aka individual words). The tokens then pass through the token filters where they get modified, enriched, and enhanced. Finally, the finalized tokens are then stored in the appropriate inverted indices. The search query gets analyzed too, in the same manner as the indexing of the text.
+
+The analyzer is composed of three low-level building blocks. These are:
+* Character filters — Applied on the character level, where every character of the text goes through these filters. The filter’s job is to remove unwanted characters from the text string. This process could, for example, purge HTML tags like <h1>, <href>, <src> from the input text;
+* Tokenizers — Split the sentences into words by using a delimiter such as whitespace, punctuation, or some form of word boundaries. Every analyzer must have one and only one tokenizer. Elasticsearch provides a handful of these tokenizers to help split the incoming text into individual tokens;
+* Token filters — Work on tokens produced by the tokenizers for further processing. For example, the token can change the case, create synonyms, provide the root word (stemming), or produce n-grams and shingles, and so on.
+
+### 7.2.4 Testing analyzers
+
+Elasticsearch exposes an endpoint just for testing the text analysis process. It provides an ``_analyze`` endpoint that helps us understand the process in detail.
+
+```shell
+GET _analyze
+{
+  "text": "James Bond 007"
+}
+```
+
+#### EXPLICIT ANALYZER TESTS
+
+We can explicitly enable an analyzer too.
+
+```shell
+GET _analyze
+{
+  "text": "James Bond 007",
+  "analyzer": "simple"
+}
+```
+
+The simple analyzer (we will learn about various types of analyzers in the next section) truncates text when a nonletter character is encountered, so this code produces only two tokens, “james” and “bond” (“007” was truncated), as opposed to three tokens from the earlier script that used the standard analyzer.
+
+## 7.3 Built-in analyzers
+
+Elasticsearch provides over half a dozen out-of-the-box analyzers that we can use in the text analysis phase. These analyzers most likely suffice for the basic cases, but should there be a need to create a custom one, one can do that by instantiating a new analyzer module with the required components that make up that module.
+
+| Analyzer | Description                                                                                                                                                     |
+|----------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Standard analyzer | This is the default analyzer that tokenizes input text based on grammar, punctuation, and whitespace. The output tokens are lowercased. |
+| Simple analyzer | A simple tokenizer splits input text on any nonletters such as whitespaces, dashes, numbers, etc. It lowercases the output tokens too. |
+| Stop analyzer | It is a simple analyzer with English stop words enabled by default. |
+| Whitespace analyzer | The whitespace analyzer’s job is to tokenize input text based on whitespace delimiters. |
+| Keyword analyzer | The keyword analyzer doesn’t mutate the input text. The field’s value is stored as is. |
+| Language analyzer | As the name suggests, the language analyzer helps work with human languages. Elasticsearch provides dozens of language analyzers such as English, Spanish. |
+| Pattern analyzer | The pattern analyzer splits the tokens based on a regular expression (regex). |
+| Fingerprint analyzer | The fingerprint analyzer sorts and removes the duplicate tokens to produce a single concatenated token. |
+
+### 7.3.1 Standard analyzer
+
+The standard analyzer is the default analyzer used in Elasticsearch.
+
+#### CONFIGURING THE STANDARD ANALYZER
+
+Elasticsearch allows us to configure a few parameters such as the stop words filter, stop words path, and maximum token length on the standard analyzer. The way to configure the properties is via the index settings. When we create an index, we can configure the analyzer through the settings component.
+
+```shell
+PUT <my_index>
+{
+  "settings": {
+    "analysis": { #A The analysis object sets the analyzer
+      "analyzer": { #B The analyzer that this index is associated with
+        ... 
+      }
+    } 
+  }
+}
+```
+
+#### STOP WORDS CONFIGURATION
+
+Let’s take an example of enabling English stop words on the standard analyzer.
+
+```shell
+PUT my_index_with_stopwords
+{
+  "settings": {
+    "analysis": {
+      "analyzer": {
+        "standard_with_stopwords":{
+          "type":"standard",
+          "stopwords":"_english_"
+        }
+      } 
+    }
+  } 
+}
+```
+
+```shell
+POST my_index_with_stopwords/_analyze
+{
+  "text": ["Hot cup of cup and a popcorn is a Weird Combo :(!!"]
+  "analyzer": "standard_with_stopwords"
+}
+```
+
+The output of this call shows that the common (English) stop words such as “of”, “a”, and “is” were removed.
+
+#### FILE-BASED STOPWORDS
+
+We can provide the stop words via an explicit file.
+
+```shell
+PUT index_with_swear_stopwords
+{
+  "settings": {
+    "analysis": {
+      "analyzer": {
+        "swearwords_analyzer":{
+          "type":"standard",
+          "stopwords_path":"swearwords.txt"
+        }
+      } 
+    }
+  } 
+}
+```
+
+``stopwords_path`` attribute looks for a file in a directory inside the Elasticsearch’s config folder.
+
+```shell
+file:swearwords.txt
+damn
+bugger
+bloody hell
+what the hell
+sucks
+```
+
+#### CONFIGURING TOKEN LENGTH
+
+We can also configure the maximum token length; in which case, the token is split based on the length asked for.
+
+The analyzer is configured to have a maximum token length of 7 characters. If we provide a word that is 13 characters long, the word would be split into 7 and 6 characters (for example, Elasticsearch would become “Elastic”, “search”).
+
+### 7.3.2 Simple analyzer
+
+While the standard analyzer breaks down the text into tokens when encountered with whitespaces or punctuation, the simple analyzer tokenizes the sentences at the occurrence of a nonletter like a number, space, apostrophe, or hyphen.
+
+Let’s consider an example of indexing the text "Lukša's K8s in Action".
+
+This results is: ``["lukša","s","k","s","in","action"]``
+
+### 7.3.3 Whitespace analyzer
+
+As the name suggests, the whitespace analyzer splits the text into tokens when it encounters whitespaces.
+
+### 7.3.4 Keyword analyzer
+
+As the name suggests, the keyword analyzer stores the text as is without any modifications and tokenization. That is, the analyzer does not tokenize the text, nor does it undergo any further analysis via filters or tokenizers. Instead, it is stored as a string representing a keyword type.
+
+If we pass “Elasticsearch in Action” through the keyword analyzer, the whole text string is stored as is.
+
+### 7.3.5 Fingerprint analyzer
+
+The fingerprint analyzer removes duplicate words, extended characters, and sorts the words alphabetically to create a single token. It consists of a standard tokenizer along with four token filters: fingerprint, lowercase, stop words, and ASCII folding filters.
+
+```shell
+POST _analyze
+{
+  "text": "A dosa is a thin pancake or crepe originating from South India. It is made from a fermented batter consisting of lentils and rice.",
+  "analyzer": "fingerprint"
+}
+```
+
+```shell
+"tokens" : [{
+"token" : "a and batter consisting crepe dosa fermented from india is it lentils made or or originating pancake rice south thin",
+  "start_offset" : 0,
+  "end_offset" : 130,
+  "type" : "fingerprint",
+  "position" : 0
+  }]
+```
+
+When you look closely at the response, you will find that the output is made up of only one token. The words are lowercased and sorted, duplicate words (“a”, “of”, “from”) are removed as well before turning the set of words into a single token.
+
+### 7.3.6 Pattern analyzer
+
+Sometimes, we may want to tokenize and analyze text based on a certain pattern (for example, removing the first n number of a phone numbers or removing a dash for every four digits from a card number and so on). Elasticsearch provides a pattern analyzer just for that purpose.
+
+The default pattern analyzer works on splitting the sentences into tokens based on nonword characters. This pattern is represented as \W+ internally.
+
+As the default (standard) analyzer only works on nonletter delimiters, for any other patterns we need to configure the analyzer by providing the required patterns.
+
+Let’s just say we have an e-commerce payments authorizing application and are actually receiving payment authorization requests from various parties. A 16-digit long card number is provided in the format 1234-5678-9000-0000. We want to tokenize this card data on a dash (-) and extract the four tokens individually. We can do so by creating a pattern that splits the field into tokens based on the dash delimiter.
+
+```shell
+PUT index_with_dash_pattern_analyzer #A
+{
+  "settings": {
+    "analysis": {
+      "analyzer": {
+        "pattern_analyzer": { #B
+          "type": "pattern", #C
+          "pattern": "[-]", #D
+          "lowercase": true #E
+        } 
+      }
+    } 
+  }
+}
+```
+
+#A Creates an index with analyzer settings
+#B In settings, defines the analyzer in the analysis object 
+#C Provides the type of analyzer as pattern
+#D The regex representing the dash
+#E Attaches a lowercase token filter
+
+```shell
+POST index_with_dash_pattern_analyzer/_analyze
+{
+  "text": "1234-5678-9000-0000",
+  "analyzer": "pattern_analyzer"
+}
+```
+
+The output of this command produces four tokens: ["1234","5678","9000","0000"].
+
+### 7.3.7 Language analyzers
+
+Elasticsearch provides a long list of language analyzers that are suitable when working with most languages.
+
+```shell
+POST _analyze
+{
+  "text": "She sells sea shells",
+  "analyzer": "english"
+}
+
+# German Language Analyzer
+POST _analyze
+{
+  "text": "Guten Morgen",
+  "analyzer": "german"
+}
+```
+
+We can configure the language analyzers with a few additional parameters to provide our own list of stop words or to ask the analyzers to exclude the 
+ stemming operation.
+
+We can configure our stop words as the following listing shows.
+
+```shell
+PUT index_with_custom_english_analyzer #A
+{
+  "settings": {
+    "analysis": {
+      "analyzer": {
+        "index_with_custom_english_analyzer":{ #B
+          "type":"english", #C
+          "stopwords":["a","an","is","and","for"] #D
+        }
+      } 
+    }
+  } 
+}
+```
+
+#A Creates an index with analyzer settings 
+#B Provides a custom name
+#C The type of the analyzer here is english. 
+#D Provides our own set of stop words
+
+As the code indicates, we created an index with a custom English analyzer and a set of user-defined stop words.
+
+We can bring the ``stem_exclusion`` attribute to configure the words that need to be excluded from the stemming.
+
+```shell
+PUT index_with_stem_exclusion_english_analyzer
+{
+  "settings": {
+    "analysis": {
+      "analyzer": {
+        "stem_exclusion_english_analyzer":{
+          "type":"english",
+          "stem_exclusion":["authority","authorization"]
+        }
+      } 
+    }
+  } 
+}
+```
+
+```shell
+POST index_with_stem_exclusion_english_analyzer/_analyze
+{
+  "text": "No one can challenge my authority without my authorization",
+  "analyzer": "stem_exclusion_english_analyzer"
+}
+```
+
+The tokens that were spit as a consequence of the code in listing consist of our two words: “authority” and “authorization”. Otherwise it would return "author".
+
+## 7.4 Custom analyzers
+
+Elasticsearch provides much flexibility when it comes to analyzers: if off-the-shelf analyzers won't cut it for you, you can create your own custom 
+ analyzers. These custom analyzers can be a mix-and-match of existing components from a large stash of Elasticsearch’s component library.
+
+```shell
+PUT index_with_custom_analyzer # Create an index definition with settings for text analysis functionality
+
+{
+  "settings": {
+    "analysis": {
+      "analyzer": {
+        "custom_analyzer": {
+          "type": "custom", # Define the type as custom
+          "char_filter": ["charfilter1", "charfilter2"], # Declare an array of character filters
+          "tokenizer": "standard", # Attach a mandatory tokenizer
+          "filter": ["tokenfilter1", "tokenfilter2"] # Declare an array of token filters
+        }
+      }
+    }
+  }
+}
+```
+
+We define a custom analyzer on an index by setting the type to `custom`. Our custom analyzer is developed with an array of character filters represented by 
+the `char_filter` object and another array of token filters represented by the `filter` attribute.
+
+### 7.4.1 Advanced customization
+
+Let’s suppose our requirement is to develop a custom analyzer that parses text for Greek letters and produces a list of Greek letters as a result.
+
+```shell
+PUT index_with_parse_greek_letters_custom_analyzer
+{
+  "settings": {
+    "analysis": {
+      "analyzer": {
+        "greek_letter_custom_analyzer":{ #A
+          "type":"custom",
+          "char_filter":["greek_symbol_mapper"], #B
+          "tokenizer":"standard", #C
+          "filter":["lowercase", "greek_keep_words"] #D
+        } 
+      },
+      "char_filter": { #E
+        "greek_symbol_mapper":{
+          "type":"mapping",
+          "mappings":[ #F
+            "α => alpha",
+            "β => Beta",
+            "γ => Gamma" ]
+        } 
+      },
+      "filter": {
+        "greek_keep_words":{ #G
+          "type":"keep",
+          "keep_words":["alpha", "beta", "gamma"] #H
+        }
+      } 
+    }
+  } 
+}
+```
+
+#A Creates a custom Greek-letter parser analyzer
+#B The custom analyzer is made of a custom char_filter (see #E).
+#C A bog standard tokenizer tokenizes the text.
+#D Supplies two token filters. The greek_keep_words is defined in #G.
+#E Defines the Greek letters and maps those to English words
+#F The actual mappings: a list of symbol to value
+#G We don’t want to index all the field values, only the words that match the keep words. 
+#H Keep words; all other words are discarded.
+
+```shell
+POST index_with_parse_greek_letters_custom_analyzer/_analyze
+{
+  "text": "α and β are roots of a quadratic equation. γ isn't",
+  "analyzer": "greek_letter_custom_analyzer"
+}
+```
+
+## 7.5 Specifying analyzers
+
+
+Analyzers can be specified at a few levels: index, field and query level.
+
+### 7.5.1 Analyzers for indexing
+
+At times we may have a requirement to set different fields with different analyzers - for example, a name field could have been associated with a simple 
+analyzer while the credit card number field with a pattern analyzer. Fortunately, Elasticsearch let’s us set different analyzers on individual fields as 
+required; Similarly, we can also set a default analyzer per index so that any fields that were not associated with a specific analyzer explicitly during 
+the mapping process will inherit the index level analyzer.
+
+#### FIELD LEVEL ANALYZER
+
+```shell
+PUT authors_with_field_level_analyzers
+{
+  "mappings": {
+    "properties": {
+      "name":{
+        "type": "text" #A Standard analyzer is being used here
+      },
+      "about":{
+        "type": "text",
+        "analyzer": "english" #B Set explicitly with an english analyzer
+      },
+      "description":{
+        "type": "text",
+        "fields": {
+          "my":{
+            "type": "text",
+            "analyzer": "fingerprint" #C Fingerprint analyzer on a multi-field
+          }
+        } 
+      }
+    } 
+  }
+}
+```
+
+As the code shows, the `about` and `description` fields were specified with different analyzers except the `name` field which is implicitly inheriting the 
+ `standard` analyzer.
+
+#### INDEX LEVEL ANALYZER
+
+```shell
+PUT authors_with_default_analyzer
+{
+  "settings": {
+    "analysis": {
+      "analyzer": {
+        "default":{ #A Setting this property sets index’s default analyzer
+          "type":"keyword"
+        }
+      } 
+    }
+  } 
+}
+```
+
+We are in effect replacing the `standard` analyzer which comes as default to a `keyword` analyzer.
+
+### 7.5.2 Analyzers for searching
+
+Elasticsearch lets us specify a different analyzer during query time than using the same one during indexing.
+
+#### ANALYZER IN A QUERY
+
+```shell
+GET authors_index_for_search_analyzer/_search
+{
+"query": {
+    "match": { #A Query to search all the authors with the given criteria
+      "author_name": {
+        "query": "M Konda",
+        "analyzer": "simple" #B The analyzer is specified explicitly, most likely different to the one that field was indexed with
+      }
+    } 
+  }
+}
+```
+
+#### SETTING THE ANALYZER AT A FIELD LEVEL
+
+The second mechanism to set the search specific analyzer is at the field level. Just as we set an analyzer on a field for indexing purposes, we can add an 
+ additional property called the `search_analzyer` on a field to specify the search analyzer.
+
+```shell
+PUT authors_index_with_both_analyzers_field_level
+{
+  "mappings": {
+    "properties": {
+      "author_name":{
+        "type": "text",
+        "analyzer": "stop",
+        "search_analyzer": "simple"
+      } 
+    }
+  } 
+}
+```
+
+As the code above shows, the `author_name` is set with a stop analyzer for indexing while a `simple` analyzer for search time.
+
+#### DEFAULT ANALYZER AT INDEX LEVEL
+
+We can also set a default analyzer for search queries too just as we did for indexing time by setting the required analyzer on the index at index creation 
+ time.
+
+```shell
+PUT authors_index_with_default_analyzer
+{
+  "settings": {
+    "analysis": {
+      "analyzer": {
+        "default_search":{ #A Setting the default search analyzer per index by using the default_search property
+          "type":"simple"
+        },
+        "default":{ #B The default analyser for the index
+          "type":"standard"
+        }
+      } 
+    }
+  } 
+}
+```
+
+You may be wondering if we can set a search analyzer at a field level during the indexing rather than at runtime during the query?
+
+```shell
+PUT authors_index_with_both_analyzers_field_level
+{
+  "mappings": {
+    "properties": {
+      "author_name":{
+        "type": "text",
+        "analyzer": "standard",
+        "search_analyzer": "simple"
+      } 
+    }
+  } 
+}
+```
+
+As you can see from the above code, the author_name is going to use a standard analyzer for indexing while a simple analyzer during search.
+
+#### ORDER OF PRECEDENCE
+
+* An analyzer defined at a query level has the highest precedence.
+* An analyzer defined by setting search_analyzer property on a field when defining the index mappings.
+* An analyzer defined at the index level.
+* If neither of the above were not set, the Elasticsearch engine picks up the indexing analyzer set on a field or an index.
+
+## 7.6 Character filters
+
+When a user searches for answers, the expectation is that they won't search with punctuation or special characters. For example, there is a high chance a 
+ user may search for “cant find my keys” (without punctuation) rather than “can’t find my keys !!!”. Similarly, the user is not expected to search the 
+ string “<h1>Where is my cheese?</h1>” (with the HTML tags). We don’t even expect the user to search using XML tags like <operation>callMe</operation>.
+
+Character filters help purge the unwanted characters from the input stream.
+
+The character filter carries out the following specific functions:
+* Removes the unwanted characters from an input stream;
+* Adds to or replaces additional characters in the existing stream.
+
+### 7.6.1 Types of character filters
+
+There are three character filters that we use to construct an analyzer: 
+* HTML strip; 
+* mapping;
+* pattern filters.
+
+#### HTML STRIP (HMTL_STRIP) FILTER
+
+As the name suggests, this filter strips the unwanted HTML tags from the input fields.
+
+We can configure the html_strip filter to add an additional escaped_tags array with the list of tags that needs to be unparsed.
+
+```shell
+PUT index_with_html_strip_filter
+{
+  "settings": {
+    "analysis": {
+      "analyzer": {
+        "custom_html_strip_filter_analyzer":{
+          "tokenizer":"keyword",
+          "char_filter":["my_html_strip_filter"] #A Declares a custom character filter
+        }
+      },
+      "char_filter": {
+        "my_html_strip_filter":{
+          "type":"html_strip",
+          "escaped_tags":["h1"] #B The escaped_tags attribute ignores parsing h1 tags present in the input field.
+        }
+      } 
+    }
+  } 
+}
+```
+
+#### MAPPING CHARACTER FILTER
+
+The mapping character filter’s sole job is to match a key and replace it with a value, e.g. α as alpha, β as beta,and so on.
+
+#### MAPPINGS VIA A FILE
+
+We can also provide a file with mappings in it, rather than specifying them in the definition.
+
+The file must be present in Elasticsearch’s config directory (`<INSTALL_DIR/elasticsearch/config`) or input with an absolute path where it is located.
+
+```shell
+POST _analyze
+{
+  "text": "FBI and CIA are USA's security organizations",
+  "char_filter": [
+    {
+      "type": "mapping",
+      "mappings_path": "secret_organizations.txt"
+    }
+  ] 
+}
+```
+
+#### PATTERN REPLACE CHARACTER FILTER
+
+The pattern_replace character filter, as the name suggests, replaces the characters with a new character when the field matches with a regular expression 
+ (regex).
+
+```shell
+PUT index_with_pattern_replace_filter
+{
+  "settings": {
+    "analysis": {
+      "analyzer": {
+        "my_pattern_replace_analyzer":{ #A
+          "tokenizer":"keyword",
+          "char_filter":["pattern_replace_filter"] #B
+        }
+      },
+      "char_filter": {
+        "pattern_replace_filter":{ #C
+          "type":"pattern_replace", #D
+          "pattern":"_", #E
+          "replacement":"-" #F
+        } 
+      }
+    } 
+  }
+}
+```
+
+## 7.7 Tokenizers
+
+The job of a tokenizer is to create tokens based on certain criteria.
+
+### 7.7.1 Standard tokenizer
+
+A standard tokenizer splits the words based on word boundaries and punctuation.
+
+The standard analyzer has only one attribute that can be customized, the `max_token_length`. This attribute helps produce tokens of the size defined by the 
+ `max_token_length` property (default size is 255).
+
+```shell
+PUT index_with_custom_standard_tokenizer
+{
+  "settings": {
+    "analysis": {
+      "analyzer": {
+        "custom_token_length_analyzer": { #A Creates a custom analyzer with a pointer to the custom tokenizer
+          "tokenizer": "custom_token_length_tokenizer"
+        }
+      },
+      "tokenizer": {
+        "custom_token_length_tokenizer": {
+          "type": "standard",
+          "max_token_length": 2 #B The custom tokenizer with max_token_length set to 2 characters
+        }
+      } 
+    }
+  } 
+}
+```
+
+```shell
+POST index_with_custom_standard_tokenizer/_analyze
+{
+  "text": "Bond",
+  "analyzer": "custom_token_length_analyzer"
+}
+```
+
+This code spits out two tokens: “Bo" and “nd".
+
+### 7.7.2 N-gram and edge_ngram tokenizers
+
+The n-grams are a sequence of words for a given size prepared from a given word. Take as an example the word “coffee”. The two-letter n-grams, usually 
+ called bi-grams, are “co”, “of”, “ff”, “fe”, and “ee”. Similarly, the three-letter tri-grams are “cof”, “off”, “ffe”, and “fee”. As you can see from these 
+ two examples, the n-grams are prepared by sliding the letter window.
+
+On the other hand, the edge_ngrams produce words with letters anchored at the beginning of the word. Considering “coffee” as our example, the edge_ngram 
+ produces “c”, “co”, “cof”, “coff”, “coffe”, and “coffee”. 
+
+#### THE N-GRAM TOKENIZER
+
+For correcting spellings and breaking words, we usually use n-grams. The n-gram tokenizer emits n-grams of a minimum size as 1 and a maximum size of 2 by 
+ default. For example, this code produces n-grams of the word “Bond”.
+
+```shell
+POST _analyze
+{
+  "text": "Bond",
+  "tokenizer": "ngram"
+}
+```
+
+The output is [B, Bo, o, on, n, nd, d]. You can see that each n-gram is made of one or two letters: this is the default behavior. We can customize the 
+ `min_gram` and `max_gram` sizes by specifying the configuration.
+
+```shell
+PUT index_with_ngram_tokenizer
+{
+  "settings": {
+    "analysis": {
+      "analyzer": {
+        "ngram_analyzer":{
+          "tokenizer":"ngram_tokenizer"
+        }
+      },
+      "tokenizer": {
+        "ngram_tokenizer":{
+          "type":"ngram",
+          "min_gram":2,
+          "max_gram":3,
+          "token_chars":["letter" ]
+        } 
+      }
+    } 
+  }
+}
+```
+
+```shell
+POST index_with_ngram_tokenizer/_analyze
+{
+  "text": "bond",
+  "analyzer": "ngram_analyzer"
+}
+```
+
+This produces these n-grams: “bo”, “bon”, “on”, “ond”, and “nd”.
+
+#### THE EDGE_NGRAM TOKENIZER
+
+### 7.7.3 Other tokenizers
+
+|  Tokenizer   | Description                                                                                                                                                     |
+|-----|-----------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Pattern | The pattern tokenizer splits the field into tokens on a regex match. The default pattern is to split words when encountered by a nonword letter.                |
+| URL and email | The uax_url_email tokenizer parses the fields and preserves URLs and emails. The URLs and emails in text will be spit out as they are without any tokenization. |
+| Whitespace | The whitespace tokenizer splits the text into tokens when whitespace is encountered.                                                                            |
+| Keyword | The keyword tokenizer doesn’t touch the tokens; it spits the text as is.                                                                                        |
+| Lowercase | The lowercase tokenizer splits the text into tokens when a nonletter is encountered and lowercases the tokens.                                                  |
+| Path hierarchy | The path_hieararchy tokenizer splits hierarchical text such as filesystem folders into tokens based on path separators. |
+
+## 7.8 Token filters
+
+The tokens produced by the tokenizers may need further enriching or enhancements such as lowercasing (or uppercasing) the tokens, providing synonyms, 
+ developing stemming words, removing the apostrophes or punctuation, and so on. Token filters work on the tokens to perform such transformations.
+
+Elasticsearch provides almost 50 token filters.
+
+We can test a token filter by simply attaching to a tokenizer and using it in the _analyze API:
+
+```shell
+GET _analyze
+{
+    "tokenizer" : "standard",
+    "filter" : ["uppercase","reverse"], "text" : "bond"
+}
+```
+
+The filter accepts an array of token filters; for example, we provided the uppercase and reverse filters in this example). The output would be “DNOB”.
+
+You can also attach the filters to a custom analyzer as the following:
+
+```shell
+PUT index_with_token_filters
+{
+  "settings": {
+    "analysis": {
+      "analyzer": {
+        "token_filter_analyzer": { #A Defines a custom analyzer
+          "tokenizer": "standard",
+          "filter": [ "uppercase","reverse"] #B Provides token filters as an array of filters
+        }
+      } 
+    }
+  } 
+}
+```
+
+### 7.8.1 Stemmer filter
+
+Stemming is a mechanism to reduce the words to their root words, for example, the word “bark” is the root word for “barking”.
+
+```shell
+POST _analyze
+{
+  "tokenizer": "standard",
+  "filter": ["stemmer"],
+  "text": "barking is my life"
+}
+```
+
+### 7.8.2 Shingle filter
+
+Shingles are the word n-grams that are generated at the token level (unlike the n-grams and edge_ngrams that emit n-grams at a letter level). For example, 
+ the text, “james bond” emits as “james”, and “james bond”.
+
+```shell
+POST _analyze
+{
+  "tokenizer": "standard",
+  "filter": ["shingle"],
+  "text": "java python go"
+}
+```
+
+The result of this code execution is `[java, java python, python, python go, go]`.
+
+The default behavior of the filter is to emit unigrams and two-word n-grams. We can change this default behavior by creating a custom analyzer with a 
+ custom shingle filter:
+
+```shell
+PUT index_with_shingle
+{
+  "settings": {
+    "analysis": {
+      "analyzer": {
+        "shingles_analyzer":{
+          "tokenizer":"standard",
+          "filter":["shingles_filter"] #A Creates a custom analyzer attached with a shingles filter
+        }
+      },
+      "filter": {
+        "shingles_filter":{ #B Provides the attributes of the shingle filter (for example, min and max shingle)
+          "type":"shingle",
+          "min_shingle_size":2,
+          "max_shingle_size":3,
+          "uutput_unigrams":false #C Turns off the output of single words
+        } 
+      }
+    } 
+  }
+}
+```
+
+```shell
+POST index_with_shingle/_analyze
+{
+  "text": "java python go",
+  "analyzer": "shingles_analyzer"
+}
+```
+
+The analyzer returns `[java python, java python go, python go]` because we’ve configured the filter to produce only 2- and 3-word shingles. The unigram (one 
+word shingle) are turned off.
+
+### 7.8.3 Synonym filter
+
+Elasticsearch expects us to provide a set of words and their synonyms by configuring the analyzer with a synonym token filter. We create the synonyms filter 
+on an index’s settings:
+
+```shell
+PUT index_with_synonyms
+{
+  "settings": {
+    "analysis": {
+      "filter": {
+        "synonyms_filter":{
+          "type":"synonym",
+          "synonyms":[ "soccer => football"]
+        }
+      } 
+    }
+  } 
+}
+```
+
+```shell
+POST index_with_synonyms/_analyze
+{
+  "text": "What's soccer?",
+  "tokenizer": "standard",
+  "filter": ["synonyms_filter"]
+}
+```
+
+This produces two tokens: “What’s”, and “football”. 
+
+#### SYNONYMS FROM A FILE
+
+```shell
+PUT index_with_synonyms_from_file_analyzer
+{
+  "settings": {
+    "analysis": {
+      "analyzer": {
+        "synonyms_analyzer":{
+          "type":"standard",
+          "filter":["synonyms_from_file_filter"]
+        }
+      }
+      ,"filter": {
+        "synonyms_from_file_filter":{
+          "type":"synonym",
+          "synonyms_path":"synonyms.txt" #A Relative path of the synonyms file
+        }
+      } 
+    }
+  } 
+}
+```
+
+We can call the file from a relative or absolute path. The relative path points to the config directory of Elasticsearch’s installation folder.
+
+
