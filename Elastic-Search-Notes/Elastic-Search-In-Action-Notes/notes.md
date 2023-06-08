@@ -3533,7 +3533,7 @@ As you can see from the above code, the author_name is going to use a standard a
 
 ## 7.6 Character filters
 
-When a user searches for answers, the expectation is that they won't search with punctuation or special characters. For example, there is a high chance a user may search for “cant find my keys” (without punctuation) rather than “can’t find my keys !!!”. Similarly, the user is not expected to search the string `“<h1>Where is my cheese?</h1>”` (with the HTML tags). We don’t even expect the user to search using XML tags like `<operation>callMe</operation>`.
+When a user searches for answers, the expectation is that they won't search with punctuation or special characters. For example, there is a high chance a user may search for “cant find my keys” (without punctuation) rather than “can’t find my keys !!!”. Similarly, the user is not expected to search the string `<h1>Where is my cheese?</h1>` (with the HTML tags). We don’t even expect the user to search using XML tags like `<operation>callMe</operation>`.
 
 Character filters help purge the unwanted characters from the input stream.
 
