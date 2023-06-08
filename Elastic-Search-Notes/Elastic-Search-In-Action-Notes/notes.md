@@ -3220,27 +3220,21 @@ As the default (standard) analyzer only works on nonletter delimiters, for any o
 Let’s just say we have an e-commerce payments authorizing application and are actually receiving payment authorization requests from various parties. A 16-digit long card number is provided in the format 1234-5678-9000-0000. We want to tokenize this card data on a dash (-) and extract the four tokens individually. We can do so by creating a pattern that splits the field into tokens based on the dash delimiter.
 
 ```shell
-PUT index_with_dash_pattern_analyzer #A
+PUT index_with_dash_pattern_analyzer #A Creates an index with analyzer settings
 {
   "settings": {
     "analysis": {
       "analyzer": {
-        "pattern_analyzer": { #B
-          "type": "pattern", #C
-          "pattern": "[-]", #D
-          "lowercase": true #E
+        "pattern_analyzer": { #B In settings, defines the analyzer in the analysis object 
+          "type": "pattern", #C Provides the type of analyzer as pattern
+          "pattern": "[-]", #D The regex representing the dash
+          "lowercase": true #E Attaches a lowercase token filter
         } 
       }
     } 
   }
 }
 ```
-
-#A Creates an index with analyzer settings
-#B In settings, defines the analyzer in the analysis object 
-#C Provides the type of analyzer as pattern
-#D The regex representing the dash
-#E Attaches a lowercase token filter
 
 ```shell
 POST index_with_dash_pattern_analyzer/_analyze
@@ -3271,31 +3265,25 @@ POST _analyze
 }
 ```
 
-We can configure the language analyzers with a few additional parameters to provide our own list of stop words or to ask the analyzers to exclude the 
- stemming operation.
+We can configure the language analyzers with a few additional parameters to provide our own list of stop words or to ask the analyzers to exclude the stemming operation.
 
 We can configure our stop words as the following listing shows.
 
 ```shell
-PUT index_with_custom_english_analyzer #A
+PUT index_with_custom_english_analyzer #A Creates an index with analyzer settings
 {
   "settings": {
     "analysis": {
       "analyzer": {
-        "index_with_custom_english_analyzer":{ #B
-          "type":"english", #C
-          "stopwords":["a","an","is","and","for"] #D
+        "index_with_custom_english_analyzer":{ #B Provides a custom name
+          "type":"english", #C The type of the analyzer here is english
+          "stopwords":["a","an","is","and","for"] #D Provides our own set of stop words
         }
       } 
     }
   } 
 }
 ```
-
-#A Creates an index with analyzer settings 
-#B Provides a custom name
-#C The type of the analyzer here is english. 
-#D Provides our own set of stop words
 
 As the code indicates, we created an index with a custom English analyzer and a set of user-defined stop words.
 
@@ -3329,8 +3317,7 @@ The tokens that were spit as a consequence of the code in listing consist of our
 
 ## 7.4 Custom analyzers
 
-Elasticsearch provides much flexibility when it comes to analyzers: if off-the-shelf analyzers won't cut it for you, you can create your own custom 
- analyzers. These custom analyzers can be a mix-and-match of existing components from a large stash of Elasticsearch’s component library.
+Elasticsearch provides much flexibility when it comes to analyzers: if off-the-shelf analyzers won't cut it for you, you can create your own custom analyzers. These custom analyzers can be a mix-and-match of existing components from a large stash of Elasticsearch’s component library.
 
 ```shell
 PUT index_with_custom_analyzer # Create an index definition with settings for text analysis functionality
@@ -3351,8 +3338,7 @@ PUT index_with_custom_analyzer # Create an index definition with settings for te
 }
 ```
 
-We define a custom analyzer on an index by setting the type to `custom`. Our custom analyzer is developed with an array of character filters represented by 
-the `char_filter` object and another array of token filters represented by the `filter` attribute.
+We define a custom analyzer on an index by setting the type to `custom`. Our custom analyzer is developed with an array of character filters represented by the `char_filter` object and another array of token filters represented by the `filter` attribute.
 
 ### 7.4.1 Advanced customization
 
@@ -3364,41 +3350,32 @@ PUT index_with_parse_greek_letters_custom_analyzer
   "settings": {
     "analysis": {
       "analyzer": {
-        "greek_letter_custom_analyzer":{ #A
+        "greek_letter_custom_analyzer":{ #A Creates a custom Greek-letter parser analyzer
           "type":"custom",
-          "char_filter":["greek_symbol_mapper"], #B
-          "tokenizer":"standard", #C
-          "filter":["lowercase", "greek_keep_words"] #D
+          "char_filter":["greek_symbol_mapper"], #B The custom analyzer is made of a custom char_filter (see #E)
+          "tokenizer":"standard", #C A bog standard tokenizer tokenizes the text
+          "filter":["lowercase", "greek_keep_words"] #D Supplies two token filters. The greek_keep_words is defined in #G.=
         } 
       },
-      "char_filter": { #E
+      "char_filter": { #E Defines the Greek letters and maps those to English words
         "greek_symbol_mapper":{
           "type":"mapping",
-          "mappings":[ #F
+          "mappings":[ #F The actual mappings: a list of symbol to value
             "α => alpha",
             "β => Beta",
             "γ => Gamma" ]
         } 
       },
       "filter": {
-        "greek_keep_words":{ #G
+        "greek_keep_words":{ #G We don’t want to index all the field values, only the words that match the keep words
           "type":"keep",
-          "keep_words":["alpha", "beta", "gamma"] #H
+          "keep_words":["alpha", "beta", "gamma"] #H Keep words; all other words are discarded
         }
       } 
     }
   } 
 }
 ```
-
-#A Creates a custom Greek-letter parser analyzer
-#B The custom analyzer is made of a custom char_filter (see #E).
-#C A bog standard tokenizer tokenizes the text.
-#D Supplies two token filters. The greek_keep_words is defined in #G.
-#E Defines the Greek letters and maps those to English words
-#F The actual mappings: a list of symbol to value
-#G We don’t want to index all the field values, only the words that match the keep words. 
-#H Keep words; all other words are discarded.
 
 ```shell
 POST index_with_parse_greek_letters_custom_analyzer/_analyze
@@ -3410,15 +3387,11 @@ POST index_with_parse_greek_letters_custom_analyzer/_analyze
 
 ## 7.5 Specifying analyzers
 
-
 Analyzers can be specified at a few levels: index, field and query level.
 
 ### 7.5.1 Analyzers for indexing
 
-At times we may have a requirement to set different fields with different analyzers - for example, a name field could have been associated with a simple 
-analyzer while the credit card number field with a pattern analyzer. Fortunately, Elasticsearch let’s us set different analyzers on individual fields as 
-required; Similarly, we can also set a default analyzer per index so that any fields that were not associated with a specific analyzer explicitly during 
-the mapping process will inherit the index level analyzer.
+At times we may have a requirement to set different fields with different analyzers - for example, a name field could have been associated with a simple analyzer while the credit card number field with a pattern analyzer. Fortunately, Elasticsearch let’s us set different analyzers on individual fields as required; Similarly, we can also set a default analyzer per index so that any fields that were not associated with a specific analyzer explicitly during the mapping process will inherit the index level analyzer.
 
 #### FIELD LEVEL ANALYZER
 
@@ -3448,8 +3421,7 @@ PUT authors_with_field_level_analyzers
 }
 ```
 
-As the code shows, the `about` and `description` fields were specified with different analyzers except the `name` field which is implicitly inheriting the 
- `standard` analyzer.
+As the code shows, the `about` and `description` fields were specified with different analyzers except the `name` field which is implicitly inheriting the `standard` analyzer.
 
 #### INDEX LEVEL ANALYZER
 
@@ -3492,8 +3464,7 @@ GET authors_index_for_search_analyzer/_search
 
 #### SETTING THE ANALYZER AT A FIELD LEVEL
 
-The second mechanism to set the search specific analyzer is at the field level. Just as we set an analyzer on a field for indexing purposes, we can add an 
- additional property called the `search_analzyer` on a field to specify the search analyzer.
+The second mechanism to set the search specific analyzer is at the field level. Just as we set an analyzer on a field for indexing purposes, we can add an additional property called the `search_analzyer` on a field to specify the search analyzer.
 
 ```shell
 PUT authors_index_with_both_analyzers_field_level
@@ -3514,8 +3485,7 @@ As the code above shows, the `author_name` is set with a stop analyzer for index
 
 #### DEFAULT ANALYZER AT INDEX LEVEL
 
-We can also set a default analyzer for search queries too just as we did for indexing time by setting the required analyzer on the index at index creation 
- time.
+We can also set a default analyzer for search queries too just as we did for indexing time by setting the required analyzer on the index at index creation time.
 
 ```shell
 PUT authors_index_with_default_analyzer
@@ -3563,9 +3533,7 @@ As you can see from the above code, the author_name is going to use a standard a
 
 ## 7.6 Character filters
 
-When a user searches for answers, the expectation is that they won't search with punctuation or special characters. For example, there is a high chance a 
- user may search for “cant find my keys” (without punctuation) rather than “can’t find my keys !!!”. Similarly, the user is not expected to search the 
- string “<h1>Where is my cheese?</h1>” (with the HTML tags). We don’t even expect the user to search using XML tags like <operation>callMe</operation>.
+When a user searches for answers, the expectation is that they won't search with punctuation or special characters. For example, there is a high chance a user may search for “cant find my keys” (without punctuation) rather than “can’t find my keys !!!”. Similarly, the user is not expected to search the string “<h1>Where is my cheese?</h1>” (with the HTML tags). We don’t even expect the user to search using XML tags like <operation>callMe</operation>.
 
 Character filters help purge the unwanted characters from the input stream.
 
@@ -3576,8 +3544,8 @@ The character filter carries out the following specific functions:
 ### 7.6.1 Types of character filters
 
 There are three character filters that we use to construct an analyzer: 
-* HTML strip; 
-* mapping;
+* HTML strip.
+* mapping.
 * pattern filters.
 
 #### HTML STRIP (HMTL_STRIP) FILTER
@@ -3633,8 +3601,7 @@ POST _analyze
 
 #### PATTERN REPLACE CHARACTER FILTER
 
-The pattern_replace character filter, as the name suggests, replaces the characters with a new character when the field matches with a regular expression 
- (regex).
+The pattern_replace character filter, as the name suggests, replaces the characters with a new character when the field matches with a regular expression (regex).
 
 ```shell
 PUT index_with_pattern_replace_filter
@@ -3642,16 +3609,16 @@ PUT index_with_pattern_replace_filter
   "settings": {
     "analysis": {
       "analyzer": {
-        "my_pattern_replace_analyzer":{ #A
+        "my_pattern_replace_analyzer":{
           "tokenizer":"keyword",
-          "char_filter":["pattern_replace_filter"] #B
+          "char_filter":["pattern_replace_filter"]
         }
       },
       "char_filter": {
-        "pattern_replace_filter":{ #C
-          "type":"pattern_replace", #D
-          "pattern":"_", #E
-          "replacement":"-" #F
+        "pattern_replace_filter":{
+          "type":"pattern_replace",
+          "pattern":"_",
+          "replacement":"-"
         } 
       }
     } 
@@ -3667,8 +3634,7 @@ The job of a tokenizer is to create tokens based on certain criteria.
 
 A standard tokenizer splits the words based on word boundaries and punctuation.
 
-The standard analyzer has only one attribute that can be customized, the `max_token_length`. This attribute helps produce tokens of the size defined by the 
- `max_token_length` property (default size is 255).
+The standard analyzer has only one attribute that can be customized, the `max_token_length`. This attribute helps produce tokens of the size defined by the `max_token_length` property (default size is 255).
 
 ```shell
 PUT index_with_custom_standard_tokenizer
@@ -3703,17 +3669,13 @@ This code spits out two tokens: “Bo" and “nd".
 
 ### 7.7.2 N-gram and edge_ngram tokenizers
 
-The n-grams are a sequence of words for a given size prepared from a given word. Take as an example the word “coffee”. The two-letter n-grams, usually 
- called bi-grams, are “co”, “of”, “ff”, “fe”, and “ee”. Similarly, the three-letter tri-grams are “cof”, “off”, “ffe”, and “fee”. As you can see from these 
- two examples, the n-grams are prepared by sliding the letter window.
+The n-grams are a sequence of words for a given size prepared from a given word. Take as an example the word “coffee”. The two-letter n-grams, usually called bi-grams, are “co”, “of”, “ff”, “fe”, and “ee”. Similarly, the three-letter tri-grams are “cof”, “off”, “ffe”, and “fee”. As you can see from these two examples, the n-grams are prepared by sliding the letter window.
 
-On the other hand, the edge_ngrams produce words with letters anchored at the beginning of the word. Considering “coffee” as our example, the edge_ngram 
- produces “c”, “co”, “cof”, “coff”, “coffe”, and “coffee”. 
+On the other hand, the edge_ngrams produce words with letters anchored at the beginning of the word. Considering “coffee” as our example, the edge_ngram produces “c”, “co”, “cof”, “coff”, “coffe”, and “coffee”. 
 
 #### THE N-GRAM TOKENIZER
 
-For correcting spellings and breaking words, we usually use n-grams. The n-gram tokenizer emits n-grams of a minimum size as 1 and a maximum size of 2 by 
- default. For example, this code produces n-grams of the word “Bond”.
+For correcting spellings and breaking words, we usually use n-grams. The n-gram tokenizer emits n-grams of a minimum size as 1 and a maximum size of 2 by default. For example, this code produces n-grams of the word “Bond”.
 
 ```shell
 POST _analyze
@@ -3723,8 +3685,7 @@ POST _analyze
 }
 ```
 
-The output is [B, Bo, o, on, n, nd, d]. You can see that each n-gram is made of one or two letters: this is the default behavior. We can customize the 
- `min_gram` and `max_gram` sizes by specifying the configuration.
+The output is [B, Bo, o, on, n, nd, d]. You can see that each n-gram is made of one or two letters: this is the default behavior. We can customize the `min_gram` and `max_gram` sizes by specifying the configuration.
 
 ```shell
 PUT index_with_ngram_tokenizer
@@ -3774,12 +3735,11 @@ This produces these n-grams: “bo”, “bon”, “on”, “ond”, and “nd
 
 ## 7.8 Token filters
 
-The tokens produced by the tokenizers may need further enriching or enhancements such as lowercasing (or uppercasing) the tokens, providing synonyms, 
- developing stemming words, removing the apostrophes or punctuation, and so on. Token filters work on the tokens to perform such transformations.
+The tokens produced by the tokenizers may need further enriching or enhancements such as lowercasing (or uppercasing) the tokens, providing synonyms, developing stemming words, removing the apostrophes or punctuation, and so on. Token filters work on the tokens to perform such transformations.
 
 Elasticsearch provides almost 50 token filters.
 
-We can test a token filter by simply attaching to a tokenizer and using it in the _analyze API:
+We can test a token filter by simply attaching to a tokenizer and using it in the `_analyze` API:
 
 ```shell
 GET _analyze
@@ -3789,7 +3749,7 @@ GET _analyze
 }
 ```
 
-The filter accepts an array of token filters; for example, we provided the uppercase and reverse filters in this example). The output would be “DNOB”.
+The filter accepts an array of token filters; for example, we provided the uppercase and reverse filters in this example. The output would be “DNOB”.
 
 You can also attach the filters to a custom analyzer as the following:
 
@@ -3824,8 +3784,7 @@ POST _analyze
 
 ### 7.8.2 Shingle filter
 
-Shingles are the word n-grams that are generated at the token level (unlike the n-grams and edge_ngrams that emit n-grams at a letter level). For example, 
- the text, “james bond” emits as “james”, and “james bond”.
+Shingles are the word n-grams that are generated at the token level (unlike the n-grams and edge_ngrams that emit n-grams at a letter level). For example, the text, “james bond” emits as “james”, and “james bond”.
 
 ```shell
 POST _analyze
@@ -3838,8 +3797,7 @@ POST _analyze
 
 The result of this code execution is `[java, java python, python, python go, go]`.
 
-The default behavior of the filter is to emit unigrams and two-word n-grams. We can change this default behavior by creating a custom analyzer with a 
- custom shingle filter:
+The default behavior of the filter is to emit unigrams and two-word n-grams. We can change this default behavior by creating a custom analyzer with a custom shingle filter:
 
 ```shell
 PUT index_with_shingle
@@ -3873,13 +3831,11 @@ POST index_with_shingle/_analyze
 }
 ```
 
-The analyzer returns `[java python, java python go, python go]` because we’ve configured the filter to produce only 2- and 3-word shingles. The unigram (one 
-word shingle) are turned off.
+The analyzer returns `[java python, java python go, python go]` because we’ve configured the filter to produce only 2- and 3-word shingles. The unigram (one word shingle) are turned off.
 
 ### 7.8.3 Synonym filter
 
-Elasticsearch expects us to provide a set of words and their synonyms by configuring the analyzer with a synonym token filter. We create the synonyms filter 
-on an index’s settings:
+Elasticsearch expects us to provide a set of words and their synonyms by configuring the analyzer with a synonym token filter. We create the synonyms filter on an index’s settings:
 
 ```shell
 PUT index_with_synonyms
