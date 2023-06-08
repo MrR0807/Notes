@@ -3035,7 +3035,7 @@ In addition to stemming, normalization also deals with finding appropriate synon
 All text fields go through this pipe: the raw text is cleaned by the character filters, and the resulting text is passed on to the tokenizer. The tokenizer then splits the text into tokens (aka individual words). The tokens then pass through the token filters where they get modified, enriched, and enhanced. Finally, the finalized tokens are then stored in the appropriate inverted indices. The search query gets analyzed too, in the same manner as the indexing of the text.
 
 The analyzer is composed of three low-level building blocks. These are:
-* Character filters — Applied on the character level, where every character of the text goes through these filters. The filter’s job is to remove unwanted characters from the text string. This process could, for example, purge HTML tags like <h1>, <href>, <src> from the input text;
+* Character filters — Applied on the character level, where every character of the text goes through these filters. The filter’s job is to remove unwanted characters from the text string. This process could, for example, purge HTML tags like `<h1>`, `<href>`, `<src>` from the input text;
 * Tokenizers — Split the sentences into words by using a delimiter such as whitespace, punctuation, or some form of word boundaries. Every analyzer must have one and only one tokenizer. Elasticsearch provides a handful of these tokenizers to help split the incoming text into individual tokens;
 * Token filters — Work on tokens produced by the tokenizers for further processing. For example, the token can change the case, create synonyms, provide the root word (stemming), or produce n-grams and shingles, and so on.
 
