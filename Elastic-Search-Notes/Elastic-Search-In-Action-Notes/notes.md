@@ -3890,4 +3890,592 @@ PUT index_with_synonyms_from_file_analyzer
 
 We can call the file from a relative or absolute path. The relative path points to the config directory of Elasticsearch’s installation folder.
 
+# Chapter 8. Introducing search
 
+## 8.1 Overview
+
+There are two variants of search in the world of Elasticsearch: **structured search** and **unstructured search**.
+
+**Structured search**, supported by a term-level search functionality, returns results with no relevance scoring associated. Elasticsearch fetches the documents if they match exactly and doesn't bother with if they are a close match or how well they match.
+
+On the other hand, in an **unstructured search**, Elasticsearch retrieves results that are closely related to the query. The results are scored based on how closely they are relevant to the criteria: the highly relevant results get higher scoring and, hence, are positioned on the top of the result hits. Searching on text fields yields relevant results.
+
+Not every result that a response has is accurate. This is due to the fact Elastiseach employs two strategies, called **precision** and **recall**, that affect the relevancy of the returned results.
+
+## 8.2 How does search work?
+
+When a search request is received from a user or a client, the engine forwards that request to one of the available nodes in the cluster. Every node in the cluster is, by default, assigned to a coordinator role; hence, making every node eligible for picking up the client requests on a round-robin basis. Once the request reaches the coordinator node, it then determines the nodes on which the shards of the concerned documents exist.
+
+## 8.3 Search fundamentals
+
+### 8.3.1 Search endpoint
+
+Elasticsearch provides RESTful APIs to query the data, a `search` endpoint to be specific.
+
+There are two ways of accessing the search endpoint:
+* URI request — With this method, we pass the search query along with the endpoint as parameters to the query. For example, `GET movies/_search?q=title:Godfather`
+* Query DSL — With this method, Elasticsearch implements a domain-specific language (DSL) for the search. The criteria is passed as a JSON object in the payload.
+
+```shell
+GET movies/_search
+{
+"query": {
+  "match": {
+      "title": "Godfather"
+    }
+  } 
+}
+```
+
+### 8.3.2 Query vs filter context
+
+This execution context can be either a **filter context** or **query context**. All queries issued to Elasticsearch are carried out in one of these contexts. Although we have no say in asking Elasticsearch to apply a certain type of context, it is our query that lets Elasticsearch decide on applying the appropriate context.
+
+#### QUERY CONTEXT
+
+We have used a match query to search for a set of documents that match the keywords with the field’s values.
+
+```shell
+GET movies/_search
+{
+"query": {
+  "match": {
+      "title": "Godfather"
+    }
+  } 
+}
+```
+
+```json
+"hits": [{
+ ...
+ "_score" : 2.879596
+ "_source" : {
+   "title" : "The Godfather"
+... }
+}, {
+...
+   "_score" : 2.261362
+   "_source" : {
+     "title" : "The Godfather: Part II"
+... }
+}]
+```
+
+The code output indicates that the query was executed in a query context because the query searched not only if it matched a document, but also how well the document was matched.
+
+#### FILTER CONTEXT
+
+Let’s rewrite the query by wrapping our match query in a bool query with a filter clause.
+
+```shell
+GET movies/_search
+{
+  "query": {
+    "bool": { 
+      "filter": [{
+        "match": {"title": "Godfather"}
+      }]
+    } 
+  }
+}
+```
+The results do not have a score (score is set to 0.0) because Elasticsearch got a clue from our query that it must be run in a filter context.
+
+The main benefit of running a query in this context is that, because there is no need to calculate scores for the returned search results, Elasticsearch can save on some computing cycles. Because these filter queries are more idempotent, Elasticsearch tries to cache these queries for better performance.
+
+#### COMPOUND QUERIES
+
+The `bool` query is a compound query with a few clauses (`must`, `must_not`, `should`, and `filter`) to wrap leaf queries. In addition to the filter clause, the `must_not` clause gets executed in a filter context. The `constant_score` query is another compound query where we can attach a query in a filter clause.
+
+```shell
+GET movies/_search
+{
+  "query": {
+    "constant_score": {
+      "filter": {
+        "match": {
+          "title": "Godfather"
+        }
+      } 
+    }
+  }
+}
+```
+
+## 8.4 Movie sample data
+
+We will create some movie test data along with movie mappings for this chapter.
+
+```shell
+PUT movies #A Movies index
+{
+  "mappings": { #B Mappings schema
+    "properties": { #C Fields and their types
+      "title": {
+        "type": "text",
+        "fields": { #D Multi-field construct
+          "original": {
+            "type": "keyword"
+          }
+        } 
+      },
+      "synopsis": {
+        "type": "text"
+      },
+      "actors": {
+        "type": "text"
+      },
+      "director": {
+        "type": "text"
+      },
+      "rating": {
+        "type": "half_float"
+      },
+      "release_date": {
+        "type": "date",
+        "format": "dd-MM-yyyy"
+      },
+      "certificate": {
+        "type": "keyword"
+      },
+      "genre": {
+        "type": "text"
+      } 
+    }
+  } 
+}
+```
+
+You can visit my GitHub repository to fetch the [full script](https://github.com/madhusudhankonda/elasticsearch-in-action/blob/main/kibana_scripts/ch8_search_basics.txt).
+
+## 8.5 Anatomy of a request and response
+
+### 8.5.1 Search request
+
+```shell
+GET movies/_search # The search scope and the search endpoint which is used for both search and aggregation
+{
+  "query": { # query component where a user is expected to specify a search type and criteria
+    "match": { # The search query type
+      "title": "Godfather" # The search query's criteria
+    }
+  }
+}
+```
+
+There’s a school of thought that the GET method in a RESTful architecture shouldn’t send any parameters using the body of the request. Instead, one should use a POST method if we are querying the server. **Elasticsearch implements the GET method request that accepts a body**, which helps formulate the query parameters. **You can replace GET with POST as both GET or POST act on the resource exactly the same way**.
+
+We can also include multiple indices, multiple aliases, or even no index in this URL. To specify multiple indices (or aliases), enter comma-separated index (or alias) names. Providing no index or alias on the search request tells the search to run against all the indices across the cluster.
+
+### 8.5.2 Search response
+
+```json
+{ 
+  "took": 8,
+  "timed_out": false,
+  "_shards": {},
+  "hits": {}
+}
+```
+
+The `took` attribute, measured in milliseconds, indicates the time it takes for the search request to complete. This is the time measured from when a coordinator node receives the request to the time it manages to aggregate the response before sending it back to the client. It doesn’t include any of the client-to-server marshaling/unmarshalling times.
+
+The `timed_out` attribute is a Boolean flag that indicates if the response has partial results, meaning if any of the shards failed to respond in time. For example, if we have three shards and one of them fails to return the results, the response will consist of the results from the two shards but indicates the failed shard’s state in the next object under the `_shards` attribute.
+
+## 8.6 URI request search
+
+### 8.6.1 Search movies by title
+
+```GET movies/_search?q=title:Godfather```
+
+The URL is composed of the `_search` endpoint followed by the query represented by the letter `q`. If we want to search for movies matching multiple titles:```GET movies/_search?q=title:Godfather Knight Shawshank```.
+
+### 8.6.2 Search a specific movie
+
+To fetch a specific movie, we can combine the criteria with the `AND` operator: `GET movies/_search?q=title:Knight AND actors:Bale`.
+
+**Remember that Elasticsearch uses the OR operator by default.**
+
+### 8.6.3 Additional parameters
+
+```GET movies/_search?q=title:Godfather actors:(Brando OR Pacino) rating:(>=9.0 AND <=9.5)&from=0&size=10&explain=true&sort=rating&default_operator=AND```
+
+## 8.7 Query DSL
+
+### 8.7.1 Sample query
+
+Let’s write a `multi_match` query that searches a keyword, Lord, across two fields, `synopsis` and `title`.
+
+```shell
+GET movies/_search
+{
+"query": {
+    "multi_match": {
+      "query": "Lord",
+      "fields": ["synopsis","title"]
+    }
+  } 
+}
+```
+
+### 8.7.3 Query DSL for aggregations
+
+With Query DSL, we use a similar format for aggregations (analytics) with an `aggs` (short for aggregations) object instead of a `query` object.
+
+```shell
+GET movies/_search
+{
+  "size": 0,
+  "aggs": {
+    "average_movie_rating": {
+      "avg": {
+        "field": "rating"
+      }
+    } 
+  }
+}
+```
+
+This query fetches the average rating of all movies by utilizing a metric aggregation called `avg` (short for average).
+
+### 8.7.4 Leaf and compound queries
+
+We call the queries that are straightforward with no clauses a **leaf query**. These are the queries that fetch results based on a certain criteria (for example, getting the top-rated movies, movies that are released during a particular year, the gross earnings of a movie, and so on).
+
+```shell
+GET movies/_search
+{
+"query": {
+    "match_phrase": {
+      "synopsis": "A meek hobbit from the shire and eight companions"
+    }
+  } 
+}
+```
+
+Leaf queries cannot fetch multiple query clauses. For example, they are not designed to search for movies that match a title but must NOT match a particular actor AND released during a specific year.
+
+**Compound queries** allow us to create complex queries by combining leaf queries and even other compound queries using logical operators. A Boolean query, for example, is a popular compound query that supports writing queries with clauses like `must`, `must_not`, `should`, and `filter`.
+
+```shell
+GET movies/_search
+{
+"query": {
+    "bool": {
+      "must": [{"match": {"title": "Godfather"}}],
+      "must_not": [{"range": {"rating": {"lt": 9.0}}}],
+      "should": [{"match": {"actors": "Pacino"}}],
+      "filter": [{"term": {"actors": "Brando"}}]
+    } 
+  }
+}
+```
+
+## 8.8 Search features
+
+### 8.8.1 Pagination
+
+Elasticsearch, by default, sends the top-ten results, but we can change this number by setting the `size` parameter on the query, with a maximum set to 10,000.
+
+```shell
+GET movies/_search
+{
+"size": 20,
+"query": {
+    "match_all": {}
+  }
+}
+```
+
+While 10 K is a pretty good number for most searches, if your requirement is to get more than that number, you need to reset the `max_result_window` setting on the index.
+
+```shell
+GET movies/_search
+{
+  "size": 100, #A Fetches every page with 100 results
+  "from": 3, #B Fetches from the third page, ignoring the first two pages
+  "query": {
+    "match_all": {}
+  }
+}
+```
+
+If the result set is too large (more than 10 K), rather than working with the pagination using the `size` and `from` attributes, we need to work with the `search_after` attribute.
+
+### 8.8.2 Highlighting
+
+When we search for a keyword(s) on a website in our internet browser using Ctrl-F, we can see the results highlighted so they stand out.
+
+In a Query DSL, we can add a `highlight` object at the same level as the top-level `query` object. The `highlight` object expects a `fields` block, which can have multiple fields that you want to emphasize in the results.
+
+When results are returned from the server, we can ask Elasticsearch to highlight the matches with its default settings by enclosing the matched text in emphasis tags (`<em>match</em>`).
+
+```shell
+GET movies/_search
+{
+  "_source": false, #A Suppresses the source to be returned
+  "query": {
+    "term": {
+      "title": {
+        "value": "godfather"
+      }
+    }
+  },
+  "highlight": { #B Includes a highlight object along with the fields on which highlights are expected
+    "fields": {
+      "title": {} #C The field on which we require the highlight
+    }
+  } 
+}
+```
+
+### 8.8.3 Explanation
+
+Elasticsearch provides a mechanism to understand the makeup of relevancy scores. This mechanism tells us exactly how the engine calculates the score. This is achieved by using an `explain` flag on a search endpoint or an `explain` API.
+
+#### EXPLAIN FLAG
+
+```shell
+# Explanation
+GET movies/_search
+{
+  "explain": true, # This is set to true
+  "_source": false, 
+  "query": {
+    "match": {
+      "title": "Lords"
+    }
+  }
+}
+```
+
+This will return response which can be found in https://www.elastic.co/guide/en/elasticsearch/reference/current/search-explain.html.
+
+#### EXPLAIN API
+
+Although we use the `explain` attribute to understand the mechanics of relevancy scoring, there’s also an `explain` API that provides insight into why a document matched (or not), in addition to providing the scoring calculations.
+
+```shell
+GET movies/_explain/14
+{
+"query":{
+  "match": {
+      "title": "Lord"
+    }
+  } 
+}
+```
+
+A search query built using the `explain` flag on the `_search` API can produce a lot of results. Asking for an explanation of the scores for all documents at a query level is simply a waste of computing resources in my opinion. Instead, pick one of the documents and ask for an explanation using the `_explain` API.
+
+### 8.8.4 Sorting
+
+The results returned by the engine are sorted by default on the relevancy score (`_score`).
+
+#### SORTING THE RESULTS
+
+```shell
+GET movies/_search
+{
+  "query": {
+    "match": {
+      "genre": "crime"
+    }
+  }, "sort": [
+     { "rating" :{ "order": "desc" } }
+  ]
+}
+```
+
+#### SORTING ON THE RELEVANCY SCORE
+
+If you want to reverse the order with an ascending sort.
+
+```shell
+GET movies/_search
+{
+  "size": 10,
+  "query": {
+    "match": {
+      "title": "Godfather"
+    }
+  }, "sort": [
+    {"_score":{"order":"asc"}}
+  ]
+}
+```
+
+**When sorting on a field, scores are not computed**. By setting `track_scores` to true, scores will still be computed and tracked.
+
+```shell
+GET movies/_search
+{
+  "size": 10,
+  "query": {
+    "match": {
+      "genre": "crime"
+    }
+  }, 
+  "sort": [
+    {"rating":{"order":"asc"}}
+  ]
+}
+```
+
+We can also enable sorting on multiple fields. When we sort on multiple fields, the sort order is important!
+
+```shell
+GET movies/_search
+{
+  "size": 10,
+  "query": {
+    "match": {
+      "genre": "crime"
+    }
+  }, 
+  "sort": [
+    {"rating":{"order":"asc"}},
+    {"release_date":{"order":"asc"}}
+  ]
+}
+```
+
+### 8.8.5 Manipulating the results
+
+Occasionally, we may want to fetch only a subset of fields. For example, we may need just the title and the rating of a movie when a user searches for a certain type of rating, or we might not need the document sent out in the response by the engine.
+
+#### SUPPRESS THE FULL DOCUMENT
+
+To suppress the document returned in the search response, we simply need to set the flag `_source` to `false` in the query. The following listing returns the response with just the metadata.
+
+```shell
+GET movies/_search
+{
+  "_source": false, #A Setting the _source flag to false removes the source document from the result.
+  "query": {
+    "match": {
+      "certificate": "R"
+    }
+  } 
+}
+```
+
+#### FETCHING SELECTED FIELDS
+
+Elasticsearch provides a `fields` object to indicate which fields are expected to be returned.
+
+For example, the query in the following code snippet fetches only the `title` and `rating` fields in the response.
+
+```shell
+GET movies/_search
+{
+  "_source": false,
+  "query": {
+    "match": {
+      "certificate": "R"
+    }
+  },
+  "fields": ["title", "rating" ]
+}
+```
+
+You can also use wildcards in the field’s mapping. For example, setting `title*` retrieves `title`, `title.original`, `title_long_descripion`, `title_code`, and all other fields that have the title prefix.
+
+#### SCRIPTED FIELDS
+
+We may at times need to compute a field on the fly and add it to the response. To use the scripting feature, append the query with the `script_fields` object.
+
+```shell
+GET movies/_search
+{
+  "_source": ["title*","synopsis", "rating"],
+  "query": {
+    "match": {
+      "certificate": "R"
+    }
+  },
+  "script_fields": {
+    "top_rated_movie": {
+      "script": {
+        "lang": "painless",
+        "source": "if (doc['rating'].value > 9.0) 'true'; else 'false'"
+      }
+    } 
+  }
+}
+```
+
+#### SOURCE FILTERING
+
+```shell
+GET movies/_search
+{
+  "_source": ["title*","synopsis", "rating"],
+  "query": {
+    "match": {
+      "certificate": "R"
+    }
+  } 
+}
+```
+
+In fact, you can take the `_source` option even further by setting a list of `includes` and `excludes` to further control the return fields. The following listing demonstrates this in action.
+
+```shell
+GET movies/_search
+{
+  "_source": {
+    "includes": ["title*","synopsis","genre"],
+    "excludes": ["title.original"]
+  },
+  "query": {
+    "match": {
+      "certificate": "R"
+    }
+  } 
+}
+```
+
+### 8.8.6 Searching across indices and data streams
+
+Our data is more likely than not spread across indices and data streams.
+
+For example, omitting the index name(s) on the search request is a clue to the engine to search across all indices. The following code snippet shows this technique:
+
+```shell
+GET _search
+{
+  "query": {
+    "match": {
+      "actors": "Pacino"
+    }
+  } 
+}
+```
+
+In fact, you can use GET `*/_search` or GET `_all/_search` too, which is equivalent to the previous query.
+
+#### BOOSTING INDICES
+
+When we search across multiple indices, we may want to have a document found in one index take precedence over the same document found in another index.
+
+To demonstrate this concept, I’ve created two new indices (`index_top` and `index_new`) and indexed The Shawshank Redemption movie in these two new indices.
+
+Now that we have the same movie across three indices, let’s create the query with a requirement of enhancing the score of the document obtained from movies_top so that it’s the topmost result.
+
+```shell
+GET movies*/_search
+{
+  "indices_boost": [
+    { "movies": 0.1},#A
+    { "movies_new": 0}, #B
+    { "movies_top": 2.0} #C
+  ], 
+  "query": {
+      "match": {
+        "title": "Redemption"
+      }
+  } 
+}
+```
