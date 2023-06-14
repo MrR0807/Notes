@@ -4898,7 +4898,561 @@ This might be a clumsy way of handling things because sometimes you wouldn't kno
 | 3 to 5                    | 1         |
 | More than 5               | 2         |
 
+# Chapter 10. Full-text search
 
+A full text search is all about relevancy: fetching the documents that are relevant to the user's search.
 
+## 10.1 Overview
 
+When we talk about relevance, there’s two measures that usually spring up: precision and recall.
 
+### 10.1.1 Precision
+
+Precision is measured as the percentage of relevant documents in the overall number of documents returned. When a query returns results, not all of the results are directly related to the query.
+
+Precision = relevant results/all results.
+
+Search for TV returns 6 TV models and 4 other devices. Precision is 60% then.
+
+### 10.1.2 Recall
+
+Recall is the other side of the coin. It measures how many documents that were returned are relevant. For example, there may have been a few more relevant results (more TVs) that weren’t returned as part of the results set. The percentage of relevant documents that were retrieved is called recall.
+
+Say we have three more TVs that fell into the search bucket but were never returned. These are called false negatives. On the other hand, there are a few products like cameras and projectors that weren’t returned, which are genuinely irrelevant and, hence, not expected to be part of the result. These are termed as true negatives. In the current scenario, recall is calculated as.
+
+Recall = 6 / (6+3) × 100% = 66.6%
+
+Ideally, we want precision and recall to be a perfect match with no omissions (no relevant documents omitted). However, this is pretty much impossible because these two measures always work against each other. They are indeed inversely proportional to each other: the higher the precision (number of best match documents), the lower the recall (the number of documents returned).
+
+We can use match queries, filters, and boost to tweak precision and recall to fine tune the balance.
+
+## 10.2 Sample data
+
+We will work with a fictional book store in this chapter, where we will index a set of 50 technical books into an index named books by invoking the `_bulk` API. We are not tweaking the mapping for this part of the sample data, so you can go ahead and index the books as is. The data for the books is available on my GutHub page here:
+
+https://github.com/madhusudhankonda/elasticsearch-in-action/blob/f334df2dd5f10acc15bfc745f580ec9be0b129d2/datasets/books.txt
+https://github.com/madhusudhankonda/elasticsearch-in-action/blob/f334df2dd5f10acc15bfc745f580ec9be0b129d2/kibana_scripts/ch10_full_text_queries.txt
+
+## 10.3 Match all (match_all) queries
+
+As the name suggests, the match all (match_all) query fetches all the documents available in the index. Because this query is expected to return all the available documents, it is the perfect partner for honoring 100% recall.
+
+### 10.3.1 Building the match_all query
+
+We form the query with a match_all object, passing it no parameters.
+
+```shell
+GET books/_search
+{
+"query": {
+    "match_all": {}
+  }
+}
+```
+
+This query returns all documents available in the `books` index. The notable point is that the response indicates each of the books with a score of 1.0 by default.
+
+### 10.3.2 Short form of a match_all query
+
+We wrote a match_all query with a query body, however, providing the body is redundant. That is, the same query can be rewritten in a shorter format like this: `GET books/_search`.
+
+## 10.4 Match none (match_none) queries
+
+While the `match_all` query returns all the results from an index or multiple indices, the opposite query, called `match_none`, returns no results.
+
+```shell
+GET books/_search
+{
+  "query": {
+    "match_none": {}
+  }
+}
+```
+
+## 10.5 Match queries
+
+The `match` query is the most common and powerful query for multiple use cases. It is a full text search query returning the documents that match the specified criteria.
+
+### 10.5.1 Format of a match query
+
+```shell
+GET books/_search
+{
+  "query": {
+    "match": { # The type of the query is a match query
+      "FIELD": "SEARCH TEXT" # The query expects a criteria to be specified in the form of a name-value pair.
+    }
+  } 
+}
+```
+
+The `match` query expects the search criteria to be defined in the form of a field value. The field can be any of the text fields present in a document, whose values are to be matched.
+
+There are a handful of additional parameters in the query’s full form that we can pass to the `match` query too.
+
+```shell
+GET books/_search
+{
+  "query": {
+    "match": {
+      "FIELD": { # Declares FIELD as an object with additional parameters
+        "query":"<SEARCH TEXT>", # The query attribute holds the search text.
+        "<parameter>":"<MY_PARAM>", # Other optional parameters (such as analyzer, operator, prefix_length, fuzziness, etc.) expects a value to be set.
+     }
+    } 
+  }
+}
+```
+
+### 10.5.2 Searching using a match query
+
+An example where we want to search for Java books with Java in the title field.
+
+```shell
+GET books/_search
+{
+  "query": {
+  "match": { # The match query in action
+      "title": "Java" # Sets the search criteria, searching for the word Java in the title field
+    }
+}
+```
+
+### 10.5.3 Match query analysis
+
+The match queries that work on text fields are analyzed. The same analyzers used during the indexing process the search words in match queries.
+
+Additionally, the standard analyzer applies the same lowercase token filter.
+
+### 10.5.4 Searching multiple words
+
+```shell
+GET books/_search
+{
+  "query": {
+    "match": {
+      "title": {
+        "query": "Java Complete Guide"
+      }
+    } 
+  },
+  "highlight": {
+    "fields": {
+      "title": {} 
+    }
+  } 
+}
+```
+
+If we execute the query with these words, you may be surprised to see more documents than just the one that matches exactly with the search query.
+
+The reason for this behavior is that Elasticsearch employs an OR Boolean operator by default for this query, so it fetches all the documents that match with any of the words.
+
+```shell
+GET books/_search
+{
+  "query": {
+    "match": {
+      "title": {
+        "query": "Java Complete Guide",
+        "operator": "AND" #A
+      }
+    } 
+  }
+}
+```
+
+### 10.5.5 Matching at least a few words
+
+The OR and AND operators are opposing conditions. The OR condition fetches either of the search words, and the AND condition gets matching documents exactly for all of the words. What if we want to find documents that match at least a few words from the given set of words? This is where the `minimum_should_match` attribute comes in handy.
+
+The `minimum_should_match` attribute indicates the minimum number of words that should be used to match the documents.
+
+```shell
+GET books/_search
+{
+  "query": {
+    "match": {
+      "title": {
+        "query": "Java Complete Guide",
+        "operator": "OR",
+        "minimum_should_match": 2 # Sets the minimum number of words that should match
+      } 
+    }
+  } 
+}
+```
+
+### 10.5.6 Fixing typos using the key word fuzziness
+
+```shell
+GET books/_search
+{
+  "query": {
+    "match": {
+      "title": {
+        "query": "Kava",
+        "fuzziness": 1
+      }
+    } 
+  }
+}
+```
+
+## 10.6 Match phrase (match_phrase) queries
+
+The match phrase (match_phrase) query finds the documents that match exactly a given phrase. The idea behind the match phrase is to search for the phrase (group of words) in a given field in the same order. For example, if you are looking for the phrase “book for every Java programmer” in the synopsis of a book, documents are searched with those words in that order.
+
+From our previous section on match queries, we learned that words can be split individually and searched with an AND/OR operator when using a match query. The `match_phrase` query is the opposite.
+
+```shell
+GET books/_search
+{
+  "query": {
+    "match_phrase": {
+      "synopsis": "book for every Java programmer"
+    }
+  } 
+}
+```
+
+### 10.6.1 Match phrase with the keyword slop
+
+What if we drop a word or two in between the said phrase? Say, for example, we remove the for or every (or both) from the phrase “book for every Java programmer” and rerun the same query. Unfortunately, the query wouldn't return any results! The reason for this is that match_phrase expects the words in a phrase to match the exact phrase, word by word. Searching “book Java programmer” returns no results. Fortunately, there is a fix to this problem: using a parameter called `slop`.
+
+The slop parameter allows us to ignore the number of words in between the words in that phrase. We can drop the in-between words in the phrase. However, we need to let the engine know how many words to drop.
+
+```shell
+GET books/_search
+{
+"query": {
+    "match_phrase": {
+      "synopsis": { #A
+        "query": "book every Java programmer",#B
+        "slop": 1#C
+      } 
+    }
+  } 
+}
+```
+
+## 10.7 Match phrase prefix (match_phrase_prefix) queries
+
+The match phrase prefix (`match_phrase_prefix`) query is a slight variation of the `match_phrase` query in that, in addition to matching the exact phrase, the query matches all the words, using the last word as a prefix.
+
+```shell
+GET books/_search
+{
+  "query": {
+    "match_phrase_prefix": { # Specifies the match_prefix_query query
+      "tags": {
+        "query": "Co" # Specifies the prefix to search
+      }
+    } 
+  },
+  "highlight": {
+    "fields": {
+      "tags": {} 
+    }
+  } 
+}
+```
+
+This query fetches all the books with tags matching Co. This includes prefixes such as Component, Core, Code, and so on.
+
+### 10.7.1 Match phrase prefix using slop
+
+Similar to the match_phrase query, the order of the words is important in the match_phrase_prefix query too. Of course, slop is here to the rescue. For example, when we want to retrieve books with the phrase concepts and foundations across the tags field, we can omit and by adding the keyword slop as the following listing demonstrates.
+
+```shell
+GET books/_search
+{
+  "query": {
+    "match_phrase_prefix": {
+      "tags": {
+        "query": "concepts found", # The phrase has one word (and) omitted as well as has a prefix (“found” instead of “foundations”).
+        "Slop":1 # Sets slop to 1 because one word is dropped from the phrase
+      }
+    } 
+  }
+}
+```
+
+## 10.8 Multi-match (multi_match) queries
+
+The multi-match (`multi_match`) query, as the name suggests, searches the query across multiple fields. For example, if we want to search for the word Java across the three fields `title`, `synopsis`, and `tags`, then the `multi_match` query is the answer.
+
+```shell
+GET books/_search
+{
+  "_source": false, # Suppresses the source document showing up in the results
+  "query": {
+    "multi_match": { # Specifies the multi_match query
+      "query": "Java", # Defines the search criteria as the word Java
+      "fields": [ # Searches across multiple fields provided in an array
+        "title",
+        "synopsis",
+        "tags"
+      ] 
+    }
+  },
+  "highlight": { # Highlights the matches returned in the results
+    "fields": {
+      "title": {},
+      "tags": {} 
+    }
+  } 
+}
+```
+
+### 10.8.1 Best fields
+
+The best_fields type is most useful when you are searching for multiple words best found in the same field. For instance “brown fox” in a single field is more meaningful than “brown” in one field and “fox” in the other.
+
+```shell
+GET books/_search
+{
+  "_source": false,
+  "query": {
+    "multi_match": {
+      "query": "Design Patterns",
+      "type": "best_fields", # Sets the type of multi_match query to best_fields
+      "fields": ["title","synopsis"]
+    } 
+  },
+  "highlight": { # Suppresses the source but shows the highlights
+    "fields": {
+      "tags": {},
+      "title": {} 
+    }
+  } 
+}
+```
+
+### 10.8.2 Disjunction max (dis_max) queries
+
+In the previous section, we looked at the `multi_match` query, where the criteria was searched against multiple fields. How does this query type get executed behind the scenes? Elasticsearch rewrites the `multi_match` query using a disjunction max query (`dis_max`).
+
+```shell
+GET books/_search
+{
+  "_source": false,
+  "query": {
+    "dis_max": {
+      "queries": [
+        {"match": {"title": "Design Patterns"}},
+        {"match": {"synopsis": "Design Patterns"}}]
+    }
+  } 
+}
+```
+
+Multiple fields are split into two match queries under the dis_max query. The query returns the documents with a high relevancy `_score` for the individual field.
+
+### 10.8.3 Tiebreakers
+
+The relevancy score is based on the single field’s score, but if the scores are tied, we can specify `tie_breaker` to relieve the tie. If we use `tie_breaker`, Elasticsearch calculates the overall score slightly differently which we will see in action shortly, but first, let’s checkout an example.
+
+```shell
+GET books/_search
+{
+  "query": {
+    "multi_match": {
+      "query": "Design Patterns",
+      "type": "best_fields",
+      "fields": ["title","tags"],
+      "tie_breaker": 0.9
+    } 
+  }
+}
+```
+
+When we provide the tie breaker, the overall scoring is calculated as:
+
+```
+Overall score = _score of the best match field + _score of the other matching fields * tie_breaker
+```
+
+**Elasticsearch converts all multi_match queries to the `dis_max` query.**
+
+### 10.8.4 Individual field boosting
+
+```shell
+GET books/_search
+{
+  "query": {
+    "multi_match": {
+      "query": "C# Guide",
+      "fields": ["title^2", "tags"] #Doubles up the title field
+    }
+  } 
+}
+```
+
+## 10.9 Query strings
+
+Earlier on in chapter 8, we looked at the URI search method (one of the search query methods in addition to Query DSL).
+
+Example of query string:
+
+```
+title:Java and author:Bert and edition:2 and release_date>=2000-01-01
+```
+
+## 10.10 Query string(query_string)queries
+
+Same can be achieved via Query DSL:
+
+```shell
+GET books/_search
+{
+  "query": {
+    "query_string": { #A
+      "query": "author:Bert AND edition:2 AND release_date>=2000-01-01" #B
+    }
+  } 
+}
+```
+
+### 10.10.1 Fields in a query string query
+
+In a typical search box, the user does not need to mention the field when searching for something. For example:
+
+```shell
+GET books/_search
+{
+"query": {
+    "query_string": {
+      "query": "Patterns"
+    }
+  },
+  "highlight": {
+    "fields": {
+      "title": {},
+      "synopsis": {},
+      "tags": {}
+    } 
+  }
+}
+```
+
+One quick thing to remember is that the query is not asking us to search any fields. It is a generic query that’s actually expected to be executed across **all fields**.
+
+Instead of letting the engine search query against all the available fields, we can assist Elasticsearch by providing the fields to run the search on.
+
+```shell
+GET books/_search
+{
+  "query": {
+    "query_string": {
+      "query": "Patterns", #A The query criteria with no fields mentioned.
+      "fields": ["title","synopsis","tags"] #B Explicitly declares the fields as an array of strings
+    }
+  } 
+}
+```
+
+Here, we specify the fields explicitly in an array in the fields parameter and mention the fields that this criteria is expected to be performed against.
+
+```shell
+GET books/_search
+{
+  "query": {
+    "query_string": {
+      "query": "Patterns",
+      "default_field": "title"
+    }
+  } 
+}
+```
+
+If a field is not mentioned in the query, the search is carried out against the `title` field.
+
+### 10.10.2 Default operator
+
+If we extend that search to include an additional word such as Design, we may get multiple books (two books with the current dataset) instead of the correct one: Head First Design Patterns. The reason is that Elasticsearch uses the OR operator by default when searching. Hence, it finds books with both words, Design OR Patterns in the title field.
+
+```shell
+GET books/_search
+{
+  "query": {
+    "query_string": {
+      "query": "Design Patterns",
+      "default_field": "title",
+      "default_operator": "AND" # Changes the operator from OR to AND
+    } 
+  }
+}
+```
+
+## 10.11 Query string with a phrase
+
+The query in the next listing searches for a phrase.
+
+```shell
+GET books/_search
+{
+  "query": {
+    "query_string": {
+      "query": "\"making the code better\"", # Quotes around the sentences make it a phrase query
+      "default_field": "synopsis"
+    }
+  } 
+}
+```
+
+As you can expect, this code searches for the phrase "making the code better" in the `synopsis` field and fetches the Effective Java book.
+
+For example, the code in the following listing demonstrates how the phrase_slop parameter allows for a missing word in the phrase (the is dropped from the phrase) and still gets a successful result.
+
+```shell
+GET books/_search
+{
+  "query": {
+    "query_string": {
+      "query": "\"making code better\"", #A
+      "default_field": "synopsis",
+      "phrase_slop": 1 # Sets the phrase_slop to 1 so the phrase with one missing word is honored
+    } 
+  }
+}
+```
+
+## 10.12 Fuzzy queries
+
+We can also ask Elasticsearch to forgive spelling mistakes by using fuzzy queries with `query_string` queries. All we need to do is suffix the query criteria with a tilde (~) operator.
+
+```shell
+GET books/_search
+{
+  "query": {
+    "query_string": {
+      "query": "Pattenrs~", #A
+      "default_field": "title"
+    }
+  } 
+}
+```
+
+By setting the suffix with the ~ operator, we are cueing the engine to consider the query as a fuzzy query.
+
+By default, the edit distance in a query_string query is 2, but we can reduce it if needed by setting the 1 after the tilde like so: "Pattenrs~1".
+
+## 10.13 Simple string queries
+
+## 10.14 Simple_query_stringqueries
+
+As the name suggests, the `simple_query_string` query is a variant of the `query_string` query with a simple and limited syntax. We can use operators such as `+`, `-`, `|`, `*`, `~` and so forth for constructing the query. For example, searching for "Java + Cay" produces a Java book written by Cay.
+
+```shell
+GET books/_search
+{
+  "query": {
+    "simple_query_string": {
+      "query": "Java + Cay"
+    }
+  } 
+}
+```
+
+Unlike the `query_string` query, the `simple_query_string` query doesn’t respond with errors if there’s any syntax error in the input criteria. It takes a quieter side of not returning anything should there be a syntactic error.
