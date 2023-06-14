@@ -4479,3 +4479,426 @@ GET movies*/_search
   } 
 }
 ```
+
+# Chapter 9. Term-level search
+
+Term-level search is designed to work with structured data such as numbers, dates, IP address, enumerations, keyword types, and others. We use term-level queries to find an exact match.
+
+## 9.1 Overview of term-level search
+
+The term-level search produces a Yes or No binary option similar to the database’s WHERE clause.
+
+### 9.1.1 Term-level queries are not analyzed
+
+The terms are matched against the words stored in the inverted index without having to apply the analyzers to match the indexing pattern. This means that the search words must match with the fields indexed in the inverted index.
+
+## 9.2 Term queries
+ 
+The term query fetches the documents that exactly match a given field. The field is not analyzed, instead it is matched against the value that’s stored as is during the indexing in the inverted index. For example, using our movie dataset, if we were to search an R-rated movie.
+
+```shell
+GET movies/_search
+{
+  "query": {
+    "term": { #A
+      "certificate": "R"
+    }
+  } 
+}
+```
+
+The name of the query (`term` in this case) identifies that we are about to perform a term-level search.
+
+### 9.2.1 Term queries on text fields
+
+This brings up an important point to consider when working with term queries: term queries are not suitable when working with `text fields`.
+
+For whatever the reason, if you want to use a term query on a text field, make sure the text field is indexed like an enumeration or a constant. For example, an order status field with CREATED, CANCELLED, FULFILLED states can be a good candidate to use a term query though the field was a text field.
+
+### 9.2.3 Shortened term-level queries
+
+Original full version of term query:
+
+```shell
+GET movies/_search
+{
+"query": {
+    "term": {
+      "certificate": {
+        "value": "R",
+        "boost": 2
+      }
+    } 
+  }
+}
+```
+
+As the code shows, the certificate expects an object with value and other parameters.
+
+## 9.3 Terms queries
+
+As the name suggests, the `terms` (note down the plural) query searches multiple criteria against a single field. That is, we can throw in all the possible values of the field that we would like the search to be performed.
+
+```shell
+GET movies/_search
+{
+  "query": {
+    "terms": {
+      "certificate": ["PG-13","R"]
+    }
+  } 
+}
+```
+
+There’s a limit of how many terms we can set in that array - a whopping of 65,536 terms. If you need to modify this limit (to increase or decrease it), you can use the index’s dynamic property setting to alter the limit: `index.max_terms_count`.
+
+```shell
+PUT movies/_settings
+{
+  "index":{
+    "max_terms_count":10
+  }
+}
+```
+
+### 9.3.1 Terms lookup
+
+We create a classic_movies index with two properties: title and director.
+
+```shell
+PUT classic_movies
+{
+  "mappings": {
+    "properties": {
+      "title": { #A
+        "type": "text"
+      },
+      "director": { #B
+        "type": "keyword"
+      }
+    } 
+  }
+}
+```
+
+As the code illustrates, there is nothing special about this index - except that the notable point is that we are defining the director field as a keyword type - for no better reason than avoiding complexity.
+
+```shell
+PUT classic_movies/_doc/1
+{
+  "title":"Jaws",
+  "director":"Steven Spielberg"
+}
+PUT classic_movies/_doc/2
+{
+  "title":"Jaws II",
+  "director":"Jeannot Szwarc"
+}
+PUT classic_movies/_doc/3
+{
+  "title":"Ready Player One",
+  "director":"Steven Spielberg"
+}
+```
+
+Say we wish to fetch all movies directed by the director like Speilberg. However, we wouldn’t want to construct a terms query with the terms upfront, instead we will let the query know to pick up the values of the terms from a document. That is, we let the terms query lookup the criteria from the field values of a document rather than providing them directly. 
+
+```shell
+GET classic_movies/_search
+{
+  "query": {
+    "terms": { #A The terms query (with a twist!)
+      "director": { #B The field that we are interested in searching against
+        "index":"classic_movies", #C The index denotes name of the index where the document resides
+        "id":"3", #D Field name which makes up the terms for the query
+        "path":"director" #E The search Field in the current document
+      } 
+    }
+  } 
+}
+```
+
+The code listing requires a bit of explanation: we are creating a terms query with the director being the field against which multiple search terms are arranged. In a usual terms query, we would’ve provided an array with all the list of names. However, here we are asking the query to look up the values of the director from another document instead: the document with id as 3.
+
+The document with this ID 3 is expected to be picked up from the classic_movies index as the index field mentions in the query. And of course the field to fetch the values is called director and is noted as path in the above code listing. Running this query will fetch two documents that were directed by Spielberg.
+
+## 9.4 IDs queries
+
+The following listing shows how to retrieve some documents using a list of document IDs.
+
+```shell
+GET movies/_search
+{
+"query": {
+  "ids": {
+      "values": [10,4,6,8]
+    }
+  } 
+}
+```
+
+## 9.5 Exists queries
+
+Sometimes, I see documents having hundreds of fields in some projects. Fetching all the fields in a response is a waste of bandwidth, and knowing if the field exists before attempting to fetch it is a better precheck. To do that, the `exists` query fetches the documents for a given field if the field exists.
+
+```shell
+GET movies/_search
+{
+  "query": {
+    "exists": {
+      "field": "title"
+    }
+  } 
+}
+```
+
+If document with field `title` exists, we get a response - if it does not, then we get empty `hits` array.
+
+### 9.5.1 Non existent field check
+
+There’s another subtle use case of an exists query: when we want to retrieve all documents that don't have a particular field (a nonexistent field).
+
+For example, we check all the documents that aren’t classified as confidential (assuming classified documents have an additional field called confidential set to true).
+
+```shell
+PUT top_secret_files/_doc/1
+{
+  "code":"Flying Bird",
+  "confidential":true
+}
+PUT top_secret_files/_doc/2
+{
+  "code":"Cold Rock"
+}
+GET top_secret_files/_search
+{
+  "query": {
+    "bool": {
+      "must_not": [{
+        "exists": {
+            "field": "confidential"
+          }
+      }]
+    } 
+  }
+}
+```
+
+We then write an exists query in a `must_not` clause of a `bool` query to fetch all the documents that are not categorized as confidential.
+
+## 9.6 Range queries
+
+```shell
+GET movies/_search
+{
+  "query": {
+    "range": {
+      "rating": {
+        "gte": 9.0,
+        "lte": 9.5 
+      }
+    } 
+  }
+}
+```
+
+If you want to fetch all the movies after 1970:
+
+```shell
+GET movies/_search
+{
+  "query": {
+    "range": {
+      "release_date": {
+        "gte": "01-01-1970"
+      }
+    } 
+  },
+  "sort": [
+    {
+      "release_date": {
+        "order": "asc"
+      }
+    }
+  ]
+}
+```
+
+### 9.6.1 Range queries with data math
+
+Elasticsearch supports sophisticated data math in queries. For example, we can ask the engine questions like:
+* Fetch the book sales a couple of days back (current day minus two days).
+* Find the access denied errors in the last 10 minutes (current hour minus 10 minutes).
+* Get the tweets for a particular search criteria from last year.
+
+Elasticsearch expects a specific data expression that deals with data math. An anchor date followed by `||` is the first part of the expression, appended with the time we want to add or subtract from the anchor date.
+
+For example, to fetch movies two days after a specific day: `01-01-2022||+2d`.
+
+```shell
+GET movies/_search
+{
+  "query": {
+    "range": {
+      "release_date": {
+        "lte": "01-03-2022||-2d"
+      }
+    } 
+  }
+}
+```
+
+Instead of mentioning the current date specifically, Elasticsearch lets us use a specific keyword: `now`. The `now` represents the current date.
+
+```shell
+GET movies/_search
+{
+  "query": {
+    "range": {
+      "release_date": {
+        "lte": "now-1y"
+      }
+    }
+  } 
+}
+```
+
+## 9.7 Wildcard queries
+
+Wildcard queries, as the name implies, let you search on words with missing characters, suffixes, and prefixes.
+
+The wildcard query accepts:
+* asterisk (`*`) - Lets you search for zero or more characters.
+* question mark (`?`) - Lets you search for a single character.
+
+```shell
+GET movies/_search
+{
+  "query": {
+    "wildcard": {
+      "title": {
+        "value": "god*"
+      }
+    } 
+  }
+}
+```
+
+We should see three movies (Godfather, Godfather II, and City of God) returned for this wildcard query.
+
+### 9.7.1 Expensive queries
+
+There are a few queries that can be expensive to run by the engine due to the nature of how we implement them.
+
+**The wildcard query is one of them. The others are the range, prefix, fuzzy, regex, and join queries as well as others. Furthermore, using one of these queries occasionally might not impact server performance, but overusing these expensive queries will perhaps destabilize the cluster, leading to bad user experiences.**
+
+If we want to put a stop to the execution of such expensive queries on the cluster, there’s a setting that we can turn off: setting the `allow_expensive_queries` attribute to `false`.
+
+```shell
+PUT _cluster/settings
+{
+  "transient": {
+    "search.allow_expensive_queries": "false"
+  }
+}
+```
+
+## 9.8 Prefix queries
+
+At times we might want to query for words using a prefix, like Leo for Leonardo or Mar for Marlon Brando, Mark Hamill, or Martin Balsam. We can use the prefix query for fetching records that match the beginning part of a word (a prefix).
+
+```shell
+GET movies/_search
+{
+"query": {
+    "prefix": { #A
+      "actors.original": {
+        "value": "Mar" #B
+      }
+    } 
+  }
+}
+```
+
+The above query fetches three movies with the actors Marlon, Mark, and Martin when we search for the prefix Mar.
+
+### 9.8.1 Speeding up prefix queries
+
+This is because the engine has to derive the results based on a prefix (any lettered word). The prefix queries, hence, are **slow to run**, but there’s a mechanism to speed them up: using the `index_prefixes` parameter on the field.
+
+```shell
+PUT boxoffice_hit_movies
+{
+  "mappings": {
+    "properties": {
+      "title":{
+        "type": "text",
+        "index_prefixes":{}
+      }
+    } 
+  }
+}
+```
+
+This indicates to the engine that, during the indexing process, it should create the field with prebuilt prefixes and store those values. Elasticsearch indexes the prefixes with a minimum character size of 2 and a maximum character size of 5 by default.
+
+Of course, we can change the default min and max sizes of the prefixes that Elasticsearch tries to create during indexing for us.
+
+```shell
+PUT boxoffice_hit_movies_custom_prefix_sizes
+{
+  "mappings": {
+    "properties": {
+      "title":{
+        "type": "text",
+        "index_prefixes":{
+          "min_chars":4,
+          "max_chars":10
+        }
+      } 
+    }
+  } 
+}
+```
+
+## 9.9 Fuzzy queries
+
+Spelling mistakes during a search are common. We may at times search for a word with an incorrect letter or letters; for example, searching for rama movies instead of drama movies.
+
+The search can correct this query and return "drama" movies instead of failing. The principle behind this type of query is called fuzziness, and Elasticsearch employs fuzzy queries to forgive spelling mistakes.
+
+Fuzziness is a process of searching for similar terms based on the Levenshtein distance algorithm.
+
+```shell
+GET movies/_search
+{
+  "query": {
+    "fuzzy": {
+      "genre": {
+        "value": "rama",
+        "fuzziness": 1
+      }
+    } 
+  },
+  "highlight": {
+    "fields": {
+      "genre": {} 
+    }
+  } 
+}
+```
+
+In this example, we use the edit distance of 1 (one character) to fetch similar words.
+
+This might be a clumsy way of handling things because sometimes you wouldn't know if the user has mistyped one letter or a few letters. This is the reason Elasticsearch provides a default setting for fuzziness: the AUTO setting. If the fuzziness attribute is not supplied, the default setting of AUTO is assumed. The AUTO setting deduces the edit distance based on the length of the word.
+
+| Word length in characters | Fuzziness |
+|---------------------------|-----------|
+| 0 to 2                    | 0         |
+| 3 to 5                    | 1         |
+| More than 5               | 2         |
+
+
+
+
+
