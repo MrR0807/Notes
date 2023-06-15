@@ -32,3 +32,11 @@ Books to read:
 * Go Programming Language, The (Addison-Wesley Professional Computing Series)
 * https://kube.academy/
 * kubectl: Command-Line Kubernetes in a Nutshell
+
+
+Ideas to build:
+* CDC full flow locally;
+  * Debezium snapshots;
+* Build my own simple SQL database;
+* Build my own simple cache database;
+* Build my own simple Queue.
