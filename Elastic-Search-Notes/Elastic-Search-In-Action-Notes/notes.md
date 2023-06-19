@@ -5440,7 +5440,7 @@ By default, the edit distance in a query_string query is 2, but we can reduce it
 
 ## 10.13 Simple string queries
 
-## 10.14 Simple_query_stringqueries
+## 10.14 Simple_query_string queries
 
 As the name suggests, the `simple_query_string` query is a variant of the `query_string` query with a simple and limited syntax. We can use operators such as `+`, `-`, `|`, `*`, `~` and so forth for constructing the query. For example, searching for "Java + Cay" produces a Java book written by Cay.
 
@@ -5456,3 +5456,1086 @@ GET books/_search
 ```
 
 Unlike the `query_string` query, the `simple_query_string` query doesn’t respond with errors if there’s any syntax error in the input criteria. It takes a quieter side of not returning anything should there be a syntactic error.
+
+# Chapter 11. Compound queries
+
+Compound queries are advanced constructs of searching capabilities to query complex search criteria in Elasticsearch. They are made of individual leaf queries wrapped up in conditional clauses and other constructs to provide enhanced search capabilities.
+
+## 11.1 Compound queries
+
+Most requirements demand developing complex queries with multiple clauses and conditions. A complex query, for example, consists of finding the best selling books, written by a particular author, and published between a specific period or a particular edition, or returning all books categorized by various geographical zones except a specific country, ordered by the highest grosser, and so on.
+
+Here’s where the compound queries come to life: they help develop complex search queries by combining one or more leaf queries, as well as integrating compound queries themselves.
+
+Elasticsearch provides five such queries for varied search requirements:
+* Boolean (bool) query - A combination of conditional clauses that wraps individual leaf (term and full text) queries. This works similar to the AND, OR, and the NOT operators. Example: products = TV AND color = silver NOT rating < 4.5 AND brand = Samsung OR LG
+* Constant score (constant_score) query - Wraps up a filter query to set constant scores on the results. It also helps to boost the score. Example: Search for all TVs with user ratings higher than 5 but set a constant score of 5 for each of the results, irrespective of the search engine’s calculated score.
+* Function score (function_score) query - A set of user-defined functions to assign custom scores to the resultant documents. Example: Search for products - and if the product is from LG and is a TV, then boost the score by three (by writing a script or weight function).
+* Boosting (boosting) query - Boosts the score for positive matches while negating the score for non matches. Example: Fetch all the TVs but lower the score on those that are pricey.
+* Disjunction max (dis_max) query - Wraps a number of queries to search multiple words in multiple fields (similar to a multi_match query). Example: Search for smart TV in two fields (say, overview and description) and return the best match.
+
+## 11.2 Sample products data
+
+In our playground, we’ll work with a dataset of electrical and electronic products such as televisions (TVs), laptops, mobile phones, refrigerators (Fridges), and so on.
+
+### 11.2.1 Products schema
+
+As part of developing the products index, the first step is to create a data schema defining the fields and their data types.
+
+```shell
+PUT products
+{
+  "mappings": {
+    "properties": {
+      "brand": {
+        "type": "text"
+      },
+      "colour": {
+        "type": "text"
+      },
+      "energy_rating": {
+        "type": "text"
+      },
+      ...
+      "user_ratings": {
+        "type": "double"
+      },
+      "price": {
+        "type": "double"
+      }
+    }
+  }
+}
+```
+
+### 11.2.2 Indexing products
+
+The data set is available in my GitHub, so make sure you copy the contents of products.txt.
+
+```shell
+PUT _bulk
+{"index":{"_index":"products","_id":"1"}}
+{"product": "TV", "brand": "Samsung", "model": "UE75TU7020", "size": "75", "resolution":"4k", "type": "smart tv", "price": 799, "colour": "silver", "energy_rating": "A+", "overview": "Settle in for an epic..", "user_ratings": 4.5, "images": ""}
+{"index":{"_index":"products","_id":"2"}}
+{"product": "TV", "brand": "Samsung", "model": "QE65Q700TA", "size": "65", "resolution":"8k", "type": "QLED", "price": 1799, "colour": "black", "energy_rating": "A+", "overview": "This outstanding 65-inch ..", "user_ratings": 5, "images": ""}
+{"index":{"_index":"products","_id":"3"}}
+...
+```
+
+## 11.3 The Boolean (bool) query
+
+The Boolean (bool) query is the most popular and flexible compound query we can use to create a set of complex criteria for searching data. As the name indicates, it is a combination of Boolean clauses, with each clause having a leaf query made of term-level or full-text queries. Each of these clauses has a typed occurrence of:
+* `must` - An AND query where all the documents must match the query criteria. Example: Fetching TVs (product is a TV) that fall within a specific price range.
+* `must_not` - A NOT query where none of the documents match the query criteria. Example: Fetching TVs (product is a TV) that fall within a specific price range BUT with an exception such as not black in color.
+* `should` - An OR query where one of the documents must match the query criteria. Example: Searching for Fridges that are frost-free OR are energy rated above C grade.
+* `filter` - A filter query where the documents must match the query criteria (similar to the must clause) except that the filter clause does not boost the matches. Example: Fetching TVs (product is a TV) that fall within a specific price range (but expect the score of the documents returned to be zero).
+
+**The must and should clauses contribute to the relevance scoring, whereas must_not and filter will not.**
+
+### 11.3.1 Bool query structure
+
+A bool query can accept at least one of the queries embedded in a clause. Each of these clauses can then host one or more leaf or compound queries as an array of the queries.
+
+```
+GET books/_search
+{
+"query": {
+    "bool": {
+        "must": [
+            { "match": {"FIELD": "TEXT"}},
+            { "term": {"FIELD": {"value": "VALUE"}}} ],
+        "must_not": [
+            {"bool": { "must": [{}]}}} ]
+        "should": [
+            { "range": { "FIELD": {"gte": 10,"lte": 20}}},
+            { "terms": { "FIELD": [ "VALUE1", "VALUE2" ]}}
+        ]}
+    }
+}
+```
+
+This snippet indicates that we have three clauses, where each clause houses additional leaf queries such as match, term, range, and so on. We also have a compound clause housed in the must_not clause, where we can further expand our criteria using the same set of clauses. As you can see, these individual queries joined together in a set of clauses leads to writing a search query that satisfies the advanced query requirements.
+
+### 11.3.2 The must clause
+
+Because we are getting introduced to a boolean query, let’s explore a simple query to begin with. Let’s say our requirement is to find all TVs in our products index. For that, we’ll write a bool query with a must clause.
+
+```shell
+GET products/_search
+{
+"query": {
+    "bool": {
+      "must": [
+        {
+          "match": {
+            "product": "TV"
+          }
+        } 
+      ]
+    }
+  }
+}
+```
+
+#### A MATCH QUERY IS A BOOL QUERY
+
+The match query we’ve worked with so far is indeed a type of Boolean query.
+
+```shell
+GET books/_search
+{
+  "query": {
+    "match": {
+      "author": "Joshua"
+    }
+  } 
+}
+```
+
+### 11.3.3 Enhancing the must clause
+
+Fetching TVs isn’t that exciting, is it? Let’s make it a bit more interesting. In addition to fetching TVs, let’s add a condition: fetch only TVs whose value is in a certain price range. This means we have two queries that need to be joined together to achieve what we want: TVs within a price range.
+
+```shell
+GET products/_search
+{
+  "query": {
+    "bool": {
+      "must": [
+        {
+          "match": {
+            "product": "TV"
+          }
+        },
+        {
+          "range": {
+            "price": {
+              "gte": 700,
+              "lte": 800 
+            }
+          } 
+        }
+      ] 
+    }
+  } 
+}
+```
+
+Of course, we can add further criteria to the query. For example, the query in the next listing searches for all TVs with 4k resolution, whose color is either silver or black.
+
+```shell
+GET products/_search
+{
+  "query": {
+    "bool": {
+      "must": [
+        {
+          "match": {
+            "product": "TV"
+          }
+        }, 
+        {
+          "term": {
+            "resolution": "4k"
+          }
+        }, 
+        {
+          "terms": {
+            "colour": ["silver", "black" ]
+          } 
+        }
+      ] 
+    }
+  }
+}
+```
+
+### 11.3.4 The must_not clause
+
+Similar to the must clause, the must_not clause accepts an array of leaf queries to build advanced search criteria. The query’s sole aim is to filter out matches that do not meet the criteria specified in the query. The best way to understand this is by an example. The query in the following listing searches for all TVs that are not of a specific brand; for example, the criteria might be fetch me any brand TV but not Samsung or Philips.
+
+```shell
+GET products/_search
+{
+  "query": {
+    "bool": {
+      "must_not": [{
+         "terms": {"brand.keyword": ["Samsung", "Philips" ]} 
+      }] 
+    }
+  } 
+}
+```
+
+We can create a term query wrapped in a must clause to fetch all TVs and to remove (filter out) the specific brands from the results using must_not.
+
+```shell
+GET products/_search
+{
+  "query": {
+    "bool": {
+      "must_not": [{
+        "terms": {
+           "brand.keyword": ["Philips", "Samsung" ]
+        } 
+      }],
+      "must": [{
+        "match": {
+          "product": "TV"
+        }
+     }]
+    } 
+  }
+}
+```
+
+### 11.3.5 Enhancing the must_not clause
+
+For example, in addition to fetching products that are not manufactured by Philips and Samsung, we can query only TVs that have 4-star ratings or above (the must not query uses a range query that filters TVs with user ratings below 4.0).
+
+```shell
+GET products/_search
+{
+"query": {
+   "bool": {
+     "must_not": [
+        {
+         "terms": {
+           "brand.keyword": ["Philips", "Samsung" ]
+          } 
+        },
+        {
+          "range": {
+            "user_ratings": { "lte": 4.0 }
+          } 
+        }
+     ],
+     "must": [
+      {
+        "match": {
+           "product": "TV"
+         }
+      }, 
+      {
+        "term": {
+           "resolution": {
+             "value": "4k"
+           }
+        } 
+      },
+      {
+        "range": {
+           "price": {
+             "gte": 500,
+             "lte": 700 }
+        } 
+      }
+      ] 
+    }
+  } 
+}
+```
+
+### 11.3.6 The should clause
+
+Simply put, the should clause is an OR clause that evaluates the search based on an OR condition (whereas the must clause is based on the AND operator).
+
+```shell
+GET products/_search
+{
+  "_source": ["product","brand", "overview","price"],
+  "query": {
+    "bool": {
+      "should": [
+        {
+          "range": {
+            "price": {
+              "gte": 500,
+              "lte": 1000 
+            }
+          } 
+        },
+        {
+          "match_phrase_prefix": {
+            "overview": "4K Ultra HD"
+          }
+        } ]
+    } 
+  }
+}
+```
+
+The should clause is made of two queries, searching for products that lie in the price range of £500 to £1,000 OR products with a phrase that says “4K Ultra HD” in the overview field.
+
+As you can see, the results have products that are not in the specified price range (for example, the third product in the returned result is $1,599 (way beyond what we’ve asked for); however, it is a match because the second criteria, 4K Ultra HD, matched.
+
+The advantage of using a `should` clause with a `must` clause is that the results that match the query in the `should` clause get a boosted score.
+
+#### BOOSTING THE SCORE WITH SHOULD
+
+The `should` clause adds weight to the relevance scoring when used in conjunction with the `must` clause. Let’s say we issue a `must` clause that matches an LG TV.
+
+```shell
+GET products/_search
+{
+  "_source": ["product","brand"],
+  "query": {
+    "bool": {
+      "must": [
+        {
+          "match": {
+            "product": "TV"
+          }
+        }, {
+          "match": {
+            "brand": "LG"
+          }
+        }
+      ] 
+    }
+  }
+}
+```
+
+Will return:
+
+```shell
+"hits" : [
+      {
+        "_index" : "products",
+        "_id" : "5",
+        "_score" : 4.4325914,
+        "_ignored" : [
+          "overview.keyword"
+        ],
+        "_source" : {
+          "product" : "TV",
+          "brand" : "LG"
+        }
+} ]
+```
+
+Now, let’s add a `should` clause to this query.
+
+```shell
+GET products/_search
+{
+  "_source": ["product","brand"],
+  "query": {
+    "bool": {
+      "must": [
+        {
+          "match": {
+            "product": "TV"
+          }
+        }, {
+          "match": {
+            "brand": "LG"
+          }
+        } ],
+      "should": [
+        {
+          "range": {
+            "price": {
+              "gte": 500,
+              "lte": 1000 
+            }
+          } 
+        },
+        {
+          "match_phrase_prefix": {
+            "overview": "4K Ultra HD"
+          }
+        }
+      ]
+    }
+  }
+}
+```
+
+The result of this query, using a must clause with a should clause, boosts the score of the matching documents. The earlier score of 4.4325914 is now a whopping 14.9038105.
+
+#### THE MINIMUM_SHOULD_MATCH SETTING
+
+When we run a set of queries in a `must` clause, along with some queries in a `should` clause, the following rules are applied implicitly:
+* All the results must match with the ones that were declared in the must clause (the query will not return positive search results if one of the must queries fails to match the criteria).
+* There is no need for any of the results to match with the queries declared in the should clause. If they match, well, the _score is boosted; otherwise, there’s no effect on the score.
+
+Sometimes, however, we may need at least one of the `should` criteria to be matched before sending the results to the client.
+
+We can declare the query to be successful if and only if at least one of the matches is positive; it returns positive results (with a boosted score) only if one of the many queries that were declared match.
+
+```shell
+GET products/_search
+{
+  "_source": ["product","brand","overview", "price","colour"],
+  "query": {
+    "bool": {
+      "must": [{
+        "match": {
+            "product": "TV"
+        }
+      }, {
+          "match": {
+            "brand": "LG"
+          }
+      }],
+      "should": [{
+        "range": {
+          "price": {
+            "gte": 500,
+            "lte": 2000 
+          }
+        } 
+      },
+      {
+        "match": {
+            "colour": "silver"
+          }
+      }, {
+        "match_phrase_prefix": {
+          "overview": "4K Ultra HD"
+        }
+      }],
+      "minimum_should_match": 1 # Matches at least one leaf query in the should clause
+    } 
+  }
+}
+```
+
+This means that the query tries to match the criteria defined in the leaf queries of the `should` clause but with a condition that at least one of the queries must be a positive match. We get a positive match if a product is silver OR a 4K Ultra HD OR the price range is between £500 to £2,000. However, if none of the criteria in the should clause match, the query fails as we are asking the query to satisfy the `minumum_should_match` parameter.
+
+So far, we looked at must, must_not, and should clauses. Although must_not runs in a filter context, must and should run in a query context. We discussed the query context versus filter context in chapter 8, but for completeness, let’s touch base with these concepts here.
+
+Queries run in a query context execute the appropriate relevancy algorithm so we can expect relevancy scores associated with the resultant documents. Whereas queries in a filter context do not output scores and are pretty performant because the execution of the scoring algorithm isn’t needed. That leads to a clause that doesn’t use relevance scoring but works in filter context—the filter clause.
+
+### 11.3.7 The filter clause
+
+The `filter` clause fetches all the documents that match the criteria, similar to the `must` clause. The only difference is that the `filter` clause runs in a filter context, and thus, the results are not scored. Remember, running a query in filter context speeds up the query performance because it caches the query results returned by the Elasticsearch.
+
+```shell
+GET products/_search
+{
+  "query": {
+    "bool": {
+      "filter": [
+      {
+        "term": {
+          "product.keyword": "TV"
+        },
+        {
+          "range": {
+            "price": {
+              "gte": 500,
+              "lte": 1000 
+            }
+          } 
+        }
+      }]
+    }
+  }
+}
+```
+
+The following code snippet shows the results for this query. Note the scoring of the results; it is zero.
+
+```shell
+"hits" : [{
+     ...
+     "_score" : 0.0,
+     "_source" : {
+       "product" : "TV",
+       "colour" : "silver",
+       "brand" : "Samsung"
+    } 
+  },
+  { ...
+     "_score" : 0.0,
+     "_source" : {
+       "product" : "TV",
+       "colour" : "black",
+       "brand" : "Samsung"
+    } 
+  }
+]
+```
+
+We usually combine a filter clause with a must clause. The results of the must clause are fed through the filter clause, which filters nonfitting data.
+
+```shell
+GET products/_search
+{
+  "_source": ["brand","product","colour","price"],
+  "query": {
+    "bool": {
+      "must": [{
+        "match": {
+            "brand": "LG"
+          }
+      }],
+      "filter": [{
+          "range": {
+            "price": {
+              "gte": 500,
+              "lte": 1000 
+            }
+          } 
+        }
+      ]
+    }
+  } 
+}
+```
+
+Here, we fetch all LG products (we have 1 TV and 3 Fridges manufactured by LG in our stash). Then we filter them by price, leaving only 2 Fridges that fall in our price range (both are $900).
+
+Note that both of the returned documents now carry a score, meaning that the query was executed in the query context. As we discussed, the filter query is similar to a must query except that it's not run in a query context (the filter query is run in a filter context). Therefore, adding filters does not affect the scoring of the documents.
+
+### 11.3.8 All clauses combined
+
+Let's combine all the must, must_not, should, and filter clauses together. The requirement is to find products manufactured by LG that are not silver, they should either be a Fridge Freezer or have an energy rating of A++, and the products should meet a specific price range.
+
+```shell
+GET products/_search
+
+{
+  "query": {
+    "bool": {
+      "must": [{
+        "match": {
+            "brand": "LG"
+          }
+        }],
+      "must_not": [{
+        "term": {
+            "colour": "silver"
+          }
+        }],
+      "should": [{
+        "match": {
+            "energy_rating": "A++"
+          }
+      }, {
+        "term": {
+            "type": "Fridge Freezer"
+        }
+      }],
+      "filter": [{
+          "range": {
+            "price": {
+              "gte": 500,
+              "lte": 1000 
+            }
+          } 
+        }
+      ] 
+    }
+  } 
+}
+```
+
+### 11.3.9 Named queries
+
+Sometimes, we might have dozens of queries built for a complex query; however, we really have no clue how many of those queries were actually used in a match to get the final results. We can name our individual queries so that Elasticsearch outputs the results along with the names of the queries that it uses during the query match.
+
+```shell
+GET products/_search
+{
+  "_source": ["product", "brand"],
+  "query": {
+    "bool": {
+      "must": [{
+        "match": {
+          "brand": {
+            "query": "LG",
+            "_name": "must_match_brand_query"
+          }
+        } 
+      }],
+      "must_not": [
+        {
+          "match": {
+            "colour.keyword": {
+              "query":"black",
+              "_name":"must_not_colour_query"
+            }
+          } 
+        }],
+      "should": [{
+        "term": {
+          "type.keyword": {
+            "value": "Frost Free Fridge Freezer",
+            "_name":"should_term_type_query"
+          }
+        } 
+      },
+      {
+        "match": {
+          "energy_rating": {
+            "query": "A++",
+            "_name":"should_match_energy_rating_query"
+          }
+        } 
+      }],
+      "filter": [{
+        "range": {
+          "price": {
+            "gte": 500,
+            "lte": 1000,
+            "_name":"filter_range_price_query"
+          } 
+        }
+      }]
+    }
+  }
+}
+```
+
+Once executed, the response contains a matched_queries object attached to the individual result. Enclosed in this matched_queries is the set of queries that were matched to fetch the document.
+
+```shell
+"hits" : [
+    {
+      ...
+        "_source" : {
+          "product" : "Fridge",
+          "brand" : "LG"
+        },
+        "matched_queries" : [
+          "filter_range_price_query",
+          "should_match_energy_rating_query",
+          "must_match_brand_query",
+          "should_term_type_query"
+        ] 
+    },
+    {
+      ...
+        "_source" : {
+          "product" : "Fridge",
+          "brand" : "LG"
+        },
+        "matched_queries" : [
+          "filter_range_price_query",
+          "should_match_energy_rating_query",
+          "must_match_brand_query",
+          "should_term_type_query"
+        ] 
+    }
+]
+```
+
+The real benefit of naming the queries is to remove redundant queries that are not associated with the outcome. This way, you can reduce the size of the query and concentrate on tweaking the queries that were part of fetching the results.
+
+## 11.4 Constant scores
+
+```shell
+GET products/_search
+{
+  "query": {
+    "bool": {
+      "filter": [
+      {
+        "range": {
+          "user_ratings": {
+            "gte": 4,
+            "lte": 5 }
+        } 
+      }
+      ] 
+    }
+  } 
+}
+```
+
+As you can expect, the query results in all products matching the criteria of user ratings. The only point of interest is that the query is executed in a filter context, and hence, no score (zero) is associated with all the results. However, there could be a need to set a nonzero score, especially when we want to boost a particular search criteria over another. This is where a new query type, called constant_score, comes into the picture.
+
+As the name suggests, constant_score wraps a filter query and produces the results with a predefined (boosted) score.
+
+```shell
+GET products/_search
+{
+  "query": {
+    "constant_score": { # Declares the constant_score query
+      "filter": { # Wraps up a filter query
+        "range": {
+          "user_ratings": {
+            "gte": 4,
+            "lte": 5 }
+          } 
+      },
+      "boost": 5.0 # Boosts the results using a predefined score
+    }
+  } 
+}
+```
+
+The constant_score query in this listing wraps a filter query. It also has another attribute, boost, which enhances the score with the value set in this attribute.
+
+If you are wondering about the practical use of this constant_score function, then look no further.
+
+```shell
+GET products/_search
+{
+"query": {
+    "bool": {
+      "must": [
+      { 
+        "match": {
+          "product": "TV"
+        }
+      }, {
+        "constant_score": {
+          "filter": {
+            "term": {
+              "colour": "black"
+            }
+          }
+        },
+        "boost": 3.5
+      }]
+    } 
+  }
+}
+```
+
+If you check the query, the must clause in this bool query houses two queries: a match and a constant_score. The constant_score query filters all the TVs based on a certain rating as expected but with a tweak: it boosts the score by 3.5 for all black TVs.
+
+### 11.5 The boosting query
+
+There are times where we want to have biased answers. For example, we may want the result set to have LG TVs on the top and at the same time another brand, say Sony, to go at the bottom of the list. This sort of biased manipulation of the scoring so the list consists of favored items at the top is done by a boosting query. A boosting query works with two sets of query parts: a positive part, where any number of queries produce a positive match and a negative part, which matches to queries to negate the score by a negative boost.
+
+Let’s consider an example where we want to search for LG TVs, but if the price of them is greater than $1,500, we drop them to the bottom of the list with a score calculated by the value specified by the negative boost of the negative query.
+
+```shell
+GET products/_search
+{
+  "size": 50,
+  "_source": ["product", "price","colour"],
+  "query": {
+    "boosting": {
+      "positive": {
+        "term": {
+          "product":"tv"
+        }
+      },
+      "negative": {
+        "range": {
+          "price": {
+            "gte": 2500 
+          }
+        } 
+      },
+      "negative_boost": 0.5
+    }
+  } 
+}
+```
+
+### 11.5.1 Boosting query combined with bool queries
+
+```shell
+GET products/_search
+{
+  "size": 40,
+  "_source": ["product", "price","colour","brand"],
+  "query": {
+    "boosting": {
+      "positive": {
+        "bool": {
+          "must": [{
+            "match": {
+              "product": "TV"
+            }
+          }]
+        } 
+      },
+      "negative": {
+        "bool": {
+          "must": [{
+            "match": {
+              "brand": "Sony"
+            }
+          }]
+        } 
+      },
+      "negative_boost": 0.5
+    }
+  } 
+}
+```
+
+This boosting query consists of both positive and negative parts as expected, and the negative part has a negative_boost value set to 0.5. What it does is this: once the TVs are searched (as shown in the positive block) and then negated by 0.5 if any of the TV brands are Sony.
+
+## 11.6 Disjunction max (dis_max) query
+
+If we want to search for a smart TV across two fields, type and overview, we can use multi_match. For completeness, here’s the resulting multi_match query.
+
+```shell
+GET products/_search
+{
+  "query": {
+    "multi_match": {
+      "query": "smart tv",
+      "fields": ["type","overview"]
+    }
+  } 
+}
+```
+
+The reason we bring up the multi_match query under the heading of a disjunction max (dis_max) query is that the multi_match query uses the disjunction max query behind the scenes.
+
+```shell
+GET products/_search
+{
+  "_source": ["type","overview"],
+  "query": {
+    "dis_max": {
+      "queries": [
+      {
+        "match": {
+          "type": "smart tv"
+        }
+      }, {
+        "match": {
+          "overview": "smart tv"
+        }
+      }] 
+    }
+  }
+}
+```
+
+When searching for multiple words across multiple fields, Elasticsearch uses the best_fields strategy: a strategy that favors the document that has all the words present in the given fields. For example, let’s say we are searching for “smart TV” across two fields, overview and type. We can expect that the document that consists of having this phrase in both fields is highly relevant, rather than the document with “smart” in the overview field and “TV” in the type field. This strategy is called the best_fields strategy.
+
+Having said that, when executing the dis_max query on multiple queries, we can consider the scores from other matching queries too. In this case, we use a tie breaker to add the scores from other field matches, not just best fields.
+
+```shell
+GET products/_search
+{
+  "_source": ["type","overview"],
+  "query": {
+    "dis_max": {
+      "queries": [{
+        "match": {
+          "type": "smart tv"
+        }
+      }, {
+        "match": {
+          "overview": "smart TV"
+        }
+      }, {
+        "match": {
+          "product": "smart TV"
+        }
+      }],"tie_breaker": 0.5
+    }
+  } 
+}
+```
+
+## 11.7 The function score queries
+
+At times, we may want to assign a score to a returned document from a search query that’s based on some in-house requirements such as giving weightage on a particular field or randomly splashing a sponsor’s advertisement based on the random relevance score. The function score (function_score) queries help create a score based on user-defined functions, including random, script-based, or some decay functions (such as gauss, linear, etc.).
+
+Simple query that provides a simple and straightforward term query that returns documents, where the first document has a score of 1.6376086.
+
+```shell
+GET products/_search
+{
+  "query": {
+    "term": {
+      "product": {
+        "value": "TV"
+      }
+    } 
+  }
+}
+```
+
+```shell
+GET products/_search
+{
+  "query": {
+    "function_score": {
+      "query": {
+        "term": {
+          "product": "TV"
+        }
+      } 
+    }
+  } 
+}
+```
+
+The function score query expects a few attributes: a query, a set of functions, how the score is expected to be applied to the documents, and so on.
+
+### 11.7.1 Random_score function
+
+```shell
+GET products/_search
+{
+  "query": {
+    "function_score": {
+      "query": {
+        "term": {
+          "product": "TV"
+        }
+      },
+       "random_score": {}
+    }
+  } 
+}
+```
+
+Every time you execute this query, you get a different score for the same returned document.
+
+```shell
+GET products/_search
+{
+  "query": {
+    "function_score": {
+      "query": {
+        "term": {
+          "product": "TV"
+        }
+       },
+       "random_score": {
+         "seed": 10,
+         "field":"user_ratings"
+       }
+    } 
+  }
+}
+```
+
+As you can see, random_score is initialized with a seed and a user_ratings field value. If you execute this query more than once, you are guaranteed to get the exact (albeit random) score back.
+
+### 11.7.2 Script_score function
+
+```shell
+GET products/_search
+{
+  "query": {
+    "function_score": {
+      "query": {
+        "term": {
+          "product": "TV"
+        }
+      },
+      "script_score": {
+        "script": {
+          "source":"_score * doc['user_ratings'].value * params['factor']",
+          "params": {
+            "factor":3 
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+The script_score function is expected to produce a score, and it calculates the score based on a simple script calculation: find the user_ratings to multiply it by the original score and factor (the factor is passed via external params).
+
+### 11.7.3 Field_value_factor function
+
+The field_value_factor function helps achieve the scoring by using fields without the complexity of scripting involved.
+
+```shell
+GET products/_search
+{
+  "query": {
+    "function_score": {
+      "query": {
+        "term": {
+          "product": "TV"
+        }
+      },
+      "field_value_factor": {
+        "field": "user_ratings"
+      }
+    } 
+  }
+}
+```
+
+As the script shows, the field_value_factor function works on a field (user_ratings in the listing) to produce a new relevancy score.
+
+```shell
+GET products/_search
+{
+  "query": {
+    "function_score": {
+      "query": {
+        "term": {
+          "product": "TV"
+        }
+      },
+      "field_value_factor": {
+        "field": "user_ratings",
+        "factor": 2,
+        "modifier": "square"
+      } 
+    }
+  } 
+}
+```
+
+This script fetches the value of user_ratings from the document. It then multiplies the value by a factor 2 and then squares it.
+
+### 11.7.4 Combining function scores
+
+Although we looked at individual functions in the last few sections, we can also combine these functions together to produce an even better score.
+
+```shell
+GET products/_search
+{
+  "query": {
+    "function_score": {
+      "query": {
+        "term": {
+          "product": "TV"
+        }
+      },
+      "functions": [
+      {
+        "filter": {
+          "term": {
+              "brand": "LG"
+          }
+        },
+        "weight": 3
+      },
+      {
+        "filter": {
+            "range": {
+              "user_ratings": {
+                "gte": 4.5,
+                "lte": 5 
+              }
+            } 
+        },
+        "field_value_factor": {
+          "field": "user_ratings",
+          "factor": 5,
+          "modifier": "square"
+        } 
+      }],
+      "score_mode": "avg",
+      "boost_mode": "sum"
+    } 
+  }
+}
+```
+
+The functions object in this query expects a few functions (such as weight and field_vlaue_factor), which combine to produce a unified score. The weight, which is the weighting function, expects a positive integer, which is used in further calculations. The original score of fetching a TV using a term query is complemented by the following:
+* If the brand is LG, increase the score by a weight of 3.
+* If the user ratings are in a range of 4.5 to 5, use the user_rating field’s value and square it by a factor of 5.
+
+As more functions match, the score’s final value can increase, thus the document may appear on the top of the list. Did you notice the two fields, score_mode and boost_mode, at the end of the script? These two attributes of the function_score query allow us to achieve a combined score from the original query and the score emitted by a single or many functions.
+
+By default, the scores produced by these functions are all multiplied to get to a single score, the final score. However, we can change that behavior by setting the score_mode attribute in the function_score query to say, for example, avg or max or a few others.
+
+The score_mode attribute defines how the individual scores are computed. For example, if the score_mode of a query is set to sum, the scores emitted by the individual functions are all be summed up. The score_mode attribute can be any of the modes such as multiply (default), sum, avg, max, min, and first.
+
+The score from these functions will then be added (or multiplied by or averaged, etc.) to the original score of the query (the term query that finds the TVs) from the document based on the boost_mode parameter. The boost_mode parameter can be one of multiply (default), min, max, replace, avg, and sum.
