@@ -54,3 +54,5 @@ GET megacorp/_doc/1
 To add data to Elasticsearch, we need an index—a place to store related data. In real‐ ity, an index is just a logical namespace that points to one or more physical shards.
 
 A shard is a low-level worker unit that holds just a slice of all the data in the index. A shard is a single instance of Lucene, and is a complete search engine in its own right. Our documents are stored and indexed in shards, but our applications don’t talk to them directly. Instead, they talk to an index.
+
+The number of primary shards in an index is fixed at the time that an index is cre‐ ated, but the number of replica shards can be changed at any time.
