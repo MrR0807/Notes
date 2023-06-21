@@ -788,19 +788,19 @@ Bundling all sorts of data into a single cluster is not unusual, but it might no
 
 #### NODE ROLES
 
-Master node - Its primary responsibility is cluster management.
-Data node - Responsible for document persistence and retrieval. 
-Ingest node - Responsible for the transformation of data via pipeline ingestion before indexing.
-Machine learning node - Handles machine learning jobs and requests.
-Transform node - Handles transformations requests.
-Coordination node - This role is the default role. It takes care of incoming client’s requests.
+* Master node - Its primary responsibility is cluster management.
+* Data node - Responsible for document persistence and retrieval. 
+* Ingest node - Responsible for the transformation of data via pipeline ingestion before indexing.
+* Machine learning node - Handles machine learning jobs and requests.
+* Transform node - Handles transformations requests.
+* Coordination node - This role is the default role. It takes care of incoming client’s requests.
 
-**Master Node**: A master node is involved in high-level operations such as creating and deleting indexes, node operations, and other admin-related jobs for cluster management. These admin operations are light-weight processes; hence, one master is enough for an entire cluster. If this master node crashes, the cluster will elect one of the other nodes as the master so the baton continues.
-**Data Node**: A data node is where the actual indexing, searching, deleting, and other document-related operations happen. These nodes host the indexed 
+* **Master Node**: A master node is involved in high-level operations such as creating and deleting indexes, node operations, and other admin-related jobs for cluster management. These admin operations are light-weight processes; hence, one master is enough for an entire cluster. If this master node crashes, the cluster will elect one of the other nodes as the master so the baton continues.
+* **Data Node**: A data node is where the actual indexing, searching, deleting, and other document-related operations happen. These nodes host the indexed 
 documents. Once an index request is received, they jump into action to save the document to its index by calling a writer on the Lucene segment. As you can imagine, they talk to the disk frequently during CRUD operations and, hence, they are disk I/O and memory-intensive operations.  There are specific variants of a data node role that will come to use when we deploy multi-tiered deployments. They are **data_hot**, **data_warm**, **data_cold** and **data_frozen** roles.
-**Ingest node**: An ingest node handles the ingest operations such as transformations and enrichment before the indexing kicks in.
-**Transform node**: The transform node role is the latest addition to the list. It’s used for the aggregated summary of data.
-**Coordinating node**: While these roles are assigned to a node by the user on purpose (or by default), there’s one special role that all the nodes take on irrespective of the user’s intervention: a coordinating node. After accepting the requests, the coordinator asks the other nodes in the cluster for the processing of the request. It awaits the response before collecting and collating the results and sending them back to the client. It essentially acts as a work manager, distributing the in-coming requests to appropriate nodes and responding back to the client. It's just a smart load balancer.
+* **Ingest node**: An ingest node handles the ingest operations such as transformations and enrichment before the indexing kicks in.
+* **Transform node**: The transform node role is the latest addition to the list. It’s used for the aggregated summary of data.
+* **Coordinating node**: While these roles are assigned to a node by the user on purpose (or by default), there’s one special role that all the nodes take on irrespective of the user’s intervention: a coordinating node. After accepting the requests, the coordinator asks the other nodes in the cluster for the processing of the request. It awaits the response before collecting and collating the results and sending them back to the client. It essentially acts as a work manager, distributing the in-coming requests to appropriate nodes and responding back to the client. It's just a smart load balancer.
 
 #### CONFIGURING ROLES
 
