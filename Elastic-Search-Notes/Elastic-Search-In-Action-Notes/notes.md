@@ -795,6 +795,7 @@ Bundling all sorts of data into a single cluster is not unusual, but it might no
 * Transform node - Handles transformations requests.
 * Coordination node - This role is the default role. It takes care of incoming client’s requests.
 
+
 * **Master Node**: A master node is involved in high-level operations such as creating and deleting indexes, node operations, and other admin-related jobs for cluster management. These admin operations are light-weight processes; hence, one master is enough for an entire cluster. If this master node crashes, the cluster will elect one of the other nodes as the master so the baton continues.
 * **Data Node**: A data node is where the actual indexing, searching, deleting, and other document-related operations happen. These nodes host the indexed 
 documents. Once an index request is received, they jump into action to save the document to its index by calling a writer on the Lucene segment. As you can imagine, they talk to the disk frequently during CRUD operations and, hence, they are disk I/O and memory-intensive operations.  There are specific variants of a data node role that will come to use when we deploy multi-tiered deployments. They are **data_hot**, **data_warm**, **data_cold** and **data_frozen** roles.
@@ -824,7 +825,7 @@ If you look at the back of any book, usually you’ll find an index which maps k
 Say we have two documents with one text field greeting:
 
 ```json
- //Document 1
+//Document 1
 {
   "greeting":"Hello, World"
 }
