@@ -56,3 +56,5 @@ To add data to Elasticsearch, we need an index — a place to store related data
 A shard is a low-level worker unit that holds just a slice of all the data in the index. A shard is a single instance of Lucene, and is a complete search engine in its own right. Our documents are stored and indexed in shards, but our applications don’t talk to them directly. Instead, they talk to an index.
 
 The number of primary shards in an index is fixed at the time that an index is cre‐ ated, but the number of replica shards can be changed at any time.
+
+To scale reads, we can increase node replica count. However, writes cannot be scaled beyond initial primary shard count.
