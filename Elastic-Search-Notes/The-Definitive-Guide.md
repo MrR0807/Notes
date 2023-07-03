@@ -58,3 +58,7 @@ A shard is a low-level worker unit that holds just a slice of all the data in th
 The number of primary shards in an index is fixed at the time that an index is cre‐ ated, but the number of replica shards can be changed at any time.
 
 To scale reads, we can increase node replica count. However, writes cannot be scaled beyond initial primary shard count.
+
+---
+
+Even though the document doesn’t exist (found is false), the _version number has still been incremented. This is part of the internal bookkeeping, which ensures that changes are applied in the correct order across multiple nodes.
