@@ -62,3 +62,7 @@ To scale reads, we can increase node replica count. However, writes cannot be sc
 ---
 
 Even though the document doesn’t exist (found is false), the _version number has still been incremented. This is part of the internal bookkeeping, which ensures that changes are applied in the correct order across multiple nodes.
+
+---
+
+When updating a document with the index API, we read the original document, make our changes, and then reindex the whole document in one go. The most recent indexing request wins: whichever document was indexed last is the one stored in Elasticsearch. If somebody else had changed the document in the meantime, their changes would be lost.
