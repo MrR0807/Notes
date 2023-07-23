@@ -1221,7 +1221,7 @@ Use a ``keyword`` family field type if:
 * The content is machine-generated, such as a log message or HTTP request information.
 * You plan to search the field for exact full values, such as org.foo.bar, or partial character sequences, such as org.foo.*, using term-level queries.
 
-### 4.5.3 Thedatedatatype
+### 4.5.3 The date datatype
 
 Elasticsearch provides a date data type for supporting indexing and searching date-based operations. The date fields are considered to be structured data; hence, you can use them in sorting, filtering, and aggregations.
 
