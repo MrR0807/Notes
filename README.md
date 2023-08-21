@@ -41,3 +41,4 @@ Ideas to build:
 * Build my own simple SQL database;
 * Build my own simple cache database;
 * Build my own simple Queue.
+* Build my own ZIP parser. [Helper link](https://blog.yaakov.online/zip64-go-big-or-go-home/)
