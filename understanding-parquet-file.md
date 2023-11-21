@@ -3045,7 +3045,82 @@ However, somebody has a problem which might be a problem to me:
 
 > I have completely agreed with you that .crc file is good for data integrity and it is not adding any overhead on NN. Still, there are few cases where we need to avoid .crc file, for e.g. in my case I have mounted S3 on S3FS and saving data from rdd to mounting point. It is creating lots of .crc file on S3 which we don't require, to overcome this we need to write an extra utility to filter out all the .crc file which degrade our performance. The interesting observation is that there is a .crc file for `_SUCCESS` file too. and that .crc files is 8 bytes of size while the `_SUCCESS` file is 0 byte. If we are having 1000 million part files than we are using extra `1000M*12` bytes.
 
+## Read Parquet Input Stream
 
+```java
+   @Test
+    void name() throws IOException {
+
+        // setup
+        produceEvents(topicName, 0, buildEventsAsString(1));
+        // execute
+        kafkaConsumerLifecycleHandlerManager.initializeConsumers();
+
+        // verify
+        await().atLeast(Duration.ofSeconds(1)).pollInterval(Duration.ofSeconds(1)).atMost(Duration.ofSeconds(30))
+            .untilAsserted(() -> assertTopicPartitionOffset(1, 0));
+
+        ArgumentCaptor<InputStream> parquetFile = ArgumentCaptor.forClass(InputStream.class);
+
+        // 2 flushes
+        verify(amazonS3Sink, atLeast(1)).upload(any(), any(), parquetFile.capture());
+
+        final var inputStream = parquetFile.getValue();
+        final var streamid = new ParquetStream("streamid", inputStream.readAllBytes());
+
+//        final var read = ParquetReader.read(streamid).build();
+//        final var open = ParquetFileReader.open(streamid);
+        read(streamid);
+
+
+//        final var read1 = read.read();
+//        System.out.println(read.getCurrentRowIndex());
+//        System.out.println(read1);
+    }
+
+    private static final int MAX_RECORDS_TO_READ=3;
+
+    private static void read(ParquetStream parquetStream) {
+
+        try (ParquetFileReader parquetFileReader=ParquetFileReader.open(parquetStream)) {
+            // Display the schema. Much simpler than uk.co.hadoopathome.intellij.viewer.fileformat.ParquetFileReader.getSchema()
+            MessageType messageType=parquetFileReader.getFooter().getFileMetaData().getSchema();
+            System.out.println(messageType);
+            // Example of iterating through the schema fields:
+//            System.out.println("Iterating through schema fields:");
+//            List<Type> types=messageType.getFields();
+//            for (Type type : types) {
+//                PrimitiveType primitiveType=type.asPrimitiveType(); // Assume a flat structure, all PrimitiveType, no GroupType
+//                System.out.println(primitiveType.getPrimitiveTypeName()+" "+primitiveType.getName());
+//            }
+            // Read data:
+            System.out.println("\nReading some data:");
+            readRecords(parquetFileReader,messageType,MAX_RECORDS_TO_READ);
+        } catch (Throwable t) {
+            t.printStackTrace();
+        }
+    }
+
+    private static void readRecords(ParquetFileReader parquetFileReader, MessageType messageType, int maxRecordsToRead) throws IOException {
+        int readCount=0;
+        PageReadStore pageReadStore;
+        while ((pageReadStore=parquetFileReader.readNextRowGroup())!=null) {
+            long recordCount=pageReadStore.getRowCount();
+            MessageColumnIO messageColumnIO= new ColumnIOFactory().getColumnIO(messageType);
+            RecordReader<Group> recordReader=messageColumnIO.getRecordReader(pageReadStore,new GroupRecordConverter(messageType));
+            for (int i=0; i<recordCount; i++) {
+                if (readCount==maxRecordsToRead) {
+                    System.out.printf("Retrieved the first %d records%n",readCount);
+                    return;
+                }
+                Group group=recordReader.read();
+                System.out.println(group);
+                readCount++;
+            }
+        }
+        System.out.printf("Retrieved all %d records%n",readCount);
+    }
+```
 
 
 
