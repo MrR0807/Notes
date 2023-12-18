@@ -3122,7 +3122,240 @@ However, somebody has a problem which might be a problem to me:
     }
 ```
 
+# Questions to answer
 
+* What type of debezium `decimal.handling.mode` to use?
+* What Parquet type to use in Parquet schema?
+* What Decimal precision to use in Parquet schema?
+
+# What type of debezium `decimal.handling.mode` to use?
+
+## Decimal Serialization options
+
+`decimal.handling.mode` - Debezium connectors handle decimals according to the setting.
+* `precise` -  represents them precisely using java.math.BigDecimal values in a **binary form**.
+* `double` - represents them using **double values**, which may result in a loss of precision but is easier to use.
+* `string` - encodes values as formatted strings, which is easy to consume but semantic information about the real type is lost.
+
+Right out the gateway, `double` type is removed due to `loss of precision`.
+
+### Precise type
+
+The precise option in debezium setting means that DECIMAL and NUMERIC columns in MySQL are represented "... precisely using java.math.BigDecimal values represented in change events in a binary form".
+
+For example inserting number `123456` into database, it becomes `CjZIUSj/3OQAAAA=` in Debezium Kafka record. In order to deserialize in Java application, [debezium advices to use this approach](https://debezium.io/documentation/faq/#how_to_retrieve_decimal_field_from_binary_representation):
+
+```java
+byte[] encoded = ...;
+int scale = ...;
+final BigDecimal decoded = new BigDecimal(new BigInteger(encoded), scale);
+
+String encoded = ...;
+int scale = ...;
+final BigDecimal decoded = new BigDecimal(new BigInteger(Base64.getDecoder().decode(encoded)), scale);
+```
+
+> The code for unwrapping then can look like one of the following snippets depending on whether the encoded value is available as a byte array or as a string.
+
+The caveat to this solution is that "we need to know the scale of value either in advance or it has to be obtained from the schema". We cannot trust that source decimal scale will not change, then it leaves us with schema approach. Which means we have to parse schema everytime we parse Decimal information.
+This has two problem:
+* Increases Kafka record's size, because each message has to contain schema.
+* Increases code complexity/additional processing steps.
+
+### String type
+
+In this case, the decimal type will be just converted to string. So, `123456` becomes `123456.00000000000000000000` (multiple zeros are added according to scale variable in database). Deserializing to a BigDecimal in Java is also straightforward. Just define the incoming contract as BigDecimal and Jackson will convert automatically to a value: `123456.00000000000000000000`. It is equivalent to Kafka message value within Kafka.
+
+### Precise vs String type Kafka record sizes
+
+I've had two different numbers to compare Kafka record's size:
+* `123456789123456789123456789123456789123.12345678912345678912`
+* `123456`
+
+Obviously, then first number is almost the highest possible. In real life, such numbers won't exist. The second number is much smaller, and most probably more common.
+
+When decimal type is `precise` then, correspondingly to above list, Kafka record's size:
+* 1962 bytes
+* 1949 bytes
+
+When decimal type is `string` then, correspondingly to above list, Kafka record's size:
+* 1992 bytes
+* 1960 bytes
+
+The difference between `precise` and `string` in first case scenario is 30 bytes, while in second - 11 bytes. Now it might not look like much, but say we have systems which generates 1000 events per second. This translates to 1000 x 11 x 60 x 60 x 24 = 950400000 bytes or ~1GB additional data per day. Multiply this by retention policy in Kafka and across several environment, and you're looking into additional price tag.
+
+However, this scenario is possible only if we know precision and scale beforehand, otherwise, as stated in "Precise type" section, we need to include schema. Adding schema balloons Kafka record's size to 10033 bytes. This is almost 5x the original size.
+
+## Outcome
+
+**Having said all of this, I propose to use `string` as precision type**.
+
+# What Parquet type to use in Parquet schema?
+
+We can define Decimal value in parquet in several ways:
+* `required binary amount (DECIMAL(60,20));`
+* `required binary amount (UTF8);`
+* `required int32/int64 amount (DECIMAL(18,2))`
+
+Out of the gate `int32/int64` variation drops out, because `int32` has <=9 precision, while `int64` - <=18 precision. These aren't big numbers, at least according to what we've defined in database. Binary and string values have no limitations.
+
+## Why does it matter?
+
+If we're looking at utilising Parquet files, we should envision a path where we'll use CSP provided solutions to query the data. The most straightforward path is mounting serverless querying service on top of object storage (e.g. S3). In AWS that would be - Athena; GCP - BigQuery; Azure - Synapse.
+
+Both AWS and GCP pricing models are similar:
+* Object Storage price;
+* 1 TB scanned by querying service (or pay for dedicated compute);
+* Egress data transfer out of Object Storage.
+
+To have the lowest possible price - mentioned 3 metrics have to kept in mind when thinking about what type to use to store numbers in Parquet.
+
+## Size of Parquet file with different Decimal variations
+
+Parquet schemas defined to have only one value for ease of comparison:
+
+```
+message Out {
+    required int32 amount (DECIMAL(8,3));
+}
+
+message Out {
+    required int64 amount (DECIMAL(8,3));
+}
+
+message Out {
+    required binary amount (DECIMAL(8,3));
+}
+
+message Out {
+    required binary amount (UTF8);
+}
+```
+
+I've created a loop to write 1000_000 values to each schema type. Below are the sizes of Parquet files:
+* File with int32 type was about 4MB;
+* File with int64 type was about 8MB;
+* File with binary decimal type was about 7MB;
+* File with binary string type was about 10MB;
+
+To my surprise, binary is quite compact. From Decimal point of view, this addresses storage part - the best solution is binary.
+
+## Pricing model of scanning
+
+Partitioning by date will shrink the amount of files which are scanned. The second question for me was whether casting between types have any impact. **It seems that it doesn't**. This question came up when I was exploring binary vs string decimal types. For example, if I had such Parquet schema:
+
+```
+message Out {
+    required int32 amount (DECIMAL(8,3));
+    required binary amount2 (UTF8);
+}
+```
+
+And wanted to calculate a sum of `amount` and `amount2` fields, I would create a Parquet table:
+
+```
+CREATE EXTERNAL TABLE IF NOT EXISTS test_parquet_stuff (
+  amount decimal(8,3),
+  amount2 string
+  )
+STORED AS PARQUET
+LOCATION 's3://bucket/test-athena/'
+tblproperties ("parquet.compress"="SNAPPY");
+```
+
+To calculate sum of `amount`:
+
+```
+SELECT sum(amount) FROM "test_parquet_stuff";
+```
+
+To calculate sum of `amount2`:
+
+```
+SELECT sum(CAST(amount2 AS decimal)) FROM "test_parquet_stuff";
+```
+
+Both these queries should cost the same in terms of "scanned" as type casting and any processing doesn't impact the cost. However, the amount of data which would be pulled from Object Storage (decimal vs string), would be much bigger in string's case, as we've already seen in "Size of Parquet file with different Decimal variations".
+
+There is another interesting example in [Athena Pricing](https://aws.amazon.com/athena/pricing/). The example mentions that if we'd gzip Parquet files we could further decrease the files scanned, hence the price of each scan.
+
+## Conclusion
+
+*In Parquet Schema we should use `binary Decimal` type, because it is the most compact and meets our requirements due to precision and scale*.
+
+NOTE! It was interesting to find out that if the data is stored in binary format we can query it without casting or doing any extra steps. Create an Athena table:
+
+```
+CREATE EXTERNAL TABLE IF NOT EXISTS test_parquet_stuff (
+  amount decimal(8,3)
+  )
+STORED AS PARQUET
+LOCATION 's3://bucket/test-athena/'
+tblproperties ("parquet.compress"="SNAPPY");
+```
+
+Query:
+
+```
+SELECT * FROM "test_parquet_stuff" limit 10;
+```
+
+# What size of Decimal to use in Parquet schema?
+
+Building on previous chapter - the decimal types will be extracted by debezium using in string type, and will be written into Parquet using binary Decimal, which has no precision limit. However, Cloud services have:
+* AWS Athena - ["The maximum value for precision is 38, and the maximum value for scale is 38"](https://docs.aws.amazon.com/athena/latest/ug/data-types.html).
+* AWS Redshift - ["The maximum precision is 38 <...> The maximum scale is 37"](https://docs.aws.amazon.com/redshift/latest/dg/r_Numeric_types201.html).
+* GCP BigQuery - Contains two types - Numeric and BigNumeric. [Numeric has precision 38 and scale 8. While BigNumeric has 76 precision and 38 scale](https://cloud.google.com/bigquery/docs/reference/standard-sql/data-types#decimal_types).
+* Azure Synapse - ["<...> he maximum precision of 38. The default precision is 18 <...> The default scale is 0 and so 0 <= scale <= precision"](https://learn.microsoft.com/en-us/sql/t-sql/statements/create-table-azure-sql-data-warehouse?toc=%2Fazure%2Fsynapse-analytics%2Fsql-data-warehouse%2Ftoc.json&bc=%2Fazure%2Fsynapse-analytics%2Fsql-data-warehouse%2Fbreadcrumb%2Ftoc.json&view=azure-sqldw-latest&preserve-view=true#DataTypes).
+
+## Another Gotcha
+
+If we create a Parquet schema where precision is 60 and scale 20 like so:
+
+```
+final var parquetSchemaString = """
+        message Out {
+            required binary amount (DECIMAL(60,20));
+            optional binary amount2 (UTF8);
+            optional int64 creationDate (TIMESTAMP(MILLIS, true));
+        }""";
+```
+
+Then create a table by "tricking" Athena that scale is smaller (otherwise Athena will not allow to create a table):
+
+```
+CREATE EXTERNAL TABLE IF NOT EXISTS test_parquet_stuff (
+  amount decimal(38,20),
+  amount2 string,
+  creationDate timestamp
+  )
+STORED AS PARQUET
+LOCATION 's3://bucket/test-athena/'
+tblproperties ("parquet.compress"="SNAPPY");
+```
+
+When trying to read it, we'll get an error:
+
+```
+INVALID_FUNCTION_ARGUMENT: DECIMAL precision must be in range [1, 38]: 60
+```
+
+Changing Parquet schema to:
+
+```
+final var parquetSchemaString = """
+        message Out {
+            required binary amount (DECIMAL(38,10));
+            optional binary amount2 (UTF8);
+            optional int64 creationDate (TIMESTAMP(MILLIS, true));
+        }""";
+```
+
+And doing exactly the same steps results in success.
+
+## Outcome
+
+* SQL Tables cannot have bigger than 38 precision. Otherwise, user journey using downstream tools like Redshift and Athena become cumbersome.
 
 # TODO
 
