@@ -54,6 +54,8 @@ Access Keys are similar to user and password, but there are crucial differences:
 
 By rotating access key it means to delete the current one and replace with new one. You cannot modify access key secret, only to delete and recreate. That is why you can have up to two access keys.
 
+**Only IAM Users have access keys.** IAM Roles don't use access keys.
+
 
 
 
