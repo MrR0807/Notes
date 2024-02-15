@@ -44,6 +44,8 @@ Users -> Create User -> Set Permissions (attach policies directly AdministratorA
 
 To test login now, copy "Sign-in URL for IAM users in this account" (which was generated using Account Alias)
 
+# IAM Access Keys
+
 
 
 
