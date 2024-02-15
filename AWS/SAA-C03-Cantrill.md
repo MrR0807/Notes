@@ -46,9 +46,13 @@ To test login now, copy "Sign-in URL for IAM users in this account" (which was g
 
 # IAM Access Keys
 
+IAM Acess Keys are long term credentials used by IAM Users. When you're using UI you will generally user and password, while when you use CLI - Access Keys.
 
+Access Keys are similar to user and password, but there are crucial differences:
+* An IAM User has 1 username and 1 password. It cannot have more. Username is public part and password is private part.
+* An IAM User can have two access keys (it can have zero, one or two maximum). Access keys can be created, deleted made inactive or active. Just like username and password, access keys are formed from two parts: Access Key ID; Secret Access Key. When you create Access Keys, AWS provides both.
 
-
+By rotating access key it means to delete the current one and replace with new one. You cannot modify access key secret, only to delete and recreate. That is why you can have up to two access keys.
 
 
 
