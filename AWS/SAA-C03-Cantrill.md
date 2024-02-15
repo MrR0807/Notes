@@ -56,9 +56,25 @@ By rotating access key it means to delete the current one and replace with new o
 
 **Only IAM Users have access keys.** IAM Roles don't use access keys.
 
+Click on top right IAM user -> Security Credentials -> Access keys.
 
+## Configure AWS CLI tool
 
+```
+aws configure
+```
 
+Will configure default profile. To configure named profile (multiple profiles are supported):
+
+```
+aws configure --profile iamadmin-general
+```
+
+To use named profile listing S3 buckets:
+
+```
+aws s3 ls --profile iamadmin-general
+```
 
 
 
