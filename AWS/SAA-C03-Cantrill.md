@@ -15,10 +15,10 @@
 * Account and Account Root User can be thought as the same thing. Account Root User cannot be restricted in any way.
 * Every AWS Account comes with its own IAM database. IAM is globally resilient service. So any data is always secure across all AWS regions. AWS Account trusts fully IAM. IAM can do anything in the account. There are restrictions around billing and account closure. Operationally, IAM can do as much as root user.
 
-  IAM let's you create three different type of identity objects:
-  * User - identities which represent humans or applications that need access to your account.
-  * Group - collection of related users e.g. development team, finance or HR.
-  * Role - can be used by AWS Services, or for granting external access to your account.
+IAM let's you create three different type of identity objects:
+* User - identities which represent humans or applications that need access to your account.
+* Group - collection of related users e.g. development team, finance or HR.
+* Role - can be used by AWS Services, or for granting external access to your account.
  
 Generally, you pick IAM Users when you can identify an individual user or application. Roles tend to get used when the number of things is uncertain. If you want to grant users of external accounts access to say a simple storage service bucket or if you want to allow AWS services themselves to interact on your behalf, you use roles.
 
@@ -35,6 +35,33 @@ IAM summary:
 * Allow or Deny its identities on its AWS account
 * No direct control on external accounts or users
 * Identity federation and MFA
+
+# Setting up Admin User
+
+You can set AWS Account Alias: IAM -> IAM Dashboard -> AWS Account -> Account Alias (it has to be globally unique).
+
+Users -> Create User -> Set Permissions (attach policies directly AdministratorAccess).
+
+To test login now, copy "Sign-in URL for IAM users in this account" (which was generated using Account Alias)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
