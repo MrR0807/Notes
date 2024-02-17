@@ -85,7 +85,8 @@ Stateless firewal (in AWS it is Network ACL/NACL) does not understand Layer 4 co
 * NAT is designed to overcome IPv4 shortages
 * Translates Private IPv4 addresses to Public
 
-
+Static NAT is what Internet Gateway in AWS is.
+While Port Address Translation is what NATGatway in AWS is.
 
 
 
