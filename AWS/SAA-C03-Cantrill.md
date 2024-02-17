@@ -76,7 +76,9 @@ To use named profile listing S3 buckets:
 aws s3 ls --profile iamadmin-general
 ```
 
+# Stateless firewall vs Stateful firewall
 
+Stateless firewal (in AWS it is Network ACL/NACL) does not understand Layer 4 connections. That is why you need to define both outbound and inbound traffic. For example, an application's destination is `<ip_address>:443`, while the source is `<ip_address>:<ephemeral_port>`. When application connects to a machine defined in ip_address, it expects a response, hence ingress traffic has to be whitelistes as well. In stateful firewall case, or security groups in AWS, is when ingress traffic is automatically allowed.
 
 
 
