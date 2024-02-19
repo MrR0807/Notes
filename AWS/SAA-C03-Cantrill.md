@@ -98,8 +98,9 @@ While Port Address Translation is what NATGatway in AWS is.
 
 ![image](https://github.com/MrR0807/Notes/assets/24605837/15ee2f5d-e5b8-401b-9c37-61fb8c874d65)
 
+![image](https://github.com/MrR0807/Notes/assets/24605837/4e69ddaa-3768-4bd4-aaf3-30dfe6a08dcd)
 
-
+**802.1Q means (VLANS)** and **802.1AD (nested QinQ VLANS)**.
 
 
 
