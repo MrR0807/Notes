@@ -88,7 +88,11 @@ Stateless firewal (in AWS it is Network ACL/NACL) does not understand Layer 4 co
 Static NAT is what Internet Gateway in AWS is.
 While Port Address Translation is what NATGatway in AWS is.
 
+# DDoS
 
+* HTTP layer, where simulating GET requests
+* Protocol Attach (SYN attack)
+* Volumetric / Amplification (using DNS services)
 
 
 
