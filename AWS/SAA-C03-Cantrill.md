@@ -102,13 +102,37 @@ While Port Address Translation is what NATGatway in AWS is.
 
 **802.1Q means (VLANS)** and **802.1AD (nested QinQ VLANS)**.
 
+# Border Gateway Protocol (BGP)
 
+Border Gateway Protocol (BGP) is a standardized exterior gateway protocol used to exchange routing information between different autonomous systems (ASes) on the internet. It's the protocol used by internet service providers (ISPs) and large organizations to route traffic between their respective networks.
 
+BGP is path-vector protocol it exchanges the best path to a destination between peers.
 
+# IPSEC VPN Fundamentals
 
+IPSEC has two main phases:
+* IKE (Internet Key Exchange) Phase 1 (Slow & heavy) - this defines a protocol how crypto keys are exchanged. Where Asymmetric encryption to agree on Symmetric key.
+* At the end of this phase, there is a tunnel .
+* IKE Phase 2 (Fast & Agile) - uses the keys agreed in phase 1. Agree encryption method, and keys used for bulk data transfer. 
 
+Phase 1 and Phase 2 are two different stages, because phase 2 tunnel can be discarded, while Phase 1 remains. Hence when new Phase 2 tunnel is required, it can happen faster.
 
+![image](https://github.com/MrR0807/Notes/assets/24605837/38c4cba3-c06b-45ee-b63a-a217816ef2f9)
 
+![image](https://github.com/MrR0807/Notes/assets/24605837/63887db1-b952-4cd0-a573-d358540f8f69)
+
+There are two types of VPNs:
+* Policy based VPNs. Rules match traffic. It can have different rules/security settings per traffic.
+* Route based VPNs. Matches a single pair of security associations.
+
+![image](https://github.com/MrR0807/Notes/assets/24605837/56f87e50-209b-46e9-bed1-456ffef78031)
+
+## HTTPS vs IPSEC VPN
+
+* HTTPS operates at the application layer (Layer 7). IPsec operates at the network layer (Layer 3).
+* IPsec VPN tunnels are used to create secure connections between two networks or between a remote client and a network. They encrypt all traffic passing through the VPN tunnel, including all types of IP traffic (not just HTTP).
+* IPsec VPN tunnels can be configured as point-to-point tunnels (connecting two network devices directly like HTTPS) or site-to-site tunnels (connecting entire networks together).
+* IPsec VPN tunnels support various authentication methods, including pre-shared keys, digital certificates, and Extensible Authentication Protocol (EAP).
 
 
 
