@@ -94,6 +94,9 @@ While Port Address Translation is what NATGatway in AWS is.
 * Protocol Attach (SYN attack)
 * Volumetric / Amplification (using DNS services)
 
+# VLANs, TRUNKS and QinQ
+
+![image](https://github.com/MrR0807/Notes/assets/24605837/15ee2f5d-e5b8-401b-9c37-61fb8c874d65)
 
 
 
