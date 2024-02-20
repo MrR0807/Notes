@@ -134,6 +134,40 @@ There are two types of VPNs:
 * IPsec VPN tunnels can be configured as point-to-point tunnels (connecting two network devices directly like HTTPS) or site-to-site tunnels (connecting entire networks together).
 * IPsec VPN tunnels support various authentication methods, including pre-shared keys, digital certificates, and Extensible Authentication Protocol (EAP).
 
+# DNS
+
+* DNS Zone is a like a database which contains records e.g. netflix.com
+* The data is stored in a file caleed ZoneFile
+* Name Server is a DNS server which hosts 1 or more Zones and stores 1 or more ZoneFiles
+* There are two types of records: Authoritatives (source of truth) and Non-Authoritative/Cached copies of records.
+
+![image](https://github.com/MrR0807/Notes/assets/24605837/7ef7dea9-30f9-4823-9a01-5510a81878d7)
+
+![image](https://github.com/MrR0807/Notes/assets/24605837/408dffe5-3932-4f46-a8a9-704bfbd06c77)
+
+![image](https://github.com/MrR0807/Notes/assets/24605837/bf0586b8-bdf8-4389-8bef-23f275f0d67f)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
