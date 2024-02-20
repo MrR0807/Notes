@@ -147,7 +147,10 @@ There are two types of VPNs:
 
 ![image](https://github.com/MrR0807/Notes/assets/24605837/bf0586b8-bdf8-4389-8bef-23f275f0d67f)
 
+# Recovery Point Objective (RPO) & Recovery Time Objective (RTO)
 
+* RPO - maximum amount of data (time) that can be lost during a disaster recovery situation before that loss will exceed what the organisation can tolerate. Banks have almost zero RPO.
+* RTO - maximum tolerable length of time that a system can be down after a failure or disaster occurs.
 
 
 
