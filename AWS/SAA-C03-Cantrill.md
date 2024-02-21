@@ -169,8 +169,33 @@ Service Resilience:
 
 ## Virtual Private Cloud (VPC) Basics
 
+* VPC is within 1 account & 1 region. They are region resilient.
+* VPC is private and isloated unless you decide otherwise. Services within VPC can communicate, but are isolated from public AWS zone and public internet.
+* There are two types of VPCs - Default VPC and Custom VPC. You get only **one Default VPC per region**. Default VPCs come pre-configured in very specific way and all networking configuration is handled on your behalf by AWS. But because of that they are a lot less flexible than cusotm VPCs.
+* Unless you configure otherwise, there is no way for Custom VPC to communicate outside their specific network. In other words, by default it is private.
 
+### Default VPC
 
+Default VPC always gets the same VPC CIDR - `172.31.0.0/16`. The default VPC is configured to have a subnet in every AZ.
+
+![image](https://github.com/MrR0807/Notes/assets/24605837/89edce53-0696-48b4-8c66-1a6274329715)
+
+* One per region - can be removed & recreated. In this case you can have 0 VPCs in the region. Some AWS services assume that default VPC will be present, hence it is best to keep them as is and not use for any production related work.
+* One of strenghts and weakness of default VPC is always the same CIDR range - `172.31.0.0/16`.
+* `/20 ` subnet in each AZ in the region created.
+* By default, VPC has configured Internet Gateway (IGW), Security Group (SG) & NACL.
+* By default, anything placed inside default VPC, gets assigned a public IPv4 address.
+
+## EC2 Basics
+
+* Private service by default - uses VPC networking.
+* AZ resilient - instance fails if AZ fails.
+* Main Instance LifeCycle states: Running, Stopped, Terminated. Stopped instance still generates storage charges.
+* AMI (Amazon Machine Image) can be created to run EC2 instance or AMI can be created from running EC2 instance.  
+* AMI is either private - only the owner can use it; or you can explicitly add other AWS accounts, so those can use it; or you can make it public, hence everybody can use it.
+* To connecto EC2 instance running Windows you have to use 3389 Remote Desktop Protocol, for Linux - SSH port 22.
+
+## S3 Basics
 
 
 
