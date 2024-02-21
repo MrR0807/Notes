@@ -152,6 +152,22 @@ There are two types of VPNs:
 * RPO - maximum amount of data (time) that can be lost during a disaster recovery situation before that loss will exceed what the organisation can tolerate. Banks have almost zero RPO.
 * RTO - maximum tolerable length of time that a system can be down after a failure or disaster occurs.
 
+# AWS fundamentals
+
+## Public vs Private Services
+
+**Public and Private Service is from Networking perspective**.
+
+![image](https://github.com/MrR0807/Notes/assets/24605837/98f93b1f-dcc5-4192-89ff-6bc26001d05f)
+
+## AWS Global Infrastructure
+
+Service Resilience:
+* Globally Resilient - very few AWS services provide this. IAM and Route 53 are globally resilient services.
+* Region Resilient - they generally replicate data between AZs.
+* AZ Resilient - if AZ fails, then the service will fail.
+
+## Virtual Private Cloud (VPC) Basics
 
 
 
