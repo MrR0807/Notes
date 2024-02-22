@@ -197,6 +197,61 @@ Default VPC always gets the same VPC CIDR - `172.31.0.0/16`. The default VPC is 
 
 ## S3 Basics
 
+* Global Storage PLatform - Regional Resilient.
+* Public service.
+* S3 Objects are identifiable by file name. Object value is content being stored. One object can be from 0 to 5 TB.
+* Bucket name needs to be globally unique - accross all regions and all accounts. Buckets can hold unlimited amount of objects.
+* Bucket has flat structure. There are no folder in practice. However, say S3 UI can present structures which resemble folders. **Folders are referred as prefix names, because they are part of object name**.
+* Bucket name has to be between 3 - 63 characters, all lower case, no underscores.
+* Start with a lowercase letter or a number.
+* Buckets - 100 soft limit, 1000 hard per account.
+
+### S3 Patterns and Anti-Patterns
+
+S3 is an object storage - not file or block. Object storage means that if you have a requirement where you're accessing the whole of these entities, the whole of an object (e.g. an image, an audio file) and you're doing all of that at once, then it is a candidate for object storage. If you have Windows server, which nees to access a network file system, then it has to be file-based storage. S3 is also not block storage, because it cannot be mounted. Block storages can be used to create disks that can be attached to VMs.
+
+**In Exam S3 should be the default pick for INPUT/OUTPUT storage**.
+
+## CloudFormation (CFN) Basics
+
+* CloudFormation is written either in YAML or JSON.
+* CloudFormation `Resources` tells what to create. If `Resources` are added then CloudFormation creates them. If they are update - then updates, if removed from the template - they are removed for infrastructure.
+* **NOTE! If you have `AWSTemplateFormatVersion` and `Description`, then Description has to immediately follow `AWSTemplateFormatVersion` field. This is a trick question used in Exam. `AWSTemplateFormatVersion` is not mandatory**
+* `Metadata` field has many fucntions, but one of the things that it does is it can control how the different things in the `CloudFormation` template are presented through the AWS console UI. You can specify groupings, order etc.
+* `Parameters` field promps the user to add more information.
+* `Mappings` field allows you to create lookup tables.
+* `Conditions` field allows decision making in the template depending on some parameter value.
+* `Outputs` field, after template is finished, presents outbus based on what's being created, updated or deleted (e.g. return instance ID).
+
+NOTE! When you upload a template file to CloudFormation, it automatically creates an S3 bucket.
+
+## CloudWatch Basics
+
+CloudWatch is three products in one. CloudWatch is public service.
+* Metrics - comes from AWS Products, Apps, on-premises system. You can do actions on said metrics. Some other kinds of services, which are not managed by AWS might need a CloudWatch Agent to collect data.
+* CloudWatch Logs - comes from AWS Products, Apps, on-premises system. Same thing as with metrics, you need to install CloudWatch Agent if you need logs from other non-AWS managed products.
+* CloudWatch Events - two types of situations: something happens, for example CPU limit reached - event is generated; it can generate events at a certain times to do something.
+
+CloudWatch Namespace is a container which separate data into different areas. There is one important aspect, all AWS data goes to `AWS/service` namespace e.g. AWS/EC2, AWS/S3 etc.
+
+## Shared Responsibility Model
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
