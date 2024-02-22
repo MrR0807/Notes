@@ -236,12 +236,34 @@ CloudWatch Namespace is a container which separate data into different areas. Th
 
 ## Shared Responsibility Model
 
+Red is AWS responsibility.
 
+![image](https://github.com/MrR0807/Notes/assets/24605837/9359dfb5-2497-4369-bd45-c1677e179ce5)
 
+AWS is responsbile for the security of the cloud. You are responsible for the security in the cloud.
 
+## High-Availability vs Fault-Tolerance vs Disaster Recovery
 
+### High-Availability
 
+Definition - aims to **ensure** an agreed level of operational **performance**, usually **uptime**, for a **higher tan normal period**. Usually people think that having HA is that system never experience outage or user never experience failure. **That is not true**. A highly available system is design in providing services as often as possible. High Availability is about maximasing system's online time.
 
+### Fault-Tolerance
+
+Definition - is the property that enables a system to **continue operating properly** in the event of the **failure of some** (one or more faults within) of its **components**.
+
+Fault tolerance means that if a system has faults, then it should continue to operate properly, even while those faults are present and being fixed. It means it has to continue to operate through a failure without impacting customers.
+
+For example, if the monitor is tracking a person's health indicators, any downtime could be fatal. That means having HA is not enough. In this instance, monitor should have additional server and communicate in active active scenario. We can go even further, by adding additional monitor which also talks with two servers. HA helps to minimize outages, but FA is another level, which means levels of redundancy and system components. You have two lungs, if one fails, you have FA, because you can continue to breath. In HA scenario, you need intubation ASAP otherwise you're dead.
+
+### Disaster Recovery
+
+Definition - a set of policies, tools and procedures to **enable the recovery** or **continuation** of **vital** technology infrastructure and systems **following a natural or human-induced disaster**.
+
+## Route53 Fundamentals
+
+* You can register domains.
+* Host Zones Files for you on managed name servers, which it provides.
 
 
 
