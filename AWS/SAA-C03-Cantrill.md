@@ -262,9 +262,22 @@ Definition - a set of policies, tools and procedures to **enable the recovery** 
 
 ## Route53 Fundamentals
 
-* You can register domains.
+* You can register domains. It has integration will all high level domain registry (e.g. .com, .io, .net)
 * Host Zones Files for you on managed name servers, which it provides.
 
+Below steps which paint the picture of what happens when you register a domain:
+* Route 53 check with the registry if the domain is available.
+* Then Route 53 creates a zone file with said domain.
+* Allocates name services for this zone. These services are created, managed and distributed globally.
+* It takes the zone file and places them into those services.
+* As part of registering a domain, it communicates with high level domain registry and adds these name server records into a zone file for the top level domain. By adding the name server records to the high level domain zone, they indicate that oru four name servers are all authoritative for the domain.
+
+![image](https://github.com/MrR0807/Notes/assets/24605837/9ba09789-66b6-4cc7-affb-bf6e4649b0e3)
+
+* Global Service with a singal database.
+* Globally Resilient.
+
+![image](https://github.com/MrR0807/Notes/assets/24605837/9dcf2545-b26d-4719-8493-5cc9f9bf6459)
 
 
 
