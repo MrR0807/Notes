@@ -344,9 +344,30 @@ Length and Content: **TXT records can contain up to 255 characters per string, a
 
 # IAM, ACCOUNTS AND AWS ORGANISATIONS
 
+## IAM Identity Policies
 
+IAM Policy is just a set of security statements to AWS. It grants or denies accesses to resources to anybody who uses the policy.
 
+There are four properties for each policy statement:
+* Sid (Optional) - The Statement ID, or SID, provides a way to reference and manage individual statements within a policy. It helps identify and distinguish one statement from another, especially in complex policies with multiple statements. **The SID is a string value that must be unique within the policy**. In other words  it is simply a label used for identification purposes.
+* Effect - it is either allow or deny.
+* Action - The "Action" element within a statement specifies the actions that are allowed or denied for the associated AWS resources. Actions are defined using AWS service-specific action names. The format is `service:operation` e.g. `s3:GetObject`. You can also use asterix to indicate all actions.
+* Resource - The "Resource" element within an IAM policy statement identifies the AWS resources to which the permissions are applied. You can use a wildcard, or you can use specific resources list. If you specify a resource, you have to use ARN.
 
+Multiple allow and deny statements can overlap.
+
+![image](https://github.com/MrR0807/Notes/assets/24605837/044ffe6e-5a8a-4cce-87b0-50fc6885a62a)
+
+There are explicit rules on allow and deny:
+* If there is an explicit DENY action, then it overrulles everything.
+* Explicit ALLOWs take effect unless, there is explicit deny.
+* By default it is implicit deny.
+
+Even if the user has multiple policies, belongs to a group, and a resource has its own policy, the same rule applies - deny, allow, implicit deny. If there is a deny in any policies, then it wins. If there is an explicit allow, then use can access a resource. If there is no allow, then implicit deny.
+
+There are two types of policies:
+* Inline policies - Inline policies are policies that are directly embedded or "inlined" within a specific IAM entity (user, group, or role). They are defined and managed directly within the configuration of the IAM entity to which they apply. Inline policies are scoped to a single IAM entity and cannot be reused across multiple entities. Each IAM entity can have its own set of inline policies. Inline policies are created, edited, and deleted directly within the IAM entity's configuration. Changes to inline policies are applied immediately and are specific to the IAM entity to which they are attached.
+* Managed policies - Managed policies are standalone policies that are created and managed independently of IAM entities. They are stored separately from IAM entities and can be attached to multiple IAM users, groups, or roles.
 
 
 
