@@ -342,6 +342,8 @@ Usage:
 
 Length and Content: **TXT records can contain up to 255 characters per string, and a single TXT record can contain multiple strings.** Each string is typically separated by whitespace or enclosed in double quotes. Some DNS providers support multiple TXT records for the same domain, allowing for more extensive text data storage.
 
+# IAM, ACCOUNTS AND AWS ORGANISATIONS
+
 
 
 
