@@ -459,6 +459,10 @@ Organisation also feature a service called Service Control Policies (SCP) which 
 You can create new accounts inside organisation - all you need is unique email address.
 Organisation also changes best practices around AWS accounts. Not all AWS accounts require separate IAM Users. Instead, you can utilise them via IAM Roles.
 
+If you create AWS account in Organisation from Organisation dashboard, it automatically gets assigned a role, which allows to access it from other accounts. If you add an existing account - this role is not attached, hence you need to create one yourself.
+
+## Service Control Policies
+
 
 
 
