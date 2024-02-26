@@ -439,15 +439,25 @@ IAM roles: 1,500 per AWS account
 IAM instance profiles: 1,500 per AWS account
 IAM policies: 10,000 per AWS account
 
+## Service-linked Roles & PassRole
 
+A service-linked role is an IAM role linked to a specific AWS service. They provide a set of permissions which is predefined by a service. Provides permissions that a service needs to interact with other AWS services on your behalf. Service might create/delete the role or allow you to create the role during the setup process of that service or created in IAM.
 
+Key difference between IAM Role and Service-linked Role is that you cannot delete service-linked role until it is no longer required.
 
+Futhermore, you can have a permission to pass a role, which supersedes your permissions. For example, you might only have a role to pass service-linked role to CloudFormation, but passed role in CloudFormation has all possible permissions to create all resources in AWS, hence the `PassRole`.
 
+## AWS Organizations
 
+AWS organisations allows for business to manage multiple accounts in a cost effective way.
 
+One AWS account can create an organisation. Said account becomes Management Account (Previously Master). Using master account you can invite other accounts into organisation. When they join the organisation, they become member accounts. At the top of organisation tree, sits an Organization Root. This is not equal to Account Root User. Organization root can have within itself Organizational Units, which can contain Member Accounts or Master Account. 
 
-
-
+Billing changes in Organisation. Management/Master account gets all the bills, while payments are removed from member accounts. 
+**Organisation can benefit from reservations and volume discounts, because resources are pooled.**
+Organisation also feature a service called Service Control Policies (SCP) which can control what AWS member accounts can and cannot do.
+You can create new accounts inside organisation - all you need is unique email address.
+Organisation also changes best practices around AWS accounts. Not all AWS accounts require separate IAM Users. Instead, you can utilise them via IAM Roles.
 
 
 
