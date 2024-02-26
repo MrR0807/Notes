@@ -371,6 +371,95 @@ There are two types of policies:
 
 ## IAM Users and ARNs
 
+IAM Users are an identity used for anything requiring long-term AWS access e.g. Humans, Applications or Service Accounts. **NOTE! If you can imagine a concrete user, application or service account in the scenario provided by the exam - 99% the answer is IAM User**. 
+
+ARN (Amazon Resource Name) - uniquely identify resources within any AWS account.
+
+ARN format
+
+![image](https://github.com/MrR0807/Notes/assets/24605837/94465ef6-7141-4eb7-973f-4e015e2453be)
+
+```
+arn:aws:s3:::catgifs
+arn:aws:s3:::catgifs/*
+```
+
+These are two very different ARNs. One refers to a bucket, while the other refers to the objects inside this bucket. The top one would allow IAM policy to create, delete or modify the bucket itself, while the bottom one would allow actions on objects.
+
+**NOTE!** Double collon like with S3 example is not the same thing as providing a wildcard. Double collon means that there is nothing to specify, like S3 not have a region. While if you'd specify an EC2 instance, you would need to specify a region or use wildcard.
+
+**NOTE!** You can only have 5000 IAM Users per account. IAM User can be a member of 10 groups.
+
+**NOTE!** Only 5000 AWS users per account.
+
+## IAM Groups
+
+IAM Groups are containers for Users. **NOTE! Exam might try to trick you - you cannot login into groups.**
+
+IAM Groups can have inline or managed policies attached.
+
+**There is no limit to how many users can be in a group. But again, one user can be a member of 10 groups.**
+
+**You can't have any nesting. You can't have groups within groups.**
+
+**There is a limit of 300 groups per account. But this can be increased with a support ticket.**
+
+**Resource policy cannot grant access to an IAM Group.** It can, however, grant access to Roles or Users via ARN.
+
+## IAM Roles
+
+The role isn't something that represents you. A role is something which represents a level of access inside an AWS account. It is used short term by other identities. IAM Role can have two types of policies: Trust Policy and Permissions Policy. Trust Policy defines which identities can assume that role. Trust policy can reference different things - reference identities in the same account (other IAM users, other roles and AWS services like EC2) and it can reference identities in other AWS accounts. Roles can be assumed by unknown players. Once role is assumed, AWS provides temporary Security Credentials.
+
+STS - secure token service generates these temporary credentials. 
+
+## When to use IAM Roles
+
+Good situations to use roles:
+* When services (e.g. AWS Lambda) want to do actions on your behalf. Like start a Lambda service after an alert to start more EC2 instances. It is better to create a Lambda Execution Role which trusts Lambda Service. Other alternative would be to hard code security credentials into the code.
+* For emergency or out of the normal kind of situations. A user can obtain short term emergency role to do certain actions, which under normal circumstances, is not allowed.
+* In cases when you have, say on-premise, active directory (Windows) users who want to use AWS with their accounts. In this case Active Directory user assumes an AWS role in order to do certain actions within AWS.
+* For example you have a mobile application which accesses a certain AWS resource. The mobile application can have millions of users, hence AWS users are out of the question. Furthermore, users might use Web Identity Fedaration (Facebook, Google etc).
+* Multi AWS account scenario.
+
+**NOTE! External accounts cannot be used directly to access AWS resources**.
+
+![image](https://github.com/MrR0807/Notes/assets/24605837/8c3c4da0-67ce-418f-8a76-0dacd290815a)
+
+![image](https://github.com/MrR0807/Notes/assets/24605837/bb330458-c5ae-4314-a7a2-5903aae998a7)
+
+![image](https://github.com/MrR0807/Notes/assets/24605837/874ba568-c756-4045-87a1-05809fb73308)
+
+## Summary in limitations of IAM
+
+As of my last update, the default service limits for IAM entities are as follows:
+
+IAM users: 5,000 per AWS account
+IAM groups: 300 per AWS account
+IAM roles: 1,500 per AWS account
+IAM instance profiles: 1,500 per AWS account
+IAM policies: 10,000 per AWS account
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
