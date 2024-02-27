@@ -478,6 +478,108 @@ When you enable SCP on your organisation, AWS Apply a default policy which is ca
 
 To have an allow list, you'd have to remove default Full AWS access SCP and then implict deny all would start to work. Hence, you'd need to add resources into allow list.
 
+## CloudWatch Logs
+
+* **Public Service** - usable from AWS or on-premises.
+* Store, Monitor and access logging data.
+* AWS Integrations - EC2, VPC Flow Logs, Lambda, CloudTrail, R53 and more.
+* Can generate metrics based on logs - metric filter.
+
+
+Three ways to integrate with CloudWatch:
+* By using Managed Services.
+* By deploing unified CloudWatch Agent into custom applications.
+* By using developer's kit inside the code.
+
+Architecture of CloudWatch Logs. **NOTE! Log Groups are where you define retention and permissions. It is also where Metric Filters are defined.**
+
+![image](https://github.com/MrR0807/Notes/assets/24605837/e527f41b-5b54-46b0-ae65-f6c8d6aa8409)
+
+## CloudTrail Essentials
+
+* Logs API calls/activities as a CloudTrail Event
+* 90 days stored by default in Event History
+* Enabled by default - no cost for 90 day history
+* To customise the service you need to create 1 or more *Trails*
+* There are three types of events: Management Events, Data Events, Insight Events.
+
+* Management events - These events track management actions performed on AWS resources, such as creating, modifying, or deleting resources. Management events include API calls made through the AWS Management Console, AWS CLI, AWS SDKs, and other AWS services.
+* Data Events - Data events provide insight into access and usage of data within AWS resources. These events track actions such as object-level access in Amazon S3, API calls related to AWS Key Management Service (KMS) keys, and database activity in Amazon RDS, DynamoDB, and other AWS services.
+* Insight Events - Insight events provide additional context and analysis for certain types of events. For example, AWS CloudTrail Insights can analyze CloudTrail logs to identify unusual activity patterns, security threats, or operational issues.
+
+CloudTrail by default track only management events. Data events create a very high load of data.
+
+CloudTrail Trail can be configured in two ways:
+* One Region - only tracks events in given region.
+* All Regions - tracks events in every region.
+
+As mentioned earlier, there are region based services and global services (e.g. IAM, STS, CloudFront). CloudTrail needs to enable this in order to receive global region events. They always log their events to US-EAST-1 (N.Virginia). This feature is enabled by default if you enable CloudTrail via UI. 
+
+### Summary
+
+* Enabled by default in all AWS accounts, but persists data only for 90 days.
+* You can configure special Trails which will save data in S3 or CloudWatch Logs.
+* Management events only by default.
+* IAM, STS, CloudFront are Global Service Events.
+* **Data is not real time - there is a 15 minute delay**.
+
+**Because global service events are only available in US East (N. Virginia) beginning November 22, 2021, you can also create a single-Region trail to subscribe to global service events in the US East (N. Virginia) Region, us-east-1. Single-Region trails will no longer receive global service events beginning November 22, 2021, unless the trail already appears in US East (N. Virginia) Region, us-east-1. To continue capturing global service events, update the trail configuration to a multi-Region trail.**
+
+## AWS Control Tower
+
+* Quick and Easy setup of multi-account environment.
+* Orchestrates other AWS services (e.g. Organizations) to provide this functionality.
+* Control Tower uses Organizations, IAM Identity Center (formally known as AWS SSO), CloudFormation, Config and more.
+* Think of Control Tower as evolution to Organizations, by adding more features and automation.
+* Landing Zone - multi-account environment. This is what most people will be interacting with when they think of Control Tower.
+* Provides SSO/ID Federation (provided using IAM Identity Center), Centralised Logging & Auditing (uses combination of CloudWatch, CloudTrail, SNS etc).
+* Provides Guard Rails - Detect/Mandate rules/standards across all accounts within the Landing Zone.
+* Account Factory - Automates and Standardises new account creation.
+* Dashboard - single page oversight of the entire environment.
+
+You create with any AWS account and it becomes Management Account.
+
+![image](https://github.com/MrR0807/Notes/assets/24605837/4e370c30-513f-4954-bd3c-117528249b03)
+
+![image](https://github.com/MrR0807/Notes/assets/24605837/6f55a104-c345-4ecd-a757-945bc8eb7853)
+
+![image](https://github.com/MrR0807/Notes/assets/24605837/c384f15d-33fd-4e9e-ab4f-f4e302f6ba8a)
+
+### Account Factory
+
+The AWS Control Tower Account Factory is a feature provided by AWS Control Tower, a service that automates the setup and management of a multi-account AWS environment based on AWS best practices and guidelines. The Account Factory simplifies and accelerates the process of creating new AWS accounts within your AWS Control Tower environment.
+
+Here's an overview of the AWS Control Tower Account Factory:
+
+Account Provisioning: The Account Factory automates the process of provisioning new AWS accounts, allowing you to create accounts quickly and consistently. It provides a centralized interface for account creation, streamlining the process and reducing the potential for errors.
+
+Templates and Guardrails: The Account Factory allows you to define templates and guardrails for new AWS accounts. Templates specify configurations, settings, and resources that should be provisioned in each new account, while guardrails enforce policies and controls to ensure compliance with organizational standards and security requirements.
+
+Customization: The Account Factory supports customization to accommodate the specific needs and requirements of your organization. You can define custom templates, guardrails, and policies to tailor the account creation process to your organization's preferences and standards.
+
+Integration with AWS Organizations: The Account Factory integrates with AWS Organizations, the service that centralizes management of multiple AWS accounts. It leverages AWS Organizations to provision new accounts within the organizational structure defined by AWS Control Tower, ensuring consistency and alignment with organizational policies.
+
+Lifecycle Management: The Account Factory supports lifecycle management of AWS accounts, including account creation, modification, and deletion. It provides visibility and control over the entire lifecycle of accounts, helping you manage resources efficiently and maintain compliance with organizational policies.
+
+Automation and Scalability: The Account Factory is designed for automation and scalability, allowing you to provision and manage large numbers of AWS accounts efficiently. It leverages AWS services such as AWS CloudFormation, AWS Lambda, and AWS Step Functions to automate account provisioning workflows and scale to meet the needs of your organization.
+
+Overall, the AWS Control Tower Account Factory simplifies the process of creating and managing AWS accounts within your AWS Control Tower environment. It provides a centralized, automated solution for account provisioning, customization, and lifecycle management, enabling you to maintain consistency, compliance, and efficiency across your AWS environment.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
