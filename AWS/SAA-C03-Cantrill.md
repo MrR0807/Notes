@@ -567,6 +567,110 @@ Automation and Scalability: The Account Factory is designed for automation and s
 
 Overall, the AWS Control Tower Account Factory simplifies the process of creating and managing AWS accounts within your AWS Control Tower environment. It provides a centralized, automated solution for account provisioning, customization, and lifecycle management, enabling you to maintain consistency, compliance, and efficiency across your AWS environment.
 
+# Simple Storage Service (S3)
+
+## S3 Security
+
+S3 is private by default. Only the AWS account which created it has access to it. Anything else has to explicitly granted. There are few ways how this can be done:
+
+### S3 Resource policy
+
+By defining resource policy. Resource policy just like identity policy is attached to an entity. From identity policy perspective, it tells what said user can and cannot do. From resource policy, it tells who and what can do with said resource. **Unique thing is that resouce policy can reference other accounts (any accounts)**, which provides cross account access. **Resource policies can allow or deny anonymous principals**.
+
+Resource policy has an **Principal** field as well. This field specifies the IAM users, roles, federated users, AWS accounts, or AWS services to which the permissions apply. The principal is typically identified by its ARN. For example, specifying "*" as the principal allows the permissions to apply to all principals. In identity policy it is implied.
+
+![image](https://github.com/MrR0807/Notes/assets/24605837/a82dcfb4-c301-49b1-9b0b-a9ce32e01944)
+
+### Bucket Policies
+
+Bucket policies can control who can access buckets, even control at the IP level. This bucket policy denies access to everybody unless you're IP is `1.3.3.7/32`.
+ 
+![image](https://github.com/MrR0807/Notes/assets/24605837/76746fe4-a2a0-4108-a9b8-fb19cc0b83bc)
+
+NOTE! If there is access from other AWS account to said bucket, that AWS account has to have access rights to S3 in general, otherwise, even if the bucket explicitly allows for said identity to access it, it might not due to AWS account policies.
+
+### Access Control Lists (ACL)
+
+**These are legacy**.
+
+### Summary
+
+* Identity - Controlling different resources
+* Identity - You have a preference for IAM
+* **Identity - Same Account**
+* Bucket - Just controlling S3
+* Bucket - Anonymous or Cross-Account
+* ACLs - NEVER
+
+## S3 Static Website Hosting
+
+When you create a static website from S3, you have to point to Index page and Error page.
+
+If you want to use custom domain via R53, then bucket name matters. You can only use a custom domain with a bucket if the name of the bucket matches the domain. For example, if website is called `top10.animalsforlife.org`, then my bucket name would need to be called `top10.animalsforlife.org`.
+
+## Object Versioning & MFA Delete
+
+Bucket starts in disabled versioning. You can enabled it. **Once it is enabled - you cannot disable it**. However, it can be moved to suspended.
+
+Object Key in S3 is objects name. For example, if we have an object and versioning is disabled, then we have this metadata:
+
+```
+KEY = examplename.txt
+id = null
+```
+
+If versioning is enabled, then key becomes some value:
+
+```
+KEY = examplename.txt
+id = 1111
+```
+
+New version keeps the old one and add a new one:
+
+```
+KEY = examplename.txt
+id = 2222
+KEY = examplename.txt
+id = 1111
+```
+
+By default, S3 returns the latest version.
+
+If we want to delete `examplename.txt` and don't provide any version id, it will add a new object, called delete marker. But it doesn't delete anything, it just hides the object. If we want to undo the deletion, the delete marker is just deleted and objects are visible again. If you really want to delete an object, you need to specify a version ID.
+
+### MFA Delete is always in the exam
+
+MFA delete is a configuration property within the versioning of the bucket. When you enable MFA delete, it means that MFA is required every time you want to change bucket versioning state (suspend, re-enable versioning) or delete an object version.
+
+## S3 Performance Optimization
+
+Problems with single PUT upload to S3:
+* Single data stream to S3 - both not reliable and slow.
+* Stream fails - upload fails. Hence requires full restart.
+* Limited to upload only up to 5 GB.
+
+Multipart Upload:
+* Min data size for multipart upload is 100mb.
+* 10000 max parts.
+* Range between 5mb and 5gb.
+* Last part can be smaller than 5mb.
+* Parts can fail and be restarted.
+* Transfer rate = speeds of all parts. In other words, it is much faster.
+
+### S3 Accelerated Transfer
+
+Transfer Accelerator uses network of AWS Edge locations. There are restrictions: bucket name cannot contain periods and it needs to be DNS compatible in its naming. Instead of upload data directly to S3, it is uploaded to nearest edge location. Then Edge Location can upload directly to S3 using AWS global network, because it is in control of it.
+
+When you enable Transfer Acceleration it will provide a different URL, which is an edge location. This URL has to be used in order to take advantage of Transfer Accelarator.
+
+## Key Management Service (KMS)
+
+
+
+
+
+
 
 
 
