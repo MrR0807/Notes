@@ -666,6 +666,30 @@ When you enable Transfer Acceleration it will provide a different URL, which is 
 
 ## Key Management Service (KMS)
 
+* Regional & Public Service.
+* Create, Store and Manage Keys.
+* Symmetric and Asymmetric Keys.
+* Cryptographic operations (encrypt, decrypt).
+* **Keys never leave KMS**. Its primary feature that keys are securely placed within KMS.
+* **For exam, provides FIPS 140-2 (Level 2) standard**.
+
+
+KMS contains KMS keys. They are **logical**. Contains data like ID, date and resource policy. They are backed by physical key material. Actual keys. Actual keys can be generated or imported. **KMS keys can be used to encrypt or decrypt up to 4KB of data**.
+
+Key Material is just crypto key. For example, for asymmetric keys, it would be a private key.
+
+![image](https://github.com/MrR0807/Notes/assets/24605837/3c5093ea-f951-4986-8ab1-79dbd0da1c7f)
+
+Data Encryption Keys (DEKs) are another type of key which KMS can generate. They are generated using KMS key.
+
+The flow:
+* KMS generates two DEKs - one is plaintext and another is encrypted.
+* Plaintext key should be used to encrypt the data **by you**. **KMS does not encrypt data in this case.**
+* Once the data is encrypted, the key should be discarded and data saved together with encrypted key.
+* When you want to decrypt data, you provide encrypted key to KMS, which then decrypts it and provides you again, with plaintext key to decrypt the data.
+* NOTE! KMS in this case does not keep the data, nor encrypted keys.
+* KMS does not track the usage of data encryption keys.
+
 
 
 
