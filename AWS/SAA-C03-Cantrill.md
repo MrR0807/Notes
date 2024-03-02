@@ -713,6 +713,8 @@ Permissions on keys are controlled in a few ways. Many services will always trus
 
 This allows for AWS account with `111122223333` to access KMS key.
 
+## S3 Object Encryption CSE/SSE
+
 
 
 
