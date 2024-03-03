@@ -715,10 +715,22 @@ This allows for AWS account with `111122223333` to access KMS key.
 
 ## S3 Object Encryption CSE/SSE
 
+CSE - customer side encryption. SSE- server side encryption.
 
+**Note! Buckets aren't encrypted - objects are**.
 
+This defines who encrypts the data at rest.
 
+![image](https://github.com/MrR0807/Notes/assets/24605837/cf1cfae3-e192-4ecb-8fe0-6161978450c1)
 
+**AWS recently made server side encryption mandatory**.
+
+There are three types of Server Side Encryption:
+* SSE-C Server Side Encryption with Customer Provided Keys. You provide Crypto Key and plaintext to encrypt. Data is encrypted and hash of the key is added to metadata. The Key is disgarded by S3 after. Customer should handle the keys on his side.
+* SSE-S3 Server Side Encryption with Amazon S3 Managed Keys (Default). With this method, AWS handles both the encryption process and management of keys. When putting object into S3 you just provide the data. S3 generates a unique key for every object. You have 0 control over the key.
+* SSE-KMS Server Side Encryption with KMS Keys stored in AWS Key Management Service.
+
+![image](https://github.com/MrR0807/Notes/assets/24605837/47613b0b-7df5-4bb0-bfd7-b584568ddcec)
 
 
 
