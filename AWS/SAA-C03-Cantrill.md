@@ -750,11 +750,24 @@ In AWS Console you can define encryption method when uploading an object or on b
 
 ## S3 Bucket Keys
 
+Calls to KMS have a cost & levels where throttling occurs:
+* 5.5k per second
+* 10k per second
+* 50k per second
 
+So if we're uploading 100k objects into S3 per second, KMS will not support that.
 
+![image](https://github.com/MrR0807/Notes/assets/24605837/82d732f4-71c8-439c-a815-caa0dcf1b686)
 
+Bucket keys improve the situation. AWS KMS key generates a time limited bucket key, which generates DEKs within S3, without needing to call KMS every time.
 
+![image](https://github.com/MrR0807/Notes/assets/24605837/54e39c51-6b9c-4cde-a060-b9353a66d6e3)
 
+You will see fewer CloudTrail events, because of less interactions with KMS.
+
+**NOTE!** If you're replicating S3 data between two buckets, where the source objects are not encrypted, while target uses default encryption, then said objects are encrypted.
+
+## S3 Object Storage Classes - PART1
 
 
 
