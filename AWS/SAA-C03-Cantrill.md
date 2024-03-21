@@ -860,9 +860,26 @@ A single rule cannot transition to Standard-IA or One Zone-IA and THEN to glacie
 
 ## S3 Replication
 
+There are two types of replications:
+* Cross Region Replication.
+* Same Region Replication.
 
+Everything is the same when replication happens in same account or different account, the only difference is that in different account scenario, bucket policy has to allow role to access it.
 
+![image](https://github.com/MrR0807/Notes/assets/24605837/5c4e8554-d660-4bb8-9a9b-da4c27aa6d23)
 
+Replication options that are:
+* Replicate objects or a subset.
+* You can choose a storage class for objects - default is to maintain current.
+* Define ownership - default is the source account. But differ owner can be defined.
+* Replication Time Control (RTC) - it adds a guarantee 15 minute replication SLA onto this process. Without it - it's a best efforts process.
+
+Important to remember:
+* By Default replication is not retroactive. It means that if objects existed before replication was turned on, those objects are not replicated.
+* Versioning needs to be turned on for replication to work.
+* You can use Batch replication to replicate existing objects, but this needs to be specifically configured.
+* One way replication only. Source to Destination. Recently AWS added a bi-directional replication, but needs to be specifically configured.
+* Replication is possible with unencrypted data (which does not exist anymore), SSE-S3, SSE-KMS (with extra configurations) and SSE-C.
 
 
 
