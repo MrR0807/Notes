@@ -46,7 +46,7 @@ To test login now, copy "Sign-in URL for IAM users in this account" (which was g
 
 # IAM Access Keys
 
-IAM Acess Keys are long term credentials used by IAM Users. When you're using UI you will generally user and password, while when you use CLI - Access Keys.
+IAM Acess Keys are long term credentials used by IAM Users. When you're using UI you will generally use user and password, while when you use CLI - Access Keys.
 
 Access Keys are similar to user and password, but there are crucial differences:
 * An IAM User has 1 username and 1 password. It cannot have more. Username is public part and password is private part.
@@ -86,7 +86,7 @@ Stateless firewal (in AWS it is Network ACL/NACL) does not understand Layer 4 co
 * Translates Private IPv4 addresses to Public
 
 Static NAT is what Internet Gateway in AWS is.
-While Port Address Translation is what NATGatway in AWS is.
+While Port Address Translation is what NAT Gateway in AWS is.
 
 # DDoS
 
@@ -193,11 +193,11 @@ Default VPC always gets the same VPC CIDR - `172.31.0.0/16`. The default VPC is 
 * Main Instance LifeCycle states: Running, Stopped, Terminated. Stopped instance still generates storage charges.
 * AMI (Amazon Machine Image) can be created to run EC2 instance or AMI can be created from running EC2 instance.  
 * AMI is either private - only the owner can use it; or you can explicitly add other AWS accounts, so those can use it; or you can make it public, hence everybody can use it.
-* To connecto EC2 instance running Windows you have to use 3389 Remote Desktop Protocol, for Linux - SSH port 22.
+* To connect to EC2 instance running Windows you have to use 3389 Remote Desktop Protocol, for Linux - SSH port 22.
 
 ## S3 Basics
 
-* Global Storage PLatform - Regional Resilient.
+* Global Storage Platform - Regional Resilient.
 * Public service.
 * S3 Objects are identifiable by file name. Object value is content being stored. One object can be from 0 to 5 TB.
 * Bucket name needs to be globally unique - accross all regions and all accounts. Buckets can hold unlimited amount of objects.
@@ -246,7 +246,7 @@ AWS is responsbile for the security of the cloud. You are responsible for the se
 
 ### High-Availability
 
-Definition - aims to **ensure** an agreed level of operational **performance**, usually **uptime**, for a **higher tan normal period**. Usually people think that having HA is that system never experience outage or user never experience failure. **That is not true**. A highly available system is design in providing services as often as possible. High Availability is about maximasing system's online time.
+Definition - aims to **ensure** an agreed level of operational **performance**, usually **uptime**, for a **higher than normal period**. Usually people think that having HA is that system never experience outage or user never experience failure. **That is not true**. A highly available system is design in providing services as often as possible. High Availability is about maximasing system's online time.
 
 ### Fault-Tolerance
 
