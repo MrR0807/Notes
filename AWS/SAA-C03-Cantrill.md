@@ -854,8 +854,9 @@ Transition can happen like watefall. The top tier can move to any bottom tier wi
 * S3 Glacier - Flexible Retrieval.
 * S3 Glacier Deep Archive.
 
+**EXAM NOTE!** There is a 30 day minimum period, where an object needs to remain on S3 Standard before then moving into Infrequent Access or One Zone Infrequent Access. You can always directly configure object's storage class via UI or CLI. But when you're using Lifecycle policy, needs to be in S3 Standard for 30 days. Of course you can start with Infrequent Access from the get-go.
 
-
+A single rule cannot transition to Standard-IA or One Zone-IA and THEN to glacier classes. So if we're moving from S3 Standard to Glacier, then it will be 60 days minimum: 30 days in Standard, 30 days in IA. However, you can move from IA to Glacier faster with two rules.
 
 
 
