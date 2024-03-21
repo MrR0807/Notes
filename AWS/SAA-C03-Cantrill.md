@@ -746,7 +746,7 @@ You can use both client-side encryption and server-side encryption. NOTE! This i
 
 **EXAM NOTE!** SSE-S3 uses AES-256. If you see AES-256, think SSE-S3.
 
-
+In AWS Console you can define encryption method when uploading an object or on bucket.
 
 
 
