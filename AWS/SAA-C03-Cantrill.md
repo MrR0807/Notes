@@ -767,10 +767,39 @@ You will see fewer CloudTrail events, because of less interactions with KMS.
 
 **NOTE!** If you're replicating S3 data between two buckets, where the source objects are not encrypted, while target uses default encryption, then said objects are encrypted.
 
-## S3 Object Storage Classes - PART1
+## S3 Object Storage Classes
 
+### S3 Standard
 
+S3 Standard objects are replicated across at least 3 AZs in the AWS region. This replication part is crucial in order to determine S3 other tiers' costs.
 
+**EXAM NOTE!** When objects are stored **durably** then a HTTP/1.1 200 OK response is provided by S3 API. S3 Standard has a milliseconds first byte latency.
+
+**EXAM NOTE!** Use S3 Standard for **Frequently Accessed** Data which is **important and Non Replaceable**.
+
+### S3 Standard-IA
+
+Also everything is the same as in S3 Standard, differs:
+* Half the price of S3 Standard for storage*
+* It has a retrieval fee per GB. Overall costs increases with frequent data access.
+* Minimum duration charge of 30 days - objects can be stored for less, but the minimum billing always applies.
+* Standard-IA has a minimum capacity charge of 128KB per object.
+
+**EXAM NOTE!** S3 Standard-IA should be used for **long-lived data**, which is **important** but where access is **infrequent**.
+
+### S3 One Zone-IA
+
+Share similarities with S3 Standard-IA: retrieval fee, minimum duration charge, object minimum capacity. The main difference - data is deployed in one AZ. You still get the same durability (11 9), but only if AZ is operational.
+
+**EXAM NOTE!** S3 One Zone-IA should be used for **long-lived data**, which is **Non-Critical and Replaceable** and where access is **infrequent**.
+
+### S3 Glacier - Instant
+
+Standard-IA is for when the data is required once a month, Glacier - once every quarter. 
+
+**EXAM NOTE!** S3 Glacier Instant should be used for long-lived data, accessed once per qtr with millisecond access.
+
+### S3 Glacier - Flexible
 
 
 
