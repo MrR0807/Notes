@@ -858,6 +858,8 @@ Transition can happen like watefall. The top tier can move to any bottom tier wi
 
 A single rule cannot transition to Standard-IA or One Zone-IA and THEN to glacier classes. So if we're moving from S3 Standard to Glacier, then it will be 60 days minimum: 30 days in Standard, 30 days in IA. However, you can move from IA to Glacier faster with two rules.
 
+## S3 Replication
+
 
 
 
