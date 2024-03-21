@@ -801,6 +801,77 @@ Standard-IA is for when the data is required once a month, Glacier - once every 
 
 ### S3 Glacier - Flexible
 
+It is similar to S3 Standard - same durability, stored in multiple AZs. However, they are **not immediately available and objects cannot be made public** anymore (e.g. using static website hosting). You can see objects in S3, but these are pointers and requires a retrieval process. There are 3 different retrieval processes:
+* Expedited (1-5 minutes).
+* Standard (3-5 hours).
+* Bulk (5-12 hours).
+
+Has minimal 40KB min size and 90 day min charge duration. 
+
+First byte latency = minutes or hours depending on chosen retrieval process.
+
+**EXAM NOTE!** Archival data where frequent or realtime access isn't needed (e.g. yearly) and retrieval process is from minutes to hours.
+
+### S3 Glacier Deep Archive
+
+Same as S3 Glacier. Differences:
+* Minimum 180 day duration charge.
+* Retrieval process:
+  * Standard (12 hours).
+  * Bulk (up to 48 hours).
+
+**EXAM NOTE!** Archival data that rarely if ever needs to be accessed - hours or days for retrieval e.g. Legal or Regulation data storage.
+
+### S3 Intelligent-Tiering
+
+It is different from all previous tiers, because it contains 5 different tiers in itself:
+* Frequent Access (S3 Standard)
+* Infrequent Access (S3 Standard-IA)
+* Archive Instant Access (S3 Glacier Instant)
+* Archive Access (S3 Glacier Flexible)
+* Deep Archive (S3 Deep Archive)
+
+![image](https://github.com/MrR0807/Notes/assets/24605837/7bb18203-0a31-43da-adf6-747f54954ae5)
+
+Mainly it moves between Frequent Access and Infrequent Access. You can configure additional Glacier tiers.
+
+Instead of retrieval cost, Intelligent-Tiering has monitoring and automation cost per 1000 objects.
+
+**EXAM NOTE!** S3 Intelligent-Tiering should be used for long-lived data, with changing or unknown patterns.
+
+## Lifecycle Configuration
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
