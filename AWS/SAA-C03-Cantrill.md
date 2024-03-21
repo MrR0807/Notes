@@ -839,9 +839,20 @@ Instead of retrieval cost, Intelligent-Tiering has monitoring and automation cos
 
 **EXAM NOTE!** S3 Intelligent-Tiering should be used for long-lived data, with changing or unknown patterns.
 
-## Lifecycle Configuration
+## S3 Lifecycle Configuration
 
+* A Lifecycle configuration is a set of rules.
+* Rules consist of actions, which can be performed on a Bucket or group of objects defined by prefix or tags.
+* The actions are of two types: transition actions (change the storage class); expiration actions (delete object or objects or object versions).
 
+Transition can happen like watefall. The top tier can move to any bottom tier with one exception - S3 One Zone - IA cannot move to S3 Glacier - Instant Retrieval:
+* S3 Standard.
+* S3 Standard-IA.
+* S3 Intelligent-Tiering.
+* S3 One Zone-IA.
+* S3 Glacier - Instant Retrieval.
+* S3 Glacier - Flexible Retrieval.
+* S3 Glacier Deep Archive.
 
 
 
