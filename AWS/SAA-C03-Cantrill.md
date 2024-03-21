@@ -726,15 +726,25 @@ This defines who encrypts the data at rest.
 **AWS recently made server side encryption mandatory**.
 
 There are three types of Server Side Encryption:
-* SSE-C Server Side Encryption with Customer Provided Keys. You provide Crypto Key and plaintext to encrypt. Data is encrypted and hash of the key is added to metadata. The Key is disgarded by S3 after. Customer should handle the keys on his side.
+* SSE-C Server Side Encryption with Customer Provided Keys. You provide Crypto Key and plaintext to encrypt. Data is encrypted and hash of the key is added to metadata. The Key is disgarded by S3 after. Customer should handle the keys on his side. When you want to decrypt the data, you have to provide plaintext key, which is again hashed and compared with metadata in S3.
 * SSE-S3 Server Side Encryption with Amazon S3 Managed Keys (Default). With this method, AWS handles both the encryption process and management of keys. When putting object into S3 you just provide the data. S3 generates a unique key for every object. You have 0 control over the key.
 * SSE-KMS Server Side Encryption with KMS Keys stored in AWS Key Management Service.
 
 ![image](https://github.com/MrR0807/Notes/assets/24605837/47613b0b-7df5-4bb0-bfd7-b584568ddcec)
 
+SSE-S3 is a good default for most cases, unless you have specific regulatory requirements - if you need to control the keys and access to those keys, if you need to control rotation cadency, if you need role separtion. The role separation refers to the situation where S3 administrator can encrypt and decrypt objects. In some cases, we want administrators to administer buckets, but not able to managed content.
 
+When S3 wants to encrypt an object using SSE-KMS, it has to liaise with KMS and request a new data encryption key to be generated using KMS Key. KMS delivers two data encryption keys - plaintext and encrypted. S3 uses plaintext to encrypt data and discards it, while saves encrypted key with object metadata. You also have logging and tracing regards using KMS keys. KMS master key is used to decrypt the encrypted copy of DEK key.
 
+The biggest benefit of SSE-KMS is that you can role separate administration tasks and encryption/decryption process. 
 
+![image](https://github.com/MrR0807/Notes/assets/24605837/fa194b2d-e010-48c1-87f2-77f86a2c9193)
+
+![image](https://github.com/MrR0807/Notes/assets/24605837/f78114d3-366c-443b-a50f-32223516b525)
+
+You can use both client-side encryption and server-side encryption. NOTE! This is on by default now.
+
+**EXAM NOTE!** SSE-S3 uses AES-256. If you see AES-256, think SSE-S3.
 
 
 
