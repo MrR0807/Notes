@@ -900,7 +900,9 @@ There is another type of architecture, where presigned urls are provided along w
 
 ![image](https://github.com/MrR0807/Notes/assets/24605837/43d34727-ac67-4bf5-9a01-3a8f8d3e4cda)
 
-
+**EXAM NOTE!** 
+* You can create a URL for an object you have no access to. But because you don't have access to it, then URL as well will not be able to access it.
+* When using the URL, the permissions match the identity which generated it **right now**. If you're getting access denied then it could mean that the generating ID never had access or **doesn't have right now**.
 
 
 
