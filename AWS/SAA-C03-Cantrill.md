@@ -909,6 +909,17 @@ There is another type of architecture, where presigned urls are provided along w
 
 Most of the time you want to interact with full object from S3. However, if the object is really large, and you don't need it fully, you can use select which is SQL-Like statement. You only consume pre-filtered by S3. You select objects from CSV, JSON, Parquet, BZIP2 compression for CSV and JSON. This is kind of predicate pushdown.
 
+## S3 Events
+
+Notification is generated when an event occurs in a bucket. These can be delivered to SNS, SQS and Lambda Fucntions.
+
+Events can be generated when object is created, delete, restore operations and when replication happens. You have to define event notification config. You have create a resourcep policy allowing S3 principal access. You can also use EventBridge which supports more types of events and more services.
+
+![image](https://github.com/MrR0807/Notes/assets/24605837/af63dea3-c006-46fa-9934-6f7585150ac1)
+
+## S3 Access Logs
+
+
 
 
 
