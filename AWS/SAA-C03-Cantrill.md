@@ -919,8 +919,28 @@ Events can be generated when object is created, delete, restore operations and w
 
 ## S3 Access Logs
 
+![image](https://github.com/MrR0807/Notes/assets/24605837/b5b052b1-a821-45e6-8f7c-e2d5a4ccb302)
 
+## S3 Object Lock
 
+* Object Lock enabled on new buckets (you have to contact support for existing buckets).
+* When you enable object locking, versioning is also enabled. 
+* Object lock implements write once read many architecture. Once set, object versions can't be deleted or overwritten.
+* These are individual versions that are locked.
+* There are two ways to manage object retentions. Object version can have both of these, one or the other or none. These can be set on individual objects and also defaults on the whole bucket:
+  * Retention periods
+  * Legal holds
+
+### Object Lock - Retention
+
+You specify a retention period in days and or years. There are two ways to setup retention period:
+* Compliance - the retention itself cannot be adjusted (it stays for that amount of time), the object cannot be deleted or overwritten. Even includes the account root user.
+* Governance - special permissions (IAM) can be granted allowing lock settings to be adjusted - `s3:BypassGovernanceRetention`. And they have to provide a header along with their request - `x-amz-bypass-governance-retention:true`.
+
+### Object Lock - Legal Hold
+
+Set on an object version - ON or OFF (binary). No retention. You can't delete or change a specific object version until it is removed. An extra permission is required `s3:PutObjectLegalHold` to add or remove legal hold.
+Prevents accidental deletion of critical object versions.
 
 
 
