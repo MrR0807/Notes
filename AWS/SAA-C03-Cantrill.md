@@ -887,6 +887,18 @@ Important to remember:
 
 ### S3 PreSigned URLs
 
+There are three main ways how to provide access to S3 bucket to unauthenticated user:
+* Give an AWS identity.
+* Provide AWS Credentials.
+* Make objects in S3 public.
+
+None of these are ideal, hence there is a presigned urls. An AWS user has to have permissions to generate presigned URL. When a presigned URL is used, the holder of that URL is actually **interacting with S3 as the person who generated it**.
+
+![image](https://github.com/MrR0807/Notes/assets/24605837/0a439b87-d6e8-4830-ac8c-09ad916b9ea3)
+
+There is another type of architecture, where presigned urls are provided along with static website content. This way, download is happening directly from S3 instead of passing through a server.
+
+![image](https://github.com/MrR0807/Notes/assets/24605837/43d34727-ac67-4bf5-9a01-3a8f8d3e4cda)
 
 
 
