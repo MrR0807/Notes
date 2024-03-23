@@ -881,11 +881,11 @@ Important to remember:
 * One way replication only. Source to Destination. Recently AWS added a bi-directional replication, but needs to be specifically configured.
 * Replication is possible with unencrypted data (which does not exist anymore), SSE-S3, SSE-KMS (with extra configurations) and SSE-C.
 * It cannot replicate Glacier or Glacier Deep Archive objects.
-* Replication requires that the owner of the source bucket has permissions on the objects which will replicate. You might create an S3 bucket an allow multiple accounts to place objects into it, then some objects will not belong to the source owner, hence no replication on those objects.
+* Replication requires that the owner of the source bucket has permissions on the objects which will replicate. You might create an S3 bucket an allow multiple accounts to place objects into it, then some objects will not belong to the source owner, hence no replication on those objects. **Destination account needs to own those objects**.
 * Lifecycle management events are not replicated.
 * Delete markers are not replicated. You can enable for those to be replicated as well, but they are not by default.
 
-
+### S3 PreSigned URLs
 
 
 
