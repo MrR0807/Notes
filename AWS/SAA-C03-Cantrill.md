@@ -942,6 +942,8 @@ You specify a retention period in days and or years. There are two ways to setup
 Set on an object version - ON or OFF (binary). No retention. You can't delete or change a specific object version until it is removed. An extra permission is required `s3:PutObjectLegalHold` to add or remove legal hold.
 Prevents accidental deletion of critical object versions.
 
+![image](https://github.com/MrR0807/Notes/assets/24605837/2c61ade2-7bec-4550-9ee6-0a8761feadaf)
+
 
 
 
