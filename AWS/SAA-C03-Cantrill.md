@@ -944,7 +944,10 @@ Prevents accidental deletion of critical object versions.
 
 ![image](https://github.com/MrR0807/Notes/assets/24605837/2c61ade2-7bec-4550-9ee6-0a8761feadaf)
 
+## S3 Access Points
 
+* Simplify managing access to S3 Buckets/Objects.
+* 
 
 
 
