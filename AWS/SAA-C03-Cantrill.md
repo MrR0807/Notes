@@ -903,6 +903,7 @@ There is another type of architecture, where presigned urls are provided along w
 **EXAM NOTE!** 
 * You can create a URL for an object you have no access to. But because you don't have access to it, then URL as well will not be able to access it.
 * When using the URL, the permissions match the identity which generated it **right now**. If you're getting access denied then it could mean that the generating ID never had access or **doesn't have right now**.
+* Dont generate with a role. URL stops working when temporary credentials expire. URL might have a longer expiration period than role.
 
 
 
