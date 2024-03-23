@@ -901,9 +901,13 @@ There is another type of architecture, where presigned urls are provided along w
 ![image](https://github.com/MrR0807/Notes/assets/24605837/43d34727-ac67-4bf5-9a01-3a8f8d3e4cda)
 
 **EXAM NOTE!** 
-* You can create a URL for an object you have no access to. But because you don't have access to it, then URL as well will not be able to access it.
+* You can create a URL for an object you have no access to. But because you don't have access to it, then URL as well will not be able to access it. You can also generate presigned URL for non existing objects.
 * When using the URL, the permissions match the identity which generated it **right now**. If you're getting access denied then it could mean that the generating ID never had access or **doesn't have right now**.
 * Dont generate with a role. URL stops working when temporary credentials expire. URL might have a longer expiration period than role.
+
+## S3 Select and Glacier Select
+
+Most of the time you want to interact with full object from S3. However, if the object is really large, and you don't need it fully, you can use select which is SQL-Like statement. You only consume pre-filtered by S3. You select objects from CSV, JSON, Parquet, BZIP2 compression for CSV and JSON. This is kind of predicate pushdown.
 
 
 
