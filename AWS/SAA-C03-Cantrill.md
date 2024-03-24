@@ -946,8 +946,12 @@ Prevents accidental deletion of critical object versions.
 
 ## S3 Access Points
 
-* Simplify managing access to S3 Buckets/Objects.
-* 
+* Simplify managing access to S3 Buckets/Objects (when you have millions or billions).
+* Rather than having 1 bucket with 1 bucket policy, you can have many access points allowing you to have different policies with different network access controls.
+* Each access point has its own endpoint address.
+* You can create via Console or via CLI command `aws s3control create-access-point --name <> --account-id <> --bucket`
+
+**EXAM NOTE**. Remember `aws s3control create-access-point` command.
 
 
 
