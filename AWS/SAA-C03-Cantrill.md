@@ -953,8 +953,9 @@ Prevents accidental deletion of critical object versions.
 
 **EXAM NOTE**. Remember `aws s3control create-access-point` command.
 
+![image](https://github.com/MrR0807/Notes/assets/24605837/671b06f5-ac64-488c-a584-17a01168715f)
 
-
+**NOTE!** You have to define matching permissions both in AccessPoints policy and Bucket Policies. However, you can do delegation where on the Bucket Policy you grant wide open access via the Access Point. This means that any action on any object is allowed as long as Access Point is used. Then, you can define granular controls via Access Point policy.
 
 
 
