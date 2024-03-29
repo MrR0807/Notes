@@ -1,4 +1,4 @@
-# Billing
+![image](https://github.com/MrR0807/Notes/assets/24605837/92ac6e9e-6edd-4458-b0db-40cd9672007a)# Billing
 
 * Go to *Billing Preferences* and check call preferences, like *Invoice delivery preferences* or *AWS Free Tier alerts*.
 * Setup a budget by going to *Budgets* -> *Use a template* -> *Create budget*.
@@ -988,6 +988,95 @@ Animals4Life example doesn't have a clear number of regions that the business wi
 * We can use the whole range from 10.16.0.0 up to 10.127.0.0 (10.128.0.0 is Google).
 
 ## VPC Sizing and Structure - PART2
+
+![image](https://github.com/MrR0807/Notes/assets/24605837/db3792e6-ce90-409b-9662-cc15be4fff1e)
+
+When deciding the size of VPC, these questions need to be answered:
+* How many subnets will you need?
+* How many IPs total? How many per subnet?
+
+**NOTE!** VPC services run from subnets, not directly from VPC.
+**NOTE!** Subnet is located in one Availability Zone.
+
+Steps to answer how many subnets you need:
+* Decide how many Availability Zones your VPC will use. By default, pick 3 + 1 spare, because it will work in almost any region.
+* Usually within a VPC you'll have tiers (e.g. Web, App, Database). By default, pick 3 + 1 spare.
+
+This leads to total of 16 subnets. If we chose /16 VPC we have to split into 16 subnets = /20.
+
+**NOTE!** Every increase in CIDR block creates two networks. /16 -> /18 creates 4 smaller networks.
+
+![image](https://github.com/MrR0807/Notes/assets/24605837/8157fde5-38a3-4dc7-8ea0-440799dab97b)
+
+ So for Animals4life we could split:
+ * 10.16 (US1)
+ * 10.32 (US2)
+ * 10.48 (US3)
+ * 10.64 (EU)
+ * 10.80 (Australia)
+
+
+The layout then:
+* 10.16 US1, General Acc, VPC1
+* 10.17 US1, General Acc, VPC2
+* 10.18 US1, General Acc, VPC3
+* 10.19 US1, General Acc, VPC4
+* 10.20 US1, Prod Acc, VPC1
+* 10.21 US1, Prod Acc, VPC2
+* 10.22 US1, Prod Acc, VPC3
+* 10.23 US1, Prod Acc, VPC4
+* 10.24 US1, Dev Acc, VPC1
+* 10.25 US1, Dev Acc, VPC2
+* 10.26 US1, Dev Acc, VPC3
+* 10.27 US1, Dev Acc, VPC4
+* 10.28 US1, Reserved, VPC1
+* 10.29 US1, Reserved, VPC2
+* 10.30 US1, Reserved, VPC3
+* 10.31 US1, Reserved, VPC4
+* 10.32 US2, General Acc, VPC1
+* 10.33 US2, General Acc, VPC2
+* 10.34 US2, General Acc, VPC3
+* 10.35 US2, General Acc, VPC4
+...
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
