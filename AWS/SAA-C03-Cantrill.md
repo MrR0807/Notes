@@ -987,7 +987,7 @@ Animals4Life example doesn't have a clear number of regions that the business wi
 * Assume 4 AWS accounts, which means 40 IP ranges.
 * We can use the whole range from 10.16.0.0 up to 10.127.0.0 (10.128.0.0 is Google).
 
-
+## VPC Sizing and Structure - PART2
 
 
 
