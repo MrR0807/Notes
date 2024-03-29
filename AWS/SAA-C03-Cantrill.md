@@ -985,7 +985,7 @@ When planning IP address space, these should be avoided in this scenario.
 Animals4Life example doesn't have a clear number of regions that the business will operate, hence we can make assumptions:
 * Maximum number of regions the business will use is three in US, one in Europe and one in Australia. Because we want to have two ranges in each regions then it is 10.
 * Assume 4 AWS accounts, which means 40 IP ranges.
-
+* We can use the whole range from 10.16.0.0 up to 10.127.0.0 (10.128.0.0 is Google).
 
 
 
