@@ -1042,6 +1042,7 @@ In the end, that means that we assign /16 split per account, which is later on s
 
 ## Custom VPCs - PART1 - THEORY
 
+![image](https://github.com/MrR0807/Notes/assets/24605837/d18e6c31-37b0-47d5-a9c0-573d911d2464)
 
 
 
