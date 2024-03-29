@@ -1038,9 +1038,9 @@ The layout then:
 * 10.35 US2, General Acc, VPC4
 ...
 
+In the end, that means that we assign /16 split per account, which is later on split into subnets /20, which gives us 4091 IPs per subnet.
 
-
-
+## Custom VPCs - PART1 - THEORY
 
 
 
