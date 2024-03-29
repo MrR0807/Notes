@@ -1015,7 +1015,6 @@ This leads to total of 16 subnets. If we chose /16 VPC we have to split into 16 
  * 10.64 (EU)
  * 10.80 (Australia)
 
-
 The layout then:
 * 10.16 US1, General Acc, VPC1
 * 10.17 US1, General Acc, VPC2
