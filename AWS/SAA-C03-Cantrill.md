@@ -1059,7 +1059,12 @@ In the end, that means that we assign /16 split per account, which is later on s
   * `enableDnsHostnames` - gives instances DNS Names
   * `enableDnsSupport` - enables DNS resolution in VPC.
 
+## Custom VPCs - PART2
 
+What is created at the end of the lesson:
+![image](https://github.com/MrR0807/Notes/assets/24605837/fe03fecf-73ac-4d79-bb51-6d39070ba693)
+
+**NOTE!** Do not forget to enable DNS Hostnames in VPC, by going into VPC -> Edit -> Enable DNS Hostnames.
 
 
 
