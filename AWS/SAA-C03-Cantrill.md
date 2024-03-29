@@ -1050,8 +1050,14 @@ In the end, that means that we assign /16 split per account, which is later on s
 * Hybrid Networking - other cloud & on-premises can connect to your VPC.
 * When creating a VPC, you have the option of picking default or dedicated tenancy. This controls whether the resources created inside the VPC are provisioned on shared hardware or dedicated hardware. If you chose the latter, then you're locked in. If you pick the former, then you can choose per service later on whether on dedicated or shared.
 * VPC can use IPv4 private and public IPs.
-* VPC is allocated one mandatory primary private IPv4 CIDR block.
-* 
+* VPC is allocated one mandatory primary private IPv4 CIDR block. This primary block has a min/max restrictions - /28 (16 IPs) to /16 (65536 IPs).
+* You can add secondary IPv4 CIDR block after creation (there is a maximum of 5 of such blocks, can be increased with a ticket).
+* Optional single assigned IPv6 /56 CIDR block.
+* Have fully feature DNS. Provided by Route53.
+* VPC address is Base IP + 2, e.g. 10.0.0.0 then DNS address is 10.0.0.2.
+* There are two properties that are important. If anything is not working with DNS, these settings should be checked first:
+  * `enableDnsHostnames` - gives instances DNS Names
+  * `enableDnsSupport` - enables DNS resolution in VPC.
 
 
 
