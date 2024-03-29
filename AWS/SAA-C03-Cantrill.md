@@ -1044,7 +1044,11 @@ In the end, that means that we assign /16 split per account, which is later on s
 
 ![image](https://github.com/MrR0807/Notes/assets/24605837/d18e6c31-37b0-47d5-a9c0-573d911d2464)
 
-
+* Regional Service - All AZs in the region.
+* Isolated network.
+* Nothing IN or OUT without explicit configuration.
+* Hybrid Networking - other cloud & on-premises can connect to your VPC.
+* When creating a VPC, you have the option of picking default or dedicated tenancy. This controls whether the resources created inside the VPC are provisioned on shared hardware or dedicated hardware. If you chose the latter, then you're locked in. If you pick the former, then you can choose per service later on whether on dedicated or shared.
 
 
 
