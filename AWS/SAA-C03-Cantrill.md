@@ -957,7 +957,34 @@ Prevents accidental deletion of critical object versions.
 
 **NOTE!** You have to define matching permissions both in AccessPoints policy and Bucket Policies. However, you can do delegation where on the Bucket Policy you grant wide open access via the Access Point. This means that any action on any object is allowed as long as Access Point is used. Then, you can define granular controls via Access Point policy.
 
+# VPC Basics
 
+## VPC Sizing and Structure - PART1
+
+VPC Considerations:
+* What size should the VPC be. Because each service will occupy at least one IP.
+* Are there any Networks we can't use.
+* Try to predict other VPCs, Cloud, On-premises etc IP ranges.
+
+Animals4Life ranges to avoid:
+* On-premise 192.168.10.0/24 (192.168.10.0 -> 192.168.10.255)
+* AWS Pilot 10.0.0.0/16 (10.0.0.0 -> 10.0.255.255)
+* Azure Pilot 172.31.0.0/16 (172.31.0.0 -> 172.31.255.255)
+* London offise 192.168.15.0/24 (192.168.15.0 -> 192.168.15.255)
+* New York office 192.168.20.0/24 (192.168.20.0 -> 192.168.20.255)
+* Seattle office 192.168.25.0/24 (192.168.25.0 -> 192.168.25.255)
+* Google 10.128.0.0/9 (10.128.0.0 -> 10.255.255.255)
+
+When planning IP address space, these should be avoided in this scenario.
+
+* AWS VPC minimum /28 (16 IPs), maximum /16 (65536 IPs)
+* Avoid common ranges - from 10.0 up to 10.10. Recommendations to use 10.16.0.0.
+* Deciding how many IP ranges is required, helps to think how many AWS regions the business will require. Be cautios! Think about the highest number of regions the business could opperate and a add few as buffer.
+* Suggestion is to have at least two ranges which can be used in each region, in each AWS account.
+
+Animals4Life example doesn't have a clear number of regions that the business will operate, hence we can make assumptions:
+* Maximum number of regions the business will use is three in US, one in Europe and one in Australia. Because we want to have two ranges in each regions then it is 10.
+* Assume 4 AWS accounts, which means 40 IP ranges.
 
 
 
