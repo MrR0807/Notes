@@ -1114,7 +1114,13 @@ Steps to expose a subnet to Internet:
 
 ### IPv4 Addresses with a IGW
 
+Let's say we have an EC2 instance with a private IPv4 address, an IGW and a server in public Internet. EC2 instance has an address of 10.16.16.20. Let's say EC2 gets a public address of 43.250.192.20. **The trick is that this public IP address does not "touch" EC2 instance. In other words, it is not configured at OS level, which would make EC2 instance aware of its public IP address. The public address is just an entry in IGW, which associates private IP address with public**.
 
+**EXAM NOTE!** Do not follow for any exam questions where it tries to convince you to assign the public IPv4 address of an EC2 instance directly to operating system. In case of IPv6 all addresses are publicly routable.
+
+![image](https://github.com/MrR0807/Notes/assets/24605837/c0fac242-8fbd-4041-989f-580b722e2ee7)
+
+![image](https://github.com/MrR0807/Notes/assets/24605837/57fe6f2d-65ae-4dd2-9c25-8b180670c689)
 
 
 
