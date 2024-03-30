@@ -1122,7 +1122,11 @@ Let's say we have an EC2 instance with a private IPv4 address, an IGW and a serv
 
 ![image](https://github.com/MrR0807/Notes/assets/24605837/57fe6f2d-65ae-4dd2-9c25-8b180670c689)
 
+### Bastion Host
 
+* An instance in a public subnet.
+* Incoming management connections arrive there. Then access internal VPC resources.
+* Bastions are used as entry points for private-only VPCs or management point.
 
 
 
