@@ -1085,6 +1085,34 @@ What is created at the end of the lesson:
 
 ## VPC Routing, Internet Gateway & Bastion Hosts
 
+VPC router:
+* Every VPC has a VPC Router - Highly available.
+* Network+1 address.
+* Routes traffic between subnets.
+* Controlled by route tables each subnet has one.
+* A VPC has a Main route table - subnet default. When you associate a custom route table, the main route table is disassociated.
+* A subnet can only have one route table associated with it, but a route table can be associated with many subnets.
+
+Each packet has a source, destination and data. Destination is being matched against VPC router. The more specific the match, the higher the priority. For example, a packet can match 0.0.0.0/0, which means all internetet, then 10.16.0.0/16 which means a network and 10.16.125.125/32 which means one specific IP. In this example, the last IP will have the highest priority and will be matched.
+
+**EXAM NOTE!** Route tables are attached to 0 or more subnets. A subnet has to have a route table. It's either the main route table of the VPC or a custom one that you've created. The route table controls what happens when data leaves the subnet or subnets. Local routes are always there, **uneditable**, and match the VPC CIDR range.
+
+Internet Gateway (IGW):
+* Region resilient gateway attached to a VPC.
+* One to one relationship between IGW and VPC.
+* Runs from within the AWS Public Zone.
+* Gateways traffic between the VPC and the Internet or AWS Public Zone (S3, SQS, SNS etc).
+* Managed by AWS.
+
+Steps to expose a subnet to Internet:
+1. Create IGW.
+2. Attach IGW to VPC.
+3. Create custom Route Table.
+4. Associate RT.
+5. Default Routes -> IGW.
+6. Subnet allocate public IPv4 addresses.
+
+### IPv4 Addresses with a IGW
 
 
 
