@@ -1066,6 +1066,21 @@ What is created at the end of the lesson:
 
 **NOTE!** Do not forget to enable DNS Hostnames in VPC, by going into VPC -> Edit -> Enable DNS Hostnames.
 
+## VPC Subnets
+
+* AZ resilient.
+* **EXAM NOTE!** One subnet in one AZ. It can never be in more than one.
+* By default uses IPv4 CIDR and is allocated a subset of VPC CIDR.
+* **EXAM NOTE!** Subnet CIDR cannot overlap with any other subnets in that VPC.
+* Subnet can have allocated IPv6 CIDR as long as VPC is has it enabled.
+* Subnets can communicate with other subnets in the same VPC (by default).
+* There are 5 IP addresses within every VPC subnet that you can't use whatever the size of subnet.
+  * Example, 10.16.16.0/20 (10.16.16.0 -> 10.16.31.225).
+  * First unsuable IP address is 10.16.16.0 - Network Address. This isn't specific to AWS, but a case for any other IP networks.
+  * Network+1 10.16.16.1 - VPC Router.
+  * Network+2 10.16.16.2 - Reserved DNS.
+  * Network+3 10.16.16.3 - Reserved Future Use.
+  * Broadcast Address 10.16.31.255 (Last IP in subnet).
 
 
 
