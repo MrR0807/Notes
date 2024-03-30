@@ -1081,7 +1081,7 @@ What is created at the end of the lesson:
   * Network+2 10.16.16.2 - Reserved DNS.
   * Network+3 10.16.16.3 - Reserved Future Use.
   * Broadcast Address 10.16.31.255 (Last IP in subnet).
-
+* VPC has a configuration object applied to it called DHCP Options Set. DHCP - dynamic host configuration protocol. How compute devices receive IP addresses automatically. One DHCP options set applied to a VPC at one time and this configuration flows through to subnets. **You cannot edit them. Only create new one and assigned to VPC**.
 
 
 
