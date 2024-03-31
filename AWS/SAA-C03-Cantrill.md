@@ -1165,8 +1165,16 @@ Custom NACLs can be created for a specific VPC and are initially associated with
 * Stateful - detect response traffic automatically.
 * Allowed (IN or OUT) request = allowed response.
 * **There is no explicit deny**. Only allow or implicit deny. Hence cannot be used to block specific bad actors.
-* 
-* 
+* Supports IP/CIDR and logical resources, including other security groups and itself.
+* SG are not attached to instances, but to ENIs (elastic network interface). **EXAM NOTE!** SG are attached to network interfaces.
+
+
+A network interface, often abbreviated as NIC (Network Interface Card) or simply as "interface," is a hardware component or software abstraction that enables a device to connect to a network. It serves as the intermediary between the device's operating system and the physical network medium (such as Ethernet, Wi-Fi, or cellular networks).
+In the context of computer networking, a network interface can refer to:
+* Physical Network Interface: This is a physical component of a device, such as a network adapter or network interface card (NIC). It could be an Ethernet port, a Wi-Fi adapter, or a cellular modem. Physical network interfaces typically have unique hardware addresses known as MAC (Media Access Control) addresses.
+* Virtual Network Interface: In virtualized environments or software-defined networking, a virtual network interface can be created to provide network connectivity to virtual machines or containers. These virtual interfaces often emulate the behavior of physical network interfaces and can be configured with their own IP addresses, MAC addresses, and network settings.
+
+Elastic Network Interface (ENI) is a **virtual network interface** that you can attach to an instance in a Virtual Private Cloud (VPC). It provides networking capabilities to the instance, enabling it to communicate with other resources in the VPC, the internet, and other AWS services.
 
 
 
