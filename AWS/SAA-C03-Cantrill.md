@@ -1178,9 +1178,11 @@ Elastic Network Interface (ENI) is a **virtual network interface** that you can 
 
 For example, say we have two subnets - web and app. Web is public, while app is private. Bob calls an application which is hosted in web subnet. Web subnet configures SG to accept inbound traffic from 0.0.0.0/0 to 443 porrt. Web application in turn calls app application in app subnet. In this case, app subnet would have to define a SG which would allow a trafic from web subnet. It could do so via IP/CIDR ranges. But SG functionality allows to reference another SG, which is attached to web subnet. This way, any machine which has attached web SG, can call app subnet applications. 
 
+![image](https://github.com/MrR0807/Notes/assets/24605837/db1d9016-2630-4757-b3e7-f98e94f6b921)
 
+Logical references allow self referencing. When you self reference in SG it allows all applications using said SG to communicate between themselves.
 
-
+![image](https://github.com/MrR0807/Notes/assets/24605837/fa6dcb96-00d6-4931-80ce-106af0cc8076)
 
 
 
