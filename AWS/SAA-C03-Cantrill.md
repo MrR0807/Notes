@@ -1157,7 +1157,7 @@ Custom NACLs can be created for a specific VPC and are initially associated with
 * Network ACLs are unique in terms of being able to explicitly deny certain IP ranges.
 * NACLs cannot be assigned to AWS resources - only subnets.
 * Used together with Security Groups to add explicit Deny (Bad IPs/Nets).
-* Each subnet can have ony NACL (default or custom).
+* Each subnet can have only one NACL (default or custom).
 * A single NACL can be associated with **many subnets**.
 
 ## Security Groups (SG)
