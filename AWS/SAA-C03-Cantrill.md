@@ -1128,6 +1128,20 @@ Let's say we have an EC2 instance with a private IPv4 address, an IGW and a serv
 * Incoming management connections arrive there. Then access internal VPC resources.
 * Bastions are used as entry points for private-only VPCs or management point.
 
+## Stateful vs Stateless Firewalls
+
+Stateless needs both ingress and egress rules. As well as allowing for full range of ephemeral ports. Stateful firewalls automatically allow egress/ingress.
+
+## Network Access Control Lists (NACLs)
+
+* NACL are associated with subnets. Every subnet has an associated network ACL. It filters data as it crosses the boundary of that subnet.
+* **NOTE!** Connections within same subnet are not affected by NACL.
+* Each NACL contains two rule sets - inbound and outbound.
+* NACL are stateless.
+* Rules are processed in **order, from lowest rule number first**. Once a match occurs, processing stops. `*` is an implicit DENY if nothing else matches.
+* If you have an allow rule and deny rule which match the same traffic, but if the deny rule comes first, then the allow rule might never be processed.
+
+![image](https://github.com/MrR0807/Notes/assets/24605837/a36ef7cc-2b4c-4d82-ab96-2b12145d324c)
 
 
 
