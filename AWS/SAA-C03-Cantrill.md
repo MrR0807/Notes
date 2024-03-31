@@ -1176,6 +1176,7 @@ In the context of computer networking, a network interface can refer to:
 
 Elastic Network Interface (ENI) is a **virtual network interface** that you can attach to an instance in a Virtual Private Cloud (VPC). It provides networking capabilities to the instance, enabling it to communicate with other resources in the VPC, the internet, and other AWS services.
 
+For example, say we have two subnets - web and app. Web is public, while app is private. Bob calls an application which is hosted in web subnet. Web subnet configures SG to accept inbound traffic from 0.0.0.0/0 to 443 porrt. Web application in turn calls app application in app subnet. In this case, app subnet would have to define a SG which would allow a trafic from web subnet. It could do so via IP/CIDR ranges. But SG functionality allows to reference another SG, which is attached to web subnet. This way, any machine which has attached web SG, can call app subnet applications. 
 
 
 
