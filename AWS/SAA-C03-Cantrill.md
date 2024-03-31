@@ -1162,7 +1162,11 @@ Custom NACLs can be created for a specific VPC and are initially associated with
 
 ## Security Groups (SG)
 
-
+* Stateful - detect response traffic automatically.
+* Allowed (IN or OUT) request = allowed response.
+* **There is no explicit deny**. Only allow or implicit deny. Hence cannot be used to block specific bad actors.
+* 
+* 
 
 
 
