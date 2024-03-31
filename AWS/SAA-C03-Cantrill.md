@@ -1143,10 +1143,11 @@ Stateless needs both ingress and egress rules. As well as allowing for full rang
 
 ![image](https://github.com/MrR0807/Notes/assets/24605837/a36ef7cc-2b4c-4d82-ab96-2b12145d324c)
 
+A VPC is created with default NACL. Inbound and outbound rules have the implict deny and allow all rule. Because the allow has a rule number, it is evaluated first, hence all traffic is allowed.
 
+![image](https://github.com/MrR0807/Notes/assets/24605837/3eb959d2-3d4b-440e-929d-cff125b0289f)
 
-
-
+Custom NACLs can be created for a specific VPC and are initially associated with NO subnets. They have explicit deny on everything.
 
 
 
