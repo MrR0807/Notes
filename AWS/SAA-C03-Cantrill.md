@@ -1149,9 +1149,16 @@ A VPC is created with default NACL. Inbound and outbound rules have the implict 
 
 Custom NACLs can be created for a specific VPC and are initially associated with NO subnets. They have explicit deny on everything.
 
+### Summary
 
-
-
+* Stateless.
+* Only impacts data crossing subnet boundary.
+* Work only with IPs/CIDR, ports and protocols - no logical resources.
+* Network ACLs are unique in terms of being able to explicitly deny certain IP ranges.
+* NACLs cannot be assigned to AWS resources - only subnets.
+* Used together with Security Groups to add explicit Deny (Bad IPs/Nets).
+* Each subnet can have ony NACL (default or custom).
+* A single NACL can be associated with **many subnets**.
 
 
 
