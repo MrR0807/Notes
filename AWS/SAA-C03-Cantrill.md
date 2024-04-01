@@ -1196,6 +1196,7 @@ Logical references allow self referencing. When you self reference in SG it allo
 * They utilise Elastic IPs. The one service that does.
 * AZ resilient services.
 * For every AZ you need one NAT gateway and one route table to point to it.
+* **EXAM NOTE!** Priced a base price and then for processed data.
 
 As per below, we can configure App subnet default route to point to NAT Gateway, which is hosted in Web subnet, which has assigned public IP address (but it is not really public address as per IGW section, just a record in IGW table that NAT gateway IP is associated with public IP). In Web subnet, default route is Internet Gateway.
 
@@ -1203,10 +1204,13 @@ If you want to give **private instances**, outgoing access to the internet and t
 
 ![image](https://github.com/MrR0807/Notes/assets/24605837/0a80634d-3032-4161-a006-61fcb21c4305)
 
+## Network Address Translation (NAT) & NAT Gateway - PART2
 
+![image](https://github.com/MrR0807/Notes/assets/24605837/c5c3ba1e-2dd5-4064-8b16-87ac9c617422)
 
+**EXAM NOTE!** You cannot associate Security Group with NAT gateway.
 
-
+With IPv6 NAT isn't required. **NAT Gateways don't work with IPv6**.
 
 
 
