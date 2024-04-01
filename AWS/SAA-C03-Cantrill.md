@@ -1114,7 +1114,7 @@ Steps to expose a subnet to Internet:
 
 ### IPv4 Addresses with a IGW
 
-Let's say we have an EC2 instance with a private IPv4 address, an IGW and a server in public Internet. EC2 instance has an address of 10.16.16.20. Let's say EC2 gets a public address of 43.250.192.20. **The trick is that this public IP address does not "touch" EC2 instance. In other words, it is not configured at OS level, which would make EC2 instance aware of its public IP address. The public address is just an entry in IGW, which associates private IP address with public**.
+Let's say we have an EC2 instance with a private IPv4 address, an IGW and a server in public Internet. EC2 instance has an address of 10.16.16.20. Let's say EC2 gets a public address of 43.250.192.20. **The trick is that this public IP address does not "touch" EC2 instance. In other words, it is not configured at OS level, which would make EC2 instance aware of its public IP address. The public address is just an entry in IGW, which associates private IP address with public address**.
 
 **EXAM NOTE!** Do not follow for any exam questions where it tries to convince you to assign the public IPv4 address of an EC2 instance directly to operating system. In case of IPv6 all addresses are publicly routable.
 
@@ -1184,10 +1184,24 @@ Logical references allow self referencing. When you self reference in SG it allo
 
 ![image](https://github.com/MrR0807/Notes/assets/24605837/fa6dcb96-00d6-4931-80ce-106af0cc8076)
 
+## Network Address Translation (NAT) & NAT Gateway - PART1
 
+* A set of processes - remapping SRC (source) or DST (destination) IPs.
+* Internet Gateway provides a static NAT. Allocate public IP addresses to certain services and does converstion between private and public IP addresses.
+* IP masquerading - hiding CIDR Blocks behind one IP.
+* Gives private CIDR range **outgoing** internet access. Outgoing is crucial, because many internap IPs are using one IP, which does not work for incoming traffic.
+* Historically there are two ways to provide NAT functionality. EC2 could be configured to use NAT and NAT as a service.
+* If it wasn't in AWS, NAT gateway is how your internet router at home works. It provides one public address for many IPs inside your home network.
+* NAT Gateways need to run from a public subnet.
+* They utilise Elastic IPs. The one service that does.
+* AZ resilient services.
+* For every AZ you need one NAT gateway and one route table to point to it.
 
+As per below, we can configure App subnet default route to point to NAT Gateway, which is hosted in Web subnet, which has assigned public IP address (but it is not really public address as per IGW section, just a record in IGW table that NAT gateway IP is associated with public IP). In Web subnet, default route is Internet Gateway.
 
+If you want to give **private instances**, outgoing access to the internet and the AWS public zone services such as S3, then you need **both the NAT gateway and Internet Gateway**. If you have public instances, then only IGW is required.
 
+![image](https://github.com/MrR0807/Notes/assets/24605837/0a80634d-3032-4161-a006-61fcb21c4305)
 
 
 
