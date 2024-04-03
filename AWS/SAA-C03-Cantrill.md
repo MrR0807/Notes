@@ -221,7 +221,7 @@ S3 is an object storage - not file or block. Object storage means that if you ha
 * `Parameters` field promps the user to add more information.
 * `Mappings` field allows you to create lookup tables.
 * `Conditions` field allows decision making in the template depending on some parameter value.
-* `Outputs` field, after template is finished, presents outbus based on what's being created, updated or deleted (e.g. return instance ID).
+* `Outputs` field, after template is finished, presents outputs based on what's being created, updated or deleted (e.g. return instance ID).
 
 NOTE! When you upload a template file to CloudFormation, it automatically creates an S3 bucket.
 
