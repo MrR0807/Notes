@@ -217,7 +217,7 @@ S3 is an object storage - not file or block. Object storage means that if you ha
 * CloudFormation is written either in YAML or JSON.
 * CloudFormation `Resources` tells what to create. If `Resources` are added then CloudFormation creates them. If they are update - then updates, if removed from the template - they are removed for infrastructure.
 * **NOTE! If you have `AWSTemplateFormatVersion` and `Description`, then Description has to immediately follow `AWSTemplateFormatVersion` field. This is a trick question used in Exam. `AWSTemplateFormatVersion` is not mandatory**
-* `Metadata` field has many fucntions, but one of the things that it does is it can control how the different things in the `CloudFormation` template are presented through the AWS console UI. You can specify groupings, order etc.
+* `Metadata` field has many functions, but one of the things that it does is it can control how the different things in the `CloudFormation` template are presented through the AWS console UI. You can specify groupings, order etc.
 * `Parameters` field promps the user to add more information.
 * `Mappings` field allows you to create lookup tables.
 * `Conditions` field allows decision making in the template depending on some parameter value.
