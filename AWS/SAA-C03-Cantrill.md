@@ -1212,7 +1212,9 @@ If you want to give **private instances**, outgoing access to the internet and t
 
 With IPv6 NAT isn't required. **NAT Gateways don't work with IPv6**.
 
+# ELASTIC COMPUTE CLOUD (EC2) BASICS
 
+## Virtualization 101
 
 
 
