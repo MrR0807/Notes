@@ -1262,6 +1262,8 @@ EC2 Categories:
 
 ![image](https://github.com/MrR0807/Notes/assets/24605837/0939744e-6b50-488d-bc3a-17e802c2146b)
 
+## EC2 Instance Types - PART2
+
 
 
 
