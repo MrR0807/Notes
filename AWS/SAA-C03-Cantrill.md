@@ -1282,6 +1282,8 @@ EC2 Categories:
 | Storage Optimized     | D2                   | Dense Storage (HDD) - data warehousing, Hadoop, DFS, data processing - lowest price disk throughput. |
 | Storage Optimized     | H1                   | High Throughput, balance CPU/Memory, HDFS, File systems, Apache Kafka, Big data.                     |
 
+## EC2 SSH vs EC2 Instance Connect
+
 
 
 
