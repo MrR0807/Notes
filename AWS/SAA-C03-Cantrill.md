@@ -1265,6 +1265,23 @@ EC2 Categories:
 ## EC2 Instance Types - PART2
 
 
+| Categories            | Type                 | Details/Notes                                                                                        |
+|-----------------------|----------------------|------------------------------------------------------------------------------------------------------|
+| General Purpose       | A1, M6g              | Graviton (A1), Graviton 2 (M6g) ARM based processors. Efficient.                                     |
+| General Purpose       | T3, T3a              | Burst Pool - Cheaper assuming nominal low levels of usage, with occasional Peaks.                    |
+| General Purpose       | M5, M5a, M5n         | Steady state workload alternative to T3/3a - Intel / AMD Architecture.                               |
+| Compute Optimized     | C5, C5n              | Media encoding, Scientific Modeling, Gaming Servers, General Machine Learning.                       |
+| Memory Optimized      | R5, R5a              | Real time analytics, in-memory caches, certain DB applications.                                      |
+| Memory Optimized      | X1, X1e              | Large scale in-memory applications. Lowest $ per GB memory in AWS.                                   |
+| Memory Optimized      | High Memory (u-Xtb1) | Highest memory of all AWS instances.                                                                 |
+| Memory Optimized      | z1d                  | Large memory and CPU - with directly attached NVMe.                                                  |
+| Accelerated Computing | P3                   | GPU instances - parallel processing & machine learning.                                              |
+| Accelerated Computing | G4                   | GPU Instances - machine learning inference and graphics intensive.                                   |
+| Accelerated Computing | F1                   | Field Programmable Gate Arrays - genomics, financial analysis, big data.                             |
+| Accelerated Computing | Inf1                 | Machine Learning - recommendation, forecasting, analysis, voice, conversation.                       |
+| Storage Optimized     | I3/I3en              | Local high performance SSD (NVMe) - NoSQL Databases, warehousing, analytics.                         |
+| Storage Optimized     | D2                   | Dense Storage (HDD) - data warehousing, Hadoop, DFS, data processing - lowest price disk throughput. |
+| Storage Optimized     | H1                   | High Throughput, balance CPU/Memory, HDFS, File systems, Apache Kafka, Big data.                     |
 
 
 
