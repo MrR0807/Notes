@@ -1245,8 +1245,22 @@ EC2 good for:
 
 In general always choose for EC2, unless you need specific need.
 
+## EC2 Instance Types - PART1
 
+Instances types influence:
+* Raw CPU, Memory, Local Storage Capacity & Type.
+* Resource Ratios.
+* Storage and Data Network Bandwidth.
+* System Architecture / Vendor (Intel, AMD etc).
 
+EC2 Categories:
+* General Purpose - Default - equal resource ratio.
+* Compute Optimized - media processing, scientific modelling, gaming, machine learning.
+* Memory Optimized - processing large in-memory datasets, some database workloads.
+* Accelerated Computing - Hardware GPU, field programmable gate arrays (FPGAs).
+* Storage Optimized - sequential and random IO - scale-out transactional databases, data warehousing, ElasticSearch, analytics workloads.
+
+![image](https://github.com/MrR0807/Notes/assets/24605837/0939744e-6b50-488d-bc3a-17e802c2146b)
 
 
 
