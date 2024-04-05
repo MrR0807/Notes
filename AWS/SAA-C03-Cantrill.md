@@ -1306,6 +1306,19 @@ But this not always translates directly. For example, 16KB x 100 IOPS = 1.6 MB/s
 
 ## Elastic Block Store (EBS) Service Architecture
 
+* Block Storage - raw disk allocations (volume) - Can be encrypted using KMS.
+* When you attach a block storage onto EC2 they can create a file system on this device.
+* **AZ resilient**.
+* Usually attach to one EC2 instance (or other service) over a storage network.
+* Lifecycle not linked to one instance. Persistent.
+* Can snapshot into S3. Create volume from snapshot (migrate between AZs).
+* There are different physical storage types, different sizes, different performance profiles.
+* Billed based on GB/month (and in some cases performance).
+* No cross AZ attachements between EBS and services (e.g. EC2).
+
+## EBS Volume Types - General Purpose
+
+
 
 
 
