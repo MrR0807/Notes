@@ -1284,7 +1284,15 @@ EC2 Categories:
 
 ## EC2 SSH vs EC2 Instance Connect
 
+## Storage Refresher
 
+Key Terms:
+* Direct (local) attached Storage - Storage on the EC2 Host. Called Instance Store. This is Ephemeral Storage.
+* Network attached Storage - Volumes delivered over the networks (EBS). This is persistent storage.
+
+Three main categories of storage:
+* Block - volume presented to the OS as a collection of blocks. **Moutable. Bootable**. Blocks have no structure. It is up for OS to create a file system.
+* Filesystem - 
 
 
 
