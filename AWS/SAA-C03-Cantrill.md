@@ -1319,11 +1319,29 @@ But this not always translates directly. For example, 16KB x 100 IOPS = 1.6 MB/s
 ## EBS Volume Types - General Purpose
 
 
+### General Purpose SSD - GP2.
 
+An IO credit is 16 KB. IOPS assumes 16 KB. 1 IOPS is 1 IO in 1 second. If you transfer 160KB per second, that is 10 credits.
 
+Volumes can be as small as 1 GB or as large as 16TB.
 
+IO Credit Bucket Capacity is 5.4 million IO Credits and it fills at rate of Baseline Performance.
 
+Baseline Performance - every volume has a baseline performance based on its size with a minimum. So streaming into the bucket at all times is a 100 IO credits per second refill rate. The actual baseline you get in GP2 depends on the volume size. You get three IO credits per second per GB of volume size. A 100 GB volume gets 300 IO credits per second. Anything below 33.33 GB gets a 100 IO Credits minimum. This is only for volumes up to 1TB.
 
+By default, GP2 can burst up to 3000 IOPS.
+
+All volumes get an initial 5.4 million IO credits. Which means 30 minutes of 3000 IOPS (without calculating the fill up rate).
+
+Volumes larger than 1TB are given equal or exceeding the burst rate of 3000. They will always achieve their baseline performance as standard. The maximum IO per second for GP2 is 16000. Any volumes above 5.33 recurring TB in size, gets this.
+
+![image](https://github.com/MrR0807/Notes/assets/24605837/520f075e-eded-46fe-9110-9dffbdae8773)
+
+### GP3
+
+It removes the credit bucket architecture of GP2. Every GP3 regardless of size starts with a standard 3000 IOPS and can transfer 125 MB per second. Volumes can range from 1GB to 16TB. If you need more performance you can pay extra for up to 16000 IOPS or 1000 MB/s. GP3 is 4x faster max throughput vs GP2 - 1000 MB/s vs 250 MB/s. Just be aware that IOPS do not automatically scale with volume size.
+
+## EBS Volume Types - Provisioned IOPS
 
 
 
