@@ -1223,12 +1223,27 @@ With IPv6 NAT isn't required. **NAT Gateways don't work with IPv6**.
 
 ## EC2 Architecture and Resilience
 
+* EC2 instances are virtual machines.
+* EC2 instances run on EC2 Hosts.
+* EC2 hosts are either shared or dedicated.
+* AZ resilient.
 
+EC2 hosts have local hardware - CPU, Memory, local storage (Instance Store - temporary storage), storage networking, data networking. When instances are provisioned into a specific subnet within a VPC, whats actually happening is that a primary elastic network interface, is provisioned in a subnet, which maps to the physical hardware on the EC2 host. Instances can have multiple network interfaces, even in different subnets as long as they are in the same Availability Zone.
 
+EC2 can mount block store (EBS). **EBS also runs in same AZ**. You can't access them cross zone.
 
+**NOTE!** If you restart an instance it will stay on particular EC2 host. If you stop and start - it might move to a different EC2 host.
 
+You cannot connect network interfaces or EBS storage located in one AZ to an EC2 instance, located in another.
 
+![image](https://github.com/MrR0807/Notes/assets/24605837/ef2b13e3-3988-45b7-b674-23194bdf1811)
 
+EC2 good for:
+* Traditional OS+Application Compute.
+* Long Running Compute.
+* Server style applications (burst or steady-state).
+
+In general always choose for EC2, unless you need specific need.
 
 
 
