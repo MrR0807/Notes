@@ -1264,7 +1264,6 @@ EC2 Categories:
 
 ## EC2 Instance Types - PART2
 
-
 | Categories            | Type                 | Details/Notes                                                                                        |
 |-----------------------|----------------------|------------------------------------------------------------------------------------------------------|
 | General Purpose       | A1, M6g              | Graviton (A1), Graviton 2 (M6g) ARM based processors. Efficient.                                     |
