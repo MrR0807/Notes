@@ -1221,6 +1221,44 @@ With IPv6 NAT isn't required. **NAT Gateways don't work with IPv6**.
 * Third iteration was Hardware Assisted Virtualization. The hardware itself has become virtualization aware. The CPU contains specific instructions and capabilities so thatt the hypervisor can directly control and configure this support. What this means is when guest OS attempt to run any privileged instructions they're trapped by the CPU, which knows to expect them from these guest OS. However, these instructions are still directed to a hypervisor, but just this time by hardware. The downside that it requires a lot of CPU cycles and for intensive IO operations, for example, accessing network card still involves software.
 * Final iteration is where a hardware device themselves become virtualization aware. Such as network cards. This process is called **SR-IOV** - single route IO virtualization. It allows for a single physical card to present itself as several mini cards. Because this is supported at hardware, they are fully unique almost standalone cards. **This means that no translation needs to happen**. In EC2 this is called **Enhanced Networking**.
 
+## EC2 Architecture and Resilience
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
