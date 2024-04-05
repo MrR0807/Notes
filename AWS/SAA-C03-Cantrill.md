@@ -1292,7 +1292,19 @@ Key Terms:
 
 Three main categories of storage:
 * Block - volume presented to the OS as a collection of blocks. **Moutable. Bootable**. Blocks have no structure. It is up for OS to create a file system.
-* Filesystem - 
+* File - presented as a file share. Has structure. **Moutable. Not bootable**.
+* Object storage - collection of objects. Not mountable. Not bootable.
+
+Storage Performance:
+* IO (block) size.
+* IOPS - measures the number of IO operations the storage system can support in a second.
+* Throughput - the amount of data that can be transferred in a given second (generally in MB/s).
+
+IO (block) size x IOPS = Throughput
+
+But this not always translates directly. For example, 16KB x 100 IOPS = 1.6 MB/s. But 1MB x 100 IOPS != 100 MB/s. Because sometimes, by increasing block size, IOPS slow down. Also, there are caps on throughput.
+
+## Elastic Block Store (EBS) Service Architecture
 
 
 
