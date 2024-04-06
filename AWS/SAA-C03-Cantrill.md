@@ -1379,6 +1379,20 @@ HDD is not good for random access, but for sequental. HDD works like GP2 - bucke
 * **EXAM NOTE!** Attached at launch. You cannot attach them later.
 * Data is lost when instances moves (stop, start), resized or hardware failure.
 
+## Choosing between the EC2 Instance Store and EBS
+
+* Persistance = EBS (avoid instance store).
+* Resilience = EBS (avoid instance store).
+* Storage isolated from instace lifecycle = EBS.
+* Resilience built into application, then it depends.
+* High performance needs - it depends.
+* Super high performance needs - instance store.
+* Cost - instance store (included into instance price).
+* **EXAM NOTE!** If you see a question about cost efficiency and need to use EBS, then choose ST1 and SC1.
+* **EXAM NOTE!** If the question mentions throughput or streaming then you should ST1.
+* **EXAM NOTE!** If the question mentions boot volume - then you cannot use either ST1 or SC1.
+* **EXAM NOTE!** GP2/3 up to 16000 IOPS. IO1/2 up to 64000 IOPS (*256000).
+* **EXAM NOTE!** You can take lots of individual EBS volumes, and you can create a RAID 0 set from those EBS volumes. 
 
 
 
