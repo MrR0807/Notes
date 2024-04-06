@@ -1362,6 +1362,53 @@ There is also per instance performance betweent EBS and EC2 which is influenced 
 
 **EXAM NOTE!** Do not remember the numbers, but have a feel how much they differ from gp2/3 volumes. 
 
+## EBS Volume Types - HDD-Based
+
+There are two types of HDD Based storage in EBS:
+* st1 - throughput optimized. 125 GB - 16 TB. Max 500 IOPS (block sizes are 1MB). Max 500 MB/s. 40MB/s/TB base. Good for data warehouses. Data warehouses, log processing.
+* sc2 - cold HDD. Max 250 IOPS (1MB). 125 GB - 16 TB. Max 250 MB/s. 12MB/s/TB base. 80 MB/s/TB burst.
+
+HDD is not good for random access, but for sequental. HDD works like GP2 - bucket credit. But credits are per MB/s instead of IOPS.
+
+## Instance Store Volumes - Architecture
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
