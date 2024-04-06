@@ -1343,7 +1343,24 @@ It removes the credit bucket architecture of GP2. Every GP3 regardless of size s
 
 ## EBS Volume Types - Provisioned IOPS
 
+Provisioned IOPS SSD (io1/2). There are three types of provisioned IOPS SSD:
+* io1 - up to 64000 IOPS per volume (4x GP2/3). Up to 1000 MB/s. Volume sizes from 4GB - 16TB. 50 IOPS/GB Max.
+* io2 - up to 64000 IOPS per volume (4x GP2/3). Up to 1000 MB/s. Volume sizes from 4GB - 16TB. 500 IOPS/GB Max.
+* io2 Block Express - up to 256000 IOPS per volume. Up to 4000 MB/s. Volume sizes from 4GB - 64TB. 1000 IOPS/GB Max.
 
+A common factor among all of them is that **IOPS are configurable independent of the size of the volume (but still have caps per GB as per above)** and they're designed for super high performance situations. 
+
+There is also per instance performance betweent EBS and EC2 which is influenced by:
+* The type of volume. Different volumes have different per instance performance.
+* The type of the instance.
+* The size of the instance. The most modern and the largest instances support the highest levels of performance.
+
+ Furthermore, the maximum per instance will be bigger than one volume can support, hence you can have multiple volumes attached. The instance maximums:
+ * io1 - 260000 IOPS & 7500 MB/s.
+ * io2 - 160000 IOPS & 4750 MB/s.
+ * io2 Block Express - 260000 IOPS & 7500 MB/s.
+
+**EXAM NOTE!** Do not remember the numbers, but have a feel how much they differ from gp2/3 volumes. 
 
 
 
