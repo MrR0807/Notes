@@ -1318,7 +1318,6 @@ But this not always translates directly. For example, 16KB x 100 IOPS = 1.6 MB/s
 
 ## EBS Volume Types - General Purpose
 
-
 ### General Purpose SSD - GP2.
 
 An IO credit is 16 KB. IOPS assumes 16 KB. 1 IOPS is 1 IO in 1 second. If you transfer 160KB per second, that is 10 credits.
@@ -1372,8 +1371,13 @@ HDD is not good for random access, but for sequental. HDD works like GP2 - bucke
 
 ## Instance Store Volumes - Architecture
 
-
-
+* Block storage devices.
+* Physically connected to one EC2 host.
+* Instances on that host can access them.
+* Highest storage performance in AWS. For example using D3 instance (storage optimized) provides 4.6 GB/s throughput. I3 = 16 GB/s.
+* Included in instance price.
+* **EXAM NOTE!** Attached at launch. You cannot attach them later.
+* Data is lost when instances moves (stop, start), resized or hardware failure.
 
 
 
