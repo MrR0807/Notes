@@ -1381,6 +1381,8 @@ HDD is not good for random access, but for sequental. HDD works like GP2 - bucke
 
 ## Choosing between the EC2 Instance Store and EBS
 
+**Remember all of this. Very important**.
+
 * Persistance = EBS (avoid instance store).
 * Resilience = EBS (avoid instance store).
 * Storage isolated from instace lifecycle = EBS.
@@ -1392,7 +1394,7 @@ HDD is not good for random access, but for sequental. HDD works like GP2 - bucke
 * **EXAM NOTE!** If the question mentions throughput or streaming then you should ST1.
 * **EXAM NOTE!** If the question mentions boot volume - then you cannot use either ST1 or SC1.
 * **EXAM NOTE!** GP2/3 up to 16000 IOPS. IO1/2 up to 64000 IOPS (*256000).
-* **EXAM NOTE!** You can take lots of individual EBS volumes, and you can create a RAID 0 set from those EBS volumes. 
+* **EXAM NOTE!** EBS + RAID 0. You can take lots of individual EBS volumes, and you can create a RAID 0 set from those EBS volumes. And that RAID 0 set then gets up to the combined performance of all of the individual volumes. However, this is up to 260000 IOPS, because this is the maximum possible IOPS per instance.
 
 
 
