@@ -1168,7 +1168,6 @@ Custom NACLs can be created for a specific VPC and are initially associated with
 * Supports IP/CIDR and logical resources, including other security groups and itself.
 * SG are not attached to instances, but to ENIs (elastic network interface). **EXAM NOTE!** SG are attached to network interfaces.
 
-
 A network interface, often abbreviated as NIC (Network Interface Card) or simply as "interface," is a hardware component or software abstraction that enables a device to connect to a network. It serves as the intermediary between the device's operating system and the physical network medium (such as Ethernet, Wi-Fi, or cellular networks).
 In the context of computer networking, a network interface can refer to:
 * Physical Network Interface: This is a physical component of a device, such as a network adapter or network interface card (NIC). It could be an Ethernet port, a Wi-Fi adapter, or a cellular modem. Physical network interfaces typically have unique hardware addresses known as MAC (Media Access Control) addresses.
@@ -1396,7 +1395,15 @@ HDD is not good for random access, but for sequental. HDD works like GP2 - bucke
 * **EXAM NOTE!** GP2/3 up to 16000 IOPS. IO1/2 up to 64000 IOPS (*256000).
 * **EXAM NOTE!** EBS + RAID 0. You can take lots of individual EBS volumes, and you can create a RAID 0 set from those EBS volumes. And that RAID 0 set then gets up to the combined performance of all of the individual volumes. However, this is up to 260000 IOPS, because this is the maximum possible IOPS per instance.
 
+## Snapshots, Restore & Fast Snapshot Restore (FSR)
 
+* Snapshots are incremental volume copies to S3.
+* The first is a full copy of data on the volume. EBS performance is not impacted during snapshot.
+* Future snapshots are incremental.
+* EBS volume can be created (restored) from snapshots.
+* When EBS is provisioned without snapshot - it is available immediately. When EBS is restored, restore is happening gradually in the background and it takes some time. If you try to read data that has not been restored, it will pull the data from S3, but that achieves lower level of performance.
+* Fast Snapshot Restore - immediately pulls data from S3. You can have up to 50 FSR per region. 1 snapshot restored to 4 different AZ is counted as 4 FSR. This feature has associated cost.
+* Costs are GB/month. And snapshot costs are tied to increment size. E.g. initial snapshot is 10 GB, then it is priced as 10 GB. Next incremental snapshot is 2 GB, then snapshot is priced as 2 GB.
 
 
 
