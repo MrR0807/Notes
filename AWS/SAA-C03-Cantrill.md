@@ -1464,7 +1464,12 @@ In short, an instance have one or more network interfaces (a primary and optiona
 * optionally, one public IPv4 address.
 * optionally, one or more elastic IP addresses.
 
-
+**EXAM NOTES!**
+* Secondary ENI + MAC = Licensing. A lot of legacy licesing is per MAC address as it was viewed as static. Because EC2 is a virtualized environment, we can swap and change elastic network interfaces. And so if you provision a secondary elastic network interface on an instance, and use that secondary network interface MAC address for licesing, you can detach that secondary interface and attach to a new instance. Move the license between EC2 instances.
+* Different Security Groups for multiple interfaces (because SGs are attached to interfaces). If you need different rules so different security groups, for different IPs then you need multiple elastic network interfaces.
+* **OS does not see public IPv4**.
+* IPv4 public IPs are dynamic. Stop & Start = Change. To avoid this, you need to allocate elastic IP address.
+* Inside VPC, the public DNS resolves to the private IP. Outside the VPC, it will resolve to the public IP address.
 
 
 
