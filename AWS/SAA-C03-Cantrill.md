@@ -1471,6 +1471,22 @@ In short, an instance have one or more network interfaces (a primary and optiona
 * IPv4 public IPs are dynamic. Stop & Start = Change. To avoid this, you need to allocate elastic IP address.
 * Inside VPC, the public DNS resolves to the private IP. Outside the VPC, it will resolve to the public IP address.
 
+## Amazon Machine Images (AMI)
+
+* AMI can be used to launch EC2 instance.
+* AMIs can be provided by AWS or Community provided.
+* AMIs can be found in Marketplace (can include commercial software).
+* AMIs are regional.
+* AMIs control permissions. By default an AMI is set so that only your account can use it. You can set an AMI to be public or add specific AWS accounts onto that AMI.
+* You can create an AMI from an EC2 instance you want to template.
+
+**EXAM NOTES!**
+* AMI = One Region. Only works in that one region. If you create a particular AMI, it can only be used in that region.
+* AMI baking - taking an EC2 instance, installing all of the software, doing all the configuration and then baking all of that into an AMI.
+* AMI is immutable.
+* Can be copied between regions (includes its snapshots).
+* AMI permissiosn default to only your account.
+* AMI costs per EBS snapshots.
 
 
 
