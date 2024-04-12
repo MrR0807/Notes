@@ -1488,7 +1488,7 @@ In short, an instance have one or more network interfaces (a primary and optiona
 * AMI permissiosn default to only your account.
 * AMI costs per EBS snapshots.
 
-## EC2 Purchase Options - PART1
+## EC2 Purchase Options
 
 * On-Demand - default. Instances are isolated but multiple customer instances run on shared hardware. Per-second billing while an instance is running. Associated resources such as storage consume capacity, so bill, regardless of instance state.
   * No interruption.
@@ -1505,7 +1505,17 @@ In short, an instance have one or more network interfaces (a primary and optiona
   * Bursty Capacity needs.
   * Cost sensitive workloads.
   * Anything which is stateless.
-* 
+* Reserved. 
+  * Reservation is purchased for a particular type of instance and locked in AZ or to a region.
+  * Unused reservation still billed.
+  * Partial coverage of larger instance. For example, you have reserved t3.medium, but provisioned t3.large. You get a discount for t3.large.
+  * You can commit to either 1 year or 3 years.
+  * You can agree with no-upfront and get a reduced per second fee. You have the ability to pay all upfront - no per second fee. You pay partial upfront and get lower per second fee.
+* Dedicated host. You pay for the host and have various instance types run in those hosts.
+  * Has a host affinity feature, which means when an instance is stopped it can restart on the same host.
+  * **EXAM NOTE!** The true reason to use these hosts are per socket/core licensing requirements.
+  * You have to monitor resource consumption, because you might run out of resources.
+* Dedicated Instances. Your instance run on EC2 host with other instances of yours. No other customers use same hardware. You don't pay for the host or share the host. Extra charges for instances, but dedicated hardware.
 
 
 
