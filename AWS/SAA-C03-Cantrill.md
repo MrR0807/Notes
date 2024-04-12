@@ -1419,9 +1419,18 @@ Linux commands to run inside EC2:
   * UUID=<uuid> /ebstest xfs defaults,nofail
 * `sudo mount -a` - mounts all the volumes which are defined in fstab file.
 
+## EBS Encryption
 
+EBS uses KMS to encrypt the data. You can use default AWS kms/ebs key or your own. KMS provides DEK keys to EBS and during encryption, the DEK key is stored together. When the volume is first used, either mounted on an EC2 instance by you or when an instance is launched, then EBS asks KMS to decrypt the data encryption key, that's used just for this one volume. That key is loaded into the memory of the EC2 host which will be using it.
 
+If a snapshot is made, then the same encryption key is used. **It doesn't cost anything to use**.
 
+**EXAM NOTES!**
+* Accounts can be set to encrypt by default - default KMS Key. Otherwise choose a KMS Key manually each and every time.
+* Each volume uses 1 unique DEK. Every time you create a new volume from scratch - it gives you new DEK.
+* Snapshots & future volumes use the same DEK.
+* Can't change a volume to NOT be encrypted.
+* OS isn't aware of the encryption - no performance loss. 
 
 
 
