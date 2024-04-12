@@ -1405,7 +1405,16 @@ HDD is not good for random access, but for sequental. HDD works like GP2 - bucke
 * Fast Snapshot Restore - immediately pulls data from S3. You can have up to 50 FSR per region. 1 snapshot restored to 4 different AZ is counted as 4 FSR. This feature has associated cost.
 * Costs are GB/month. And snapshot costs are tied to increment size. E.g. initial snapshot is 10 GB, then it is priced as 10 GB. Next incremental snapshot is 2 GB, then snapshot is priced as 2 GB.
 
+## EBS Volumes - PART1
 
+Linux commands to run inside EC2:
+* lsblk - list all block devices connected to this instance.
+* sudo file -s /dev/xvdf - check whether there are file systems on this block device. If you see `/dev/xvdf: data` then there isn't any filesystem.
+* sudo mkfs -t xfs /dev/xvdf - because there is no file system, you have to create one as you can only mount file systems under linux. You can mount a file system to a mount point which is a directory.
+* sudo mkdir /ebstest - create directory.
+* sudo mount /dev/xvdf /ebstest - mount to directory the volume.
+* df -k - shows all file systems on this instance.
+* 
 
 
 
