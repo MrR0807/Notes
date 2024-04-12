@@ -1408,14 +1408,17 @@ HDD is not good for random access, but for sequental. HDD works like GP2 - bucke
 ## EBS Volumes - PART1
 
 Linux commands to run inside EC2:
-* lsblk - list all block devices connected to this instance.
-* sudo file -s /dev/xvdf - check whether there are file systems on this block device. If you see `/dev/xvdf: data` then there isn't any filesystem.
-* sudo mkfs -t xfs /dev/xvdf - because there is no file system, you have to create one as you can only mount file systems under linux. You can mount a file system to a mount point which is a directory.
-* sudo mkdir /ebstest - create directory.
-* sudo mount /dev/xvdf /ebstest - mount to directory the volume.
-* df -k - shows all file systems on this instance.
+* `lsblk` - list all block devices connected to this instance.
+* `sudo file -s /dev/xvdf` - check whether there are file systems on this block device. If you see `/dev/xvdf: data` then there isn't any filesystem.
+* `sudo mkfs -t xfs /dev/xvdf` - because there is no file system, you have to create one as you can only mount file systems under linux. You can mount a file system to a mount point which is a directory.
+* `sudo mkdir /ebstest` - create directory.
+* `sudo mount /dev/xvdf /ebstest` - mount to directory the volume.
+* `df -k` - shows all file systems on this instance.
+* `sudo blkid` - will list unique IDs of all volumes attached to the instance.
+* `sudo nano /etc/fstab` - configuration file which describes which volumes are automatically mounted.
+  * UUID=<uuid> /ebstest xfs defaults,nofail
+* `sudo mount -a` - mounts all the volumes which are defined in fstab file.
 * 
-
 
 
 
