@@ -1488,7 +1488,7 @@ In short, an instance have one or more network interfaces (a primary and optiona
 * AMI permissiosn default to only your account.
 * AMI costs per EBS snapshots.
 
-
+## EC2 Purchase Options - PART1
 
 
 
