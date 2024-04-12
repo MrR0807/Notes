@@ -1418,7 +1418,6 @@ Linux commands to run inside EC2:
 * `sudo nano /etc/fstab` - configuration file which describes which volumes are automatically mounted.
   * UUID=<uuid> /ebstest xfs defaults,nofail
 * `sudo mount -a` - mounts all the volumes which are defined in fstab file.
-* 
 
 
 
