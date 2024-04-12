@@ -1490,7 +1490,22 @@ In short, an instance have one or more network interfaces (a primary and optiona
 
 ## EC2 Purchase Options - PART1
 
-
+* On-Demand - default. Instances are isolated but multiple customer instances run on shared hardware. Per-second billing while an instance is running. Associated resources such as storage consume capacity, so bill, regardless of instance state.
+  * No interruption.
+  * No capacity reservation.
+  * Predictable pricing.
+  * No upfront costs.
+  * No discount.
+  * Short term workloads.
+  * Unknown workloads.
+  * Apps which can't be interrupted.
+* Spot. AWS selling unused EC2 host capacity for up to 90% discount - the spot price is based on the spare capacity at a given time. Each AWS user can setup their upper limit how much they want to pay for spot instance. If say customer A max is 10$ and customer B - 20$, then when spot instance price changes upwards, then customer A will be removed first from spot instances to make room for e.g. on-demand instaces.
+  * Non time critical.
+  * Anything which can be rerun.
+  * Bursty Capacity needs.
+  * Cost sensitive workloads.
+  * Anything which is stateless.
+* 
 
 
 
