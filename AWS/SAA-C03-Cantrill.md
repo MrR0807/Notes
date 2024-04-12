@@ -1432,8 +1432,30 @@ If a snapshot is made, then the same encryption key is used. **It doesn't cost a
 * Can't change a volume to NOT be encrypted.
 * OS isn't aware of the encryption - no performance loss. 
 
+## Network Interfaces, Instance IPs and DNS
 
+EC2 instance always start with one network interface called ENI - elastic network interface. This is primary ENI. Optionally you can attach one or more secondary ENIs. EC2 network interfaces can be in different subnets, but must be in the same AZ. For example if you launch EC2 with security group, that SG is on ENI not on the instance.
 
+Primary Network interface has:
+* MAC address.
+* Primary IPv4 Private IP.
+* 0 or more secondary IPs.
+* 0 or 1 public IPv4 address.
+* 0 or more IPv6 addresses.
+* Security groups.
+* You can enable source/destination check. It will discard traffic if source/destination do not match.
+
+Secondary Network Interfaces have the same properties as primary, but additionally you can detach from one EC2 instance and move them to other EC2 instances.
+
+Exploring ENI in detail with an example:
+
+* MAC address.
+* Primary IPv4 Private IP - let's assume that this instance receives a primary IP of 10.16.0.10. This is static and doesn't change for the lifetime of the instance. An instance is given a DNS name that's associated with this private address: ip-10-16-0-10.ec2.internal. This IP is only resolvable inside the VPC.
+* 0 or more secondary IPs.
+* 0 or 1 public IPv4 address - allocated 3.89.7.136 public IP address. It is a dynamic, not fixed. If you stop and start an instance, it's public IP address will change. Also allocated a public DNS name - ec2-3-89-7-136.compute-1.amazonaws.com.
+* 0 or more IPv6 addresses.
+* Security groups.
+* You can enable source/destination check. It will discard traffic if source/destination do not match.
 
 
 
