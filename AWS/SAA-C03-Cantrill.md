@@ -1452,13 +1452,17 @@ Exploring ENI in detail with an example:
 * MAC address.
 * Primary IPv4 Private IP - let's assume that this instance receives a primary IP of 10.16.0.10. This is static and doesn't change for the lifetime of the instance. An instance is given a DNS name that's associated with this private address: ip-10-16-0-10.ec2.internal. This IP is only resolvable inside the VPC.
 * 0 or more secondary IPs.
-* 0 or 1 public IPv4 address - allocated 3.89.7.136 public IP address. It is a dynamic, not fixed. If you stop and start an instance, it's public IP address will change. Also allocated a public DNS name - ec2-3-89-7-136.compute-1.amazonaws.com.
+* 0 or 1 public IPv4 address - allocated 3.89.7.136 public IP address. It is a dynamic, not fixed. If you stop and start an instance, it's public IP address will change. Also allocated a public DNS name - ec2-3-89-7-136.compute-1.amazonaws.com. What's special about this public DNS name is that inside the VPC, it will resolve to the primary private IPv4 address. This public IPv4 address is not attached to the instance or ENI, but is stored in Internet Gateway. Inside VPC DNS always resolves to private IP, outside VPC - public IP for that instance.
+* 1 elastic IP per private IPv4 address - Elastic IPs are allocated to your AWS account. When you allocate an elastic IP, you can associate the elastic IP with a private IP either on the primary interface or a secondary interface. If you do associate it with the primary interface, then as soon as you do that, the normal (non elastic IP version) is removed and replaced by elastic IP. **EXAM NOTE!** If an instance has a non elastic public IP and you assign an elastic IP and then remove it, is there any way to get that original IP back? The answer is no, there is not. It gets a new IP address, but not the same as before.
 * 0 or more IPv6 addresses.
 * Security groups.
 * You can enable source/destination check. It will discard traffic if source/destination do not match.
 
-
-
+In short, an instance have one or more network interfaces (a primary and optionally secondaries) and then for each network interface, it can have:
+* primary private IP address.
+* secondary private IP addresses.
+* optionally, one public IPv4 address.
+* optionally, one or more elastic IP addresses.
 
 
 
