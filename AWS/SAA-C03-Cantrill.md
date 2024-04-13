@@ -1551,7 +1551,11 @@ You either manually make sure that faulty instances are restarted or let AWS man
 
 Auto Recovery moves the instance to a new host, start it up with exactly the same configuration. However, there are limitations to this feature, e.g. cannot recover if EC2 contains instance store. Only works with EBS. Not really recommended.
 
+## Horizontal & Vertical Scaling
 
+Horizontal scaling has downside of sessions. You need to maintain off-host sessions.
+
+## Instance Metadata
 
 
 
