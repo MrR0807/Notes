@@ -1517,6 +1517,65 @@ In short, an instance have one or more network interfaces (a primary and optiona
   * You have to monitor resource consumption, because you might run out of resources.
 * Dedicated Instances. Your instance run on EC2 host with other instances of yours. No other customers use same hardware. You don't pay for the host or share the host. Extra charges for instances, but dedicated hardware.
 
+## Reserved Instances - the rest
+
+Scheduled Reserved Instances:
+* ideal for long term usage which doesn't run constantly (batch processing daily for 5 hours starting at 23:00).
+* You can only use that instance during that time window.
+* Does not support all instance types and minimum is 1200 hours per year & 1 year term minimum.
+
+Capacity Reservations. Sometimes AWS might run out of capacity due to failure. There is a priority list which get the compute:
+* Reserved instances.
+* On demand.
+* Spot instances.
+
+Capacity reservation is different from reserved instance purchase. There are two components:
+* billing.
+* capacity.
+
+![image](https://github.com/MrR0807/Notes/assets/24605837/79bfd9f4-594f-4bdf-9096-0f8f6a73191f)
+
+EC2 savings plan is a feature like reserved instance, but instead of focusing on a particular type of instance in an availability zone or a region, you're making a one or three year commitment to AWS in terms of hourly spending. You might make a commitment that you're going to spend 20 US dollars per hour for one or three years. And in exchange for doing that you get a reduction on the amount that you're paying for resources.
+Two plans:
+* A reservation of general compute $ amounts ($20 per hour for 3 years)
+* A specific EC2 savings plan - flexilibyt on size & OS.
+* If you go above your plan - you begin to consume on-demand prices.
+
+## Instance Status Checks & Auto Recovery
+
+Instance status checks. The 2/2 checks are separated into:
+* System status check - a failure of the system status check could indicate one of a few major problems. Loss of power, network connection, host issues.
+* Instance status check - a failure could indicate a corrupt file system, incorrect networking or OS issues.
+
+You either manually make sure that faulty instances are restarted or let AWS managed it. One of such feature is Auto Recovery.
+
+Auto Recovery moves the instance to a new host, start it up with exactly the same configuration.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
