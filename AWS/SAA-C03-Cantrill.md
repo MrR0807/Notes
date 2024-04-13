@@ -1549,7 +1549,7 @@ Instance status checks. The 2/2 checks are separated into:
 
 You either manually make sure that faulty instances are restarted or let AWS managed it. One of such feature is Auto Recovery.
 
-Auto Recovery moves the instance to a new host, start it up with exactly the same configuration.
+Auto Recovery moves the instance to a new host, start it up with exactly the same configuration. However, there are limitations to this feature, e.g. cannot recover if EC2 contains instance store. Only works with EBS. Not really recommended.
 
 
 
