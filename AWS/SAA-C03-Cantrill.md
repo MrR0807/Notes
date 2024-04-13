@@ -1557,6 +1557,14 @@ Horizontal scaling has downside of sessions. You need to maintain off-host sessi
 
 ## Instance Metadata
 
+* EC2 service provides data to Instances.
+* Accessible inside all instances.
+* **EXAM NOTE!** Data is accessed via `http://169.254.169.254/latest/meta-data/`
+* You can get metadata about instance like host name, events, security groups - all the information about the environment that the instance is in.
+* Network metadata - instance cannot see its own public IPv4 for example, the instance metadata can be used by the application running on that instance to get access to that information.
+* Authentication metadata.
+* **EXAM NOTE!** Metadata services has no authentication or encryption. Anyone who can access instance shell can access the metadata.
+
 
 
 
