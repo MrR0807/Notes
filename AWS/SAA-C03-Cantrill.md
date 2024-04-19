@@ -1597,8 +1597,17 @@ When to use EC2 vs ECS (EC2) vs Fargate:
 * Small/Burst workloads - Fargate.
 * Batch/Periodic workloads - Fargate.
 
+## Elastic Container Registry (ECR)
 
+* Each AWS account has a public and private registry.
+* Public registry only Read/Write permissions are required while Read Only are by default.
+* Private registry requires permissions for either Read/Write or Read Only.
 
+Features:
+* Integrated with IAM.
+* Image scanning: offer basic and enhanced (uses inspector and scans for OS issues or software packages).
+* Provides Metrics and CloudTrail.
+* Provides replication cross-region and cross-account.
 
 
 
