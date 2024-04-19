@@ -1571,17 +1571,18 @@ Horizontal scaling has downside of sessions. You need to maintain off-host sessi
 
 ## ECS - Concepts
 
-ECS runs in either of two modes:
-* EC2 mode which uses EC2 instances as container hosts.
-* Fargate mode - serverless way of running docker containers.
-
-Task Definition vs Service:
+* Container Definition - define images and ports.
 * A Task Definition is a collection of 1 or more container configurations. Some Tasks may need only one container, while other Tasks may need 2 or more potentially linked containers running concurrently. The Task definition allows you to specify which Docker image to use, which ports to expose, how much CPU and memory to allot, how to collect logs, and define environment variables.
   * Task Definition stores task roles - a task role is an IAM role that a task can assume. When the task assumes that role, it gains temporary credentials, which can be used within the task to interact with AWS resources. **Task roles are the best practice way of giving containers within ECS permissions to access AWS products and services**.
 * A Service is used to guarantee that you always have some number of Tasks running at all times. If a Task's container exits due to an error, or the underlying EC2 instance fails and is replaced, the ECS Service will replace the failed Task. This is why we create Clusters so that the Service has plenty of resources in terms of CPU, Memory and Network ports to use. To us it doesn't really matter which instance Tasks run on so long as they run. A Service configuration references a Task definition. A Service is responsible for creating Tasks.
 
+## ECS - Cluster Mode
 
+ECS runs in either of two modes:
+* EC2 mode which uses EC2 instances as container hosts.
+* Fargate mode - serverless way of running docker containers.
 
+Using EC2 mode we start with the ECS management components so these handle high-level tasks like scheduling, orchestration, cluster management and the placement engine which handles where to run containers. Because EC2 mode runs within VPC it benefits from the multiple AZ setup. You can configure to scale up EC2 machines with Auto Scalling Groups.
 
 
 
