@@ -1611,8 +1611,18 @@ Features:
 
 ## Elastic Kubernetes Service (EKS) 101
 
+* Kubernetes Control Plane scales and runs on multiple AZs.
+* EKS integrates with other AWS products e.g. ECR, ELB, IAM, VPC.
+* EKS cluster = EKS Control Plane & EKS Nodes are managed by AWS.
+* etcd distributed accross multiple AZs.
+* Nodes handling modes:
+  * Self Managed nodes. These are EC2 instances which you managed.
+  * Managed node groups. These are still EC2, but the product handles the provisioning and life cycle management.
+  * Fargate pods.
 
+**NOTE!** Keep in mind when deciding between self-managed, managed node groups or fargate is based on your requirements. Limitations are provided [here](https://docs.aws.amazon.com/eks/latest/userguide/eks-compute.html).
 
+![image](https://github.com/MrR0807/Notes/assets/24605837/a66c5ba6-0bb2-4c37-b19a-61aefdedcc02)
 
 
 
