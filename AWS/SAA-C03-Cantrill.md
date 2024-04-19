@@ -1584,11 +1584,18 @@ ECS runs in either of two modes:
 
 Using EC2 mode we start with the ECS management components so these handle high-level tasks like scheduling, orchestration, cluster management and the placement engine which handles where to run containers. Because EC2 mode runs within VPC it benefits from the multiple AZ setup. You can configure to scale up EC2 machines with Auto Scalling Groups.
 
+In EC2 mode you are responsible for these EC2 instances. ECS provisions these EC2 container hosts, but expecations is that you will manage them. Generally through the ECS tooling. You need to worry about capacity and availability. Even if you don't have running tasks within EC2 hosts, you still pay for those resources, just like normal EC2.
 
+With Fargate you don't manage servers. Important to understand - tasks and services are actually running from the shared infrastructure platform, and then they're injected into your VPC. They're given network interfaces inside a VPC, and it's using these network interfaces in that VPC that you can access them. So if VPC is configured to use public subnets, which automatically allocate an IPv4 address, then tasks and services can be given public IPv4 addressing.
 
+**EXAM NOTE!**
 
-
-
+When to use EC2 vs ECS (EC2) vs Fargate:
+* If you use containers pick ECS.
+* You'd pick EC2 mode for large workloads and you're price conscious (because you get to control all pricing related stuff of EC2 - reserved/spot/reserved).
+* You'd pick Fargate for large workloads and you're overhead conscious.
+* Small/Burst workloads - Fargate.
+* Batch/Periodic workloads - Fargate.
 
 
 
