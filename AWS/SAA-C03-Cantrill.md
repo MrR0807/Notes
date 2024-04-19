@@ -1565,6 +1565,12 @@ Horizontal scaling has downside of sessions. You need to maintain off-host sessi
 * Authentication metadata.
 * **EXAM NOTE!** Metadata services has no authentication or encryption. Anyone who can access instance shell can access the metadata.
 
+# CONTAINERS & ECS
+
+## Introduction to Containers
+
+## ECS - Concepts
+
 
 
 
