@@ -1624,7 +1624,7 @@ Features:
 
 ![image](https://github.com/MrR0807/Notes/assets/24605837/a66c5ba6-0bb2-4c37-b19a-61aefdedcc02)
 
-
+# Advanced EC2
 
 
 
