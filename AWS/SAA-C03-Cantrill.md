@@ -1626,7 +1626,12 @@ Features:
 
 # Advanced EC2
 
+## Bootstrapping EC2 using User Data
 
+* Bootstrapping allows EC2 Build Automation. Rarther than relying on your own custom AMI, it allows you to direct an EC2 instance to do something when launched.
+* With EC2, bootstrapping is enabled using EC2 user data and this is injected into the instance in the same way that metadata is.
+* Accessed via metadata api: `http://169.254.169.254/latest/user-data`.
+* Anything in User Data is executed by the instance OS.
 
 
 
