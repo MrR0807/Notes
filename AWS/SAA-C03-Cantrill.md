@@ -1657,7 +1657,7 @@ Features:
 
 ### CreationPolicy and Signals
 
-CloudFormation in a way is dumb. If we'd create EC2 instance using User Data, then there is no clear way to make sure that EC2 is running correctly. That is where `CreationPolicy` works. Using CreationPolicy it goes through the same motions as before, but differently, waits for a signal from EC2 instance before moving it into completed state.
+CloudFormation in a way is dumb. If we'd create EC2 instance using User Data, then there is no clear way to make sure that EC2 is running correctly. That is where `CreationPolicy` works. Using CreationPolicy it goes through the same motions as before, but differently, waits for a signal from EC2 instance before moving it into completed state. `cfn-signal -e $? ...` communicates with CloudFormation and command `-e $?` check previous `cfn-init` command's status and sends it to CloudFormation.
 
 
 
