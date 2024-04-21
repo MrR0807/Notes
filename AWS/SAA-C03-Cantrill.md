@@ -1632,6 +1632,13 @@ Features:
 * With EC2, bootstrapping is enabled using EC2 user data and this is injected into the instance in the same way that metadata is.
 * Accessed via metadata api: `http://169.254.169.254/latest/user-data`.
 * Anything in User Data is executed by the instance OS.
+* Only once and only on launch.
+* If something is not correctly configured via user data, the health checks will pass (unless you delete massive amount of OS). You have to make sure that the state is correct.
+* User data is not secure.
+* User data is limited to 16 kb in size. For anything more complex than that, you would need to pass in a script which downloads required data.
+* User data can be modified - shutdown instance, modify it and restart.
+
+**EXAM NOTE!** It is required to know how fast from boot time to service time (in other words, when the instance is ready to serve). From AMI - in minutes. If you're solely using bootstraping, it might take hours. AMI baking is also measured in minutes. The most optimal way is combining AMI baking and boostraping.
 
 
 
