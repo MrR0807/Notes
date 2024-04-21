@@ -1640,6 +1640,7 @@ Features:
 
 **EXAM NOTE!** It is required to know how fast from boot time to service time (in other words, when the instance is ready to serve). From AMI - in minutes. If you're solely using bootstraping, it might take hours. AMI baking is also measured in minutes. The most optimal way is combining AMI baking and boostraping.
 
+**NOTE!** `/var/log` contains logs for debuging user data failures: `cloud-init-output.log`; `cloud-init.log` . The formal will show you all of the actual commands and outputs of those commands that were executed on this EC2.
 
 
 
