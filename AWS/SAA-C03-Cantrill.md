@@ -1642,13 +1642,22 @@ Features:
 
 **NOTE!** `/var/log` contains logs for debuging user data failures: `cloud-init-output.log`; `cloud-init.log` . The formal will show you all of the actual commands and outputs of those commands that were executed on this EC2.
 
+## Enhanced Bootstrapping with CFN-INIT
 
+`CloudFormation::Init` is way how you can pass any complex bootstrapping instructions into an EC2 instance. There is much moer powerful way to configure EC2 instance instead of user data - **cfn-init**:
+* It is installed on AWS EC2 AMIs.
+* A better way to describe it is calling it a configuration management system.
+* User Data is procedural, run line by line. `cfn-init` is a desired state.
+* `cfn-init` can install packages, update packages, configure groups, users. Download sources and extract them. Create files with certain permissions and ownerships.
+* Commands to `cfn-init` are provided with directives via **Metadata** and **`AWS::CloudFormation::Init`** on a CFN resource.
 
+![image](https://github.com/MrR0807/Notes/assets/24605837/2ec8563a-ea91-44bf-8e50-5012aa0565b8)
 
+`cfn-init` communicates with CloudFormation in order to fill in the details about command variables. It also can be updated and `cfn-init` will make sure to reach desired state.
 
+### CreationPolicy and Signals
 
-
-
+CloudFormation in a way is dumb. If we'd create EC2 instance using User Data, then there is no clear way to make sure that EC2 is running correctly. That is where `CreationPolicy` works. Using CreationPolicy it goes through the same motions as before, but differently, waits for a signal from EC2 instance before moving it into completed state.
 
 
 
