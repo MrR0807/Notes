@@ -1659,7 +1659,10 @@ Features:
 
 CloudFormation in a way is dumb. If we'd create EC2 instance using User Data, then there is no clear way to make sure that EC2 is running correctly. That is where `CreationPolicy` works. Using CreationPolicy it goes through the same motions as before, but differently, waits for a signal from EC2 instance before moving it into completed state. `cfn-signal -e $? ...` communicates with CloudFormation and command `-e $?` check previous `cfn-init` command's status and sends it to CloudFormation.
 
+## EC2 Instance Roles & Profile
 
+EC2 instance role allows EC2 service to assume IAM role. In order to deliver those credentials into running application within EC2, there is an intermediate piece of architecture called InstanceProfile. InstanceProfile is a wrapper around an IAM role. The instance profile is the thing that allow the permissions to get inside the instance and it is attached to the EC2 instance.
+Inside EC2 instance credentials are delivered via the instance metadata. The upside is that EC2 instance always makes sure that credentials are valid and always renewed.
 
 
 
