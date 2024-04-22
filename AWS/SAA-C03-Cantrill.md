@@ -1671,6 +1671,9 @@ Inside EC2 instance credentials are delivered via the instance metadata. The ups
 * You can version.
 * Can store plaintext and ciphertext values (integrates with KMS which allows you to encrypt parameters).
 * Any changes that occur to any parameters can generate events (SQS).
+* Supports hierarchy. For example instead of fetching a single parameter, you can fetch all parameters within that hierarchy.
+  * `aws ssm get-parameters-by-path --path /mydb/` would fetch all.
+  * `aws ssm get-parameters --names /mydb/dbpassword` would fetch only one.
 
 SSM Parameter Store is a public service.
 
