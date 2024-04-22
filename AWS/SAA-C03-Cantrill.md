@@ -1664,9 +1664,15 @@ CloudFormation in a way is dumb. If we'd create EC2 instance using User Data, th
 EC2 instance role allows EC2 service to assume IAM role. In order to deliver those credentials into running application within EC2, there is an intermediate piece of architecture called InstanceProfile. InstanceProfile is a wrapper around an IAM role. The instance profile is the thing that allow the permissions to get inside the instance and it is attached to the EC2 instance.
 Inside EC2 instance credentials are delivered via the instance metadata. The upside is that EC2 instance always makes sure that credentials are valid and always renewed.
 
+## SSM Parameter Store
 
+* Storage for configuration & secrets.
+* Allows to store 3 different parameter value: String, StringList, SecureString (If you choose the SecureString parameter type when you create your parameter, Systems Manager uses AWS KMS to encrypt the parameter value). Use these values, you can store license codes, database strings, full configs and password.
+* You can version.
+* Can store plaintext and ciphertext values (integrates with KMS which allows you to encrypt parameters).
+* Any changes that occur to any parameters can generate events (SQS).
 
-
+SSM Parameter Store is a public service.
 
 
 
