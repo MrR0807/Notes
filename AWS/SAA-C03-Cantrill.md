@@ -1677,6 +1677,51 @@ Inside EC2 instance credentials are delivered via the instance metadata. The ups
 
 SSM Parameter Store is a public service.
 
+## System and Application Logging on EC2
+
+* CloudWatch cannot capture data inside an EC2 Instance natively. The inside of an instance is opaque to CloudWatch and CloudWatch Logs by default.
+* To provide visibility CloudWatch Agent is required.
+* For CloudWatch Agent to function it requires configuration and permissions.
+* CloudWatch Agent requires Agent configuration.
+* In order to allow CloudWatch Metrics and Logs, IAM role is required to be attached to running EC2 instances, which subsequently gives permissios to anything running inside EC2.
+* We can store Agent configuration in Parameter Store.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
