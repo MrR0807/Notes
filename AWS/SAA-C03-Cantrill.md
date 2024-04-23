@@ -1686,7 +1686,14 @@ SSM Parameter Store is a public service.
 * In order to allow CloudWatch Metrics and Logs, IAM role is required to be attached to running EC2 instances, which subsequently gives permissios to anything running inside EC2.
 * We can store Agent configuration in Parameter Store.
 
+## EC2 Placement Groups
 
+Normally when you launch EC2 instance its physical location is selected by AWS, placing it on whatever EC2 host makes the most sense. Placement groups allow you to influence placement.
+
+There are 3 types of placement groups for EC2:
+* Cluster - pack instances close together.
+* Spread - keep instances separated.
+* Partition - groups of instances spread apart (for replicated and distributed applications).
 
 
 
