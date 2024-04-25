@@ -1717,7 +1717,9 @@ Partition placement groups:
 * Instances can be placed in a specific partition or auto placed by AWS.
 * Great for topology aware applications (HDFS, HBase, Cassandra).
 
+## Dedicated Hosts
 
+* EC2 Host dedicated to you in its entirety. 
 
 
 
