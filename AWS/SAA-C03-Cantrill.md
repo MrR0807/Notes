@@ -1734,11 +1734,15 @@ Limitations:
 
 ## Enhanced Networking & EBS Optimized
 
+* Enhanced Networking is a feature which aims to improve the overall performance of EC2 networking. Its a feature which is required for Cluster placement group. 
+* Enhanced Networking uses a technique called SR-IOV - single root IO virtualization. In other words, physical network interface inside an EC2 host is aware of virtualization. In non-SR-IOV case, EC2 instances talk with single physical network interface, which means that host has to sit in the middle and controll you has accesses to the network interface. It is done in software, hence consumes CPU and is slower. With SR-IOV you are provided with logical network interfaces which are handle by physical card. Instances are use them as physical network cards. Furthermore, in this scenario network card no CPU overhead.
+* Enhanced Networking has no charge.
+* Higher IO and Lower Host CPU Usage.
+* More Bandwidth.
 
+![image](https://github.com/MrR0807/Notes/assets/24605837/3400b453-a888-416a-83be-e34a586576b0)
 
-
-
-
+EBS Optimized instances. Whether EC2 is EBS optimised depends on an option that sets on a per instance basis.
 
 
 
