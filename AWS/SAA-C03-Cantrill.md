@@ -1688,14 +1688,12 @@ SSM Parameter Store is a public service.
 
 ## EC2 Placement Groups
 
-Normally when you launch EC2 instance its physical location is selected by AWS, placing it on whatever EC2 host makes the most sense. Placement groups allow you to influence placement.
+Normally when you launch EC2 instance its physical location is selected by AWS, placing it on whatever EC2 host makes the most sense.
 
 There are 3 types of placement groups for EC2:
-* Cluster - pack instances close together.
+* Cluster - pack instances close together. When you create a cluster placement group, they are generally launched in the same rack, sometimes in the same host. Placement groups allow you to influence placement. All members of cluster group have direct connections to each other - fast bandwidth.
 * Spread - keep instances separated.
 * Partition - groups of instances spread apart (for replicated and distributed applications).
-
-
 
 
 
