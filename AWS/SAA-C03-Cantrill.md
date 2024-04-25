@@ -1742,7 +1742,7 @@ Limitations:
 
 ![image](https://github.com/MrR0807/Notes/assets/24605837/3400b453-a888-416a-83be-e34a586576b0)
 
-EBS Optimized instances. Whether EC2 is EBS optimised depends on an option that sets on a per instance basis.
+EBS Optimized instances. Whether EC2 is EBS optimised depends on an option that sets on a per instance basis. Historically network was shared between data networking and EBS storage networking. This resulted in contention and limited performance for both types of networking. Simply put, an instance being EBS optimized means that some stack optimizations have taken place and dedicated capacity has been provided for the instance for EBS usage.
 
 
 
