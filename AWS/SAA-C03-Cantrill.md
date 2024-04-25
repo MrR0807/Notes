@@ -1719,8 +1719,20 @@ Partition placement groups:
 
 ## Dedicated Hosts
 
-* EC2 Host dedicated to you in its entirety. 
+* EC2 Host dedicated to you in its entirety.
+* Because you pay for a host, there are no charges for running instances.
+* You can use on-demand or reserved options (same one or three years term).
+* Comes with physical sockets and cores. Beneficial for licenses where costs are associated with sockets and cores.
+* For example A1 instance type has 1 socket and 16 cores. You can run 16 medium, 8 large, 4 xlarge, 2 2xlarge and 1 4xlarge instance types. Most of dedicated hosts require you to set the number of instances types you'll run. You can mix and match.
+* However, newer type instances which run Nitro Virtualization Platform (e.g. R5) allow you to mix and match different types. Have few medium, have few large etc.
 
+Limitations:
+* You cannot use RHEL, SUSE Linux or Windows AMIs.
+* Amazon RDS instances not supported.
+* You cannot utilise placement groups.
+* Hosts can be shared with other organisation accounts.
+
+## Enhanced Networking & EBS Optimized
 
 
 
