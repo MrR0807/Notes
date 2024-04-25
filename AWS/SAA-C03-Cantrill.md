@@ -1691,11 +1691,31 @@ SSM Parameter Store is a public service.
 Normally when you launch EC2 instance its physical location is selected by AWS, placing it on whatever EC2 host makes the most sense.
 
 There are 3 types of placement groups for EC2:
-* Cluster - pack instances close together. When you create a cluster placement group, they are generally launched in the same rack, sometimes in the same host. Placement groups allow you to influence placement. All members of cluster group have direct connections to each other - fast bandwidth.
-* Spread - keep instances separated.
-* Partition - groups of instances spread apart (for replicated and distributed applications).
+* Cluster - pack instances close together. When you create a cluster placement group, they are generally launched in the same rack, sometimes in the same host. Placement groups allow you to influence placement. All members of cluster group have direct connections to each other - fast bandwidth. They can achieve 10GB/s compared to usual 5GB/s. This has no resilience, because if rack/host fails - all applications fail.
+* Spread - keep instances separated. This provides maximum amount of availability and resilience. Can span multiple AZs. Located on separate, isolated infrastructure racks. Limitation - 7 instances per AZ.
+* Partition - groups of instances spread apart (for replicated and distributed applications). Have similar architecture to spread placement groups. Can be created accross multiple AZs. You specify partitions per AZ. Max is 7. Different from spread, you can launch as many instances as you need within partition. You can control to which partition you launch instances.
 
+**EXAM NOTE!**
+Cluster placement groups:
+* You cannot span AZs with cluster placement group. Only one AZ - locked at launch.
+* Can span VPC peers - but significantly impact performance.
+* Requires a supported instance type.
+* Use the same type of instance (not mandatory).
+* Launch at the same time (not mandatory, very recommended).
+* 10GB/s single stream performance.
+* Use cases: performance, fast speeds, low latency.
 
+Spread placement groups:
+* Provides infrastructure isolation.
+* Each instance runs from a different rack. Each rack has its own network and power source.
+* Hard limit 7 instances per AZ.
+* Not supported dedicated instances or hosts.
+* Use case: small number of critical instances that need to be kept separated from each other.
+
+Partition placement groups:
+* 7 partitions per AZ.
+* Instances can be placed in a specific partition or auto placed by AWS.
+* Great for topology aware applications (HDFS, HBase, Cassandra).
 
 
 
