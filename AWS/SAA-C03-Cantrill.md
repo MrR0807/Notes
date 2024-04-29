@@ -1744,12 +1744,39 @@ Limitations:
 
 EBS Optimized instances. Whether EC2 is EBS optimised depends on an option that sets on a per instance basis. Historically network was shared between data networking and EBS storage networking. This resulted in contention and limited performance for both types of networking. Simply put, an instance being EBS optimized means that some stack optimizations have taken place and dedicated capacity has been provided for the instance for EBS usage. Most instances support and have enabled by default, no extra charge.
 
+## R53 Public Hosted Zones
 
+R53 Hosted Zone:
+* Globally resilient service.
+* A R53 Hosted Zone is a DNS DB for a domain e.g. animals4life.org.
+* There is a monthly fee to host each hosted zone and a fee for the queries made against that hosted zone.
+* In summary hosted zones are databases which are referenced via delegation using name server records. A hosted zone, when referenced in this way is authoritative for a domain.
 
+R53 Public Hosted Zone:
+* DNS Database (zone file) hosted by R53 (Public Name Servers).
+* Accessible from the public internet & VPCs.
+* Hosted on 4 R53 Name Servers specific for the zone.
+* Inside a public hosted zone, you create resource records, which are the actual items of data, which DNS uses.
+* You can use R53 to host zone files for externally registered domains.
 
+![image](https://github.com/MrR0807/Notes/assets/24605837/8b2ca32d-06dd-4643-8d76-cd6dea944cd7)
 
+## R53 Private Hosted Zones
 
+* Works just like public Hosted Zone - its just not public.
+* Instead of being public it is associated with VPCs in AWS.
+* Only accessible within those VPCs.
+* Split-view (overlapping public & private) for Public and Internal use with the same zone name. Split-view DNS is a process wherein the DNS server gives out a different response to the same DNS query, based on where the query came from.
 
+![image](https://github.com/MrR0807/Notes/assets/24605837/5de0b316-98c7-4e6f-957b-3e2818b63a88)
+
+**Split View example**
+
+You have a VPC running on Amazon Workspace. To support some business applications a private hosted zone with some records inside it is hosted. The private hosted zone is associated with VPC1. Split view allows us to create a public part of the Hosted Zone with subset of records which are available.
+
+![image](https://github.com/MrR0807/Notes/assets/24605837/133e40b6-20b8-4a4c-a0f6-93c860c89ed7)
+
+## CNAME vs R53 Alias
 
 
 
