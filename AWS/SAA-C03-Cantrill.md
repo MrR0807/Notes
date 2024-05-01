@@ -1807,9 +1807,11 @@ Default routing policy. **Only one not supporting health checks**.
 * Health checks every 30 sec (every 10 sec costs extra).
 * You can have TCP, HTTP/HTTPS and HTTP/HTTPS with String Matching checks. The latter searches for a string in the response body within first 5120 bytes response body.
 * There are three types of checks: Endpoint, CloudWatch Alarm (more in depth check using CloudWatch Agent), calculated checks/checks of checks checking multiple different granualar checks.
+* Health checkers are distributed throughout the world.
 
+![image](https://github.com/MrR0807/Notes/assets/24605837/fc076072-df67-440a-bda1-62e40be720a0)
 
-
+## Failover Routing
 
 
 
