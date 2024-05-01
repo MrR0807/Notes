@@ -1778,11 +1778,19 @@ You have a VPC running on Amazon Workspace. To support some business application
 
 ## CNAME vs R53 Alias
 
+The problem if we would only use CNAME. In DNS an A record maps a name to an IP address, e.g. catagram.io -> 1.3.3.7. A CNAME maps a name to another name, e.g. www.catagram.io -> catagram.io. Its a way to create another alternative name for something within DNS.
 
+The problem is that you cannot use CNAME for the apex of a domain, also known as the naked domain. You cannot have a CNAME record for catagram.io poiting to something else. And this is a problem, because many AWS services (e.g. Elastic Load Balancer) don't give you an IP address, but DNS name. With just CNAME pointing catagram.io to ELB would be invalid.
 
+**A naked domain refers to a domain name without any subdomains. For example, "example.com" is a naked domain, while "www.example.com" is not**.
 
-
-
+Alias fixes the problem:
+* Alias records map a NAME to an AWS resource.
+* Can be used both for naked and normal records.
+* For non naked functions like CNAME.
+* There is no charge for ALIAS requests pointing at AWS resources.
+* **For AWS Services - by default pick ALIAS**.
+* You can have a `A` record alias and CNAME record alias. 
 
 
 
