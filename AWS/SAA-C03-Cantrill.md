@@ -1831,14 +1831,25 @@ Weighted routing can be used when you're looking for a simple form of load balan
 
 ## Latency Routing
 
+Use latency-based routing when optimising for performance and user experience.
 
+![image](https://github.com/MrR0807/Notes/assets/24605837/4a7d8e41-218d-44ed-b5f4-7e952dc8129e)
 
+## Geolocation Routing
 
+Similar to latency rounting. Instead of latency, the location of resources and location of customer is used. **Does not return the closest**.
 
+![image](https://github.com/MrR0807/Notes/assets/24605837/7cbca637-3572-4650-aa53-6c6249974f89)
 
+## Geoproximity Routing
 
+Tries to provide records that are as close to your customer as possible. Latency routing calculates the lowest latency. The geoproximity - calculates the distance and answers with a record with the lowest distance.
 
+Geoproximity routing lets R53 route traffic to your resources based on the geographic location of your users and your resources, but you can optionally choose to route more traffic or less traffic to a given resource by specifying a value called bias.
 
+![image](https://github.com/MrR0807/Notes/assets/24605837/850615b4-ac2a-479b-802f-4db4f06f2de6)
+
+## R53 Interoperability
 
 
 
