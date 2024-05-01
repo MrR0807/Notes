@@ -1817,6 +1817,51 @@ Failover routing is a R5e routing policy. This routing policy plays upon primary
 
 ![image](https://github.com/MrR0807/Notes/assets/24605837/8792b8f3-7414-4287-905f-be8e8cd92cd9)
 
+## Multi Value Routing
+
+Its a mix of simple and failover policy. With Multi Value routing you can create multiple records with the same name. Each record can have a healthcheck associated.
+
+![image](https://github.com/MrR0807/Notes/assets/24605837/0914a303-9b66-40fe-8f34-6059af08a7eb)
+
+## Weighted Routing
+
+Weighted routing can be used when you're looking for a simple form of load balancing, or when you want to test new versions of software.
+
+![image](https://github.com/MrR0807/Notes/assets/24605837/08063c0b-9535-4f72-b19b-5e7ed6f0a8f9)
+
+## Latency Routing
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
