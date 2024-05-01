@@ -1784,19 +1784,23 @@ The problem is that you cannot use CNAME for the apex of a domain, also known as
 
 **A naked domain refers to a domain name without any subdomains. For example, "example.com" is a naked domain, while "www.example.com" is not**.
 
-Alias fixes the problem:
+Alias (only in AWS) fixes the problem:
 * Alias records map a NAME to an AWS resource.
 * Can be used both for naked and normal records.
 * For non naked functions like CNAME.
 * There is no charge for ALIAS requests pointing at AWS resources.
 * **For AWS Services - by default pick ALIAS**.
 * You can have a `A` record alias and CNAME record alias. 
+* Alias records are always of type A or AAAA.
+* Cannot set TTL. Set automatically.
 
+## Simple Routing
 
+Default routing policy. **Only one not supporting health checks**.
 
+![image](https://github.com/MrR0807/Notes/assets/24605837/a7901349-01d7-44e7-a06d-d32bbd2f02bf)
 
-
-
+## R53 Health Checks
 
 
 
