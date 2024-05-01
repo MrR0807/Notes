@@ -1802,6 +1802,12 @@ Default routing policy. **Only one not supporting health checks**.
 
 ## R53 Health Checks
 
+* Health checks are separate from records, but are used by records.
+* Health checkers can check any internet IP, not only within AWS.
+* Health checks every 30 sec (every 10 sec costs extra).
+* You can have TCP, HTTP/HTTPS and HTTP/HTTPS with String Matching checks. The latter searches for a string in the response body within first 5120 bytes response body.
+* There are three types of checks: Endpoint, CloudWatch Alarm (more in depth check using CloudWatch Agent), calculated checks/checks of checks checking multiple different granualar checks.
+
 
 
 
