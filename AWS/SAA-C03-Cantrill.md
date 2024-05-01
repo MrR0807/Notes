@@ -1851,6 +1851,10 @@ Geoproximity routing lets R53 route traffic to your resources based on the geogr
 
 ## R53 Interoperability
 
+When you register a domain with R53 it actually does two things:
+* Domain registrar.
+* Domain hosting.
+
 
 
 
