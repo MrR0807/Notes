@@ -1813,8 +1813,9 @@ Default routing policy. **Only one not supporting health checks**.
 
 ## Failover Routing
 
+Failover routing is a R5e routing policy. This routing policy plays upon primary and secondary routing strategy. Primary is being constantly health checked, and if there is failure, secondary target is used. For example primary being EC2 instance while secondary S3 bucket.
 
-
+![image](https://github.com/MrR0807/Notes/assets/24605837/8792b8f3-7414-4287-905f-be8e8cd92cd9)
 
 
 
