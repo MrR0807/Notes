@@ -1871,11 +1871,18 @@ You can register domain via R53 and host zone files in 3rd party. In that case, 
 
 ![image](https://github.com/MrR0807/Notes/assets/24605837/cfdbba59-85c8-4b8f-8ade-57a97d828536)
 
+## Implementing DNSSEC using Route53
 
+![image](https://github.com/MrR0807/Notes/assets/24605837/01974760-5253-41a8-993c-fffb11b888cc)
 
+R53 without DNSSEC. DNSSEC is enabled, then the process starts with KMS:
+* This part can be done separately or as part of enabling DNSSEC signing. Either way, asymmetric key is created in KMS. From this key, Key Signing Key is created. The created keys which R53 uses need to be in the us-east-1 region.
+* Next R53 creates the Zone Signing Keys internally. They are managed by R53.
+* Next R53 adds the Key Signing Key and the Zone Signing Key public parts into a DNSKEY record within the hosted zone. This tells any DNSSEC resolvers which public keys to use to verify the signatures on any other records in this zone.
+* Next, the private Key Signing Key is used to sign those DNSKEY records and create the RRSIG DNSKEY record. These signatures mean that any DNSSEC resolver can verify that the DNSKEY records are valid and unchanged.
+* R53 has to establish a chain of trust with the parent zone. The parent zone needs to add a DS (delegated signer) record, which is a hash of the public part of the Key Signing Key for this zone.
 
-
-
+![image](https://github.com/MrR0807/Notes/assets/24605837/ff6742eb-dca2-4e71-ad89-430941cf97de)
 
 
 
