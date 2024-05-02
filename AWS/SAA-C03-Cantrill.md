@@ -1855,9 +1855,21 @@ When you register a domain with R53 it actually does two things:
 * Domain registrar.
 * Domain hosting.
 
+R53 can do either alone - be registrar or do only hosting.
 
+Flow when you register a domain and host on AWS (steps are separated either by domain hosting or domain registrar):
+* R53 accepts your money (domain registration fee).
+* R53 allocates 4 Name Servers (NS) (domain hosting).
+* R53 Creates a zone file (domain hosting) on the above NS.
+* R53 communicates with the registry of the Top Level Domain (TLD) (Domain Registrar).
 
+![image](https://github.com/MrR0807/Notes/assets/24605837/0e81a5c9-2047-4e31-9f05-a2a29348bc75)
 
+You can register domain via R53 and host zone files in 3rd party. In that case, you would need to get the details of those servers and pass those details on to R53. R53 then would liase with TLD to set name server recrods within the domain to point the name servers managed by 3rd party.
+
+![image](https://github.com/MrR0807/Notes/assets/24605837/9759ba60-63e7-4d7b-b03e-f57c12e9b0d1)
+
+![image](https://github.com/MrR0807/Notes/assets/24605837/cfdbba59-85c8-4b8f-8ade-57a97d828536)
 
 
 
