@@ -1894,7 +1894,14 @@ Document databases - similar to key/value database, but the content of documents
 
 With a wide-column nosql db, every key maps to potentially many columns that can be selected. This can make reads more efficient, since we only need to read the columns that we are interested in. With the key-value nosql db, all the columns would be in the same value field, so everything would have to be read.
 
+## ACID vs BASE
 
+Both are DB transaction models. 
+CAP Theorem - Consistency, Availability, Partition Tolerant.
+ACID chooses consistency.
+BASE chooses availability.
+
+**EXAM NOTE!** if you see ACID mentioned, then it is refering to RDS and has **limitation on scale**.
 
 
 
