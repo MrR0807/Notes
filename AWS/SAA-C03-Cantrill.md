@@ -1884,7 +1884,15 @@ R53 without DNSSEC. DNSSEC is enabled, then the process starts with KMS:
 
 ![image](https://github.com/MrR0807/Notes/assets/24605837/ff6742eb-dca2-4e71-ad89-430941cf97de)
 
+# Relational Database Service (RDS)
 
+## Database Refresher & MODELS
+
+DynamoDB is a wide column store. The only rigid part of such databases are key - each entry has to have a key of the same structure. Data, on the other hand, can have all parameters (ala columns), or mixture, or none.
+
+Document databases - similar to key/value database, but the content of documents is exposed to the database (ala ElasticSearch).
+
+With a wide-column nosql db, every key maps to potentially many columns that can be selected. This can make reads more efficient, since we only need to read the columns that we are interested in. With the key-value nosql db, all the columns would be in the same value field, so everything would have to be read.
 
 
 
