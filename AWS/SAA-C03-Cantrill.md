@@ -1907,7 +1907,27 @@ BASE chooses availability.
 
 **EXAM NOTE!** if you see NoSQL or ACID mentioned with DynamoDB, then you can assume they are reffering to DynamoDB transactions.
 
+## Databases on EC2
 
+There are two different setups to run database on EC2:
+* Database, Application, Webserver are all running on the same EC2 instance.
+* Database is running on a separate EC2 from Webserver and Application.
+
+There is cost associated for data transitting between AZ in the same region.
+
+Why you might deploy on EC2:
+* Access to the DB Instance OS. Questionable requirement.
+* Advance DB Option tuning (DBROOT access). A lot of AWS managed database now allow to tune those parameters. Questionable requirement.
+* DB or DB version AWS don't provide.
+* Architecture AWS don't provide (replication/resilience).
+
+Negatives:
+* Admin overhead - managing EC2 and DBHost.
+* Backup / Disaster Management.
+* **EC2 is single AZ**.
+* Not easily scaling, no serverless.
+* Replication.
+* Performance - AWS invest time into optimisation and features.
 
 
 
