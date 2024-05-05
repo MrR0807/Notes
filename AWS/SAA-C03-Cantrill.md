@@ -1936,6 +1936,21 @@ Negatives:
 * Choice of DB Engines: MySQL, MariaDB, PostgreSQL, Oracle, SQL Server.
 * Amazon Aurora is a different product.
 * No access to OS or SSH access.
+* Not a public service like S3 or DynamoDB.
+* AWS will pick primary and standby instances in different AZs.
+* If you deploy RDS in public subnet, you can configure with public addressing allowing access from the public internet. This is bad practice, but possible.
+* Each RDS instance has its own dedicated EBS storage per instance.
+* Backups and snapshots are placed in S3. You do not see them.
+
+![image](https://github.com/MrR0807/Notes/assets/24605837/b4fe1dec-ded4-45ac-9d30-221051d3d752)
+
+Costs:
+* Instance size and type.
+* Multi AZ or not.
+* Storage type and amount (per GB).
+* Data transferred (from and to the internet and other AWS regions).
+* Backups and Snapshots.
+* Licensing (if applicable).
 
 
 
