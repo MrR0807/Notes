@@ -1929,6 +1929,14 @@ Negatives:
 * Replication.
 * Performance - AWS invest time into optimisation and features.
 
+## Relational Database Service (RDS) Architecture
+
+* RDS is not Database as a Service (DBaaS). With RDS you pay for and receive a database server.
+* You can have multiple databases on one DB Server (instance).
+* Choice of DB Engines: MySQL, MariaDB, PostgreSQL, Oracle, SQL Server.
+* Amazon Aurora is a different product.
+* No access to OS or SSH access.
+
 
 
 
