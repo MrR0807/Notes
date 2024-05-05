@@ -1901,11 +1901,11 @@ CAP Theorem - Consistency, Availability, Partition Tolerant.
 ACID chooses consistency.
 BASE chooses availability.
 
-**EXAM NOTE!** if you see ACID mentioned, then it is refering to RDS and has **limitation on scale**.
+**EXAM NOTE!** if you see ACID mentioned, then it is refering to RDS and has **limitation on scale**. 
 
+**EXAM NOTE!** if you see BASE it means NoSQL and scales very well and has higher performance.
 
-
-
+**EXAM NOTE!** if you see NoSQL or ACID mentioned with DynamoDB, then you can assume they are reffering to DynamoDB transactions.
 
 
 
