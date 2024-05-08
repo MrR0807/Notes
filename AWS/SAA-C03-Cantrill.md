@@ -1971,7 +1971,21 @@ Summary of MultiAZ Instance:
 
 MultiAZ Cluster.
 
-One writer can replicate to **two** reader instances (this is the main difference between Aurora and MultiAZ cluster).
+One writer can replicate to **two** reader instances (this is the main difference between Aurora and MultiAZ cluster). The difference between MultiAZ cluster and MutliAZ instance is that readers are usable. Application support is required in order to distinguish between readers and primary. The data is commited when 1+ reader finished writing. Different from Aurora, each instance has its own local storage. However, like Aurora, you access the cluster using a few endpoint types:
+* cluster endpoint - CNAME which points to the writer.
+* reader endpoint - directs to any reader (including the writer).
+* instance endpoints - point to a specific instance.
+
+![image](https://github.com/MrR0807/Notes/assets/24605837/8781dddb-077f-4fa7-bd55-633ba454848a)
+
+Summary of MultiAZ Cluster:
+* 1 writer and 2 reader db instances (different AZs).
+* Runs on much faster hardware.
+* Any writes are firstly written to local storaged and flushed to EBS.
+* Readers can be used to scale for reads.
+* Replication is done via transaction logs - more efficient.
+* Failover is faster ~35 seconds + transaction log apply.
+* Writes are commited only when at least 1 reader has confirmed.
 
 
 
