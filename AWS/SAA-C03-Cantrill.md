@@ -1987,6 +1987,45 @@ Summary of MultiAZ Cluster:
 * Failover is faster ~35 seconds + transaction log apply.
 * Writes are commited only when at least 1 reader has confirmed.
 
+## RDS Automatic Backup, RDS Snapshots and Restore
+
+There are two types of backup like functionalities:
+* Automated backups.
+* Snapshots - not automatic. You run them explicitly. They are stored in S3, which are managed by AWS. They function like EBS snapshots. First snapshot is the full copy of data stored within. Then onwards - incremental. Snapshots don't expire. **EXAM NOTE** You have to clear them youself. 
+
+Both are stored in S3, but use AWS managed buckets. **EXAM NOTE** You cannot see these buckets via your own S3 console, but only via RDS console.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
