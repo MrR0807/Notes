@@ -1952,8 +1952,26 @@ Costs:
 * Backups and Snapshots.
 * Licensing (if applicable).
 
+## Relational Database Service (RDS) MultiAZ - Instance and Cluster
 
+There are two modes of replications:
+* MultiAZ Instance.
+* MultiAZ Cluster.
 
+In MultiAZ Instance mode there is a primary instance in AZ-a and replica in AZ-b. The replication is at storage level. This is less efficient than MultiAZ cluster. MultiAZ Instance mode is a synchronous replica. All reads and writes are happening only to primary instance. Backups on the other hand happen on Standby instance. **Because MultiAZ Instance uses DNS change in order to point to standby instance, there can be brief outages due to DNS caching (60sec or 120 sec).
+
+Summary of MultiAZ Instance:
+* Data goes to Primary and replicated to standby (synchronous).
+* Extra cost for replica.
+* **One standby replica only**.
+* Replica can't be used for reads or writes. Failover can take from 60-120 seconds due to DNS caching.
+* Same region only.
+* Backups can be taken from standby replica to improve performance.
+* Failover can happen due to different reasons - az outage, primary failure, manual failover, instance type change and software patching.
+
+MultiAZ Cluster.
+
+One writer can replicate to **two** reader instances (this is the main difference between Aurora and MultiAZ cluster).
 
 
 
