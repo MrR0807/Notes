@@ -1990,12 +1990,19 @@ Summary of MultiAZ Cluster:
 ## RDS Automatic Backup, RDS Snapshots and Restore
 
 There are two types of backup like functionalities:
-* Automated backups.
-* Snapshots - not automatic. You run them explicitly. They are stored in S3, which are managed by AWS. They function like EBS snapshots. First snapshot is the full copy of data stored within. Then onwards - incremental. Snapshots don't expire. **EXAM NOTE** You have to clear them youself. 
+* Automated backups - occur once per day. Uses the same architecture (first one is full, follow up are incremental). Occur during a backup windown, which is defined on the instance. Addition to snapshot, every 5 minutes database transaction logs are written into S3. This creates a five minute Recovery Point Objective. Backups are cleared automatically. Retention period can be set up to 35 days.
+* Snapshots - not automatic. You run them explicitly. They are stored in S3, which are managed by AWS. They function like EBS snapshots. First snapshot is the full copy of data stored within. Then onwards - incremental. Snapshots don't expire. **EXAM NOTE** You have to clear them youself. You can run them at any rate you like. More frequent snapshots will be done faster.
 
 Both are stored in S3, but use AWS managed buckets. **EXAM NOTE** You cannot see these buckets via your own S3 console, but only via RDS console.
 
+RDS can replicate backups to another region - both snapshots and transaction logs. Charges apply for the cross-region data copy. **Not default, this has to be configured with automated backups**.
 
+RDS restores:
+* During restore, **it creates new RDS instances with new address**.
+* Backups are restored from the closest snapshot and transaction logs are replayed to bring DB to desired point in time.
+* **Restores aren't fast**.
+
+## RDS Read-Replicas
 
 
 
