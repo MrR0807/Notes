@@ -2004,6 +2004,13 @@ RDS restores:
 
 ## RDS Read-Replicas
 
+**EXAM NOTE**. Synchronous means multi AZ and asynchronous means read replicas. RR can be created in the same region as primary or created in other AWS regions. RR matter in two main areas:
+* Read performance and read improvements.
+* You can have 5 direct read replicas of DB instance.
+* Each providing an additional instance of read performance.
+* Read Replicas can have their own Read Replicas - but lag becomes a problem.
+* Read replicas offer near zero RPO. That is because the data is synced with primary, so you have to just switch.
+* They offer near zero RTO.
 
 
 
