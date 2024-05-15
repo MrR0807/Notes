@@ -2041,18 +2041,41 @@ No real world/niche use. For exam:
 * When you run AWS RDS all internal (S3, EC2 etc) are hidden. When running RDS custom, those internal parts are visible, because they are running in your account.
 * When doing customisation to RDS custom, **you need to pause automation and once you're done - resume automation**.
 
+## Aurora Architecture
 
+* Aurora architecture is very different from RDS.
+* Uses as a foundation something called cluster. Cluster made of:
+  * Single primary instance.
+  * 0 or more replicas.
+ * Aurora does not use local storage for the compute instance. Instead Aurora has a shared cluster volume.
+ * All storage is based on SSD - high IOPS, low latency.
 
+When primary instance writes data into cluster volume, Aurora synchronously replicates that data across all of storage nodes. This replication happens at the storage level. By default only primary instance can write into storage. Aurora's storage subsystem is much more resilient than that which is used by the normal RDS database engine.
 
+With Aurora you can have 15 replicas.
 
+Billing for storage is very different than normal RDS engine. With Aurora you don't have to allocate the storage that cluster uses. Storage is simply based on what you consume. Upper limit is 128 TB. You are billed for high watermark, meaning if you use 50 GB, you are build for 50 GB. If you removed some data, you are still billed for 50GB or in other words - maximum storage you've consumed in the cluster. If you want to save on those 10GB you need to migrate to new cluster (this is being change and it will not behave like this in the future).
 
+There are several endpoints exposed:
+* Cluster Endpoint - always points to the primary instance.
+* Reader Endpoint - any replica + primary.
 
+Its easier to scale reads, because it can automatically load balance between read instances unlike RDS.
 
+Aurora costs:
+* No free tier option.
+* Beyond RDS single AZ Aurora offers better value.
+* Compute - hourly charge, per second, 10 minute minimum.
+* Storage - GB-Month consuemd, IO cost per request.
+* 100% DB Size in backups are included.
 
-
-
-
-
+Aurora backups:
+* Automatic backups and snapshots work the same way as in RDS.
+* Restore will create a brand new cluster.
+* Backtrack can be used which allow in-place rewinds to a previous point in time (needs to be enabled per cluster basis).
+* Fast clones make a new database much faster than copying all the data - copy-on-write.
+  * Rapid Provisioning: Fast Clone enables you to provision a new Aurora database by copying only the necessary data pages from the source database. This significantly reduces the time required to create a clone compared to traditional methods.
+  * Space Efficiency: The clone shares data with the source database until changes are made to either the source or clone. This means that initially, the clone consumes very little additional storage space beyond what is already used by the source database.
 
 
 
