@@ -2012,13 +2012,23 @@ RDS restores:
 * Read replicas offer near zero RPO. That is because the data is synced with primary, so you have to just switch.
 * They offer near zero RTO.
 
+## RDS Data Security
 
+* SSL/TLS is available for RDS (can be mandatory on a per user basis).
+* Encryption at rest is supported in few different ways depending on the database engine:
+  * By default it is supported using KMS and EBS encryption. Handled by RDS host and EBS storage. As far as database engine knows its just writing unencrypted data to storage. Using this method all storage, logs, snapshots and replicas are encrypted using the same master key. **Encryption cannot be removed once it is added**.
+  * MSSQL and Oracle support TDE (Transparent Data Encryption). Encryption which is supported and handled within database engine. Data is encrypted/decrypted by database engine itself.
+  * RDS Oracle supports TDE using CloudHSM. With this process data is even more secure - because CloudHSM is managed by you with no exposure to AWS.
 
+![image](https://github.com/MrR0807/Notes/assets/24605837/2f63dbfe-2428-426c-b167-e1242e732f30)
 
+IAM Authentication for RDS:
+* Normally logins to RDS are controlled using local database users. They are not IAM users.
+* You can configure RDS to allow IAM user authentication against a database. 
 
+![image](https://github.com/MrR0807/Notes/assets/24605837/ee0b0ab3-b87f-404e-8be6-cdf5402c162f)
 
-
-
+**EXAM NOTE** This is only authentication. No authorization support. Authorization is controlled by database users.
 
 
 
