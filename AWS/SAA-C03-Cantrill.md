@@ -1998,7 +1998,7 @@ Both are stored in S3, but use AWS managed buckets. **EXAM NOTE** You cannot see
 RDS can replicate backups to another region - both snapshots and transaction logs. Charges apply for the cross-region data copy. **Not default, this has to be configured with automated backups**.
 
 RDS restores:
-* During restore, **it creates new RDS instances with new address**.
+* During restore, **EXAM NOTE! It creates new RDS instances with new address**. The IP address will be different, just like the endpoint will be different. DNS CNAME will be different.
 * Backups are restored from the closest snapshot and transaction logs are replayed to bring DB to desired point in time.
 * **Restores aren't fast**.
 
