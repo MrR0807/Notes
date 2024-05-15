@@ -2030,7 +2030,16 @@ IAM Authentication for RDS:
 
 **EXAM NOTE** This is only authentication. No authorization support. Authorization is controlled by database users.
 
+## RDS Custom
 
+No real world/niche use. For exam:
+* RDS custom fills a gap between running RDS and EC2 running a DB engine.
+* RDS is fully managed - OS/Engine access is limited.
+* DB on EC2 is self managed - but has overhead.
+* RDS custom works for MSSQL and Oracle.
+* Can connect using SSH, RDP, Session Manager and actually get access to operating system or database engine.
+* When you run AWS RDS all internal (S3, EC2 etc) are hidden. When running RDS custom, those internal parts are visible, because they are running in your account.
+* When doing customisation to RDS custom, **you need to pause automation and once you're done - resume automation**.
 
 
 
