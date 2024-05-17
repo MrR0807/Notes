@@ -2100,8 +2100,11 @@ Use cases:
 
 ## Aurora Global Database
 
+Global databases allow you to create global level replication using Aurora from a master region to up ot five secondary AWS regions. Replication is ~1s or less between regions.
 
+![image](https://github.com/MrR0807/Notes/assets/24605837/5a6f97a6-2b20-44a4-9529-9fbf9eabb9fa)
 
+## Multi-master writes
 
 
 
