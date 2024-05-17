@@ -2139,9 +2139,29 @@ Key Facts:
 
 ## Database Migration Service (DMS)
 
+* A managed database migration service.
+* It starts with a replication instance that runs on EC2, you have to define replication task, source and destination endpoints.
+* **One endpoint must be on AWS**.
+* Database Migration Service jobs can be one of three types:
+  * Full load (one off migration of all data). 
+  * Full load + CDC for ongoing replication which captures changes.
+  * CDC only - transfer the bulk DB data. Sometimes it is more efficient to use native tools (e.g. Oracle has their own export/import tools) and then use DMS simply to replicate the changes.
+* DMS does not support any schema conversion, but there is a dedicated AWS tool known as Schema Conversion Tool.
 
+**EXAM NOTE** if you see a DB migration question and one of the endpoints is in AWS, then it is a safe option to choose DMS. If the question talks about no downtime migration - default to DMS.
 
+Schema Conversion Tool:
+* SCT is used when converting one database engine to another (when engines are not compatible).
+* **SCT is not used between DBs of the same type** (e.g. On-premise MySQL -> RDS MySQL engines are the same).
+* Works with OLTP and OLAP (e.g. Teradata, Vertica, Greenplum) databases.
 
+Another example where DMS is used with SCT:
+* Doing large migrations of multi TB in size. Moving data over the network takes time and consumes capacity. DMS can utilise snowball products.
+* The flow of such migration:
+  * Step 1. Use SCT to extract data locally and move to a snowball device.
+  * Step 2. Ship the device back to AWS. They load onto an S3 bucket.
+  * Step 3. DMS migrates from S3 into the target store.
+  * Step 4. CDC can capture changes and via S3 intermediary they are also written to the target database.
 
 
 
