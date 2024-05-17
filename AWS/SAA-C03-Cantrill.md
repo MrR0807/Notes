@@ -2106,9 +2106,13 @@ Global databases allow you to create global level replication using Aurora from 
 
 ## Multi-master writes
 
+In multi-master mode all instances are capable of both read and write.
 
+The difference between single master is that there is no cluster endpoint to use. An application is responsible for connectin to instances within the cluster. No load balancing accross instances, the application connects to one or all of the instances in the cluster. When one of the read write nodes receive a write opperation - it immediately proposes that data be commited to all of the storage in that cluster. Each node can either accept or decline. It rejects if it conflicts with something that is in flight. The write instance is looking ofr a quorum for data to be inserted. If the change is commited, that change is replicated to other storage nodes in the cluster just like with single-master cluster. Also, that change is also replicated to other compute nodes. This means that other writers can add the updated data to their cache.
 
+DOES NOT EXIST ANYMORE!!!!!!!!! Only was available in MySQL 5.6 which is now deprecated.
 
+## 
 
 
 
