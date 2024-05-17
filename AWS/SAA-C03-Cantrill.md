@@ -2098,6 +2098,8 @@ Use cases:
 * Variable workloads (clear peaks).
 * Development and test databases. Because during inactive periods it just scales down.
 
+## Aurora Global Database
+
 
 
 
