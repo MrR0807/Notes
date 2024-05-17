@@ -2112,9 +2112,32 @@ The difference between single master is that there is no cluster endpoint to use
 
 DOES NOT EXIST ANYMORE!!!!!!!!! Only was available in MySQL 5.6 which is now deprecated.
 
-## 
+## Relational Database Service (RDS) - RDS Proxy
 
+* Opening and Closing Connections consume resources. It takes time and add latency. Especially prevelent in lambda architecture.
+* DB proxy - layer sitting between application and database. Instead of application connecting to database directly, it connects to a proxy and the proxy maintains a connection pool. It can multiplex - handle more request that come in than there are connections open.
+* DB Proxy is a managed services which run inside a VPC.
 
+![image](https://github.com/MrR0807/Notes/assets/24605837/55c7a3c4-031b-4551-abcd-ca1cdb961be9)
+
+**EXAM NOTE** When to use DB Proxy:
+* Too many connections error.
+* DB instances using T2/T3 (smaller or burst) instances.
+* When using AWS Lambda.
+* Long running connections (SAAS apps).
+* Resilience to database failure. RDS proxy can reduce the time for failover.
+
+Key Facts:
+* Fully managed for RDS/Aurora.
+* Auto scalling, highly available.
+* Provides connection pooling.
+* only accessible from a VPC (not from public internet).
+* Accessed via Proxy Endpoint.
+* Can enforce SSL/TLS.
+* Can reduce failover time by over 60%.
+* Abstracts failure away from applications.
+
+## Database Migration Service (DMS)
 
 
 
