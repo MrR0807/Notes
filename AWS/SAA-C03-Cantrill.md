@@ -2077,6 +2077,55 @@ Aurora backups:
   * Rapid Provisioning: Fast Clone enables you to provision a new Aurora database by copying only the necessary data pages from the source database. This significantly reduces the time required to create a clone compared to traditional methods.
   * Space Efficiency: The clone shares data with the source database until changes are made to either the source or clone. This means that initially, the clone consumes very little additional storage space beyond what is already used by the source database.
 
+## Aurora Serverless
+
+* Uses concept of ACU - Aurora Capacity Units. Capacity units represent a certain amount of compute and a corresponding amount of memory.
+* For a cluster you can set Min and Max ACU (elasticity).
+* Cluster can go to 0 and be paused if no activity (only billed for storage).
+* Consumption billing per second basis.
+* Same resilience as Aurora provisioned (6 copies across AZs).
+
+Aurora provisioned vs Aurora serverless:
+* Instead of provisioned servers - serverless has ACUs.
+* ACUs are allocated from a warm pool. They are stateless - shared between many AWS customers.
+* In an Aurora serverless cluster we have a shared proxy fleet which is managed by AWS. You as a developer interact with this shared proxy fleet, which maps to ACUs.
+
+![image](https://github.com/MrR0807/Notes/assets/24605837/19d56d5a-e7e3-4dbc-afdb-378239357437)
+
+Use cases:
+* Infrequently used applications.
+* New applications where load is unknown.
+* Variable workloads (clear peaks).
+* Development and test databases. Because during inactive periods it just scales down.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
