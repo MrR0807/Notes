@@ -2199,7 +2199,9 @@ Main components:
 * On-Demand - manual backups created as needed.
 * Some services implement point in time recovery. For example S3 and RDS. This means that you can restore that specific resource to specific date and time within a retention window.
 
+# HA & Scaling
 
+## Regional and Global AWS Architecture
 
 
 
