@@ -2163,10 +2163,25 @@ Another example where DMS is used with SCT:
   * Step 3. DMS migrates from S3 into the target store.
   * Step 4. CDC can capture changes and via S3 intermediary they are also written to the target database.
 
+## EFS Architecture
 
+* EFS is an implementation of NFSv4.
+* EFS Filesystems can be mounted in Linux.
+* Shared between many EC2 instances.
+* Private service. By default it is isolated to the VPC that it is provisioned. Access to EFS file systems is via mount targets which are things inside a VPC.
+* Can be accessed from on-premises via VPC peering, VPN connections or AWS Direct Connect (physical private networking connection between a VPC and existing on-premises network).
+* The mount targets have IP addresses taken from the IP address range of the subnet.
 
+![image](https://github.com/MrR0807/Notes/assets/24605837/79614670-fbe6-4c3b-9125-413c4fb97d58)
 
-
+**EXAM NOTE**.
+* Linux only.
+* Offers two performance modes: General Purpose and Max IO.
+* General Purpose is default for 99.9% of uses.
+* Max IO scale to higher levels of aggregate throughput and operations per second, but it does have a trade-off of increased latencies. Suits applications that are highly parallel.
+* There are two throughput modes: bursting and provisioned. Bursting works like GP2 EBS volumes. It has a burst pool, and throughput scales with the size of the file system. With provisioned you can specify throughput requirements.
+* Two storage classes: Standard and Infrequent Access.
+* Lifecycle Policies can be used with storage classes to move data.
 
 
 
