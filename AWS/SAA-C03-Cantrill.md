@@ -2163,6 +2163,8 @@ Another example where DMS is used with SCT:
   * Step 3. DMS migrates from S3 into the target store.
   * Step 4. CDC can capture changes and via S3 intermediary they are also written to the target database.
 
+# EFS
+
 ## EFS Architecture
 
 * EFS is an implementation of NFSv4.
@@ -2183,9 +2185,19 @@ Another example where DMS is used with SCT:
 * Two storage classes: Standard and Infrequent Access.
 * Lifecycle Policies can be used with storage classes to move data.
 
+## AWS Backup
 
+* Fully managed data-protection (backup/restore) service.
+* Consolidate management into one place - across accounts (utilises services like Control Tower and Organisations) and regions (able to copy data between regions).
+* Supports a wide range of AWS products (EC2, EBS, EFS, RDS, S3).
 
-
+Main components:
+* Backup Plans - frequency, window, lifecycle, vault, region copy. If you enabled continues backups then you can restore a supported service to a particular point in time. You can define life cycles, which can transition backups to cold storage. Backup has to be stored there for a minimum of 90 days.
+* Backup Resources - what resources are backed up. Whether you want to backup S3 or RDS.
+* Vaults - think of vaults as backup destinations. It is here where all the backup data is stored. You need to configure at least one of these.
+* Vault Lock - write-once, read-many, 72 hours cool off, then even AWS can't delete. Any data retention periods that you set still apply - backups can age out, but setting this means it is not possible to bypass or delete anything early.
+* On-Demand - manual backups created as needed.
+* Some services implement point in time recovery. For example S3 and RDS. This means that you can restore that specific resource to specific date and time within a retention window.
 
 
 
