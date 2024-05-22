@@ -2234,7 +2234,7 @@ When you deploy ELB you have to pick AZ, which the load balancer will use. Speci
 
 Another important thing you have to choose **EXAM NOTE** is whether it is internet facing or internal. This choise controls the IP addressing for the load balancer nodes. If you pick internet-facing, then the nodes of that load balancer are given public addresses and private addresses. If you pick internal, then the nodes only have private IP addresses. Otherwise they are the same architecturally.
 
-Public ELB can connect to both private and public EC2 instances. The important part is that if you want LB to be reachable from the public internet, it needs to have public IP/placed inside public subnet. Minimum subnet size is /27 or /28 in order for load balancers to scale. AWS suggests to use /27.
+Public ELB can connect to both private and public EC2 instances. The important part is that if you want LB to be reachable from the public internet, it needs to have public IP/placed inside public subnet. Minimum subnet size is /27 or /28 in order for load balancers to scale. AWS suggests to use /27. **ELB require 8+ free IPs per subnet.**
 
 **ELB is a DNS A Record pointing at 1+ nodes per AZ**.
 
