@@ -2236,15 +2236,21 @@ Another important thing you have to choose **EXAM NOTE** is whether it is intern
 
 Public ELB can connect to both private and public EC2 instances. The important part is that if you want LB to be reachable from the public internet, it needs to have public IP/placed inside public subnet. Minimum subnet size is /27 or /28 in order for load balancers to scale. AWS suggests to use /27.
 
+**ELB is a DNS A Record pointing at 1+ nodes per AZ**.
+
 ![image](https://github.com/MrR0807/Notes/assets/24605837/745d522a-b160-4e54-bf74-48e221715fd3)
 
+## Elastic Load Balancer Architecture - PART2
 
+If load balancer would not exist, your user would communicate with specific instance. When that fails, the flow would be disrupted. Same thing with web tier applications communicating on behalf of customer to internal applications.
 
+![image](https://github.com/MrR0807/Notes/assets/24605837/f2f170cb-8e17-42fc-8900-0235adb17c51)
 
+### Cross Zone LB
 
+Initially, LB node could only distribute connections to instances within the same AZ. Consider this architecture where LB is spread between two AZs (a and b). AZ-a contains 4 EC2 instances, while AZ-b only one. In this scenario LB node in AZ-a would distribute load between 4 instances, while AZ-b would distribute only to one. A fix for this was cross-zone load balacing. It simply allows every load balancer node to distribute any connections that it receives equally accross all registered instances in all AZs. Now enabled by default. **EXAM NOTE** often question arises how to distribute load evenly even if instances are deployed unevenly.
 
-
-
+![image](https://github.com/MrR0807/Notes/assets/24605837/1deb107b-623b-4d27-aeb7-139de91f6728)
 
 
 
