@@ -2203,8 +2203,21 @@ Main components:
 
 ## Regional and Global AWS Architecture
 
+These are global architectural components:
+* Global service location and discovery. How does your machine where to point at? E.g. enter netflix.com.
+* Content Delivery (CDN) and optimisation.
+* Global health checks and failover. Detecting if infrastructure in one location is healthy or not and moving customers to another country as required.
 
+Regional components:
+* Regional entry point.
+* Regional scaling and regional resilience.
+* Application services and components.
 
+Continueing Netflix example, let's say that N.America is primary region and Australia is secondary. Route53 has healthchecks which point to N.America if they are healthy, if not - Australia. Despite that, CDN can be used which is deployed as close to end user as possible.
+
+![image](https://github.com/MrR0807/Notes/assets/24605837/83e8c81d-fa93-4f1b-a44b-59257f8f80a4)
+
+Initially communications from your customers will generally enter at the web tier. Generally this will be a regional based AWS servicel like application load balancer or API gateway. CloudFront can cache objects from S3.
 
 
 
