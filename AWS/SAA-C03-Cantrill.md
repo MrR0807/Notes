@@ -2219,6 +2219,49 @@ Continueing Netflix example, let's say that N.America is primary region and Aust
 
 Initially communications from your customers will generally enter at the web tier. Generally this will be a regional based AWS servicel like application load balancer or API gateway. CloudFront can cache objects from S3.
 
+## Evolution of the Elastic Load Balancer
+
+There are three different types of elastic load balancers:
+* Load balancers are split between v1 (avoid/migrate) and v2 (prefer).
+* Started with Classic Load Balancer - v1 - introduced in 2009.
+  * Not really layer 7 LB (can't make decisions based on HTTP protocol features), lacking features, 1 SSL certificate per CLB, more expensive to use.
+* Application Load Balancer (ALB) - v2 - HTTP/HTTPS/WebSocket. Truely Layer 7 devices.
+* Network Load Balancer (NLB) - v2 - TCP/TLS/UDP. 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
