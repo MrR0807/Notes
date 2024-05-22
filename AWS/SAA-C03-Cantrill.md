@@ -2228,6 +2228,27 @@ There are three different types of elastic load balancers:
 * Application Load Balancer (ALB) - v2 - HTTP/HTTPS/WebSocket. Truely Layer 7 devices.
 * Network Load Balancer (NLB) - v2 - TCP/TLS/UDP. 
 
+## Elastic Load Balancer Architecture - PART1
+
+When you deploy ELB you have to pick AZ, which the load balancer will use. Specifically, you are picking one subnet in two or more AZs. Based on the subnets that you pick inside AZ, when you provision a load balancer, the product places into these subnets, one or more load balancer nodes. What you see as a single load balancer object, is actually made up of multiple nodes and these nodes live within the subnets that you pick.
+
+Another important thing you have to choose **EXAM NOTE** is whether it is internet facing or internal. This choise controls the IP addressing for the load balancer nodes. If you pick internet-facing, then the nodes of that load balancer are given public addresses and private addresses. If you pick internal, then the nodes only have private IP addresses. Otherwise they are the same architecturally.
+
+Public ELB can connect to both private and public EC2 instances.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
