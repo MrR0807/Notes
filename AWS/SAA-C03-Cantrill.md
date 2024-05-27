@@ -2290,7 +2290,16 @@ ALB vs NLB:
 * Choose NLB for privatelink.
 * Otherwise choose ALB.
 
+## Launch Configuration and Templates
 
+Launch Configurations and Launch Templates at the high level perform the same task. They allow the configuration of EC2 instances to be defined in advance. They let you define:
+* AMI, Instance Type, Storage, Key pairs.
+* Networking configuration and security groups.
+* Userdata and IAM role.
+* Both of them are not mutable. Launch Templates have versions.
+* **AWS recommends using Launch Templates**.
+* Launch Configurations have one use - they are used as part of Auto Scaling Groups.
+* Launch Templates can be used for Auto Scaling Groups as well, furthermore they can launch EC2 instances directly from Console/CLI.
 
 
 
