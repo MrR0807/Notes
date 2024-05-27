@@ -2252,11 +2252,43 @@ Initially, LB node could only distribute connections to instances within the sam
 
 ![image](https://github.com/MrR0807/Notes/assets/24605837/1deb107b-623b-4d27-aeb7-139de91f6728)
 
+## Application Load balancing (ALB) vs Network Load Balancing (NLB)
 
+Application Load Balancer:
+* Layer 7 load balancer. Listens on HTTP and/or HTTPS.
+* No other Layer 7 protocols (SMTP, SSH, Custom Gaming protocols). No TCP/UDP/TLS Listeners. Only HTTP or HTTPS.
+* It understands layer 7 things like content type, cookies, custom headers, user location and app behaviour.
+* HTTP/HTTPS always terminates connection on ALB and a new connection is made from ALB to the application.
+* ALB must have SSL certs if HTTPS is used, because they have to initiate SSL connections on behalf of the client to the application.
+* ALB are slower than NLB. **EXAM NOTE** If performance is key, then NLB is way to go.
+* They can evaluate application health. 
 
+ALB rules:
+* Rules direct connections which arrive at a listener.
+* Processed in priority order.
+* Default rule = catchall is processed last.
+* Rule Conditions: host-header, http-header, http-request-method, path-pattern, query-string, source-ip.
+* Rules have actions: forward, redirect, fixed-response (e.g. provide same error code), perform certain types of authentications (authenticate-oidc, authenticate-cognito).
+* **EXAM NOTE** If you need unbroken connection from client to application you have to use NLB. ALB brakes them.
 
+NLB:
+* Layer 4 devices - TCP, TLS, UDP, TCP_UDP.
+* No visiblity or understanding of HTTP or HTTPS.
+* Cannot interpret headers, cookies, sessions etc.
+* They are very, very fast (millions of rps, 25% of ALB latency).
+* **EXAM NOTE** Are not web or secure web, don't use HTTP or HTTPS, then you should default to NLB.
+* Health checks just check TCP handshake. Not app aware.
+* NLBs can have static IPs - useful for whitelisting.
+* Forward TCP to instances - unbroken encryption.
+* **EXAM NOTE** Used with private link to provide services to other VPCs.
 
-
+ALB vs NLB:
+* Choose NLB if you need unbroken encryption.
+* Choose NLB static IP for whitelisting.
+* Choose NLB for fastest performance.
+* Choose NLB for protocols not requiring HTTP or HTTPS.
+* Choose NLB for privatelink.
+* Otherwise choose ALB.
 
 
 
