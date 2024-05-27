@@ -2301,6 +2301,8 @@ Launch Configurations and Launch Templates at the high level perform the same ta
 * Launch Configurations have one use - they are used as part of Auto Scaling Groups.
 * Launch Templates can be used for Auto Scaling Groups as well, furthermore they can launch EC2 instances directly from Console/CLI.
 
+## Auto-Scaling Groups
+
 
 
 
