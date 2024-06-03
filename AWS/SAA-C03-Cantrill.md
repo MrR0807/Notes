@@ -2317,6 +2317,11 @@ Launch Configurations and Launch Templates at the high level perform the same ta
     * Simple - "CPU above 50% +1", "CPU below 50 -1". Not only CPU, but memory, IO etc, lenght of SQS queue.
     * Stepped Scaling - Bigger +/- based on difference. It allows you act depending on how out of normal the metric value is. Maybe at one instance if the CPU usage is above 50%, but if there is a sudden spike of load, say above 80% then add three. Stepped Scaling allows to react quickly the more extreme the changing conditions.
     * Target Tracking - Desired Aggregate CPU = 40%. It allows you to define an ideal percentage of something. Has something like request count per target.
+* Cooldown periods. Value in seconds and controls how long to wait at the end of a scaling action before doing another.
+
+**ASG + Load Balancers**
+
+Application Load Balancer checks can be much richer.
 
 
 
