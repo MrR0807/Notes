@@ -2303,7 +2303,20 @@ Launch Configurations and Launch Templates at the high level perform the same ta
 
 ## Auto-Scaling Groups
 
-
+* Auto Scaling Groups do one thing - they provide Automatic Scaling and Self-Healing for EC2.
+* Uses Launch Templates or Launch Configurations.
+* Has three important values associated with it - minimum, desired and maximum (e.g. `1:2:4`).
+* Keep running instances at the Desired capacity.
+* Normally Scaling Policies are used together with ASG. Scaling policies can update the desired capacity based on certain criteria for example CPU load.
+* ASG runs across one or more subnets in VPC.
+* ASG tries to maintain an even number of instances in each subnet.
+* There are ways that you can scale Auto Scaling Groups:
+  * Manual Scaling - Manually adjust the desired capacity.
+  * Scheduled Scaling - Time based adjustments.
+  * Dynamic Scaling has three subgroups:
+    * Simple - "CPU above 50% +1", "CPU below 50 -1". Not only CPU, but memory, IO etc, lenght of SQS queue.
+    * Stepped Scaling - Bigger +/- based on difference. It allows you act depending on how out of normal the metric value is. Maybe at one instance if the CPU usage is above 50%, but if there is a sudden spike of load, say above 80% then add three. Stepped Scaling allows to react quickly the more extreme the changing conditions.
+    * Target Tracking - Desired Aggregate CPU = 40%. It allows you to define an ideal percentage of something. Has something like request count per target.
 
 
 
