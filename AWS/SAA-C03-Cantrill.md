@@ -2364,7 +2364,14 @@ ASG assess the health of instances within that group using health checks. And if
 * Custom - instances marked healthy or unhealthy by an external system.
 * Health check grace period (default 300s) - delay before starting checks.
 
+## SSL Offload & Session Stickiness
 
+There are three ways how load balancer can handle secure connections:
+* bridging (default for Elastic load balancer) - one or more clients makes one or more connections to a load balancer. Load Balancer is configured for HTTPS. Connections are terminated on the ELB and started anew (man in the middle attack). Needs a certificate. If you're in a situation where you have to be very careful where the certificates are stored, then you might have a problem with bridge mode. Compute might be an overhead with high volume applications.
+* pass through (Network Load Balancer) - the load balancer just passes that connection along to one of the back end instances. This is only available in network load balancer. Listener is configured for TCP. No encryption or decryption happens on the NLB. The negative is that you cannot perform any load balacing based on HTTP. 
+* offload (Elastic Load Balancer) - clients use https, connections are terminated on load balancer, but connects to instances using HTTP. ALB still requires certificate.
+
+**Connection Stickiness** if applications are not using external services like DynamoDB, to handle stickiness, but instead rely on instances, then Elastic Load Balancer's session stickiness feature is required to use. Within an application load balancer, this is enabled on a target group. If enabled, the first time that a user makes request, the load balancer generates a cookie called AWSALB.
 
 
 
