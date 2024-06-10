@@ -2356,6 +2356,16 @@ With ASG instances are paused within the flow and they wait:
 
 ![image](https://github.com/MrR0807/Notes/assets/24605837/9ef53554-374b-4dab-a2a6-b6f40c10362d)
 
+## ASG HealthCheck Comparison - EC2 vs ELB
+
+ASG assess the health of instances within that group using health checks. And if an instance fails a health check, then it is replaced within the Auto Scaling group. There are three types of health checks:
+* EC2 (Default). Any statys (Stopping, Stopped, Terminated, Shutting Down or Impaired (not 2/2 status)) is viewed as unhealthy. Basically anything that is not in Running state.
+* ELB (can be enabled). The instance which is healthy has to be running and passing ELB health checks.
+* Custom - instances marked healthy or unhealthy by an external system.
+* Health check grace period (default 300s) - delay before starting checks.
+
+
+
 
 
 
