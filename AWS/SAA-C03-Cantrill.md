@@ -2371,7 +2371,7 @@ There are three ways how load balancer can handle secure connections:
 * pass through (Network Load Balancer) - the load balancer just passes that connection along to one of the back end instances. This is only available in network load balancer. Listener is configured for TCP. No encryption or decryption happens on the NLB. The negative is that you cannot perform any load balacing based on HTTP. 
 * offload (Elastic Load Balancer) - clients use https, connections are terminated on load balancer, but connects to instances using HTTP. ALB still requires certificate.
 
-**Connection Stickiness** if applications are not using external services like DynamoDB, to handle stickiness, but instead rely on instances, then Elastic Load Balancer's session stickiness feature is required to use. Within an application load balancer, this is enabled on a target group. If enabled, the first time that a user makes request, the load balancer generates a cookie called AWSALB.
+**Connection Stickiness** if applications are not using external services like DynamoDB, to handle stickiness, but instead rely on instances, then Elastic Load Balancer's session stickiness feature is required to use. Within an application load balancer, this is enabled on a target group. If enabled, the first time that a user makes request, the load balancer generates a cookie called AWSALB. Valid duration of a cookie is between 1 second and 7 days. With this cookie, LB routes requests to the same instance. This will happen until one of two things happen: instance fails, then user moved to a different instance or session expires then new cookie is provided and new instance is tied to said cookie. 
 
 
 
