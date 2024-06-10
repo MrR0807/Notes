@@ -2347,8 +2347,14 @@ ASG don't need scaling policies - they can have none. When created without any s
 
 ## ASG Lifecycle Hooks
 
+Lifecycle hooks allow you to configure custom actions on instances during ASG actions. You can define actions during instance launch or Instance termination transitions.
 
+With ASG instances are paused within the flow and they wait:
+* Until a timeout (then either Continue or Abandon). By default 3600 seconds.
+* After completing a custom process you can resume the ASG scale-in/scale-out process using CompleteLifecycleAction.
+* Lifecycle hooks can be integrated with EventBridge or SNS Notifications, which allow your systems to perform event driven processing based on a launch or termination of EC2 instance within an ASG.
 
+![image](https://github.com/MrR0807/Notes/assets/24605837/9ef53554-374b-4dab-a2a6-b6f40c10362d)
 
 
 
