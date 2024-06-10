@@ -2327,6 +2327,20 @@ ASG Scaling processes:
 * Launch and Terminate - Suspend and resume (??).
 * AddToLoadBalancer - add to LB on launch.
 * AlarmNotification - accept notification from CloudWatch.
+* AZRebalance - Balances instances evenly across all of the AZs.
+* HealthCheck - controls whether instance health checks are on or off.
+* ReplaceUnhealthy - controls whether the ASG terminates unhealthy instances and replaces.
+* ScheduledActions - whether the ASG will perform any scheduled actions or not.
+* Standby - this allows you to suspend any activities of the ASG on a specific instance. This is really useful if you need to perform maintenance on one or more EC2 instances.
+
+**EXAM NOTES**
+* ASG are free.
+* Use cooldowns to avoid rapid scaling.
+* Think about more, smaller instances - granularity.
+* Use with ALBs for elasticity.
+* ASG defines when and where, launch templates defines what.
+
+
 
 
 
