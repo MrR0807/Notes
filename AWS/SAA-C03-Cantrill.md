@@ -2321,9 +2321,12 @@ Launch Configurations and Launch Templates at the high level perform the same ta
 
 **ASG + Load Balancers**
 
-Application Load Balancer checks can be much richer.
+Application Load Balancer checks can be much richer. They can monitor the state of HTTP or HTTPS requests. 
 
-
+ASG Scaling processes:
+* Launch and Terminate - Suspend and resume (??).
+* AddToLoadBalancer - add to LB on launch.
+* AlarmNotification - accept notification from CloudWatch.
 
 
 
