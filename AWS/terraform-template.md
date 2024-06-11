@@ -194,3 +194,5 @@ resource "aws_subnet" "sn-web-c" {
 }
 ```
 
+## Configuring A4L public subnets and Jumpbox
+
