@@ -422,3 +422,38 @@ resource "aws_route_table_association" "a4l-vpc1-rt-web-to-sn-web-c" {
   route_table_id = aws_route_table.a4l-vpc1-rt-web.id
 }
 ```
+
+## Test access with EC2 machine
+
+```tf
+resource "aws_instance" "test-public-internet" {
+
+  ami = "ami-04b70fa74e45c3917"
+  instance_type = "t2.micro"
+
+  subnet_id = aws_subnet.sn-web-a.id
+
+  user_data = <<-EOF
+                #!/bin/bash
+                echo "Hello, World" > index.html
+                nohup busybox httpd -f -p 8080 &
+                EOF
+
+  user_data_replace_on_change = true
+
+  security_groups = [aws_security_group.test-public-internet-sg.id]
+}
+
+resource "aws_security_group" "test-public-internet-sg" {
+
+  vpc_id = aws_vpc.a4l_vpc.id
+
+  ingress {
+    from_port = 8080
+    to_port = 8080
+    protocol = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+```
+
