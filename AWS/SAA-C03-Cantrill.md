@@ -2373,10 +2373,20 @@ There are three ways how load balancer can handle secure connections:
 
 **Connection Stickiness** if applications are not using external services like DynamoDB, to handle stickiness, but instead rely on instances, then Elastic Load Balancer's session stickiness feature is required to use. Within an application load balancer, this is enabled on a target group. If enabled, the first time that a user makes request, the load balancer generates a cookie called AWSALB. Valid duration of a cookie is between 1 second and 7 days. With this cookie, LB routes requests to the same instance. This will happen until one of two things happen: instance fails, then user moved to a different instance or session expires then new cookie is provided and new instance is tied to said cookie. 
 
+## Gateway Load Balancer
 
+* Helps you run and scale 3rd party appliances (things like firewalls, intrustion detection and prevention systems).
+* Inbound and Outbound traffic (transparent inspection and protection).
+* At a high level Gateway Load Balancer has two major components:
+  * GWLB endpoints, which run from a VPC and traffic enters/leaves via these endpoints.
+  * GWLB balances across multiple backend appliances. These are just normal EC2 instances running security software.
+* GWLB has to forward packets in their full format without altering them. These packets have source and destination IP addresses, which might be okay on the original network, but which might not work on the network where the security appliances are hosted from. That is why GWLB uses a protocal called GENEVE - tunneling protocal. A tunnel is created between the gateway load balancer and the backend instance.
 
+Gateway Load Balancer actually powers AWS Network Firewall. You can decide to either bring in your own 3rd party security appliance to AWS and put it behind Gateway Load Balancer or use a managed service (AWS Network Firewall) without having to manage GWLB or firewall appliances yourself.
 
+![image](https://github.com/MrR0807/Notes/assets/24605837/d00f969d-ef6c-4e60-bce8-04746ccecf48)
 
+![image](https://github.com/MrR0807/Notes/assets/24605837/c5e7d38b-f9cb-43cb-98da-b8df88ad9267)
 
 
 
