@@ -2388,6 +2388,14 @@ Gateway Load Balancer actually powers AWS Network Firewall. You can decide to ei
 
 ![image](https://github.com/MrR0807/Notes/assets/24605837/c5e7d38b-f9cb-43cb-98da-b8df88ad9267)
 
+# SERVERLESS AND APPLICATION SERVICES
+
+## Architecture Deep Dive
+
+### Event-Driven Architecture
+
+
+
 
 
 
