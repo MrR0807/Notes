@@ -2402,13 +2402,21 @@ Nothing new.
 
 * FaaS - function as a service.
 * Functions are loaded and run in a runtime environment (e.g. Python 3.8).
-* The environment has a direct memory (indirect CPU) allocation.
+* The environment has a direct memory (indirect CPU) allocation. Memory from 128MB to 10240MB in 1MB step. 1769 MB gives 1 CPU.
+* By default Lambda is stateless (there are workarounds).
+* Mounts 512MB storage as /tmp. Up to 10240MB.
+* **EXAM NOTE**. Can run up to 15 minutes.
+* 
 
 Lambda function at its most basic is a deployment package which Lambda executes - you define the language/runtime, provide a deployment package (50MB zipped/250MB unzipped), and you set resources. Whenever Lambda is invoked, what actually happens is the deployment package is downloaded and executed within this runtime environment. 
 
-**EXAM NOTE** if you see Docker mentioned, consider this to mean not Lambda. Docker is anti-pattern for Lambda.
+**EXAM NOTE** if you see Docker mentioned, consider this to mean not Lambda. Docker is anti-pattern for Lambda. However, you can use similar/existing build processes to build Lambda images.
 
-
+Lambda use cases:
+* File processing (S3, S3 events).
+* Database Triggers (DynamoDB, Streams).
+* Serverless Cron (EventBridge/CloudWatch Events).
+* Realtime Stream Data Processing (Kinesis).
 
 
 
