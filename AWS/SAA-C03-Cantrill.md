@@ -2417,7 +2417,6 @@ Lambda use cases:
 * Serverless Cron (EventBridge/CloudWatch Events).
 * Realtime Stream Data Processing (Kinesis).
 
-
 **Network**
 
 Lambda has two networking modes:
@@ -2426,7 +2425,7 @@ Lambda has two networking modes:
 
 ![image](https://github.com/MrR0807/Notes/assets/24605837/2ee92376-0188-4eb7-ba0a-5b73e3f8d63f)
 
-
+Old way how AWS Lambdas were running in VPC mode that they not actually ran in your VPC, but they mount network interfaces within your VPC. This created scalability problems because more and more network interfaces were required and it was slow process. Now AWS analyze all of the functions running in a region in an account and build up a set of unique combinations of security groups and subnets. For every unique one of those, one ENI is required in the VPC. If all your functions used a collection of subnets, but the same security groups, then one network interface would be required per subnet.
 
 
 
