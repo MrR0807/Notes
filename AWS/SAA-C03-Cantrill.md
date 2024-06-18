@@ -2406,7 +2406,6 @@ Nothing new.
 * By default Lambda is stateless (there are workarounds).
 * Mounts 512MB storage as /tmp. Up to 10240MB.
 * **EXAM NOTE**. Can run up to 15 minutes.
-* 
 
 Lambda function at its most basic is a deployment package which Lambda executes - you define the language/runtime, provide a deployment package (50MB zipped/250MB unzipped), and you set resources. Whenever Lambda is invoked, what actually happens is the deployment package is downloaded and executed within this runtime environment. 
 
@@ -2419,8 +2418,13 @@ Lambda use cases:
 * Realtime Stream Data Processing (Kinesis).
 
 
+**Network**
 
+Lambda has two networking modes:
+* Public (default) - they are given public networking which means they can access public AWS services (e.g. SQS, DynamoDB) and public Internet. Offers the best performance, because no customer specific VPC networking is required. Lambda functions have no access to VPC based services unless public IPs are provided and security controls allow external access.
+* VPC - Lambda functions running in a VPC obey all VPC networking rules. For example, can freely access other VPC based resources (assuming any network ACLs and security groups allow that access). On the flip side they cannot access anything outside VPC unless networking configuration permits.
 
+![image](https://github.com/MrR0807/Notes/assets/24605837/2ee92376-0188-4eb7-ba0a-5b73e3f8d63f)
 
 
 
