@@ -2445,8 +2445,16 @@ Lambda also has resources policies. In many ways is like a bucket policy in S3. 
   * X-Ray distributed tracing.
 * CloudWatch Logs requires permissions via Execution Role.
 
+**Invocation**
 
+Three ways how to invoke Lambda:
+* Synchronous - CLI/API invokes a lambda function, passing in data and wait for a resposne. Waits for response. Blocking. Lambda function returns respond with data or fails. A common architecture of synchronous Lambda is via API Gateway, which invokes underneath a lambda function. 
+* Asynchronous - typically used when AWS services invoke lambda functions on your behalf. For example we have an S3 bucket with S3 events enabled. For example we upload an image to S3 bucket which creates an event, which creates lambda function. In this instance, S3 is not waiting for application response. Fire and forget. If processing of the event fails, lambda will retry between 0 and 2 times (configurable). Lambda handles the retry logic. Events that failed can be sent to dead letter queue. Furthermore, lambda supports destinations and events can be forwarded to other services (e.g. another lambda, SQS, SNS, EventBridge).
+* Event Source mappings - this is typically used on streams or queues which don't support event generation to invoke lambda (Kinesis, DynamoDB streams, SQS). In their inception, these services do not generate events when they themselve receive events, hence there is a hidden component, which sources events from streams/queues. **EXAM NOTE** Event Source Mapping is reading from the source, hence it needs permissions to access it. It uses lambda Execution Role. Lambda can receive more than one event from event source mapping, hence it is important to configure event batch size.
 
+![image](https://github.com/MrR0807/Notes/assets/24605837/9c3a25f3-6c68-47ce-a66c-435b2fcc0f1f)
+
+![image](https://github.com/MrR0807/Notes/assets/24605837/9c89edca-8024-4a6c-976f-ce48bd28ec98)
 
 
 
