@@ -2433,6 +2433,17 @@ Old way how AWS Lambdas were running in VPC mode that they not actually ran in y
 
 **Permissions**
 
+In order for Lambda to access any AWS products and services it nees to be provided with an execution role. A role is created which has a trust policy which trusts Lambda and the permissions policy that role has is used to generate temporary credentials that the Lambda function uses to interact with other resources.
+
+Lambda also has resources policies. In many ways is like a bucket policy in S3. It controls who can interact with a specific Lambda function. Its this resource policy which can be used to allow external accounts to invoke a Lambda function or certain services to use a Lambda function such as SNS or S3.
+
+**Logging**
+
+* Lambda uses CloudWatch, CloudWatch Logs and X-Ray.
+  * Logs go to CloudWatchLogs.
+  * Metrics go to CloudWatch.
+  * X-Ray distributed tracing.
+* CloudWatch Logs requires permissions via Execution Role.
 
 
 
