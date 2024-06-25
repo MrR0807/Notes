@@ -2478,7 +2478,7 @@ An execution context is the environment a lambda function runs in. A cold start 
 
 ![image](https://github.com/MrR0807/Notes/assets/24605837/3e72bb32-feaf-4a5c-9028-5e6af554119c)
 
-
+## Serverless Architecture
 
 
 
