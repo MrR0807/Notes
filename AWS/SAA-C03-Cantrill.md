@@ -2467,8 +2467,16 @@ Three ways how to invoke Lambda:
 
 An execution context is the environment a lambda function runs in. A cold start is a full creation and configuration including function code download. If there is a small gap between two lambda invocations there is a chance that same execution context will be used without cold start. A Provisioned concurrency can be used to speed up cold start. AWS will create and keep X contexts warm and ready to use in advance.
 
+## CloudWatchEvents and EventBridge
 
+* AWS starting to encourage a migration from CloudWatch Events to EventBridge.
+* EventBridge is basically CloudWatch Events v2.
+* A single default Event bus for AWS account in CloudWatch Events. You cannot interact with it.
+* In EventBridge you can create additional events.
+* Rules match incoming events. When a rule is matched - the event is delivered to a target. Alternatively you have scheduled rules which is kinda of pattern matching for certain date and time or ranges of dates and times.
+* Routes the events to 1+ targets (could be lambda).
 
+![image](https://github.com/MrR0807/Notes/assets/24605837/3e72bb32-feaf-4a5c-9028-5e6af554119c)
 
 
 
