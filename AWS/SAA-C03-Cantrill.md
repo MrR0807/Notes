@@ -2456,6 +2456,62 @@ Three ways how to invoke Lambda:
 
 ![image](https://github.com/MrR0807/Notes/assets/24605837/9c89edca-8024-4a6c-976f-ce48bd28ec98)
 
+**Versions**
+
+* Lambda functions have versions - v1, v2, v3.
+* A version is the code + the configuration of the lambda function.
+* A version is immutable. Has its own ARN.
+* You can create aliases.
+
+**Lambda startup times**
+
+An execution context is the environment a lambda function runs in. A cold start is a full creation and configuration including function code download. If there is a small gap between two lambda invocations there is a chance that same execution context will be used without cold start. A Provisioned concurrency can be used to speed up cold start. AWS will create and keep X contexts warm and ready to use in advance.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
