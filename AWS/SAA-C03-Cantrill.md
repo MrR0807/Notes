@@ -2480,8 +2480,13 @@ An execution context is the environment a lambda function runs in. A cold start 
 
 ## Serverless Architecture
 
+* Stateless and ephemeral environments.
+* Generally everything is event-driven. Nothing is running until it's required.
+* FaaS is used where possible for compute functionality.
 
+![image](https://github.com/MrR0807/Notes/assets/24605837/905942c2-d9e5-4dfb-9381-a756e31b1292)
 
+## Simple Notification Service
 
 
 
