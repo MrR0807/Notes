@@ -2488,6 +2488,12 @@ An execution context is the environment a lambda function runs in. A cold start 
 
 ## Simple Notification Service
 
+* Public AWS Service - network connectivity with Public Endpoint. To access it, you need network connectivity with the public AWS endpoints.
+* Cordinates the sending and deliver of messages.
+* Messages are <= 256KB payloads.
+* SNS topics are the base entity - permissions and configurations are on them.
+* SNS used across AWS for notifications, e.g. CloudWatch uses it.
+
 
 
 
