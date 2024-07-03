@@ -2493,7 +2493,10 @@ An execution context is the environment a lambda function runs in. A cold start 
 * Messages are <= 256KB payloads.
 * SNS topics are the base entity - permissions and configurations are on them.
 * SNS used across AWS for notifications, e.g. CloudWatch uses it.
+* Supports Server Side Encryption.
+* SNS topic'as are capable of being used cross accounts. 
 
+## Step Functions
 
 
 
