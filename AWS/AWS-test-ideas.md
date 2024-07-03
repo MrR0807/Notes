@@ -4,3 +4,4 @@
 * S3 encryption using your own KMS key.
 * DNSSEC via R53.
 * Deploy RDS and microservices on EKS.
+* Serverless application with lambda and SES.
