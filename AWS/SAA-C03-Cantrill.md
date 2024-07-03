@@ -2552,9 +2552,21 @@ API Gateway Errors:
 
 **EXAM NOTE** Caching is configured per stage. TTL default is 300 seconds. Configurable between 0 and 3600 seconds. Can be encrypted. Cache size 500mb - 237GB.
 
+## Simple Queue Service
+
+* Public, Fully Managed, High Available Queues - Standard (order is not guarantee) or FIFO (guarantee an order).
+* Messages up to 256KB in size or link to large data.
+* **EXAM NOTE** Received messages are **hidden** (VisibilityTimeout). After VisibilityTimeout messages can reappear or explicitly deleted.
+* Dead-Letter queues can be used for problem messages.
+* Standard = at-least-once, FIFO = exactly-once.
+* FIFO performance - 3000 messages per second with batching or up to 300 messages per second without.
+* Standard queues are unlimited.
+* Billed based on requests - a single request that you make to SQS. With 1 request you can receive from 0 to 10 messages or up to 64KB total.
 
 
+**EXAM NOTE** Fanout architecture is really important for exam.
 
+![image](https://github.com/MrR0807/Notes/assets/24605837/283f5a97-c459-45f0-800a-36251da89a82)
 
 
 
