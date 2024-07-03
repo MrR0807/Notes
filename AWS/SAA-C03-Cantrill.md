@@ -2498,12 +2498,23 @@ An execution context is the environment a lambda function runs in. A cold start 
 
 ## Step Functions
 
+Step functions address some of the limitations of Lambda. Lambda is a function as a service and the best practice is to create functions, which are small, focused and do one thing very well. You should never put a full application inside a Lambda function. Lambda function cannot pass 15 minute max execution time. 
 
+Step functions lets you create what are known as State Machines. Think of a State Machine as a workflow. It has a Start point and an end point. Between those points are states. States are the things which occur inside the state machine. They take in data, modify it and output data. Conceptually, the State Machine is designed to perform an activity or perform a flow, which consists of lots of individual components, and maintain the idea of data between those states. **The maximum duration for State Machine executions within Step Functions is 1 year**.
 
+There are two types of workflows available in step functions:
+* Standard - standard is the default and has **one year execution limit**. 
+* Express - designed for high volume, event processing workloads such as IOT, streaming data processing and transformation. These can run up to **5 minutes**.
 
+State machines have templates, which you can export and it uses Amazon State Language (ASL) - Json Template. IAM role is used for permissions.
 
-
-
+Types of states:
+* Succeed and Fail.
+* Wait - wait a certain period of time or until a specific date and time.
+* Choice - take a different path depending on an input.
+* Parallel - allows you to create parallel branches within a state machine.
+* Map - map state accepts a list of things, e.g. list of orders. For each iteam in that list perform an action.
+* Task - represents a single unit of work performed by a state machine. Task state can be integrated with lots of different services, e.g. Lambda, AWS Batch, Dynamo DB etc.
 
 
 
