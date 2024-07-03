@@ -2550,7 +2550,7 @@ API Gateway Errors:
 * 503 - service unavailable.
 * 504 - timeout - API has to respond within 29 second limit.
 
-
+**EXAM NOTE** Caching is configured per stage. TTL default is 300 seconds. Configurable between 0 and 3600 seconds. Can be encrypted. Cache size 500mb - 237GB.
 
 
 
