@@ -2631,10 +2631,18 @@ Signel dead letter queue can be used for multiple sources.
   * Firehose (near real time), hence indirectly also S3, Redshift, Splunk, ElasticSearch.
   * AWS Lambda (real time).
   * Kinesis Data Streams (real time).
+* Processing data with Kinesis Analytics application is not cheap.
 
 ![image](https://github.com/MrR0807/Notes/assets/24605837/ff346381-f2ee-46dc-9188-e91853c228f3)
 
 Kinesis Analytics Application actually tackles the same old stream enriching problem. Reference table in S3 is just slow moving data which can enrich fast moving data. For example, some kind of game where change events are coming constantly and being enriched by slow moving data like player name etc.
+
+**When to use Kinesis Data Analytics**
+
+* Streaming data needing real-time SQL processing.
+* Time-series analytics, e.g. elections/e-sports.
+* Real-time dashboards - leaderboards for games.
+* Real-time metrics - security and response teams.
 
 
 
