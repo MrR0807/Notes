@@ -2604,6 +2604,22 @@ Signel dead letter queue can be used for multiple sources.
 * Kinesis designed for huge scale of data.
 * Kinesis designed for multiple consumers, each of which might be consuming data at different rates.
 
+## Kinesis Data Firehose
+
+* Fully managed service to load data for data lakes, data stores and analytics services.
+* Automatic scaling, fully serverless, resilient.
+* Near Real Time delivery (~60 seconds).
+* **EXAM NOTE** Kinesis provides real time data, Firehose supports near real time.
+* Supports transformation of data on the fly (lambda).
+* Billing - volume through firehose.
+* **EXAM NOTE** Need to know valid destinations for firehose:
+  * HTTP endpoints.
+  * Splunk.
+  * Redshift.
+  * ElasticSearch.
+  * S3.
+* Source - kinesis data streams, or **producers can send data directly into Firehose**.
+* 
 
 
 
