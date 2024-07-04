@@ -2578,7 +2578,9 @@ Delay queues at high level allow you to postpone the delivery of messages to con
 
 ## SQS Dead-Letter Queues
 
+`maxReceiveCount` defines how many times message can be received until placed into dead letter queue.
 
+Enqueue timestamp of message is unchanged (it is orginal when message was added to main queue). Retention period of a dead-letter queue is generally longer then the source queues.
 
 
 
