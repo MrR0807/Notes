@@ -2626,12 +2626,15 @@ Signel dead letter queue can be used for multiple sources.
 ## Kinesis Data Analytics
 
 * Provides real time processing of data using SQL. Data inputs at one side, queries run against that data in real time and then data is output to destination at the other.
-* Ingest data from either Kinesis Data Streams or Kinesis Firehose.
+* Ingest data from either Kinesis Data Streams or Kinesis Firehose. Also from S3 as reference data.
 * Destinations:
   * Firehose (near real time), hence indirectly also S3, Redshift, Splunk, ElasticSearch.
   * AWS Lambda (real time).
   * Kinesis Data Streams (real time).
 
+![image](https://github.com/MrR0807/Notes/assets/24605837/ff346381-f2ee-46dc-9188-e91853c228f3)
+
+Kinesis Analytics Application actually tackles the same old stream enriching problem. Reference table in S3 is just slow moving data which can enrich fast moving data. For example, some kind of game where change events are coming constantly and being enriched by slow moving data like player name etc.
 
 
 
