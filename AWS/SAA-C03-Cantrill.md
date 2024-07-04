@@ -2661,6 +2661,8 @@ Kinesis Analytics Application actually tackles the same old stream enriching pro
     * User pools - sign in and get a JSON Web Token. JWT can be used for authentication with applications, certain AWS products e.g. API gateway. However, **most AWS services cannot use JWT**. User pool job is to control sign in and deliver a JWT. When thinking about user pools think about database of users which can include external identities. **When you sign in, you get JWT**.
     * Identity pools - allow you to offer access to temporary AWS credentials, which can then be used to access AWS resources. One option is Unauthenticated Identities/Guest Users. Also provides **Federated Identities**. You can swap an external identity (e.g. Google, Facebook, Twitter, User pool) for temporary AWS credetianls. Identity pools work by assuming IAM roles.
 
+### User Pools Architecture
+
 
 
 
