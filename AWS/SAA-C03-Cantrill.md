@@ -2653,7 +2653,13 @@ Kinesis Analytics Application actually tackles the same old stream enriching pro
 * **EXAM NOTE** Cannot access data directly via storage. Only via API.
 * Integrates with other AWS services e.g. Rekognition and Connect.
 
+## Amazon Cognito - User and Identity Pools
 
+* Cognito has terrible naming.
+* Cognito provides two main pieces of functionality:
+  * Authentication, Authorization and user management for web/mobile apps. There are two parts of Cognito:
+    * User pools - sign in and get a JSON Web Token. JWT can be used for authentication with applications, certain AWS products e.g. API gateway. However, **most AWS services cannot use JWT**. User pool job is to control sign in and deliver a JWT. When thinking about user pools think about database of users which can include external identities. **When you sign in, you get JWT**.
+    * Identity pools - allow you to offer access to temporary AWS credentials, which can then be used to access AWS resources. One option is Unauthenticated Identities/Guest Users. Also provides **Federated Identities**. You can swap an external identity (e.g. Google, Facebook, Twitter, User pool) for temporary AWS credetianls. Identity pools work by assuming IAM roles.
 
 
 
