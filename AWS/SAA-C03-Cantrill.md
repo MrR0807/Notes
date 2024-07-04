@@ -1,4 +1,6 @@
-![image](https://github.com/MrR0807/Notes/assets/24605837/92ac6e9e-6edd-4458-b0db-40cd9672007a)# Billing
+![image](https://github.com/MrR0807/Notes/assets/24605837/92ac6e9e-6edd-4458-b0db-40cd9672007a)
+
+# Billing
 
 * Go to *Billing Preferences* and check call preferences, like *Invoice delivery preferences* or *AWS Free Tier alerts*.
 * Setup a budget by going to *Budgets* -> *Use a template* -> *Create budget*.
