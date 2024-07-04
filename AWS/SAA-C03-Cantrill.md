@@ -2586,6 +2586,69 @@ Signel dead letter queue can be used for multiple sources.
 
 ## Kinesis Data Streams
 
+* Kinesis is a scalable streaming service. It is designed to ingest data from lots of devices and applications.
+* Producers send data into a kinesis stream.
+* It can scale from low levels of data throughput to near infinite data rates.
+* Public services and highly available by design.
+* Streams store a 24-hour moving window of data by default.
+* Storage is included for however much data you ingest during those 24 hours.
+* The window can be increased to 365 days.
+* Multiple consumers can access data from anywhere in that moving window.
+* Shard architecture is used to scale Kinesis. One shard supports 1 MB ingestion and 2 MB Consumption. Shards are automatically scalled depending on the load.
+
+### SQS vs Kinesis
+
+* SQS 1 production group, 1 consumption group. Generally you won't have hundreds or thousands of sensors sending to an SQS queue.
+* Generally you'll have one consumer or consumer group - worker tier.
+* SQS does not provide persistence and no time window.
+* Kinesis designed for huge scale of data.
+* Kinesis designed for multiple consumers, each of which might be consuming data at different rates.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
