@@ -2582,9 +2582,9 @@ Delay queues at high level allow you to postpone the delivery of messages to con
 
 Enqueue timestamp of message is unchanged (it is orginal when message was added to main queue). Retention period of a dead-letter queue is generally longer then the source queues.
 
+Signel dead letter queue can be used for multiple sources.
 
-
-
+## Kinesis Data Streams
 
 
 
