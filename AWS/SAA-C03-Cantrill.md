@@ -2625,6 +2625,12 @@ Signel dead letter queue can be used for multiple sources.
 
 ## Kinesis Data Analytics
 
+* Provides real time processing of data using SQL. Data inputs at one side, queries run against that data in real time and then data is output to destination at the other.
+* Ingest data from either Kinesis Data Streams or Kinesis Firehose.
+* Destinations:
+  * Firehose (near real time), hence indirectly also S3, Redshift, Splunk, ElasticSearch.
+  * AWS Lambda (real time).
+  * Kinesis Data Streams (real time).
 
 
 
