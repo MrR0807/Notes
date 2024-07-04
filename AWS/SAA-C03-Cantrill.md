@@ -2609,7 +2609,7 @@ Signel dead letter queue can be used for multiple sources.
 * Fully managed service to load data for data lakes, data stores and analytics services.
 * Automatic scaling, fully serverless, resilient.
 * Near Real Time delivery (~60 seconds).
-* **EXAM NOTE** Kinesis provides real time data, Firehose supports near real time.
+* **EXAM NOTE** Kinesis provides real time data, Firehose supports **near real time**.
 * Supports transformation of data on the fly (lambda).
 * Billing - volume through firehose.
 * **EXAM NOTE** Need to know valid destinations for firehose:
@@ -2619,8 +2619,11 @@ Signel dead letter queue can be used for multiple sources.
   * ElasticSearch.
   * S3.
 * Source - kinesis data streams, or **producers can send data directly into Firehose**.
-* 
+* Firehose waits for 1MB of data or 60 seconds. These can be adjusted.
+* Firehose transforms data via lambda functions.
+* All of the above destinations are direct except Redshift. Underneath, it firstly places data into S3 and then uses Redshift copy command.
 
+## Kinesis Data Analytics
 
 
 
