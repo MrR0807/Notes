@@ -2562,11 +2562,19 @@ API Gateway Errors:
 * FIFO performance - 3000 messages per second with batching or up to 300 messages per second without.
 * Standard queues are unlimited.
 * Billed based on requests - a single request that you make to SQS. With 1 request you can receive from 0 to 10 messages or up to 64KB total.
-
+* Encryption at rest (KMS) and in-transit.
+* Queue policy can provide access from external accounts. A queue policy is just a resource policy.
+* **EXAM NOTE** FIFO queues to be valid need to have a `.fifo` suffix.
 
 **EXAM NOTE** Fanout architecture is really important for exam.
 
 ![image](https://github.com/MrR0807/Notes/assets/24605837/283f5a97-c459-45f0-800a-36251da89a82)
+
+## SQS Delay Queues
+
+Delay queues at high level allow you to postpone the delivery of messages to consumers. Messages added to the queue will be invisible for `DelaySeconds`. DelaySeconds min value is 0 and max is 15 minutes.
+
+## SQS Dead-Letter Queues
 
 
 
