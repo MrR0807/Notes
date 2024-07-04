@@ -2667,10 +2667,19 @@ Kinesis Analytics Application actually tackles the same old stream enriching pro
 
 ### Identity pools
 
+If we want to support five different token providers (e.g. Google, Facebook, Twitter), we need to have five different configurations within Identity pool. In identity pool, there are at least two roles: Authenticated Role and Unauthenticated role.
 
+![image](https://github.com/MrR0807/Notes/assets/24605837/f4c1dc0d-177a-48cd-9ce9-1d00351a2fce)
 
+### Combine both
 
+The benefit is that identity pool can be configured with only a single external identity provider, which is user pool.
 
+![image](https://github.com/MrR0807/Notes/assets/24605837/d635f19f-3c77-4c08-8558-271e14feb702)
+
+### Summary
+
+User pools are for sign in and sign up while identity pools are for swapping identity tokens for from external ID provider for temporary AWS credentials.
 
 
 
