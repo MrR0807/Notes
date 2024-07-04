@@ -2644,7 +2644,14 @@ Kinesis Analytics Application actually tackles the same old stream enriching pro
 * Real-time dashboards - leaderboards for games.
 * Real-time metrics - security and response teams.
 
+## Kinesis Video Streams
 
+* Ingest live video data from producers.
+* Producers can be security cameras, smartphones, cars, drones, time-serialised audio, thermal, depth and radar data.
+* Consumers can access data frame-by-frame or as needed.
+* Can persist and encrypt data (in-transit and at rest).
+* **EXAM NOTE** Cannot access data directly via storage. Only via API.
+* Integrates with other AWS services e.g. Rekognition and Connect.
 
 
 
