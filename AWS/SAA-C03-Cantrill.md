@@ -2663,8 +2663,9 @@ Kinesis Analytics Application actually tackles the same old stream enriching pro
 
 ### User Pools Architecture
 
+![image](https://github.com/MrR0807/Notes/assets/24605837/42569fc9-f024-47b1-86ab-39c82c3013f6)
 
-
+### Identity pools
 
 
 
