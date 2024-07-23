@@ -2681,10 +2681,23 @@ The benefit is that identity pool can be configured with only a single external 
 
 User pools are for sign in and sign up while identity pools are for swapping identity tokens for from external ID provider for temporary AWS credentials.
 
+## AWS Glue 101
 
+* Glue is serverless ETL.
+* There is another ETL called data pipeline and users servers (EMR) to perform the tasks.
+* Moves and transforms data between source and destination.
+* Crawls data sources and generates the AWS Glue Data catalog.
+* Data Source: S3, RDS, DynamoDB, JDBC Compatible stores, Kinesis Data Stream, Apache Kafka.
+* Data Targets: S3, RDS, JDBC Databases.
 
+* AWS Glue provides a data catalog. Data catalog is a collection of metadata combined with data management and search tools. In other words - persistent metadata about data sources in region.
+* One catalog per region per account.
+* Athena, Redshift, EMR and AWS Lake Formation can use data catalog.
+* Data is discovered by crawlers. Giving them credentials to access data stores.
 
+![image](https://github.com/user-attachments/assets/640ed7e7-23b8-4645-8acb-df5711050303)
 
+## Amazon MQ 101
 
 
 
