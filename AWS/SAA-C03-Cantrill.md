@@ -2699,7 +2699,11 @@ User pools are for sign in and sign up while identity pools are for swapping ide
 
 ## Amazon MQ 101
 
+Amazon MQ is a managed message broker service for Apache ActiveMQ Classic and RabbitMQ.
 
+* SNS provides (topics) one to many communication channels.
+* SQS provides (queues) one to one communication channels.
+* Both services are highly scalable and highly available.
 
 
 
