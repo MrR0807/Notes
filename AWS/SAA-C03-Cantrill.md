@@ -2721,6 +2721,10 @@ Amazon MQ is a managed message broker service for Apache ActiveMQ Classic and Ra
 
 ![image](https://github.com/user-attachments/assets/d972908a-4262-4084-ad72-4f75e75fc47a)
 
+# GLOBAL CONTENT DELIVERY AND OPTIMIZATION
+
+## Cloudfront Architecture
+
 
 
 
