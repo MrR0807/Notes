@@ -2743,8 +2743,22 @@ CloudFront Terms:
 
 ## CloudFront (CF) - Behaviours
 
+Nothing interesting.
 
+## CloudFront - TTL and Invalidations
 
+* More frequent cache HITS = lower origin load.
+* Default TTL - 24 hours.
+* You can set Min TTL and Max TTL.
+* **EXAM NOTE!** There are several headers you need to remember:
+  * Origin Header: Cache-Control max age (seconds) - does the same thing as below. After defined seconds are passed, the object is viewed as expired.
+  * Origin Header: Cache-Control s-maxage (seconds) - does the same thing as above. After defined seconds are passed, the object is viewed as expired.
+  * Origin Header: Expires (Date and Time) - specific date and time when object will be viewed as expired.
+* Custom Origin or S3 (via object metadata).
+
+Cache invlidation performed on a distribution. Applies to all edge locations and takes time.
+
+**EXAM NOTE!** Versioned file names are better than trying to invalidate files anytime you need a change. For example, instead of invalidating `test.jpg`, you could create a new file `test_v2.jpg`. It is more cost efficient, it also works in client's browser, and lastly, in logging you can identify which file is actually returned from cache - old or new. With same name, you wouldn't know.
 
 
 
