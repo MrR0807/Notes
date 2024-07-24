@@ -2774,6 +2774,8 @@ Cache invlidation performed on a distribution. Applies to all edge locations and
 
 ![image](https://github.com/user-attachments/assets/040b20e1-bfae-4f39-86d4-2f03f9e477cf)
 
+## Cloudfront and SSL/TLS
+
 
 
 
