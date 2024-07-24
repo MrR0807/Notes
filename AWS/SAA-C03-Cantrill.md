@@ -2725,6 +2725,21 @@ Amazon MQ is a managed message broker service for Apache ActiveMQ Classic and Ra
 
 ## Cloudfront Architecture
 
+CloudFront is content delivery network. It improves content delivery by caching and by using an efficient global network.
+
+CloudFront Terms:
+* Origin - the source location of your content.
+  * S3 Origin or Custom Origin (anything else which runs a web server and has a publicly routeable IP version 4 address).
+  * You have one or more origins.
+* Distribution - the "configuration" unit of CloudFront.
+* Behavior - a sub "configuration" which contains most of the configuration. It works on a principle of a pattern match. Distribution always has at least one behavior, but in can have many more.
+* Edge Location - local cache of your data.
+* Regional Edge Cache - larger version of an edge location. Provides another layer of caching.
+* **Exam Note!**. It does not provide write cache. Only read cache.
+
+![image](https://github.com/user-attachments/assets/ef694231-9cad-4083-b1c4-29ee8f15b2a2)
+
+![image](https://github.com/user-attachments/assets/07c201a9-17e9-43f2-862a-949847cbec6f)
 
 
 
