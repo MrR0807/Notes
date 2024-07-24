@@ -2766,6 +2766,7 @@ Cache invlidation performed on a distribution. Applies to all edge locations and
 * With Private Certificate Authority you need to trust your private Certificiate Authority.
 * You can generate or import certificates. It can also automatically renew them.
 * **EXAM NOTE** If you imported certificates, then you are responsible for renewal.
+* Certificates can be deployed out to supported services - e.g. CloudFront and ALBs, but not EC2. **EXAM NOTE** Not all AWS services are supported.
 * 
 
 
