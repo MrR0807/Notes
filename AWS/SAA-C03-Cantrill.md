@@ -2712,6 +2712,12 @@ Amazon MQ is a managed message broker service for Apache ActiveMQ Classic and Ra
 * **Exam Note!** Default position is to use SNS or SQS.
 * **Exam Note!** Use SNS or SQS if AWS integration is required (logging, service integration).
 
+## Amazon AppFlow
+
+* Fully Managed integration service (middleware).
+* Exchange data between applications (connectors) using flows.
+* Example - sync data across applications, sync contact records from salesforce to redshift, sync suport tickets from zendesk to s3.
+* Uses public endpoints, but works with PrivateLink.
 
 
 
