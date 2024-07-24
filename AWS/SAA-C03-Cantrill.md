@@ -2789,6 +2789,12 @@ CloudFront and SNI
 
 ![image](https://github.com/user-attachments/assets/c45985f4-120f-4101-888d-4db62d71ada4)
 
+## Origin Types & Origin Architecture
+
+If you're using S3 origins, then restricting S3 for only CloudFront is supported out of the box. If you use custom origins (e.g. your web server), then you can pass a header (which is configurable in CloudFront) and handle this header in web server (for example if header is present - return results, otherwise - 403).
+
+
+
 
 
 
