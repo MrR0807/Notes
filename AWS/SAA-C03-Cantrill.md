@@ -2704,6 +2704,14 @@ Amazon MQ is a managed message broker service for Apache ActiveMQ Classic and Ra
 * SNS provides (topics) one to many communication channels.
 * SQS provides (queues) one to one communication channels.
 * Both services are highly scalable and highly available.
+* This service is for migrating existing queue systems from on-premise, to AWS.
+* It supports JMS API and protocols such as AMQP, MQTT, OpenWire and STOMP.
+* Provides queues (one to one) and topics (one to many).
+* **Exam Note!** Not a public service. Private networking required (VPC based).
+* Cannot use with other AWS products.
+* **Exam Note!** Default position is to use SNS or SQS.
+* **Exam Note!** Use SNS or SQS if AWS integration is required (logging, service integration).
+
 
 
 
