@@ -2707,10 +2707,10 @@ Amazon MQ is a managed message broker service for Apache ActiveMQ Classic and Ra
 * This service is for migrating existing queue systems from on-premise, to AWS.
 * It supports JMS API and protocols such as AMQP, MQTT, OpenWire and STOMP.
 * Provides queues (one to one) and topics (one to many).
-* **Exam Note!** Not a public service. Private networking required (VPC based).
+* **EXAM NOTE** Not a public service. Private networking required (VPC based).
 * Cannot use with other AWS products.
-* **Exam Note!** Default position is to use SNS or SQS.
-* **Exam Note!** Use SNS or SQS if AWS integration is required (logging, service integration).
+* **EXAM NOTE** Default position is to use SNS or SQS.
+* **EXAM NOTE** Use SNS or SQS if AWS integration is required (logging, service integration).
 
 ## Amazon AppFlow
 
@@ -2732,10 +2732,10 @@ CloudFront Terms:
   * S3 Origin or Custom Origin (anything else which runs a web server and has a publicly routeable IP version 4 address).
   * You have one or more origins.
 * Distribution - the "configuration" unit of CloudFront.
-* Behavior - a sub "configuration" which contains most of the configuration. It works on a principle of a pattern match. Distribution always has at least one behavior, but in can have many more. **EXAM NOTE!** Restrict viewer (viewers must use CloudFront signed URLs or signed cookies to access content) and caching are set in behavior.
+* Behavior - a sub "configuration" which contains most of the configuration. It works on a principle of a pattern match. Distribution always has at least one behavior, but in can have many more. **EXAM NOTE** Restrict viewer (viewers must use CloudFront signed URLs or signed cookies to access content) and caching are set in behavior.
 * Edge Location - local cache of your data.
 * Regional Edge Cache - larger version of an edge location. Provides another layer of caching.
-* **Exam Note!**. It does not provide write cache. Only read cache.
+* **EXAM NOTE**. It does not provide write cache. Only read cache.
 
 ![image](https://github.com/user-attachments/assets/ef694231-9cad-4083-b1c4-29ee8f15b2a2)
 
@@ -2750,7 +2750,7 @@ Nothing interesting.
 * More frequent cache HITS = lower origin load.
 * Default TTL - 24 hours.
 * You can set Min TTL and Max TTL.
-* **EXAM NOTE!** There are several headers you need to remember:
+* **EXAM NOTE** There are several headers you need to remember:
   * Origin Header: Cache-Control max age (seconds) - does the same thing as below. After defined seconds are passed, the object is viewed as expired.
   * Origin Header: Cache-Control s-maxage (seconds) - does the same thing as above. After defined seconds are passed, the object is viewed as expired.
   * Origin Header: Expires (Date and Time) - specific date and time when object will be viewed as expired.
@@ -2758,9 +2758,15 @@ Nothing interesting.
 
 Cache invlidation performed on a distribution. Applies to all edge locations and takes time.
 
-**EXAM NOTE!** Versioned file names are better than trying to invalidate files anytime you need a change. For example, instead of invalidating `test.jpg`, you could create a new file `test_v2.jpg`. It is more cost efficient, it also works in client's browser, and lastly, in logging you can identify which file is actually returned from cache - old or new. With same name, you wouldn't know.
+**EXAM NOTE** Versioned file names are better than trying to invalidate files anytime you need a change. For example, instead of invalidating `test.jpg`, you could create a new file `test_v2.jpg`. It is more cost efficient, it also works in client's browser, and lastly, in logging you can identify which file is actually returned from cache - old or new. With same name, you wouldn't know.
 
+## ACM - AWS Certificate Manager
 
+* ACM can function both as a public Certificate Authority - generating certificates which are trusted or as a private certificate authority.
+* With Private Certificate Authority you need to trust your private Certificiate Authority.
+* You can generate or import certificates. It can also automatically renew them.
+* **EXAM NOTE** If you imported certificates, then you are responsible for renewal.
+* 
 
 
 
