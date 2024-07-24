@@ -2776,6 +2776,21 @@ Cache invlidation performed on a distribution. Applies to all edge locations and
 
 ## Cloudfront and SSL/TLS
 
+* Each CloudFront receives a default domain name (CNAME). It looks something like this - `https://d111111111abassf.cloudfront.net`, starts with a random pattern and ends with `cloudfornt.net`.
+* SSL Supported by default as long as you use `*.cloudfront.net`.
+* You can use alternative domain names (CNAMES) e.g. `cdn.catagram...`.
+* In order to provide SSL/TLS for alternative domain name you need a cert which contains that information as well.
+* There are two SSL connections happening: Client -> CloudFront and CloudFront -> Origin. **EXAM NOTE** Both of them need a valid, public certificates (and intermediate certs).
+* Self-signed certs will not work with CloudFront. They need to be publicly trusted certificates.
+
+CloudFront and SNI
+* SNI - server Name Indication. This adds the ability for a client to tell a server which domain name its attempting to access. It occurs within the TLS handshake. This extension to SSL was required in order to host multiple different servers on the same IP. For example, if you'd have two apps running on the same instance, before this extension, only one certificate was possible per IP.
+* If you need dedicated IP in CloudFront, because older browsers don't support SNI, then you have to pay extra to AWS. Otherwise, SNI is enabled by default and it is free.
+
+![image](https://github.com/user-attachments/assets/c45985f4-120f-4101-888d-4db62d71ada4)
+
+
+
 
 
 
