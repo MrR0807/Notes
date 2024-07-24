@@ -2719,6 +2719,7 @@ Amazon MQ is a managed message broker service for Apache ActiveMQ Classic and Ra
 * Example - sync data across applications, sync contact records from salesforce to redshift, sync suport tickets from zendesk to s3.
 * Uses public endpoints, but works with PrivateLink.
 
+![image](https://github.com/user-attachments/assets/d972908a-4262-4084-ad72-4f75e75fc47a)
 
 
 
