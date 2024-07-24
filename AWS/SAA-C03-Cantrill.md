@@ -2767,7 +2767,12 @@ Cache invlidation performed on a distribution. Applies to all edge locations and
 * You can generate or import certificates. It can also automatically renew them.
 * **EXAM NOTE** If you imported certificates, then you are responsible for renewal.
 * Certificates can be deployed out to supported services - e.g. CloudFront and ALBs, but not EC2. **EXAM NOTE** Not all AWS services are supported.
-* 
+* ACM is a regional service.
+* Certs cannot leave the region they are generated or imported in.
+* **EXAM NOTE** To use a cert with ALB in ap-southeast-2 you need a cert in ACM in ap-southeast-2. This is critical to understand.
+* **EXAM NOTE** Global Services such as CloudFront operate as though within us-east-1. In other words you need to configure certs in us-east-1 for CloudFront.
+
+![image](https://github.com/user-attachments/assets/040b20e1-bfae-4f39-86d4-2f03f9e477cf)
 
 
 
