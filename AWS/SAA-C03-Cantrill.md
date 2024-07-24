@@ -2732,7 +2732,7 @@ CloudFront Terms:
   * S3 Origin or Custom Origin (anything else which runs a web server and has a publicly routeable IP version 4 address).
   * You have one or more origins.
 * Distribution - the "configuration" unit of CloudFront.
-* Behavior - a sub "configuration" which contains most of the configuration. It works on a principle of a pattern match. Distribution always has at least one behavior, but in can have many more.
+* Behavior - a sub "configuration" which contains most of the configuration. It works on a principle of a pattern match. Distribution always has at least one behavior, but in can have many more. **EXAM NOTE!** Restrict viewer (viewers must use CloudFront signed URLs or signed cookies to access content) and caching are set in behavior.
 * Edge Location - local cache of your data.
 * Regional Edge Cache - larger version of an edge location. Provides another layer of caching.
 * **Exam Note!**. It does not provide write cache. Only read cache.
