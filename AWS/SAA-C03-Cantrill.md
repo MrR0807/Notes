@@ -2864,25 +2864,21 @@ Some use cases:
 * Different objects based on device - origin request.
 * Content by country - origin request.
 
+## Global Accelerator
+
+**EXAM NOTE** You'll have to determine when to use CloudFront and when to use Global Accelerator.
+
+Global Accelerator starts with two Anycast IP addresses. Anycast IP is a special type address - normal IP addresses are called Unicast IP, in other words they refer to one thing, one network device. Anycast IPs allow a single IP to be in multiple locations. Routing moves traffic to closest location. 
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+|   |	Cloud Front   | 	Global Accelerator   |
+|---|---|---|
+| Purpose | Shorter Latency, Security, Content Caching | Shorter Latency, High Availability, IP Caching |
+| Underlined mechanism | Cache the content to a location near the customer/client   | Find a optimal way to reach to the host from where the content will delivered. Note here content is not being cached like CDN |
+| Use case | HTTP, HTTPS based traffic. Suitable for caching static resources like images, videos | Both HTTP & Non HTTP protocols like TCP, UDP for Gaming, Video streaming, IoT Messaging |
+| How is it charged | Based on numbers of HTTP requests along with amount of data transferred | Hourly charges along with amount of data transferred |
+| Static IP  | You can not assign static IP to Cloud Front distribution node. Your client will see non deterministic end points for your application | Global Accelerator assign fixed number of Anycast static IPs. So the client can determine the possible IP addresses of the end points |
 
 
 
