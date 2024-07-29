@@ -2847,6 +2847,20 @@ CloudFront Signed URLs vs Cookies:
 
 ## Lambda@Edge
 
+* You can run lightweight Lambda functions at edge locations.
+* Lambdas can adjust traffic between the Viewer and Origin.
+* Currently, only Node.js and Python are supported as run times.
+* Run only in AWS Public Space (Not VPC).
+* Layers are not supported.
+* Different time and sizes limits than in normal Lambda Function.
+
+Each connection between Viewer and Edge (request), Edge and Origin (request), Origin back to Edge (response), Edge to Viewer (response) can run a lambda function. Limitations on viewer side are: 128MB and 5 seconds. On Origin side - Normal Lambda MB, but 30 seconds run time.
+
+![image](https://github.com/user-attachments/assets/2a6e9455-f8a8-4bba-8c5b-27c0bf49b4c7)
+
+
+
+
 
 
 
