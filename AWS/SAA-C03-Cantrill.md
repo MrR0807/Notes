@@ -2870,7 +2870,9 @@ Some use cases:
 
 Global Accelerator starts with two Anycast IP addresses. Anycast IP is a special type address - normal IP addresses are called Unicast IP, in other words they refer to one thing, one network device. Anycast IPs allow a single IP to be in multiple locations. Routing moves traffic to closest location. 
 
+**EXAM NOTE**. You need to understand the architecture. The customer arrives at one of the Global Accelerator edge locations, because they are using one of the Anycast IP addresses. Their connections will be routed to the closest Global Accelerator edge location. Once the traffic enters Global Accelerator edge location, then it will use AWS private networks, which will require less hops and has significantly better performance.
 
+![image](https://github.com/user-attachments/assets/50e86d86-7835-4d12-88f2-52d7ebfee9ba)
 
 |   |	Cloud Front   | 	Global Accelerator   |
 |---|---|---|
@@ -2879,6 +2881,13 @@ Global Accelerator starts with two Anycast IP addresses. Anycast IP is a special
 | Use case | HTTP, HTTPS based traffic. Suitable for caching static resources like images, videos | Both HTTP & Non HTTP protocols like TCP, UDP for Gaming, Video streaming, IoT Messaging |
 | How is it charged | Based on numbers of HTTP requests along with amount of data transferred | Hourly charges along with amount of data transferred |
 | Static IP  | You can not assign static IP to Cloud Front distribution node. Your client will see non deterministic end points for your application | Global Accelerator assign fixed number of Anycast static IPs. So the client can determine the possible IP addresses of the end points |
+
+There are several benefits to anycast:
+* First, in steady state, users of an anycast service (DNS is an excellent example) will always connect to the 'closest' server.
+* Another advantage is ease of configuration management. Rather than having to configure different DNS servers depending on where a server/workstation is deployed (Asia, America, Europe), you have one IP address that is configured in every location.
+* Depending on how anycast is implemented, it can also provide a level of high availability. If the advertisement of the anycast route is conditional on some sort of health check (e.g. a DNS query for a well known domain, in this example), then as soon as a server fails its route can be removed.
+* A final advantage is that of horizontal scaling; if you find that one server is being overly loaded, simply deploy another one in a location that would allow it to take some proportion of the overloaded server's requests.
+
 
 
 
