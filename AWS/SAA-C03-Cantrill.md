@@ -2888,7 +2888,7 @@ There are several benefits to anycast:
 * Depending on how anycast is implemented, it can also provide a level of high availability. If the advertisement of the anycast route is conditional on some sort of health check (e.g. a DNS query for a well known domain, in this example), then as soon as a server fails its route can be removed.
 * A final advantage is that of horizontal scaling; if you find that one server is being overly loaded, simply deploy another one in a location that would allow it to take some proportion of the overloaded server's requests.
 
-
+# Advanced VPC Networking
 
 
 
