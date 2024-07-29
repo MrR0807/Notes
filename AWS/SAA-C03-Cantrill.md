@@ -2825,10 +2825,25 @@ We cannot use OAI for custom origins. There are two ways to implement secure inf
 
 ## Private Distribution & Behaviours
 
+CloudFront can run in two security modes when it comes to content:
+* Public - in this mode any content which is distributed via CloudFront is public. Can be accessed by any viewer.
+* Private - wny request made to CloudFront need to be made with a signed cookie or signed URL or they'll be denied.
 
+CloudFront distributions are created with a single behavior. Hence either the whole distribution is public or private.
 
+There are two ways to configure CloudFront private behavior:
+* Legacy way - you had to create CloudFront Key by Account Root User. Once the key is added to said account, that account can be added as a trusted signer. **EXAM NOTE** If you see a trusted signer in question, you will know that this is talking about private distribution.
+* Recommended way - Create trusted key groups and assign those as signers. The key groups determine which keys can be used to create signed URLs and signed cookies.
 
+In both ways you required a signer. A signer is an entity or entities which can create signed URLs or signed cookies. Once a signer is added to behavior, the behavior is now private and only signed URLs and 
 
+CloudFront Signed URLs vs Cookies:
+* Signed URLs provide access to **EXAM NOTE** **one object and one object only**.
+* Use URLs if your client doesn't support cookies.
+* Cookies provides access to groups of objects. Use for groups of files/all files of a type (e.g. all cat gifs).
+* If you want to preserve a custom URL then signed cookies is the only option.
+
+![image](https://github.com/user-attachments/assets/14d88d0c-4417-40d7-9494-a961759bfe10)
 
 
 
