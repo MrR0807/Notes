@@ -2793,10 +2793,35 @@ CloudFront and SNI
 
 If you're using S3 origins, then restricting S3 for only CloudFront is supported out of the box. If you use custom origins (e.g. your web server), then you can pass a header (which is configurable in CloudFront) and handle this header in web server (for example if header is present - return results, otherwise - 403).
 
+## Securing CF and S3 using OAI
 
+When thinking about securing CloudFront delivery path, we need to think about three parts:
+* Origins (e.g. S3 or Custom).
+* CloudFront Network - Edge locations.
+* Public Internet - where consumers reside.
 
+Hence, there are three parts to this path:
+* From origin to edge.
+* Within Edge.
+* From Edge to Customer.
 
+The main problem to address is client bypassing the edge and going directly to origin.
 
+When you use S3 website feature, then origin access is custom origin and NOT S3 origin.
+
+What is Origin Access Identity (OAI):
+* An OAI is a type of identity. It is not the same as IAM user or an IAM role, but it does share some characteristics of both.
+* It can be associated with CloudFront Distributions. When they are accessing an S3 origin, CloudFront Distribution "becomes" that origin access identity.
+* This means that OAI can eb used in S3 bucket policies, so either explicit allows or denies.
+* Generally the best practice is lock down S3 access to only being accessible via CloudFront. Deny all but one or more OAIs.
+
+![image](https://github.com/user-attachments/assets/f06e2342-08ab-46d8-a36f-96ba92ad37f0)
+
+We cannot use OAI for custom origins. There are two ways to implement secure infrastructure:
+* Utilize custom headers. They are injected in edge location and validated in custom origin. Because HTTPS is used then nobody knows those custom headers.
+* AWS public services have known IP ranges. If we have IP ranges that are used by CloudFront, then we can use traditional firewall around custom origin.
+
+![image](https://github.com/user-attachments/assets/057f36a5-c613-428b-8984-72a349107840)
 
 
 
