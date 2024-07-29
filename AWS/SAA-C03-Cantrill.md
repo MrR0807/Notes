@@ -2823,7 +2823,7 @@ We cannot use OAI for custom origins. There are two ways to implement secure inf
 
 ![image](https://github.com/user-attachments/assets/057f36a5-c613-428b-8984-72a349107840)
 
-
+## Private Distribution & Behaviours
 
 
 
