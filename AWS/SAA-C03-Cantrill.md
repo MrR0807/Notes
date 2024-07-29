@@ -2858,6 +2858,12 @@ Each connection between Viewer and Edge (request), Edge and Origin (request), Or
 
 ![image](https://github.com/user-attachments/assets/2a6e9455-f8a8-4bba-8c5b-27c0bf49b4c7)
 
+Some use cases:
+* A/B testing. function to present two different versions of the image without creating redirects or changing the URL - viewer request.
+* Migration between different S3 Origins - origin request.
+* Different objects based on device - origin request.
+* Content by country - origin request.
+
 
 
 
