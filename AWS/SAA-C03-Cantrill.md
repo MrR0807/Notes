@@ -2845,7 +2845,7 @@ CloudFront Signed URLs vs Cookies:
 
 ![image](https://github.com/user-attachments/assets/14d88d0c-4417-40d7-9494-a961759bfe10)
 
-
+## Lambda@Edge
 
 
 
