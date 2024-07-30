@@ -2939,8 +2939,16 @@ Only allows for connections to be initiated from inside VPC to outside.
 
 * Provide private access to S3 and DynamoDB. Normally when you want to access AWS public services from within a VPC, usually an IGW.
 * Now the way it works is that you create a gateway endpoint, these are created per service, per region. For example, S3 in the us-east-1. You create this gateway for S3 in us-east-1 and you associate it with one or more subnets in a particular VPC. Gateway endpoints doesn't go into VPC subnets. What happens is that when you allocate the gateway endpoint to particular subnets, something called a prefix list is added to the route tables for those subnets. And this prefix list uses the gateway endpoint as a target. A prefix list is just like what you would find on a normal route but it's an object, it's a logical entity which represents these services. So it represents S3 or DynamoDB. Imagine this as a list of IP addresses that those services use, but where the list is kept updated by AWS. This prefix list is added to the route table, the prefix list is used as the destination and the target is the gateway endpoint. This means in this example, that any traffic destined for S3 as it exits the subnet, it goes via the gateway endpoint rather than the internet gateway. **EXAM NOTE** gateway endpoint does not go into a particular subnet or AZ. It is HA across all AZs in a region by default.
+* Endpoint policy is used to control what it can access. For example, allow gateway endpoint to connect to a subset of S3 buckets.
+* Regional, can't access cross-region services.
+* Another use cases is to **prevent leaky buckets**. S3 buckets can be set to private only by allowing access only from a gateway endpoint.
+* **EXAM NOTE**. Gateway endpoints are only accessible from inside specific VPC.
 
+Not using Gateway Endpoints. But this creates a security problem, because resources have public internet access, either directly for public resources or via NAT gateway for private only EC2 instances. If you want instances inside VPC to be able to access S3 without the public internet, then it is problematic. This is where VPC endpoints come in.
 
+![image](https://github.com/user-attachments/assets/f3372ef8-c9d0-4fca-bfbe-af8909ed7b94)
+
+![image](https://github.com/user-attachments/assets/2eb55687-0a77-4a9d-b1b2-1ee291c14b90)
 
 
 
