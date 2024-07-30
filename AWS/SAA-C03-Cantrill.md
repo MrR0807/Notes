@@ -2890,6 +2890,69 @@ There are several benefits to anycast:
 
 # Advanced VPC Networking
 
+## VPC Flow Logs
+
+* Captures packet's metadata - not content.
+* Flow logs work by attaching virtual monitors within a VPC and these can be applied at three different levels:
+  * At the VPC level (all ENIs) which monitor every network interface in every subnet within VPC.
+  * At the subnet level - all ENIs in given subnet.
+  * At a specific ENI directly.
+* Flow logs are **not realtime**.
+* Log destinations: S3 and CloudWatch logs.
+* Flow logs can capcture Accepted, Rejected or All metadata on connections.
+
+![image](https://github.com/user-attachments/assets/c425a366-17da-4f2f-98c2-8e4c9fc8c52a)
+
+VPC Flow Log is a collection of rows and each row has the following fields (highlighter are the most useful ones):
+* version
+* account-id
+* interface-id££™¡
+* **srcaddr**
+* **dstaddr**
+* **srcport**
+* **dstport**
+* **protocol**
+* packets
+* bytes
+* start
+* end
+* **action**
+* log-status
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
