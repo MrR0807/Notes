@@ -2950,10 +2950,19 @@ Not using Gateway Endpoints. But this creates a security problem, because resour
 
 ![image](https://github.com/user-attachments/assets/2eb55687-0a77-4a9d-b1b2-1ee291c14b90)
 
+## VPC Endpoints (Interface)
+
+* Just like gateway endpoints, interface endpoints provide private access to AWS public services.
+* Historically, it used to provide access to all services apart from S3 and DynamoDB. Historically, those services were only available via gateway endpoints. **S3 is now supported**.
+* One crucial difference between gateway endpoints and interface endpoints is that interface endpoints are not HA by default. Interfaces are added to specific VPCs. One subnet means one AZ.
+* For HA, add one interface endpoint to one subnet per AZ. If you have 2 AZ then you need 2 interfaces.
+* Network access controlled via Security Groups. You don't have this capability with gateway endpoints.
+* Endpoint policies also work with interface endpoints.
+* Only support TCP and only IPv4.
+* Behind the scenes, interface endpoints use **PrivateLink**. It is a product which allows external services to be injected into your VPC, either from AWS or from third parties. Injecting means giving network interface inside your VPC to a service.
 
 
-
-
+Interface endpoints don't work the same way as internet gateway. Gateway endpoints use a prefix list, while interface endpoints primarily use DNS. Interface endpoints just network interfaces inside your VPC.
 
 
 
