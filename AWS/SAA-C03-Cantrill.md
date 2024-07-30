@@ -2919,6 +2919,11 @@ VPC Flow Log is a collection of rows and each row has the following fields (high
 * **action**
 * log-status
 
+Some traffic does not show up in logs: to and from 169.254.169.254, DHCP, Amazon DNS and Amazon Windows license.
+
+![image](https://github.com/user-attachments/assets/25519744-767d-46ce-ad49-6a866193dd67)
+
+## Egress-Only Internet gateway
 
 
 
