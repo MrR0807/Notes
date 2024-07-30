@@ -2961,15 +2961,32 @@ Not using Gateway Endpoints. But this creates a security problem, because resour
 * Only support TCP and only IPv4.
 * Behind the scenes, interface endpoints use **PrivateLink**. It is a product which allows external services to be injected into your VPC, either from AWS or from third parties. Injecting means giving network interface inside your VPC to a service.
 
+Interface endpoints don't work the same way as internet gateway. Gateway endpoints use a prefix list, while interface endpoints primarily use DNS. Interface endpoints just network interfaces inside your VPC. They have a private IP within the range, which subnet uses.
 
-Interface endpoints don't work the same way as internet gateway. Gateway endpoints use a prefix list, while interface endpoints primarily use DNS. Interface endpoints just network interfaces inside your VPC.
+* The way that this works is when you create an interface endpoint in a particular region for a particular service, you get a new DNS name for that service. An endpoint specific DNS name. And that name can be used to directly access the service via the interface endpoint.
+* This is an example of DNS name you might get for the SNS service inside us-east-1 region: `vpc-123-xyz.sns.us-east-1.vpce.amazonaws.com`. This name resolves to the private IP address of the interface endpoint and if you update your applications to use this endpoint-specific DNS name, then you can directly use it to access the service via the interface endpoint and not require public IP addressing.
 
+There are multiple DNS names for specific interface endpoint:
+* Regional DNS name - which is one single DNS name that works whatever AZ you're using to access the interface endpoint. Its good for simplicity and for HA.
+* Each interface in each AZ gets a zonal DNS, which resolves to that one specific interface in that one specific availability zone.
+* Applications can optionally use thse or use PrivateDNS.
+* PrivateDNS overrides the default DNS for services. PrivateDNS associates a route 53 private hosted zone with your VPC. This privated hosted zone carries a replacement DNS record for the default service endpoint DNS name. 
 
+For example, in normal scenario, if you'd like to reach SNS service, you'd have to resolve a given DNS name, then go through router and IGW to SNS service.
 
+![image](https://github.com/user-attachments/assets/3f79f32a-2dd8-4137-929b-fe72648a9a75)
 
+Interface endpoints architecture without private DNS:
 
+![image](https://github.com/user-attachments/assets/464afb3d-d7f2-4344-8ee1-769ec525e70a)
 
+Interface endpoints architecture with private DNS:
 
+![image](https://github.com/user-attachments/assets/e793b23f-bdfb-490a-b544-5a7806f23256)
+
+The difference between with private DNS and without:
+* Interface endpoint resolves to private IP address of interface endpoint. Which then directs traffic to SNS.
+* With private DNS, the record is overriden, which means that applications do not need to direct to interface endpoint, but can utilise the same, public DNS name for SNS, however it is overriden in DNS service to point to interface.
 
 
 
