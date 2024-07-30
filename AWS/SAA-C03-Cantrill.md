@@ -2935,7 +2935,10 @@ Only allows for connections to be initiated from inside VPC to outside.
 * Egress-Only Gateway is exactly the same as normal internet gateway and has same properties - HA by default accross all AZs. Scales as required.
 * To enable flow through Egress-Only IGW - add default IPv6 route `::/0` 
 
+## VPC Endpoints (Gateway)
 
+* Provide private access to S3 and DynamoDB. Normally when you want to access AWS public services from within a VPC, usually an IGW.
+* Now the way it works is that you create a gateway endpoint, these are created per service, per region. For example, S3 in the us-east-1. You create this gateway for S3 in us-east-1 and you associate it with one or more subnets in a particular VPC. Gateway endpoints doesn't go into VPC subnets. What happens is that when you allocate the gateway endpoint to particular subnets, something called a prefix list is added to the route tables for those subnets. And this prefix list uses the gateway endpoint as a target. A prefix list is just like what you would find on a normal route but it's an object, it's a logical entity which represents these services. So it represents S3 or DynamoDB. Imagine this as a list of IP addresses that those services use, but where the list is kept updated by AWS. This prefix list is added to the route table, the prefix list is used as the destination and the target is the gateway endpoint. This means in this example, that any traffic destined for S3 as it exits the subnet, it goes via the gateway endpoint rather than the internet gateway. **EXAM NOTE** gateway endpoint does not go into a particular subnet or AZ. It is HA across all AZs in a region by default.
 
 
 
