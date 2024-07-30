@@ -2925,9 +2925,15 @@ Some traffic does not show up in logs: to and from 169.254.169.254, DHCP, Amazon
 
 ## Egress-Only Internet gateway
 
+Only allows for connections to be initiated from inside VPC to outside.
 
-
-
+* With IPv4 addresses are private or public.
+* NAT allows private IPs to access public networks. NAT gateway provides private IPv4 IPs with a way to access the public internet or public AWS services. But, and this is important thing, it doesn't allow any connections from the internet to be initiated to the private instance. NAT exists because of limitations of IPv4. It does not work with IPv4.
+* All IPv6 IPs are publicly routable.
+* Internet Gateway (IPv6) allows all IP IN and OUT.
+* This is why Egress Only Internet Gateway exists - to fill the functionality gap within IPv6 services.
+* Egress-Only Gateway is exactly the same as normal internet gateway and has same properties - HA by default accross all AZs. Scales as required.
+* To enable flow through Egress-Only IGW - add default IPv6 route `::/0` 
 
 
 
