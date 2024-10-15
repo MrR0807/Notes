@@ -2988,7 +2988,10 @@ The difference between with private DNS and without:
 * Interface endpoint resolves to private IP address of interface endpoint. Which then directs traffic to SNS.
 * With private DNS, the record is overriden, which means that applications do not need to direct to interface endpoint, but can utilise the same, public DNS name for SNS, however it is overriden in DNS service to point to interface.
 
+## VPC Peering
 
+* VPC peering is a service that lets you create a private and encrypted network link between two VPCs. One peering connection links **two and only two VPCs**.
+* Works between VPCs in the same region or cross region. VPCs can be in same account or different.
 
 
 
