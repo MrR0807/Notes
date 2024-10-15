@@ -2995,9 +2995,12 @@ The difference between with private DNS and without:
 * (optional) Public Hostnames resolve to private IPs. This means you can use the same DNS names to locate services whether they're in peered VPCs or not. If a VPC peer exists between one VPC and another and this option is enabled, then if you attempt to resolve the public DNS hostname of an EC2 instance it will resolve to the private IP address of that EC2 instance.
 * If your VPCs are in the **same region** then they can reference each other's security groups via SG IDs.
 * VPC peering does not support transitivie peering. If you have VPC A peered to VPC B, while VPC B is peered to VPC C, that does not mean that VPC A is peered to VPC C.
+* To fully configure connectivity between those VPCs, you need to configre routing. Route tables with routes on them pointing at the remote VPC IP address range and using VPC peering connection gateway object as the target. SGs and NACLs have to be configured accordingly.
+* **EXAM NOTE!** VPC peering connections cannot be creted where there is an overlap in the VPC CIDRs. Never use the same ranges in multiple VPCs.
 
+![image](https://github.com/user-attachments/assets/0cb90588-6bc9-4bb0-8d97-3188f4969f32)
 
-
+# HYBRID ENVIRONMENTS AND MIGRATION
 
 
 
