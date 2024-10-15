@@ -5,3 +5,4 @@
 * DNSSEC via R53.
 * Deploy RDS and microservices on EKS.
 * Serverless application with lambda and SES.
+* VPC between two accounts in the same region.
