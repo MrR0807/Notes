@@ -2992,6 +2992,8 @@ The difference between with private DNS and without:
 
 * VPC peering is a service that lets you create a private and encrypted network link between two VPCs. One peering connection links **two and only two VPCs**.
 * Works between VPCs in the same region or cross region. VPCs can be in same account or different.
+* (optional) Public Hostnames resolve to private IPs. This means you can use the same DNS names to locate services whether they're in peered VPCs or not. If a VPC peer exists between one VPC and another and this option is enabled, then if you attempt to resolve the public DNS hostname of an EC2 instance it will resolve to the private IP address of that EC2 instance.
+* If your VPCs are in the **same region** then they can reference each other's security groups via SG IDs.
 
 
 
