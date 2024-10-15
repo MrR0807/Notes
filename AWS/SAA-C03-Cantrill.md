@@ -3002,7 +3002,12 @@ The difference between with private DNS and without:
 
 # HYBRID ENVIRONMENTS AND MIGRATION
 
+## Border Gateway Protocol (BGP) 101
 
+BGP is a routing protocol. AWS Direct Connect and Dynamic VPNs both utilize BGP.
+
+* BGP are made up of lots of autonomous systems (AS). AS could be a large network, could be a collection of routers but in either case they're controlled by one single entity.
+* Each AS is alocated a number by IANA - ASN. The range is from 0 to 65535. 64512 - 65534 are private. 
 
 
 
