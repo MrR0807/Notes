@@ -3015,7 +3015,9 @@ BGP is a routing protocol. AWS Direct Connect and Dynamic VPNs both utilize BGP.
 * iBGP = internal BGP - routing within an AS.
 * eBGP = external BGP - routing between AS.
 
-![image](https://github.com/user-attachments/assets/09acbd23-c8fc-4150-a554-19d940ccb9ff)
+![image](https://github.com/user-attachments/assets/77ea47a9-014b-4f6b-befd-1bae7693476c)
+
+![image](https://github.com/user-attachments/assets/78758e12-2d1d-4eab-bbf6-f9265b459aa2)
 
 
 
