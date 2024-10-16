@@ -3007,7 +3007,16 @@ The difference between with private DNS and without:
 BGP is a routing protocol. AWS Direct Connect and Dynamic VPNs both utilize BGP.
 
 * BGP are made up of lots of autonomous systems (AS). AS could be a large network, could be a collection of routers but in either case they're controlled by one single entity.
-* Each AS is alocated a number by IANA - ASN. The range is from 0 to 65535. 64512 - 65534 are private. 
+* Each AS is alocated a number by IANA - ASN (autonomous system numbers). The range is from 0 to 65535. 64512 - 65534 are private.
+* ASNs are the way BGP identifies different entities within the network, different peers. It's the way that BGP can distinguish between your network, or your ASN and my network.
+* BGP is design to be reliable and distributed. **It operates over TCP, using port 179**. It is not automatic. You have to manually create a peering relationship between two different Autonomous systems.
+* Given autonomous system will learn about networks from any of the peering relationships that it has. Anything that it learns will communicate out to any of its other peers. And that is how the internet is working. All the major networks are busy exchanging routing and topology information.
+* BGP is a **path-vector** protocol. It changes the **best path to a destination between peers**. The path is called **ASPATH** (autonomous system path).
+* iBGP = internal BGP - routing within an AS.
+* eBGP = external BGP - routing between AS.
+
+
+
 
 
 
