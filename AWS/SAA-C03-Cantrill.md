@@ -3030,8 +3030,27 @@ BGP is a routing protocol. AWS Direct Connect and Dynamic VPNs both utilize BGP.
 
 IPSEC has two main phases:
 * IKE Phase 1 (Slow and heavy) - IKE stands for internet key exchange, as the name suggest is a protocol, for how keys are exchanged. In this context within a VPN.
+  * Authenticate - pre-shared key (password) / certificate.
+  * Using asymmetric encryption to agree on, and create a shared symmetric key.
+  * IKE SA (security association) phase 1 tunnel. Heavy work of moving encryption keys is done.
+* IKE Phase 2 (Fast and Aglie)
+  * Uses the keys agreed in phase 1.
+  * Agree encryption method, and keys used for bulk data transfer.
+  * Create IPSEC SA - phase 2 tunnel (architecturally running over phase 1).
 
+There are two phases, because phase 2 can be torn down and recreated later on, when no more "interesting traffic" is observed.
 
+![image](https://github.com/user-attachments/assets/8177e587-1b18-48ed-8ce3-7feed54dd1f0)
+
+![image](https://github.com/user-attachments/assets/007d6889-35ec-4b98-a281-34c047c58cf0)
+
+There are two types of VPNs (the difference is how they match interesting traffic):
+* Policy based VPN - rules are created which match traffic. Based on these rules, the traffic is sent over a pair of SA.
+* Route based VPN - target matching based on prefix. For example, send traffic for 192.168.0.0/24 over this VPN. With this type of VPN you hava a single pair of security associations for each network prefix.
+
+Route based VPN has one phase one tunnel and one phase two tunnel based on routes.
+
+![image](https://github.com/user-attachments/assets/6cd30d06-636d-45d1-a433-74075ad54d3f)
 
 
 
