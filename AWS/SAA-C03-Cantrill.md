@@ -3019,8 +3019,14 @@ BGP is a routing protocol. AWS Direct Connect and Dynamic VPNs both utilize BGP.
 
 ![image](https://github.com/user-attachments/assets/78758e12-2d1d-4eab-bbf6-f9265b459aa2)
 
+## IPSec VPN Fundamentals
 
+* IPSEC is a group of protocols.
+* Their aim is to set up secure networking tunnels accross insecure networks.
+* IPSEC provides authentication, so that only peers which are known to each other are connected.
+* Any traffic which is carried by IPSEC protocols is encrypted. 
 
+![image](https://github.com/user-attachments/assets/7c30cd8d-2ccd-470b-bab4-1cc743113e75)
 
 
 
