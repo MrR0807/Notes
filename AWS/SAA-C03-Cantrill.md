@@ -3028,7 +3028,8 @@ BGP is a routing protocol. AWS Direct Connect and Dynamic VPNs both utilize BGP.
 
 ![image](https://github.com/user-attachments/assets/7c30cd8d-2ccd-470b-bab4-1cc743113e75)
 
-
+IPSEC has two main phases:
+* IKE Phase 1 (Slow and heavy) - IKE stands for internet key exchange, as the name suggest is a protocol, for how keys are exchanged. In this context within a VPN.
 
 
 
