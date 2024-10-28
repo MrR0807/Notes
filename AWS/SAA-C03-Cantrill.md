@@ -3066,8 +3066,10 @@ VPNs are the quickest way to establish a network link between an AWS environment
   * Customer Gateway (CGW). This can refer to two different things. It's often used to refer to both the logical piece of configuration within AWS and the thing that configuration represents - a physical, on-premise router which the VPN connects to.
   * VPN connection between the VGW and CGW.
  
-
-
+When setting up a VPN, we need to gather these data points:
+* IP range of VPC inside AWS.
+* IP range of customer's on-premise network.
+* IP address of the physical router on the customer premise.
 
 
 
