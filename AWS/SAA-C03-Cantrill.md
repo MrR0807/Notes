@@ -3071,6 +3071,41 @@ When setting up a VPN, we need to gather these data points:
 * IP range of customer's on-premise network.
 * IP address of the physical router on the customer premise.
 
+Once we have all this information, we can create a virtual private gateway and attached to our VPC. In customer environment we create a logical representation of customer's router - Customer Gateway.
+
+There are two kinds of VPNs - static and dynamic. You need to link it to a virtual private gateway.
+
+![image](https://github.com/user-attachments/assets/135049d2-d4e4-4b08-ad52-52e593772b9d)
+
+This design (picture above) is not fully HA. This is due to customer's router. If it fails, then everything fails. To move to a HA you need to add additional router on customer's side.
+
+![image](https://github.com/user-attachments/assets/b210e115-dd67-4d8b-b86a-bb7031cd4fe6)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
