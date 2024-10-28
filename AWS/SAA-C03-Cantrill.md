@@ -3052,8 +3052,20 @@ Route based VPN has one phase one tunnel and one phase two tunnel based on route
 
 ![image](https://github.com/user-attachments/assets/6cd30d06-636d-45d1-a433-74075ad54d3f)
 
+## AWS Site-to-Site VPN
 
+VPNs are the quickest way to establish a network link between an AWS environment and something that is not AWS (this might be on premise, another cloud environment or a data center).
 
+* A site-to-site VPN is a logical connection between a VPC and on-premise network encrypted using IPSec, running over the **public internet**.
+* An exception is when you're running a VPN over the Direct Connect. 
+* Site-to-site can be Higly Available (HA) if you design and implement them correctly.
+* Quick to provision (less than an hour).
+* There are few components required in creating a VPN connection:
+  * VPC.
+  * Virtual Private Gateway (VGW).
+  * Customer Gateway (CGW). This can refer to two different things. It's often used to refer to both the logical piece of configuration within AWS and the thing that configuration represents - a physical, on-premise router which the VPN connects to.
+  * VPN connection between the VGW and CGW.
+ 
 
 
 
