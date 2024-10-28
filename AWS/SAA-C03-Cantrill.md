@@ -3081,7 +3081,20 @@ This design (picture above) is not fully HA. This is due to customer's router. I
 
 ![image](https://github.com/user-attachments/assets/b210e115-dd67-4d8b-b86a-bb7031cd4fe6)
 
+### Static vs Dynamic VPN (BGP)
 
+Dynamic VPN uses a protocal called BGP - border gateway protocal. **If you customer router does not support BGP, you cannot use Dynamic VPN**. The benefits of using static VPN is simplicity and it works almost anywhere with any combination of routers, because it only needs IPSec. However, you are restricted on load balancing and multi connection failover.
+
+If you need any advanced high availability, if you need to use multiple connections, if the VPNs need to work with Direct Connect, then you need to use dynamic VPN. With dynamic VPN you can add routes statically or dynamically (enable route propogation).
+
+VPN considerations:
+* **EXAM NOTE!** There is a speed cap for VPNs - 1.25 GBps.
+* The cap is the same for virtual private gateway as a whole (all VPN conenctions connecting to virtual private gateway). It is also 1.25 GBps.
+* VPN connection transits over the public internet - which adds latency, is inconsistent.
+* Cost - AWS hourly cost, GB out cost, data cap.
+* **EXAM NOTE!** VPNs are very quick to setup.
+* Can be used as a backup for Direct Connect (DX).
+* Can be used with Direct Connect (DX).
 
 
 
