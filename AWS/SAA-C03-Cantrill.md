@@ -3099,7 +3099,7 @@ VPN considerations:
 ## Direct Connect (DX) Concepts
 
 * A Direct Connect is a physical connection (1, 10 or 100 GBps) in a AWS region.
-* A direct connect is between Busniness Premise -> DX Location -> AWS region.
+* A direct connect is between Business Premise -> DX Location -> AWS region.
 * When you order direct connect what you are order is actually a port allocation at a DX location. They provide a port and authorization for you to connect to that port. It is up to you to connect to this directly.
 * The port has two costs - hourly cost based on the DX location and outbound data transfer. Inbound data transfer is free of charge.
 * Provisioning time - it takes time for AWS to allocate a port. Connecting physical cabel to DX location might take weeks or months. No resilience (if the cabel is cut it is cut).
@@ -3108,9 +3108,15 @@ VPN considerations:
 
 ![image](https://github.com/user-attachments/assets/da050535-4303-4df2-b575-4004bb46482b)
 
+## Direct Connect (DX) Resilience
 
+![image](https://github.com/user-attachments/assets/463b9e3f-834f-4f01-9e17-d2757eb3cf23)
 
+![image](https://github.com/user-attachments/assets/6739bcbd-6eb1-4cf6-9df4-389300feaf4a)
 
+![image](https://github.com/user-attachments/assets/bcf54d9f-fd55-4e77-a221-ccbde5a6fbfb)
+
+![image](https://github.com/user-attachments/assets/598a3f60-c84f-4239-8476-4cbe224abdb6)
 
 
 
