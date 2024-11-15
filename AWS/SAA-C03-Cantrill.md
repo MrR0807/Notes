@@ -3154,7 +3154,19 @@ When using VIFs focus on what you're trying to access whether use private or pub
 
 It is often confused with SSM Parameter store. Inside the parameter store, you can create secure strings, which allow you to store passwords. So, when should you use parameter store vs secret manager?
 * AWS Secrets Manager shares functionality wiht Parameter Store.
+* AWS Secret Manager is designed specifically for secrets (e.g. passwords, API keys etc). **EXAM NOTE!** When you see passwords or API keys, you should default to Secret Manager.
+* Usable via console, CLI, API and SDK.
+* Automatic rotation. Done using lambdas.
+* Direct integration with some AWS products like RDS. Not only is the secret rotated in Secret Manager, but also change on the RDS side as well. Keeping them in sync.
+* **EXAM NOTE!** If you see any mention of rotating secrets and more specifically rotating secrets with RDS then it's almost always Secret Manager as an answer.
 
+Down below path could be completely covered by Parameter Store.
+
+![image](https://github.com/user-attachments/assets/df43c716-ff7e-4769-9b49-8b6b82ab45bf)
+
+However, rotation and direct integration with products like RDS is not supported in Parameter Store.
+
+![image](https://github.com/user-attachments/assets/3384b6c1-20d4-4bd4-930f-8d2fc6a48bb3)
 
 
 
