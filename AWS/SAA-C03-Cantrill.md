@@ -3118,19 +3118,37 @@ VPN considerations:
 
 ![image](https://github.com/user-attachments/assets/598a3f60-c84f-4239-8476-4cbe224abdb6)
 
+## Direct Connect (DX) - Public VIF + VPN (Encryption)
 
+VIF - virtual interface.
 
+Using a VPN gives you an encrypted and authenticated tunnel. This is true whether you use public internet or run VPN over direct connect. However, by running VPN over DX you get low latency and consistent latency.
+* Using private VIF provides access to private IPs only.
+* Public VIF provides access to public zones, meaning public IP addresses owned by AWS.
 
+When using VIFs focus on what you're trying to access whether use private or public VIFs.
 
+*UNFINNISHED*
 
+## Transit Gateway
 
+## Storage Gateway - Volume
 
+## Storage Gateway - Tape (VTL)
 
+## Storage Gateway - File
 
+## Directory Service
 
+## DataSync
 
+## FSx for Windows Servers
 
+## FSx For Lustre
 
+## AWS Transfer Family
+
+# SECURITY, DEPLOYMENT & OPERATIONS
 
 
 
