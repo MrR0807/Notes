@@ -3150,7 +3150,10 @@ When using VIFs focus on what you're trying to access whether use private or pub
 
 # SECURITY, DEPLOYMENT & OPERATIONS
 
+## AWS Secrets Manager
 
+It is often confused with SSM Parameter store. Inside the parameter store, you can create secure strings, which allow you to store passwords. So, when should you use parameter store vs secret manager?
+* AWS Secrets Manager shares functionality wiht Parameter Store.
 
 
 
