@@ -3186,7 +3186,13 @@ WAF is layer 7 firewall. Provided example is fairly complex, however WAF archite
 
 ![image](https://github.com/user-attachments/assets/6ed2ccf1-7c36-4a37-af4f-3ac056d4db27)
 
-
+Web Access Control List (WEBACL) - the main unit of configuration within WAF.
+* A web ACL is what controls if traffic is allowed or blocked.
+* A starting point in WEBACL is a default action. An actions which would allow or block if no other rule matches.
+* A web ACL is created for either **CloudFront** or **Regional Service** such as ALB, API GW, AppSync.
+* If you create a WEBACL for regional service, then you have to pick a region.
+* WEBACLs don't do anything. You have to add rule groups or rules. **They are processed in order**.
+* 
 
 
 
