@@ -3168,7 +3168,11 @@ However, rotation and direct integration with products like RDS is not supported
 
 ![image](https://github.com/user-attachments/assets/3384b6c1-20d4-4bd4-930f-8d2fc6a48bb3)
 
+## Application Layer (L7) Firewall
 
+Normal firewalls (layer 3/4/5):
+* Layer 3/4 see packets, segments, ip addresses and ports. It sees two flows of communications - requests coming from the client and responses coming from the server. These flows are perceived as two separate, non related flows.
+* Adding layer 5 provides sessions. This allows to see the previous example as one flow
 
 
 
