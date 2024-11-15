@@ -3182,6 +3182,9 @@ Normal firewalls (layer 3/4/5):
 
 ## Web Application Firewall (WAF), WEBACLs, Rule Groups and Rules
 
+WAF is layer 7 firewall. Provided example is fairly complex, however WAF architectures range from fairly simple to such as this:
+
+![image](https://github.com/user-attachments/assets/6ed2ccf1-7c36-4a37-af4f-3ac056d4db27)
 
 
 
