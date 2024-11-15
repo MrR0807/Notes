@@ -3172,8 +3172,15 @@ However, rotation and direct integration with products like RDS is not supported
 
 Normal firewalls (layer 3/4/5):
 * Layer 3/4 see packets, segments, ip addresses and ports. It sees two flows of communications - requests coming from the client and responses coming from the server. These flows are perceived as two separate, non related flows.
-* Adding layer 5 provides sessions. This allows to see the previous example as one flow
+* Adding layer 5 provides sessions. This allows to see the previous example as one flow.
+* Adding layer 7 provides additional level of analysis on headers, data, hosts etc.
+* Layer 7 firewalls can support only HTTP, or SMTP, or both etc. Depends on the software in the firewall.
 
+![image](https://github.com/user-attachments/assets/875a1610-76f6-4cd3-ad35-c4a43f9138f4)
+
+![image](https://github.com/user-attachments/assets/16a5de6c-e62d-4989-961a-d1b1567c32e7)
+
+## Web Application Firewall (WAF), WEBACLs, Rule Groups and Rules
 
 
 
