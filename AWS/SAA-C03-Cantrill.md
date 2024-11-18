@@ -3192,7 +3192,63 @@ Web Access Control List (WEBACL) - the main unit of configuration within WAF.
 * A web ACL is created for either **CloudFront** or **Regional Service** such as ALB, API GW, AppSync.
 * If you create a WEBACL for regional service, then you have to pick a region.
 * WEBACLs don't do anything. You have to add rule groups or rules. **They are processed in order**.
-* 
+* Rule groups have limits how much CPU can be dedicated to rules. Rules use CPU.
+* Web ACL capacity units (WCU) - default 1500. WCU are indication of the complexity of rules. Default WCU can be increased with a support ticket.
+* One WEBACL can be associated with many resources, but resource can have only one WEBACL.
+
+Rule groups
+* Rule Groups contain rules.
+* They don't have default actions. That is defined when groups or rules are added to WEBACLs.
+* Rule groups are **managed** (AWS or MarketPlace), **Yours**, **Service** owned (e.g. shield or firewall manager).
+* Rule groups can be referenced by multiple WEBACLs.
+* WEBACL can reference one or more rule groups.
+
+WAF Rules
+* Rule's structure:
+  * type - the type of rule determines at a high level how it works.
+  * statement - the statement consists of one or more things that match traffic or not.
+  * action - what WAF does if a match occurs.
+* Rules are one of two types - regular and rate-based.
+  * Regular rules are design to match if something occurs (e.g. allow SSH connections from a certain IP address).
+  * Rate-based are design to match if something occurs at a certain rate.
+* Statement of the rule defines what the rule checks for. For regular rules, think of this as a what. What does the rule match against (e.g. contains a certain header). For rate based rules, you're going to apply a rate limit.
+* You can match against things like origin country, IP address, header, cookies, query parameter, URI path, query string, body (**EXAM NOTE** first 8192 bytes only), HTTP method.
+* You can have one statement or multiple. You can combine multiple with AND, OR, NOT.
+* Actions: Allow (only for regular rules), Block, Count, Captcha, Custom Response (prefixed with `x-amzn-waf-`), Label.
+* Labels can be refered by other rules within a single web ACL. Labels don't persist outside of that.
+
+Pricing
+* WEBACL - monthly (5$/month).
+* Rule on WEBACL - each role per month 1$.
+* Requests per WEBACL - monthly 0.60$ / 1 million req.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
