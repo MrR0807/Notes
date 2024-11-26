@@ -3222,6 +3222,12 @@ Pricing
 * Rule on WEBACL - each role per month 1$.
 * Requests per WEBACL - monthly 0.60$ / 1 million req.
 
+## AWS Shield (DDoS Protection)
+
+AWS shield actually comes in two forms:
+* AWS Shield standard - free. 
+* AWS Shield advanced - costs money.
+* AWS Shield protects against three levels of attacks: 1) Network Volumetric Attack (L3) - Saturate Capacity; 2) Network Protocol Attacks (L4) - TCP SYN Flood; 3) Application Layer Attacks (L7) - e.g. web request floods.
 
 
 
