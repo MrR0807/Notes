@@ -3229,6 +3229,23 @@ AWS shield actually comes in two forms:
 * AWS Shield advanced - costs money.
 * AWS Shield protects against three levels of attacks: 1) Network Volumetric Attack (L3) - Saturate Capacity; 2) Network Protocol Attacks (L4) - TCP SYN Flood; 3) Application Layer Attacks (L7) - e.g. web request floods.
 
+Shield Standard:
+* Free.
+* Protection at the perimeter. Or at the region/VPC or the AWS edge.
+* Protects against common L3 and L4 layer attacks.
+* Best protection if you use R53, CloudFront, AWS Global Accelerator.
+
+Shield Advanced:
+* 3k per month (per ORG), 1 year lock-in + data (OUT) monthly. **Not per account, but per organisation**.
+* Protects CloudFront, R53, Global Accelerator, Anything Associated with EIPs (e.g. EC2), ALBs, CLBs, NLBs.
+* Not automatic - **you need to explicitly enabled** in Shield Advanced or AWS Firewall Manager Shield Advanced policy.
+* Cost protection (e.g. EC2 scaling) for unmitigated attacks. In other words, if it should be mitigated by Shield Advanced and wasn't - the cost is removed.
+* Proactive Management the Shield Response Team contacts you directly when availability of your application is affected due to possible attack.
+* WAF integration - includes basic AWS WAF fees for web ACLs, rules and web requests.
+* Shield Advanced uses the web application firewall to implement its protection against layer-seven attacks (L7 protection).
+* Real time visibility of DDoS events and attacks.
+* Health-based detection - uses R53 health checks to implement applications specific health checks.
+* Protection groups - you can group resources under protection groups and manage this way instead of per resource.
 
 
 
