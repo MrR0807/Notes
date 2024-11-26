@@ -3247,6 +3247,8 @@ Shield Advanced:
 * Health-based detection - uses R53 health checks to implement applications specific health checks.
 * Protection groups - you can group resources under protection groups and manage this way instead of per resource.
 
+## CloudHSM
+
 
 
 
