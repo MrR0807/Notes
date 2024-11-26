@@ -3249,7 +3249,8 @@ Shield Advanced:
 
 ## CloudHSM
 
-
+* Similar to KMS.
+* 
 
 
 
