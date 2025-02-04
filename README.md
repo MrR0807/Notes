@@ -3,6 +3,7 @@ Books to read:
 * ~~Spring Security in Action~~
 * ~~Gradle Effective Implementations Guide~~
 * ~~Kafka in Action~~
+* Cassandra: The Definitive Guide, 3rd Edition
 * Testing Web APIs
 * Thinking in Bets: Making Smarter Decisions When You Don't Have All the Facts
 * ~~Kafka: The Definitive Guide, 2nd Edition~~
