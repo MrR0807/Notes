@@ -23,7 +23,6 @@ Books to read:
 * Introducing Maven
 * Mastering Kafka Streams and ksqlDB
 * Practical Vavr
-* OpenShift in Action
 * Neo4j in Action
 * GraphQL in Action
 * Redis in Action
