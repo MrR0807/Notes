@@ -82,6 +82,7 @@ Ideas to build:
 * [The forgotten mistake that killed Japan’s software industry](https://www.disruptingjapan.com/the-forgotten-mistake-that-killed-japans-software-industry/)
 * [How I ship projects at big tech companies](https://www.seangoedecke.com/how-to-ship/)
 * [Methodology is bullshit: principles for product velocity](https://ssoready.com/blog/from-the-founders/methodology-is-bullshit/)
+* [Capt. Grace Hopper on Future Possibilities: Data, Hardware, Software, and People (1982)](https://www.nsa.gov/helpful-links/nsa-foia/declassification-transparency-initiatives/historical-releases/view/article/3880193/capt-grace-hopper-on-future-possibilities-data-hardware-software-and-people-1982/)
 
 ## Robotics
 * [Robotics 101 Fall 2020](https://www.youtube.com/playlist?list=PLdPQZLMHRjDK8ZbLIcq1Q2PQobIi68dpv)
