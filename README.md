@@ -3,6 +3,7 @@ Books to read:
 * ~~Spring Security in Action~~
 * ~~Gradle Effective Implementations Guide~~
 * ~~Kafka in Action~~
+* Data-Oriented Programming in Java
 * Cassandra: The Definitive Guide, 3rd Edition
 * Testing Web APIs
 * Thinking in Bets: Making Smarter Decisions When You Don't Have All the Facts
@@ -60,6 +61,9 @@ Ideas to build:
 * [The secret life of DNS packets: investigating complex networks](https://stripe.com/blog/secret-life-of-dns)
 * [What I Wish Someone Told Me About Postgres](https://challahscript.com/what_i_wish_someone_told_me_about_postgres)
 * [Diagram as Code](https://diagrams.mingrammer.com/)
+* [1BRC–Nerd Sniping the Java Community](https://www.infoq.com/presentations/1brc/)
+* [The Copenhagen Book](https://thecopenhagenbook.com/sessions)
+* [Database Transactions in Go with Layered Architecture](https://threedots.tech/post/database-transactions-in-go/)
 * 
 * 
 
