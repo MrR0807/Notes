@@ -42,3 +42,42 @@ Ideas to build:
 * Build my own simple cache database;
 * Build my own simple Queue.
 * Build my own ZIP parser. [Helper link](https://blog.yaakov.online/zip64-go-big-or-go-home/)
+
+
+# Blogs
+
+## Programming
+* [SQLite Page Explorer](https://github.com/QuadrupleA/sqlite-page-explorer)
+* [Search Logs Faster than Sonic](https://blog.vegasecurity.com/posts/log_search_engines/)
+* [The New Age of Data-Intensive Applications](https://blog.vegasecurity.com/posts/new_age_data_intensive_applications/)
+* [What's OAuth2 Anyway?](https://www.romaglushko.com/blog/whats-aouth2/)
+* 
+
+## AI
+* [Transformer - Spreadsheet](https://www.byhand.ai/p/transformer-spreadsheet)
+
+## Drones
+* [Homemade polarimetric synthetic aperture radar drone](https://hforsten.com/homemade-polarimetric-synthetic-aperture-radar-drone.html)
+
+## Management
+* [Brainwash An Executive Today!](https://ludic.mataroa.blog/blog/brainwash-an-executive-today/)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
