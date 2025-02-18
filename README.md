@@ -57,6 +57,10 @@ Ideas to build:
 * [The CAP Theorem of Clustering: Why Every Algorithm Must Sacrifice Something](https://blog.codingconfessions.com/p/the-cap-theorem-of-clustering)
 * [Write your Own Virtual Machine](https://www.jmeiners.com/lc3-vm/)
 * [Implementing Raft: Part 0 - Introduction](https://eli.thegreenplace.net/2020/implementing-raft-part-0-introduction/)
+* [The secret life of DNS packets: investigating complex networks](https://stripe.com/blog/secret-life-of-dns)
+* [What I Wish Someone Told Me About Postgres](https://challahscript.com/what_i_wish_someone_told_me_about_postgres)
+* [Diagram as Code](https://diagrams.mingrammer.com/)
+* 
 * 
 
 ## AI
@@ -70,6 +74,10 @@ Ideas to build:
 * [The Best Product Engineering Org in the World](https://www.jamesshore.com/v2/blog/2025/the-best-product-engineering-org-in-the-world)
 * [Stop Trying To Schedule A Call With Me](https://matduggan.com/stop-trying-to-schedule-a-call-with-me/)
 * [Cognitive load is what matters](https://minds.md/zakirullin/cognitive)
+* [Preferring throwaway code over design docs](https://softwaredoug.com/blog/2024/12/14/throwaway-prs-not-design-docs)
+* [The forgotten mistake that killed Japan’s software industry](https://www.disruptingjapan.com/the-forgotten-mistake-that-killed-japans-software-industry/)
+* [How I ship projects at big tech companies](https://www.seangoedecke.com/how-to-ship/)
+* [Methodology is bullshit: principles for product velocity](https://ssoready.com/blog/from-the-founders/methodology-is-bullshit/)
 
 ## Robotics
 * [Robotics 101 Fall 2020](https://www.youtube.com/playlist?list=PLdPQZLMHRjDK8ZbLIcq1Q2PQobIi68dpv)
