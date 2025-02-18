@@ -64,7 +64,8 @@ Ideas to build:
 * [1BRC–Nerd Sniping the Java Community](https://www.infoq.com/presentations/1brc/)
 * [The Copenhagen Book](https://thecopenhagenbook.com/sessions)
 * [Database Transactions in Go with Layered Architecture](https://threedots.tech/post/database-transactions-in-go/)
-* 
+* [Why a Hedge Fund Built Its Own Database](https://www.infoq.com/presentations/arcticdb/)
+* [Database Fundamentals](https://tontinton.com/posts/database-fundementals/)
 * 
 
 ## AI
