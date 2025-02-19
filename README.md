@@ -86,6 +86,13 @@ Ideas to build:
 * [(Almost) Every infrastructure decision I endorse or regret after 4 years running infrastructure at a startup](https://cep.dev/posts/every-infrastructure-decision-i-endorse-or-regret-after-4-years-running-infrastructure-at-a-startup/)
 * [A Distributed Systems Reading List](https://ferd.ca/a-distributed-systems-reading-list.html)
 * [Reading QR codes without a computer!](https://qr.blinry.org/)
+* [How the append-only btree works](https://www.bzero.se/ldapd/btree.html)
+* [Understanding Parquet, Iceberg and Data Lakehouses at Broad](https://davidgomes.com/understanding-parquet-iceberg-and-data-lakehouses-at-broad/)
+* [Databases are the endgame for data-oriented design](https://spacetimedb.com/blog/databases-and-data-oriented-design)
+* [Abracadabra: How does Shazam work?](https://www.cameronmacleod.com/blog/how-does-shazam-work)
+* [Making Games in Go for Absolute Beginners](https://threedots.tech/post/making-games-in-go/)
+* [Go, Containers, and the Linux Scheduler](https://www.riverphillips.dev/blog/go-cfs/)
+* [Building a high performance JSON parser](https://dave.cheney.net/high-performance-json.html)
 * 
 
 ## AI
@@ -109,7 +116,7 @@ Ideas to build:
 * [Leadership Is A Hell Of A Drug](https://ludic.mataroa.blog/blog/leadership-is-a-hell-of-a-drug/)
 * [Leaving LinkedIn. Choosing Engineering Excellence Over Expediency](https://corecursive.com/leaving-linkedin-with-chris-krycho/)
 * [How to be a -10x Engineer](https://taylor.town/-10x)
-* 
+* [When to Shut Up: A Visual Guide (with included algorithm)](https://shaungallagher.pressbin.com/blog/shut-up.html)
 * 
 
 ## Robotics
