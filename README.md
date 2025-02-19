@@ -76,6 +76,9 @@ Ideas to build:
 * [Hello World](https://thecoder08.github.io/hello-world.html)
 * [Understanding Google’s File System](https://www.micahlerner.com/2020/03/22/understanding-googles-file-system.html)
 * [Algorithms for Modern Hardware](https://en.algorithmica.org/hpc/)
+* [40 years of programming](https://liw.fi/40/)
+* [Deterministic Simulation Testing for Our Entire SaaS](https://www.warpstream.com/blog/deterministic-simulation-testing-for-our-entire-saas)
+* 
 
 ## AI
 * [Transformer - Spreadsheet](https://www.byhand.ai/p/transformer-spreadsheet)
