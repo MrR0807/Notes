@@ -93,6 +93,15 @@ Ideas to build:
 * [Making Games in Go for Absolute Beginners](https://threedots.tech/post/making-games-in-go/)
 * [Go, Containers, and the Linux Scheduler](https://www.riverphillips.dev/blog/go-cfs/)
 * [Building a high performance JSON parser](https://dave.cheney.net/high-performance-json.html)
+* [Linear Algebra Done Right](https://linear.axler.net/)
+* [Base64 Encoding, Explained](https://www.writesoftwarewell.com/base64-encoding-explained/)
+* [An Interactive Intro to CRDTs](https://jakelazaroff.com/words/an-interactive-intro-to-crdts/)
+* [Explaining The Postgres Meme](https://avestura.dev/blog/explaining-the-postgres-meme)
+* [Absurd Success](https://www.marginalia.nu/log/87_absurd_success/)
+* [Concurrent Data Structure Design Walkthrough](https://questdb.com/blog/concurrent-lockfree-datastructure-design-walkthrough/)
+* [Putting the “You” in CPU](https://cpu.land/)
+* [Llama from scratch (or how to implement a paper without crying)](https://blog.briankitano.com/llama-from-scratch/)
+* 
 * 
 
 ## AI
@@ -122,6 +131,8 @@ Ideas to build:
 ## Robotics
 * [Robotics 101 Fall 2020](https://www.youtube.com/playlist?list=PLdPQZLMHRjDK8ZbLIcq1Q2PQobIi68dpv)
 * [How to Make Dog Barking Preventer Circuit using High Frequency Deterance](https://www.homemade-circuits.com/dog-barking-preventer-circuit/)
+* [So You Want to Learn Physics…](https://www.susanrigetti.com/physics)
+* 
 
 
 
