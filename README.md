@@ -84,6 +84,8 @@ Ideas to build:
 * [Bloom Filters](https://samwho.dev/bloom-filters/)
 * [professional-programming](https://github.com/charlax/professional-programming)
 * [(Almost) Every infrastructure decision I endorse or regret after 4 years running infrastructure at a startup](https://cep.dev/posts/every-infrastructure-decision-i-endorse-or-regret-after-4-years-running-infrastructure-at-a-startup/)
+* [A Distributed Systems Reading List](https://ferd.ca/a-distributed-systems-reading-list.html)
+* [Reading QR codes without a computer!](https://qr.blinry.org/)
 * 
 
 ## AI
