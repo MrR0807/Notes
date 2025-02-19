@@ -66,7 +66,16 @@ Ideas to build:
 * [Database Transactions in Go with Layered Architecture](https://threedots.tech/post/database-transactions-in-go/)
 * [Why a Hedge Fund Built Its Own Database](https://www.infoq.com/presentations/arcticdb/)
 * [Database Fundamentals](https://tontinton.com/posts/database-fundementals/)
-* 
+* [Building and scaling Notion’s data lake](https://www.notion.com/blog/building-and-scaling-notions-data-lake) 
+* [turbopuffer: fast search on object storage](https://turbopuffer.com/blog/turbopuffer)
+* [Three Ways To Think About Channels](https://www.dolthub.com/blog/2024-06-21-channel-three-ways/)
+* [Exploring How Cache Memory Really Works](https://pikuma.com/blog/understanding-computer-cache)
+* [Beware! Anti-patterns in Event-Driven Architecture](https://codeopinion.com/beware-anti-patterns-in-event-driven-architecture/)
+* [Don't DRY Your Code Prematurely](https://testing.googleblog.com/2024/05/dont-dry-your-code-prematurely.html)
+* [Thread - the tech we can't use or teach](https://overengineer.dev/blog/2024/05/10/thread/)
+* [Hello World](https://thecoder08.github.io/hello-world.html)
+* [Understanding Google’s File System](https://www.micahlerner.com/2020/03/22/understanding-googles-file-system.html)
+* [Algorithms for Modern Hardware](https://en.algorithmica.org/hpc/)
 
 ## AI
 * [Transformer - Spreadsheet](https://www.byhand.ai/p/transformer-spreadsheet)
@@ -84,6 +93,9 @@ Ideas to build:
 * [How I ship projects at big tech companies](https://www.seangoedecke.com/how-to-ship/)
 * [Methodology is bullshit: principles for product velocity](https://ssoready.com/blog/from-the-founders/methodology-is-bullshit/)
 * [Capt. Grace Hopper on Future Possibilities: Data, Hardware, Software, and People (1982)](https://www.nsa.gov/helpful-links/nsa-foia/declassification-transparency-initiatives/historical-releases/view/article/3880193/capt-grace-hopper-on-future-possibilities-data-hardware-software-and-people-1982/)
+* [Money and Happiness: Extended Evidence Against Satiation](https://happiness-science.org/money-happiness-satiation/)
+* [I Will Fucking Piledrive You If You Mention AI Again](https://ludic.mataroa.blog/blog/i-will-fucking-piledrive-you-if-you-mention-ai-again/)
+* 
 
 ## Robotics
 * [Robotics 101 Fall 2020](https://www.youtube.com/playlist?list=PLdPQZLMHRjDK8ZbLIcq1Q2PQobIi68dpv)
