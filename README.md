@@ -34,6 +34,7 @@ Books to read:
 * Go Programming Language, The (Addison-Wesley Professional Computing Series)
 * https://kube.academy/
 * kubectl: Command-Line Kubernetes in a Nutshell
+* Algorithmic Thinking: A Problem-Based Introduction
 
 
 Ideas to build:
@@ -43,7 +44,6 @@ Ideas to build:
 * Build my own simple cache database;
 * Build my own simple Queue.
 * Build my own ZIP parser. [Helper link](https://blog.yaakov.online/zip64-go-big-or-go-home/)
-
 
 # Blogs
 
@@ -78,6 +78,12 @@ Ideas to build:
 * [Algorithms for Modern Hardware](https://en.algorithmica.org/hpc/)
 * [40 years of programming](https://liw.fi/40/)
 * [Deterministic Simulation Testing for Our Entire SaaS](https://www.warpstream.com/blog/deterministic-simulation-testing-for-our-entire-saas)
+* [Cybersecurity for Beginners – a curriculum](https://github.com/microsoft/Security-101)
+* [Let's build the GPT Tokenizer](https://www.youtube.com/watch?v=zduSFxRajkE)
+* [Neural Networks: Zero to Hero](https://karpathy.ai/zero-to-hero.html)
+* [Bloom Filters](https://samwho.dev/bloom-filters/)
+* [professional-programming](https://github.com/charlax/professional-programming)
+* [(Almost) Every infrastructure decision I endorse or regret after 4 years running infrastructure at a startup](https://cep.dev/posts/every-infrastructure-decision-i-endorse-or-regret-after-4-years-running-infrastructure-at-a-startup/)
 * 
 
 ## AI
@@ -98,6 +104,10 @@ Ideas to build:
 * [Capt. Grace Hopper on Future Possibilities: Data, Hardware, Software, and People (1982)](https://www.nsa.gov/helpful-links/nsa-foia/declassification-transparency-initiatives/historical-releases/view/article/3880193/capt-grace-hopper-on-future-possibilities-data-hardware-software-and-people-1982/)
 * [Money and Happiness: Extended Evidence Against Satiation](https://happiness-science.org/money-happiness-satiation/)
 * [I Will Fucking Piledrive You If You Mention AI Again](https://ludic.mataroa.blog/blog/i-will-fucking-piledrive-you-if-you-mention-ai-again/)
+* [Leadership Is A Hell Of A Drug](https://ludic.mataroa.blog/blog/leadership-is-a-hell-of-a-drug/)
+* [Leaving LinkedIn. Choosing Engineering Excellence Over Expediency](https://corecursive.com/leaving-linkedin-with-chris-krycho/)
+* [How to be a -10x Engineer](https://taylor.town/-10x)
+* 
 * 
 
 ## Robotics
