@@ -100,8 +100,6 @@ Ideas to build:
 * [Concurrent Data Structure Design Walkthrough](https://questdb.com/blog/concurrent-lockfree-datastructure-design-walkthrough/)
 * [Putting the “You” in CPU](https://cpu.land/)
 * [Llama from scratch (or how to implement a paper without crying)](https://blog.briankitano.com/llama-from-scratch/)
-* 
-* 
 
 ## AI
 * [Transformer - Spreadsheet](https://www.byhand.ai/p/transformer-spreadsheet)
