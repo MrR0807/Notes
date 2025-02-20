@@ -100,6 +100,8 @@ Ideas to build:
 * [Concurrent Data Structure Design Walkthrough](https://questdb.com/blog/concurrent-lockfree-datastructure-design-walkthrough/)
 * [Putting the “You” in CPU](https://cpu.land/)
 * [Llama from scratch (or how to implement a paper without crying)](https://blog.briankitano.com/llama-from-scratch/)
+* [Subtrace is Wireshark for your Docker containers](https://github.com/subtrace/subtrace)
+* [When Imperfect Systems are Good, Actually: Bluesky's Lossy Timelines](https://jazco.dev/2025/02/19/imperfection/)
 
 ## AI
 * [Transformer - Spreadsheet](https://www.byhand.ai/p/transformer-spreadsheet)
