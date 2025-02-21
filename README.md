@@ -4,6 +4,8 @@ Books to read:
 * ~~Gradle Effective Implementations Guide~~
 * ~~Kafka in Action~~
 * Data-Oriented Programming in Java
+* Learning Go: An Idiomatic Approach to Real-World Go Programming 2nd Edition
+* Learn Concurrent Programming with Go
 * Cassandra: The Definitive Guide, 3rd Edition
 * Testing Web APIs
 * Thinking in Bets: Making Smarter Decisions When You Don't Have All the Facts
