@@ -5,6 +5,7 @@ Books to read:
 * ~~Kafka in Action~~
 * Data-Oriented Programming in Java
 * Learning Go: An Idiomatic Approach to Real-World Go Programming 2nd Edition
+* Concurrency in Go: Tools and Techniques for Developers
 * Learn Concurrent Programming with Go
 * Cassandra: The Definitive Guide, 3rd Edition
 * Testing Web APIs
