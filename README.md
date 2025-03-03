@@ -8,6 +8,8 @@ Books to read:
 * Concurrency in Go: Tools and Techniques for Developers
 * Learn Concurrent Programming with Go
 * Cassandra: The Definitive Guide, 3rd Edition
+* Cloud Native Go
+* Mastering Go - Fourth Edition
 * Testing Web APIs
 * Thinking in Bets: Making Smarter Decisions When You Don't Have All the Facts
 * ~~Kafka: The Definitive Guide, 2nd Edition~~
