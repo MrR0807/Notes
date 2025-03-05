@@ -56,7 +56,7 @@ func GenerateErrorBroken(flag bool) error {
 		// handle no wrapped error
 	}
 ```
-
+* Use errors.Is when you are looking for a specific instance or specific values. Use errors.As when you are looking for a specific type.
 
 
 
