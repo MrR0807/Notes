@@ -59,6 +59,10 @@ func GenerateErrorBroken(flag bool) error {
 * Use errors.Is when you are looking for a specific instance or specific values. Use errors.As when you are looking for a specific type.
 * Sometimes you find yourself wrapping multiple errors with the same message - you can simplify by using defer.
 
+# Modules, Packages, and Imports
+
+* While you can store more than one module in a repository, it is discouraged. Everything within a module is versioned together. Maintaining two modules in one repository requires you to track separate versions for two different modules in a single repository.
+* To reduce confusion, do not use uppercase letters within it.
 
 
 
