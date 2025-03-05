@@ -35,3 +35,26 @@ func GenerateErrorBroken(flag bool) error {
 	return genErr
 }
 ```
+
+* A function in the Go standard library wraps errors, and you’ve already seen it. The fmt.Errorf function has a special verb, %w. Use this to create an error whose formatted string includes the formatted string of another error and which contains the original error as well. The convention is to write : %w at the end of the error format string and to make the error to be wrapped the last parameter passed to fmt.Errorf.
+* If you need to handle errors that may wrap zero, one, or multiple errors, use this code as a basis.
+```
+	var err error
+	err = funcThatReturnsAnError()
+	switch err := err.(type) {
+	case interface {Unwrap() error}:
+		// handle single error
+		innerErr := err.Unwrap()
+		// process innerErr
+	case interface {Unwrap() []error}:
+		//handle multiple wrapped errors
+		innerErrs := err.Unwrap()
+		for _, innerErr := range innerErrs {
+			// process each innerErr
+		}
+	default:
+		// handle no wrapped error
+	}
+```
+* 
+
