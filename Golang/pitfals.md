@@ -56,5 +56,60 @@ func GenerateErrorBroken(flag bool) error {
 		// handle no wrapped error
 	}
 ```
-* 
+
+
+
+
+
+
+# Appendix
+
+## Errors examples
+
+### Example 1
+```
+func fileChecker(name string) error {
+	f, err := os.Open(name)
+	defer f.Close()
+
+	if err != nil {
+		return fmt.Errorf("in fileChecker: %w", err)
+	}
+	return nil
+}
+
+func fileChecker2(name string) error {
+
+	err := fileChecker(name)
+	if err != nil {
+		return fmt.Errorf("in fileChecker2: %w", err)
+	}
+	return nil
+}
+
+func main() {
+	err := fileChecker2("not_here.txt")
+
+	if err != nil {
+		fmt.Println(err.Error())
+		if wrap := errors.Unwrap(err); wrap != nil {
+			fmt.Println(wrap)
+			if wrap := errors.Unwrap(wrap); wrap != nil {
+				fmt.Println(wrap)
+			}
+		}
+		if errors.Is(err, os.ErrNotExist) {
+			fmt.Println("That file doesn't exist")
+		}
+	}
+}
+```
+
+Prints:
+```
+in fileChecker2: in fileChecker: open not_here.txt: The system cannot find the file specified.
+in fileChecker: open not_here.txt: The system cannot find the file specified.
+open not_here.txt: The system cannot find the file specified.
+That file doesn't exist
+```
 
