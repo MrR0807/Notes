@@ -57,7 +57,7 @@ func GenerateErrorBroken(flag bool) error {
 	}
 ```
 * Use errors.Is when you are looking for a specific instance or specific values. Use errors.As when you are looking for a specific type.
-
+* Sometimes you find yourself wrapping multiple errors with the same message - you can simplify by using defer.
 
 
 
