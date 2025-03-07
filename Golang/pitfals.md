@@ -12,7 +12,7 @@ Intefaces and nil
 * When using custom errors, never define a variable to be of the type of your custom error. Either explicitly return nil when no error occurs or define the variable to be of type error.
 * Avoiding the init function if possible.
 * That means that any package-level variables configured via init should be effectively immutable. While Go doesn’t provide a way to enforce that their value does not change, you should make sure that your code does not change them.
-* The go get command downloads modules and updates the go.mod file (two paths are possible - just go get and go get <specific module>).
+* The go get command downloads modules and updates the go.mod file (two paths are possible - just go get and go get `<specific module>`).
 
 Ok:
 ```
