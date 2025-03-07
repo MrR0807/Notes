@@ -63,7 +63,7 @@ func GenerateErrorBroken(flag bool) error {
 
 * While you can store more than one module in a repository, it is discouraged. Everything within a module is versioned together. Maintaining two modules in one repository requires you to track separate versions for two different modules in a single repository.
 * To reduce confusion, do not use uppercase letters within it.
-
+* Sometimes you want to share a function, type, or constant among packages in your module, but you don’t want to make it part of your API. Go supports this via the special **internal** package name.
 
 
 # Appendix
