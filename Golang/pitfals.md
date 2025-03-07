@@ -67,6 +67,9 @@ func GenerateErrorBroken(flag bool) error {
 * When your module is small, keep all your code in a single package. As long as no other modules depend on your module, there is no harm in delaying organization.
 * You can group modules into two broad categories: those that are intended as a single application and those that are primarily intended as libraries. If you are sure that your module is intended to be used only as an application, make the root of the project the main package. The code in the main package should be minimal; place all your logic in an internal directory, and the code in the main function will simply invoke code within internal. This way, you can ensure that no one is going to create a module that depends on your application’s implementation.
 * If you want your module to be used as a library, the root of your module should have a package name that matches the repository name. This makes sure that the import name matches the package name.
+* [Simple Go project layout with modules](https://eli.thegreenplace.net/2019/simple-go-project-layout-with-modules/)
+* Package by functionality - not by layer. For example, if you wrote a shopping site in Go, you might place all the code for customer management in one package and all the code for inventory management in another.
+* The “golang-standards” GitHub repository claims to be the “standard” module layout. Russ Cox, the development lead for Go, has publicly stated that it is not endorsed by the Go team and that the structure it recommends is in fact an antipattern. Please do not cite this repository as a way to organize your code.
 
 
 # Appendix
