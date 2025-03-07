@@ -13,6 +13,10 @@ Intefaces and nil
 * Avoiding the init function if possible.
 * That means that any package-level variables configured via init should be effectively immutable. While Go doesn’t provide a way to enforce that their value does not change, you should make sure that your code does not change them.
 * The go get command downloads modules and updates the go.mod file (two paths are possible - just go get and go get `<specific module>`).
+* Go’s semantic versioning supports the concept of pre-releases. Let’s assume that the current version of your module is tagged v1.3.4. You are working on version 1.4.0, which is not quite done, but you want to try importing it into another module. What you should do is append a hyphen (-) to the end of your version tag, followed by an identifier for the pre-release build. In this case, use a tag like v1.4.0-beta1 to indicate beta 1 of version 1.4.0 or v1.4.0-rc2 to indicate release candidate 2.
+* Go provides a way for you to indicate that certain versions of a module should be ignored. This is done by adding a retract directive to the go.mod file of your module. It consists of the word retract and the semantic version that should no longer be used.
+* A workspace allows you to have multiple modules downloaded to your computer, and references between those modules will automatically resolve to the local source code instead of the code hosted in your repository.
+* The go.work file is meant for your local computer only. Do not commit it to source control!
 
 Ok:
 ```
