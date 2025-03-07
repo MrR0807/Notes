@@ -78,6 +78,10 @@ func GenerateErrorBroken(flag bool) error {
 * Package by functionality - not by layer. For example, if you wrote a shopping site in Go, you might place all the code for customer management in one package and all the code for inventory management in another.
 * The “golang-standards” GitHub repository claims to be the “standard” module layout. Russ Cox, the development lead for Go, has publicly stated that it is not endorsed by the Go team and that the structure it recommends is in fact an antipattern. Please do not cite this repository as a way to organize your code.
 
+# Go Tooling
+
+
+
 
 # Appendix
 
