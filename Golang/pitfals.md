@@ -79,7 +79,10 @@ func GenerateErrorBroken(flag bool) error {
 * The “golang-standards” GitHub repository claims to be the “standard” module layout. Russ Cox, the development lead for Go, has publicly stated that it is not endorsed by the Go team and that the structure it recommends is in fact an antipattern. Please do not cite this repository as a way to organize your code.
 
 # Go Tooling
-
+* The `go install` command takes an argument, which is the path to the main package in a module’s source code repository, followed by an @ and the version of the tool you want (if you just want to get the latest version, use @latest). It then downloads, compiles, and installs the tool.
+* It is a best practice to commit the source code created by go generate to version control. This allows people browsing your source code to see everything that’s invoked, even the generated parts.
+* The go build command makes it easy to cross-compile, or create a binary for a different operating system and/or CPU. Here is how to build a binary for Linux on 64-bit Intel CPUs:`GOOS=linux GOARCH=amd64 go build`
+* 
 
 
 
