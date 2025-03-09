@@ -82,6 +82,12 @@ func GenerateErrorBroken(flag bool) error {
 * The `go install` command takes an argument, which is the path to the main package in a module’s source code repository, followed by an @ and the version of the tool you want (if you just want to get the latest version, use @latest). It then downloads, compiles, and installs the tool.
 * It is a best practice to commit the source code created by go generate to version control. This allows people browsing your source code to see everything that’s invoked, even the generated parts.
 * The go build command makes it easy to cross-compile, or create a binary for a different operating system and/or CPU. Here is how to build a binary for Linux on 64-bit Intel CPUs:`GOOS=linux GOARCH=amd64 go build`
+
+# Concurrency in Go
+* Each value written to a channel can be read only once. If multiple goroutines are reading from the same channel, a value written to the channel will be read by only one of them.
+* By default, channels are unbuffered. Every write to an open, unbuffered channel causes the writing goroutine to pause until another goroutine reads from the same channel. Likewise, a read from an open, unbuffered channel causes the reading goroutine to pause until another goroutine writes to the same channel.
+* Go also has buffered channels. These channels buffer a limited number of writes without blocking. If the buffer fills before there are any reads from the channel, a subsequent write to the channel pauses the writing goroutine until the channel is read. Just as writing to a channel with a full buffer blocks, reading from a channel with an empty buffer also blocks.
+* Most of the time, you should use unbuffered channels.
 * 
 
 
