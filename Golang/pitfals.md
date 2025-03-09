@@ -88,7 +88,8 @@ func GenerateErrorBroken(flag bool) error {
 * By default, channels are unbuffered. Every write to an open, unbuffered channel causes the writing goroutine to pause until another goroutine reads from the same channel. Likewise, a read from an open, unbuffered channel causes the reading goroutine to pause until another goroutine writes to the same channel.
 * Go also has buffered channels. These channels buffer a limited number of writes without blocking. If the buffer fills before there are any reads from the channel, a subsequent write to the channel pauses the writing goroutine until the channel is read. Just as writing to a channel with a full buffer blocks, reading from a channel with an empty buffer also blocks.
 * Most of the time, you should use unbuffered channels.
-* 
+* Anytime you are reading from a channel that might be closed, use the comma ok idiom to ensure that the channel is still open.
+* The responsibility for closing a channel lies with the goroutine that writes to the channel.
 
 
 
