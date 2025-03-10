@@ -188,7 +188,20 @@ func main() {
 }
 ```
 * While WaitGroups are handy, they shouldn’t be your first choice when coordinating goroutines. Use them only when you have something to clean up (like closing a channel they all write to) after all your worker goroutines exit.
-* 
+* Run Code Exactly Once. The sync package includes a handy type called Once that enables this functionality. As with sync.WaitGroup, you must make sure not to make a copy of an instance of sync.Once, because each copy has its own state to indicate whether it has already been used. In the example, you want to make sure that parser is initialized only once, so you set the value of parser from within a closure that’s passed to the Do method on once. If Parse is called more than once, once.Do will not execute the closure again.
+
+```
+var parser SlowComplicatedParser
+var once sync.Once
+func Parse(dataToParse string) string {
+  once.Do(func() {
+    parser = initParser()
+  })
+return parser.Parse(dataToParse)
+}
+```
+
+
 
 
 # Appendix
