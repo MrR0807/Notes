@@ -105,7 +105,7 @@ for {
 * Practically, this means that you should never expose channels or mutexes in your API’s types, functions, and methods.
 * Anytime a closure uses a variable whose value might change, use a parameter to pass a copy of the variable’s current value into the closure.
 * Buffered channels are useful when you know how many goroutines you have launched, want to limit the number of goroutines you will launch, or want to limit the amount of work that is queued up.
-* Implementing backpressure
+* Implementing backpressure:
 
 ```
 type PressureGauge struct {
@@ -125,6 +125,27 @@ func (pg *PressureGauge) Process(f func()) error {
 	default:
 		return errors.New("no more capacity")
 	}
+}
+```
+* When you need to combine data from multiple concurrent sources, the select keyword is great. However, you need to properly handle closed channels. If one of the cases in a select is reading a closed channel, it will always be successful, returning the zero value. Every time that case is selected, you need to check to make sure that the value is valid and skip the case. If reads are spaced out, your program is going to waste a lot of time reading junk values. While that is bad if it is triggered by a bug, you can use a nil channel to disable a case in a select. When you detect that a channel has been closed, set the channel’s variable to nil. The associated case will no longer run, because the read from the nil channel never returns a value. Here is a for-select loop that reads from two channels until both are closed:
+```
+for count := 0; count < 2; {
+  select {
+    case v, ok := <-in:
+      if !ok {
+	in = nil // the case will never succeed again!
+	count++
+	continue
+       }
+	// process the v that was read from in
+    case v, ok := <-in2:
+      if !ok {
+	in2 = nil // the case will never succeed again!
+	count++
+	continue
+    }
+    // process the v that was read from in2
+  }
 }
 ```
 
