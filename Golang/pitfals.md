@@ -90,7 +90,43 @@ func GenerateErrorBroken(flag bool) error {
 * Most of the time, you should use unbuffered channels.
 * Anytime you are reading from a channel that might be closed, use the comma ok idiom to ensure that the channel is still open.
 * The responsibility for closing a channel lies with the goroutine that writes to the channel.
+* This is so common that the combination is often referred to as a for-select loop. When using a for-select loop, you must include a way to exit the loop.
+```
+for {
+  select {
+    case <-done:
+      return
+    case v := <-ch:
+      fmt.Println(v)
+  }
+}
+```
+* Having a default case inside a for-select loop is almost always the wrong thing to do. It will be triggered every time through the loop when there’s nothing to read or write for any of the cases. This makes your for loop run constantly, which uses a great deal of CPU.
+* Practically, this means that you should never expose channels or mutexes in your API’s types, functions, and methods.
+* Anytime a closure uses a variable whose value might change, use a parameter to pass a copy of the variable’s current value into the closure.
+* Buffered channels are useful when you know how many goroutines you have launched, want to limit the number of goroutines you will launch, or want to limit the amount of work that is queued up.
+* Implementing backpressure
 
+```
+type PressureGauge struct {
+	ch chan struct{}
+}
+func New(limit int) *PressureGauge {
+	return &PressureGauge{
+		ch: make(chan struct{}, limit),
+	}
+}
+func (pg *PressureGauge) Process(f func()) error {
+	select {
+	case pg.ch <- struct{}{}:
+		f()
+		<-pg.ch
+		return nil
+	default:
+		return errors.New("no more capacity")
+	}
+}
+```
 
 
 # Appendix
