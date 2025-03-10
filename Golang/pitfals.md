@@ -187,7 +187,8 @@ func main() {
 	wg.Wait()
 }
 ```
-
+* While WaitGroups are handy, they shouldn’t be your first choice when coordinating goroutines. Use them only when you have something to clean up (like closing a channel they all write to) after all your worker goroutines exit.
+* 
 
 
 # Appendix
