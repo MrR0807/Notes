@@ -148,6 +148,46 @@ for count := 0; count < 2; {
   }
 }
 ```
+* Time Out Code:
+```
+func timeLimit[T any](worker func() T, limit time.Duration) (T, error) {
+	out := make(chan T, 1)
+	ctx, cancel := context.WithTimeout(context.Background(), limit)
+	defer cancel()
+	go func() {
+		out <- worker()
+	}()
+	select {
+	case result := <-out:
+		return result, nil
+	case <-ctx.Done():
+		var zero T
+		return zero, errors.New("work timed out")
+	}
+}
+```
+* If you are waiting on several goroutines, you need to use a WaitGroup, which is found in the sync package in the standard library.
+
+```
+func main() {
+	var wg sync.WaitGroup
+	wg.Add(3)
+	go func() {
+		defer wg.Done()
+		doThing1()
+	}()
+	go func() {
+		defer wg.Done()
+		doThing2()
+	}()
+	go func() {
+		defer wg.Done()
+		doThing3()
+	}()
+	wg.Wait()
+}
+```
+
 
 
 # Appendix
