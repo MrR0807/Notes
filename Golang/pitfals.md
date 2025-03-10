@@ -200,7 +200,8 @@ func Parse(dataToParse string) string {
 return parser.Parse(dataToParse)
 }
 ```
-
+* When to Use Mutexes Instead of Channels - the most common case is when your goroutines read or write a shared value, but don’t process the value.
+* 
 
 
 
