@@ -201,7 +201,8 @@ return parser.Parse(dataToParse)
 }
 ```
 * When to Use Mutexes Instead of Channels - the most common case is when your goroutines read or write a shared value, but don’t process the value.
-* 
+* If you need to squeeze out every last bit of performance and are an expert on writing concurrent code, you’ll be glad that Go includes atomic support. For everyone else, use goroutines and mutexes to manage your concurrency needs.
+* Do not use `sync.Map`. Given these limitations, in the rare situations where you need to share a map across multiple goroutines, use a built-in map protected by a sync.RWMutex.
 
 
 
