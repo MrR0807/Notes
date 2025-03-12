@@ -204,6 +204,11 @@ return parser.Parse(dataToParse)
 * If you need to squeeze out every last bit of performance and are an expert on writing concurrent code, you’ll be glad that Go includes atomic support. For everyone else, use goroutines and mutexes to manage your concurrency needs.
 * Do not use `sync.Map`. Given these limitations, in the rare situations where you need to share a map across multiple goroutines, use a built-in map protected by a sync.RWMutex.
 
+# The Standard Library
+
+* The io.Seeker interface is used for random access to a resource. The valid values for whence are the constants io.SeekStart, io.SeekCurrent, and io.SeekEnd. This should have been made clearer by using a custom type, but in a surprising design oversight, whence is of type int.
+* When working with larger data sources, use the Create, NewFile, Open, and OpenFile functions in the os package. They return an *os.File instance, which implements the io.Reader and io.Writer interfaces. You can use an *os.File instance with the Scanner type in the bufio package.
+* The time.After function returns a channel that outputs once, while the channel returned by time.Tick returns a new value every time the specified time.Duration elapses. These are used with Go’s concurrency support to enable timeouts or recurring tasks. You can also trigger a single function to run after a specified time.Duration with the time.AfterFunc function. **Don’t use time.Tick outside trivial programs**, because the underlying time.Ticker cannot be shut down (and therefore cannot be garbage collected). Use the time.NewTicker function instead, which returns a *time.Ticker that has the channel to listen to, as well as methods to reset and stop the ticker.
 
 
 # Appendix
