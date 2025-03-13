@@ -214,6 +214,14 @@ return parser.Parse(dataToParse)
 * To limit the amount of code that cares about what your JSON looks like, define two structs. Use one for converting to and from JSON and the other for data processing. Read in JSON to your JSON-aware type, and then copy it to the other. When you want to write out JSON, do the reverse. This does create some duplication, but it keeps your business logic from depending on wire protocols.
 * Structured Logging - use `log/slog`
 
+# The Context
+* Go has another convention that the context is explicitly passed through your program as the first parameter of a function.
+* Another function, context.TODO, also creates an empty con text.Context. It is intended for temporary use during development. If you aren’t sure where the context is going to come from or how it’s going to be used, use context.TODO to put a placeholder in your code. Production code shouldn’t include context.TODO.
+* The value stored in the context can be of any type, but picking the correct key is important. Like the key for a map, the key for a context value must be comparable. Don’t just use a string like "id". If you use string or another predefined or exported type for the type of the key, different packages could create identical keys, resulting in collisions. This causes problems that are hard to debug, such as one package writing data to the context that masks the data written by another package, or reading data from the context that was written by another package.
+* The name of the function that creates a context with the value should start with ContextWith. The function that returns the value from the context should have a name that ends with FromContext.
+* 
+
+
 
 # Appendix
 
