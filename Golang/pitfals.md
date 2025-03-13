@@ -212,6 +212,7 @@ return parser.Parse(dataToParse)
 * encoding/json - Struct tags are composed of one or more tag/value pairs, written as tagName:"tagValue" and separated by spaces. Because they are just strings, the compiler cannot validate that they are formatted correctly, but go vet does.
 * It's best to use the struct tag to specify the name of the field explicitly, even if the field names are identical.
 * To limit the amount of code that cares about what your JSON looks like, define two structs. Use one for converting to and from JSON and the other for data processing. Read in JSON to your JSON-aware type, and then copy it to the other. When you want to write out JSON, do the reverse. This does create some duplication, but it keeps your business logic from depending on wire protocols.
+* Structured Logging - use `log/slog`
 
 
 # Appendix
