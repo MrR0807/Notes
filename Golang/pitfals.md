@@ -219,7 +219,7 @@ return parser.Parse(dataToParse)
 * Another function, context.TODO, also creates an empty con text.Context. It is intended for temporary use during development. If you aren’t sure where the context is going to come from or how it’s going to be used, use context.TODO to put a placeholder in your code. Production code shouldn’t include context.TODO.
 * The value stored in the context can be of any type, but picking the correct key is important. Like the key for a map, the key for a context value must be comparable. Don’t just use a string like "id". If you use string or another predefined or exported type for the type of the key, different packages could create identical keys, resulting in collisions. This causes problems that are hard to debug, such as one package writing data to the context that masks the data written by another package, or reading data from the context that was written by another package.
 * The name of the function that creates a context with the value should start with ContextWith. The function that returns the value from the context should have a name that ends with FromContext.
-* 
+* There are two ways to add a key to context - iota or struct. However, both ways need to ensure that the key is not exported, this way, there is no way for key collision.
 
 
 
