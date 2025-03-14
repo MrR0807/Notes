@@ -240,6 +240,31 @@ func longRunningComputation(ctx context.Context, data string) (string, error) {
 }
 ```
 
+# Testing
+* Every test is written in a file whose name ends with _test.go. If you are writing tests against foo.go, place your tests in a file named foo_test.go.
+* Test functions start with the word Test and take in a single parameter of type *testing.T. By convention, this parameter is named t. Test functions do not return any values. The name of the test (apart from starting with the word “Test”) is meant to document what you are testing, so pick something that explains what you are testing. When writing unit tests for individual functions, the convention is to name the unit test Test followed by the name of the function. When testing unexported functions, some people use an underscore between the word Test and the name of the function.
+* Also note that you use standard Go code to call the code being tested and to validate that the responses are as expected. When there’s an incorrect result, you report the error with the t.Error method, which works like the fmt.Print function. You’ll see other error-reporting methods in a bit.
+* When should you use Fatal/Fatalf and when should you use Error/Errorf? If the failure of a check in a test means that further checks in the same test function will always fail or cause the test to panic, use Fatal or Fatalf. If you are testing several independent items (such as validating fields in a struct), then use Error or Errorf so you can report many problems at once. This makes it easier to fix multiple problems without rerunning your tests over and over.
+* Both TestFirst and TestSecond refer to the package-level variable testTime. Assume that it needs to be initialized in order for the tests to run properly. You declare a function called TestMain with a parameter of type *testing.M. If there’s a function named TestMain in a package, go test calls it instead of the test functions. It is the responsibility of the TestMain function to set up any state that’s necessary to make the tests in the package run correctly. Once the state is configured, the TestMain function calls the Run method on *testing.M. This runs the test functions in the package. The Run method returns the exit code; 0 indicates that all tests passed. Finally, the TestMain function must call os.Exit with the exit code returned from Run.
+
+```
+var testTime time.Time
+
+func TestMain(m *testing.M) {
+	fmt.Println("Set up stuff for tests here")
+	testTime = time.Now()
+	exitVal := m.Run()
+	fmt.Println("Clean up stuff after tests here")
+	os.Exit(exitVal)
+}
+func TestFirst(t *testing.T) {
+	fmt.Println("TestFirst uses stuff set up in TestMain", testTime)
+}
+func TestSecond(t *testing.T) {
+	fmt.Println("TestSecond also uses stuff set up in TestMain", testTime)
+}
+```
+
 
 # Appendix
 
