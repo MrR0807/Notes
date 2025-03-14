@@ -264,6 +264,35 @@ func TestSecond(t *testing.T) {
 	fmt.Println("TestSecond also uses stuff set up in TestMain", testTime)
 }
 ```
+* The Cleanup method on *testing.T is used to clean up temporary resources created for a single test. This method has a single parameter, a function with no input parameters or return values. The function runs when the test completes.
+* It’s a common (and very good) practice to configure applications with environment variables. To help you test your environment-variable–parsing code, Go provides a helper method on testing.T. Call t.Setenv() to register a value for an environment variable for your test. Behind the scenes, it calls Cleanup to revert the environment variable to its previous state when the test exits
+* While it is good to use environment variables to configure your application, it is also good to make sure that most of your code is entirely unaware of them. Be sure to copy the values of environment variables into configuration structs before your program starts its work, in your main function or soon afterward. Rather than writing this code yourself, you should strongly consider using a third-party configuration library, like Viper or envconfig. Also, look at GoDotEnv as a way to store environment variables in .env files for development or continuous integration machines.
+* As go test walks your source code tree, it uses the current package directory as the current working directory. If you want to use sample data to test functions in a package, create a subdirectory named testdata to hold your files. Go reserves this directory name as a place to hold test files.
+* If you want to test just the public API of your package, Go has a convention for specifying this. You still keep your test source code in the same directory as the production source code, but you use packagename_test for the package name.
+
+```
+package pubadder
+
+func AddNumbers(x, y int) int {
+	return x + y
+}
+```
+
+```
+package pubadder_test
+
+import (
+	"github.com/learning-go-book-2e/ch15/sample_code/pubadder"
+	"testing"
+)
+
+func TestAddNumbers(t *testing.T) {
+	result := pubadder.AddNumbers(2, 3)
+	if result != 5 {
+		t.Error("incorrect result: expected 5, got", result)
+	}
+}
+```
 
 
 # Appendix
