@@ -220,7 +220,25 @@ return parser.Parse(dataToParse)
 * The value stored in the context can be of any type, but picking the correct key is important. Like the key for a map, the key for a context value must be comparable. Don’t just use a string like "id". If you use string or another predefined or exported type for the type of the key, different packages could create identical keys, resulting in collisions. This causes problems that are hard to debug, such as one package writing data to the context that masks the data written by another package, or reading data from the context that was written by another package.
 * The name of the function that creates a context with the value should start with ContextWith. The function that returns the value from the context should have a name that ends with FromContext.
 * There are two ways to add a key to context - iota or struct. However, both ways need to ensure that the key is not exported, this way, there is no way for key collision.
+* Since contexts with timers can cancel because of a timeout or an explicit call to the cancellation function, the context API provides a way to tell what caused cancellation. The Err method returns nil if the context is still active, or it returns one of two sentinel errors if the context has been canceled: context.Canceled or context.DeadlineExceeded. The first is returned after explicit cancellation, and the second is returned when a timeout triggered cancellation.
+* Most of the time, you don’t need to worry about timeouts or cancellation within your own code; it simply doesn’t run for long enough. Whenever you call another HTTP service or the database, you should pass along the context; those libraries properly handle cancellation via the context.
+* You should think about handling cancellation for two situations. The first is when you have a function that reads or writes channels by using a select statement - include a case that checks the channel returned by the Done method on the context; The second situation is when you write code that runs long enough that it should be interrupted by a context cancellation. In that case, check the status of the context periodically using context.Cause.
 
+```
+func longRunningComputation(ctx context.Context, data string) (string, error) {
+	for {
+		// do some processing
+		// insert this if statement periodically
+		// to check if the context has been cancelled
+		if err := context.Cause(ctx); err != nil {
+			// return a partial value if it makes sense,
+			// or a default one if it doesn't
+			return "", err
+		}
+		// do some more processing and loop again
+	}
+}
+```
 
 
 # Appendix
