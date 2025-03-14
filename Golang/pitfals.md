@@ -268,8 +268,7 @@ func TestSecond(t *testing.T) {
 * It’s a common (and very good) practice to configure applications with environment variables. To help you test your environment-variable–parsing code, Go provides a helper method on testing.T. Call t.Setenv() to register a value for an environment variable for your test. Behind the scenes, it calls Cleanup to revert the environment variable to its previous state when the test exits
 * While it is good to use environment variables to configure your application, it is also good to make sure that most of your code is entirely unaware of them. Be sure to copy the values of environment variables into configuration structs before your program starts its work, in your main function or soon afterward. Rather than writing this code yourself, you should strongly consider using a third-party configuration library, like Viper or envconfig. Also, look at GoDotEnv as a way to store environment variables in .env files for development or continuous integration machines.
 * As go test walks your source code tree, it uses the current package directory as the current working directory. If you want to use sample data to test functions in a package, create a subdirectory named testdata to hold your files. Go reserves this directory name as a place to hold test files.
-* If you want to test just the public API of your package, Go has a convention for specifying this. You still keep your test source code in the same directory as the production source code, but you use packagename_test for the package name.
-
+* If you want to test just the public API of your package, Go has a convention for specifying this. You still keep your test source code in the same directory as the production source code, but you use packagename_test for the package name
 ```
 package pubadder
 
@@ -293,6 +292,16 @@ func TestAddNumbers(t *testing.T) {
 	}
 }
 ```
+* Using go-cmp to compare test results
+* By default, unit tests are run sequentially. Since each unit test is supposed to be independent from every other unit test, they make ideal candidates for concurrency. To make a unit test run concurrently with other tests, call the Parallel method on *testing.T as the first line in your test
+```
+func TestMyCode(t *testing.T) {
+t.Parallel()
+// rest of test goes here
+}
+```
+* Be aware that fuzzing uses a lot of resources. A fuzz test can allocate (or attempt to allocate) many gigabytes of memory and might write several gigabytes of data to your local disk. If you are running something else on the same machine at the same time as a fuzz test, don’t be surprised if it slows down.
+* In Go, benchmarks are functions in your test files that start with the word Benchmark and take in a single parameter of type *testing.B. This type includes all the functionality of a *testing.T as well as additional support for benchmarking.
 
 
 # Appendix
