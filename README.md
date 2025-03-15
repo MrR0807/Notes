@@ -3,13 +3,15 @@ Books to read:
 * ~~Spring Security in Action~~
 * ~~Gradle Effective Implementations Guide~~
 * ~~Kafka in Action~~
-* Data-Oriented Programming in Java
-* Learning Go: An Idiomatic Approach to Real-World Go Programming 2nd Edition
+* ~~Learning Go: An Idiomatic Approach to Real-World Go Programming 2nd Edition~~
+* 100 Go Mistakes and How to Avoid Them
 * Concurrency in Go: Tools and Techniques for Developers
-* Learn Concurrent Programming with Go
-* Cassandra: The Definitive Guide, 3rd Edition
 * Cloud Native Go
 * Mastering Go - Fourth Edition
+* Data-Oriented Programming in Java
+* Learn Concurrent Programming with Go
+* Algorithhms 4th Edition by Robert Sedgewick, Kevin Wayne
+* Cassandra: The Definitive Guide, 3rd Edition
 * Testing Web APIs
 * Thinking in Bets: Making Smarter Decisions When You Don't Have All the Facts
 * ~~Kafka: The Definitive Guide, 2nd Edition~~
@@ -19,7 +21,6 @@ Books to read:
 * ~~Designing Data-Intensive Applications: The Big Ideas Behind Reliable, Scalable, and Maintainable Systems~~
 * Java Performance: In-Depth Advice for Tuning and Programming Java 8, 11, and Beyond 2nd Edition
 * Prometheus: Up & Running
-* Algorithhms 4th Edition by Robert Sedgewick, Kevin Wayne
 * Juint in Action. Third Edition
 * Kubernetes Native Microservices with Quarkus, and MicroProfile
 * OpenShift in Action
