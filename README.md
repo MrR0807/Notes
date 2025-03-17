@@ -109,6 +109,10 @@ Ideas to build:
 * [Subtrace is Wireshark for your Docker containers](https://github.com/subtrace/subtrace)
 * [When Imperfect Systems are Good, Actually: Bluesky's Lossy Timelines](https://jazco.dev/2025/02/19/imperfection/)
 
+### Go
+
+* [Go Slice Tricks Cheat Sheet](https://ueokande.github.io/go-slice-tricks/)
+
 ## AI
 * [Transformer - Spreadsheet](https://www.byhand.ai/p/transformer-spreadsheet)
 
