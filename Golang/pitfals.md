@@ -3,6 +3,8 @@
 TODO
 Intefaces and nil 
 
+**While either party may close a channel, in practice only the sender should do so. Inadvertently sending on a closed channel will cause a panic**.
+
 
 # Errors
 * Error messages should not be capitalized nor should they end with punctuation or a newline. In most cases, you should set the other return values to their zero values when a non-nil error is returned.
