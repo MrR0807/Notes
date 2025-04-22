@@ -4,9 +4,9 @@ Books to read:
 * ~~Gradle Effective Implementations Guide~~
 * ~~Kafka in Action~~
 * ~~Learning Go: An Idiomatic Approach to Real-World Go Programming 2nd Edition~~
-* 100 Go Mistakes and How to Avoid Them
-* Concurrency in Go: Tools and Techniques for Developers
 * Cloud Native Go
+* ~100 Go Mistakes and How to Avoid Them~
+* Concurrency in Go: Tools and Techniques for Developers
 * Mastering Go - Fourth Edition
 * Data-Oriented Programming in Java
 * Learn Concurrent Programming with Go
@@ -14,6 +14,7 @@ Books to read:
 * Cassandra: The Definitive Guide, 3rd Edition
 * Testing Web APIs
 * Thinking in Bets: Making Smarter Decisions When You Don't Have All the Facts
+* gRPC: Up and Running
 * ~~Kafka: The Definitive Guide, 2nd Edition~~
 * Kafka Streams in Action
 * Java Concurrency in Practice
