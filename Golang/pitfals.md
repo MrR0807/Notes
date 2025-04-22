@@ -3,7 +3,8 @@
 TODO
 Intefaces and nil 
 
-**While either party may close a channel, in practice only the sender should do so. Inadvertently sending on a closed channel will cause a panic**.
+* **While either party may close a channel, in practice only the sender should do so. Inadvertently sending on a closed channel will cause a panic**.
+* It’s also important to consider that using buffered channels **creates a risk of data loss should the program terminate before any consuming goroutines are able to clear the buffer**.
 
 
 # Errors
