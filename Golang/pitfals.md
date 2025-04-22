@@ -5,6 +5,7 @@ Intefaces and nil
 
 * **While either party may close a channel, in practice only the sender should do so. Inadvertently sending on a closed channel will cause a panic**.
 * It’s also important to consider that using buffered channels **creates a risk of data loss should the program terminate before any consuming goroutines are able to clear the buffer**.
+* **You should never start a goroutine without knowing how it will stop…. Every time you use the go keyword in your program to launch a goroutine, you must know how, and when, that goroutine will exit. If you don’t know the answer, that’s a potential memory leak**.
 
 
 # Errors
