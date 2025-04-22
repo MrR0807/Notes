@@ -15,9 +15,9 @@ Books to read:
 * Testing Web APIs
 * Thinking in Bets: Making Smarter Decisions When You Don't Have All the Facts
 * gRPC: Up and Running
+* Redis in Action
 * ~~Kafka: The Definitive Guide, 2nd Edition~~
 * Kafka Streams in Action
-* Java Concurrency in Practice
 * Lucene in Action, Second Edition: Covers Apache Lucene 3.0 2nd Edition
 * ~~Designing Data-Intensive Applications: The Big Ideas Behind Reliable, Scalable, and Maintainable Systems~~
 * Java Performance: In-Depth Advice for Tuning and Programming Java 8, 11, and Beyond 2nd Edition
@@ -26,14 +26,11 @@ Books to read:
 * Kubernetes Native Microservices with Quarkus, and MicroProfile
 * OpenShift in Action
 * Terraform in Action
-* Vert.x in Action
 * PostgreSQL: Up and Running
 * Introducing Maven
 * Mastering Kafka Streams and ksqlDB
-* Practical Vavr
 * Neo4j in Action
 * GraphQL in Action
-* Redis in Action
 * MongoDB in Action, Second Edition
 * Istio in Action
 * Rust in Action
