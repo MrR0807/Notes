@@ -113,6 +113,7 @@ Ideas to build:
 
 ## AI
 * [Transformer - Spreadsheet](https://www.byhand.ai/p/transformer-spreadsheet)
+* **[The Copilot Delusion](https://deplet.ing/the-copilot-delusion/)**
 
 ## Drones
 * [Homemade polarimetric synthetic aperture radar drone](https://hforsten.com/homemade-polarimetric-synthetic-aperture-radar-drone.html)
