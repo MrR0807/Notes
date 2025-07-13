@@ -106,14 +106,24 @@ Ideas to build:
 * [Llama from scratch (or how to implement a paper without crying)](https://blog.briankitano.com/llama-from-scratch/)
 * [Subtrace is Wireshark for your Docker containers](https://github.com/subtrace/subtrace)
 * [When Imperfect Systems are Good, Actually: Bluesky's Lossy Timelines](https://jazco.dev/2025/02/19/imperfection/)
+* [Grokking Bloom Filters: The Classic Bloom Filter Demystified](https://maltsev.space/blog/008-bloom-filters-pt1)
+* [Apache Iceberg Architecture: Learn About the Core Components & Their Functions](https://atlan.com/know/iceberg/apache-iceberg-architecture/)
+* [How much slower is random access, really?](https://samestep.com/blog/random-access/)
+* [How to store data on paper?](https://www.monperrus.net/martin/store-data-paper)
+* [Production tests: a guidebook for better systems and more sleep](https://martincapodici.com/2025/05/13/production-tests-a-guidebook-for-better-systems-and-more-sleep/)
+* [Observability 2.0 and the Database for It]
 
 ### Go
 
 * [Go Slice Tricks Cheat Sheet](https://ueokande.github.io/go-slice-tricks/)
+* [The Evolution of Caching Libraries in Go](https://maypok86.github.io/otter/blog/cache-evolution/)
+* [How I write HTTP services in Go after 13 years](https://grafana.com/blog/2024/02/09/how-i-write-http-services-in-go-after-13-years/)
+* [No nonsense guide to Go projects layout](https://laurentsv.com/blog/2024/10/19/no-nonsense-go-package-layout.html)
 
 ## AI
 * [Transformer - Spreadsheet](https://www.byhand.ai/p/transformer-spreadsheet)
 * **[The Copilot Delusion](https://deplet.ing/the-copilot-delusion/)**
+* [Anthropics - prompt-eng-interactive-tutorial](https://github.com/anthropics/prompt-eng-interactive-tutorial)
 
 ## Drones
 * [Homemade polarimetric synthetic aperture radar drone](https://hforsten.com/homemade-polarimetric-synthetic-aperture-radar-drone.html)
@@ -140,8 +150,7 @@ Ideas to build:
 * [Robotics 101 Fall 2020](https://www.youtube.com/playlist?list=PLdPQZLMHRjDK8ZbLIcq1Q2PQobIi68dpv)
 * [How to Make Dog Barking Preventer Circuit using High Frequency Deterance](https://www.homemade-circuits.com/dog-barking-preventer-circuit/)
 * [So You Want to Learn Physics…](https://www.susanrigetti.com/physics)
-* 
-
+* [Reachy Mini – The Open-Source Robot for Today's and Tomorrow's AI Builders](https://huggingface.co/blog/reachy-mini)
 
 
 
