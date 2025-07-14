@@ -111,7 +111,7 @@ Ideas to build:
 * [How much slower is random access, really?](https://samestep.com/blog/random-access/)
 * [How to store data on paper?](https://www.monperrus.net/martin/store-data-paper)
 * [Production tests: a guidebook for better systems and more sleep](https://martincapodici.com/2025/05/13/production-tests-a-guidebook-for-better-systems-and-more-sleep/)
-* [Observability 2.0 and the Database for It]
+* [Observability 2.0 and the Database for It](https://greptime.com/blogs/2025-04-25-greptimedb-observability2-new-database)
 
 ### Go
 
@@ -119,6 +119,7 @@ Ideas to build:
 * [The Evolution of Caching Libraries in Go](https://maypok86.github.io/otter/blog/cache-evolution/)
 * [How I write HTTP services in Go after 13 years](https://grafana.com/blog/2024/02/09/how-i-write-http-services-in-go-after-13-years/)
 * [No nonsense guide to Go projects layout](https://laurentsv.com/blog/2024/10/19/no-nonsense-go-package-layout.html)
+* [Learn Go with Tests](https://quii.gitbook.io/learn-go-with-tests)
 
 ## AI
 * [Transformer - Spreadsheet](https://www.byhand.ai/p/transformer-spreadsheet)
