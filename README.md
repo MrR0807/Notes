@@ -145,7 +145,6 @@ Ideas to build:
 * [Leaving LinkedIn. Choosing Engineering Excellence Over Expediency](https://corecursive.com/leaving-linkedin-with-chris-krycho/)
 * [How to be a -10x Engineer](https://taylor.town/-10x)
 * [When to Shut Up: A Visual Guide (with included algorithm)](https://shaungallagher.pressbin.com/blog/shut-up.html)
-* 
 
 ## Robotics
 * [Robotics 101 Fall 2020](https://www.youtube.com/playlist?list=PLdPQZLMHRjDK8ZbLIcq1Q2PQobIi68dpv)
