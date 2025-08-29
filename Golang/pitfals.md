@@ -307,6 +307,26 @@ t.Parallel()
 ```
 * Be aware that fuzzing uses a lot of resources. A fuzz test can allocate (or attempt to allocate) many gigabytes of memory and might write several gigabytes of data to your local disk. If you are running something else on the same machine at the same time as a fuzz test, don’t be surprised if it slows down.
 * In Go, benchmarks are functions in your test files that start with the word Benchmark and take in a single parameter of type *testing.B. This type includes all the functionality of a *testing.T as well as additional support for benchmarking.
+* If asserations are done in another method, you should call `t.Helper()`:
+```
+func TestSearch(t *testing.T) {
+	dictionary := map[string]string{"test": "this is just a test"}
+
+	got := Search(dictionary, "test")
+	want := "this is just a test"
+
+	assertStrings(t, got, want)
+}
+
+func assertStrings(t testing.TB, got, want string) {
+	t.Helper()
+
+	if got != want {
+		t.Errorf("got %q want %q", got, want)
+	}
+}
+```
+
 
 
 # Appendix
