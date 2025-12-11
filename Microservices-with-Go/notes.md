@@ -224,9 +224,11 @@ The server-side service discovery model adds an extra layer to the interaction b
 * HashiCorp Consul
 * Kubernetes
 
+## Adopting service discovery
 
+Comment by me! Nothing interesting here. Code snippets of how to register with Consul and have in memory registry as well.
 
-
+# Chapter 4. Serialization
 
 
 
