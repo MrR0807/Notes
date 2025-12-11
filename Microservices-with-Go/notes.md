@@ -180,6 +180,8 @@ This file defines an error for the case when the record is not found. We are goi
 Just simple code examples provided in the book, which can be viewed in the book itself as I did not see value adding them here.
 </>
 
+# Chapter 3. Service Discovery
+
 
 
 
