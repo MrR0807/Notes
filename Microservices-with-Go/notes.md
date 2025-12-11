@@ -182,10 +182,47 @@ Just simple code examples provided in the book, which can be viewed in the book 
 
 # Chapter 3. Service Discovery
 
+## Registry
 
+The foundation of service discovery is a registry (also known as a service registry), which stores information about available service instances. It has the following features:
+* Register an instance of a service.
+* Deregister an instance of a service.
+* Return the list of all the instances of the service in the form of their network addresses.
 
+This is an example of service discovery registry data:
+* Movie service
+  * 172.18.10.2:2520
+  * 172.18.12.55:8800
+  * 172.18.89.10:2450
+* Rating service
+  * 172.18.25.11:1100
+  * 172.18.9.55:2830
+* Movie metadata service
+  * 172.18.79.115:3512
+  * 172.17.3.8:9900
 
+For the applications, there are two ways of interacting with the registry:
+* Client-side service discovery: Access the registry directly from the application using a registry client.
+* Server-side service discovery: Access the registry indirectly via a load balancer, a special server that forwards requests to available instances.
 
+### Client-side service discovery
+
+In the client-side service discovery model, each application or service accesses the service registry directly by requesting all available instances of a target service. When the application receives a response, it uses the addresses of the target service for making requests.
+
+<img width="845" height="335" alt="image" src="https://github.com/user-attachments/assets/8cd9c35c-10bf-45bc-85e1-de0cc9ec7b4d" />
+
+In this model, the application is responsible for balancing the load on the service it is calling – if an application picked just one instance from the list and kept calling it all the time, it would overload that instance and underutilize the other ones.
+
+### Server-side service discovery
+
+The server-side service discovery model adds an extra layer to the interaction between the calling applications and the registry. Instead of calling the registry directly, applications send their requests to target microservices via a special server called a load balancer. The load balancer is responsible for interacting with the registry and distributing requests between all available instances.
+
+<img width="839" height="283" alt="image" src="https://github.com/user-attachments/assets/47537643-5919-4ee2-aff9-3df53761661f" />
+
+## Service discovery solutions
+
+* HashiCorp Consul
+* Kubernetes
 
 
 
