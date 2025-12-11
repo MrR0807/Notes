@@ -118,6 +118,70 @@ The cmd package is commonly used in the Go community to store the code of one or
 
 ## Best practices
 
+* Separate private code using an internal directory.
+* Get familiar with the way popular open source Go projects, such as https://github.com/kubernetes/kubernetes, are organized. This can provide you with great examples of how to structure your repository.
+* Split in a sufficiently granular way. Don’t split the packages too early but also avoid having a lot of logic in a single package. Generally, you will find that the easier it is to give a short and specific self-descriptive name to a package, the better your code composition is.
+* Avoid long package names.
+* Always be ready to change the structure if requirements are changed or if the structure no longer reflects the package name/original intent.
+
+## Scaffolding an example application
+
+Let’s imagine we are building an application for movie lovers. The application would provide the following features:
+* Get the movie metadata (such as title, year, description, and director) and the aggregated movie rating
+* Rate a movie
+
+Let’s list the services we would split the application into:
+* Movie metadata service: Store and retrieve the movie metadata records by movie IDs.
+* Rating service: Store ratings for different types of records and retrieve aggregated ratings for records.
+* Movie service: Provide complete information to the callers about a movie or a set of movies, including the movie metadata and its rating.
+
+Each service may contain one or multiple packages related to the following logical roles:
+* API handlers (handler)
+* Business/application logic (controller)
+* Database logic (repository)
+* Interaction with other services (gateway)
+
+### Movie metadata service
+
+Let’s summarize the logic of the movie metadata service:
+* API: Get metadata for a movie
+* Database: Movie metadata database
+* Interacts with services: None
+* Data model type: Movie metadata
+
+This logic would translate into the following packages:
+* cmd: Contains the main function for starting the service
+* controller: Our service logic (read the movie metadata)
+* handler: API handler for a service
+* repository: Logic for accessing the movie metadata database
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
