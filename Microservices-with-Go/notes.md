@@ -69,11 +69,54 @@ fmt.Errorf("upload failed: %w", err)
 * Consider writing table-driven tests whenever possible. See this example: https://github.com/golang/go/blob/master/src/fmt/errors_test.go.
 * Generally, we should only test public functions. Your private function should be indirectly tested through them.
 
+### Context
 
+There are multiple ways of using it:
+* Cancelation logic
+* Timeouts
+* Propagating extra metadata
 
+Now, we can define some important aspects of using context in Go:
+* Context is immutable but can be cloned with extra metadata.
+* Functions using context should accept it as their first argument.
 
+Additionally, some context best practices are as follows:
+* Always pass context to functions performing I/O calls.
+* Limit the usage of context for passing any metadata.
+* Do not attach context to structures.
 
+## Project structure
 
+### Private packages
+
+I have found it useful to use internal packages as a protection against unwanted dependencies. This plays a big role in large repositories and applications, where there is a high possibility of unexpected dependencies between the packages.
+
+### Public packages
+
+There is another type of directory name with a semantic meaning in Go—a directory called pkg. It implies that it is OK to use the code from this package externally.
+
+The pkg directory isn’t recommended officially, but it is widely used. Ironically, the Go team used this in the library code and then got rid of this pattern, while the rest of the Go community adopted it so widely that it became a common practice.
+
+### Executable packages
+
+The cmd package is commonly used in the Go community to store the code of one or multiple executable packages with a main function. This may include the code starting your application or any code for your executable tools.
+
+### Other commonly used directories
+
+* api: JSON schema files and definitions in various protocols, including gRPC.
+* testdata: Files containing the data used in tests.
+* web: Web application components and assets.
+
+### Common files
+
+* main.go: A file containing the main() function
+* doc.go: Package documentation (a separate file is not necessary for small packages)
+* *_test.go: Test files
+* README.md: A read-me file written in the Markdown language
+* LICENSE: A license file, if there is one
+* CONTRIBUTING.md/CONTRIBUTORS/AUTHORS: List of contributors and/or authors
+
+## Best practices
 
 
 
