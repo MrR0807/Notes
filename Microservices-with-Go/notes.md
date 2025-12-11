@@ -164,10 +164,21 @@ Applying the rules that we just described, we are going to structure our package
 * metadata/internal/repository
 * metadata/pkg
 
+#### Repository
 
+Inside the metadata/internal/repository directory, add an error.go file using the following code:
 
+```
+package repository
+import "errors"
+// ErrNotFound is returned when a requested record is not // found.
+var ErrNotFound = errors.New("not found")
+```
+This file defines an error for the case when the record is not found. We are going to use this error in our implementation.
 
-
+<Comment by me>
+Just simple code examples provided in the book, which can be viewed in the book itself as I did not see value adding them here.
+</>
 
 
 
