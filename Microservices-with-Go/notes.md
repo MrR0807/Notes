@@ -155,7 +155,14 @@ This logic would translate into the following packages:
 * handler: API handler for a service
 * repository: Logic for accessing the movie metadata database
 
+Let’s store the logic of our service in a directory called metadata. Following the conventions we described earlier in the chapter, the executable code containing the main file is going to be stored in the cmd package. All code that we are not going to export will be stored in the internal directory and this will include most of our applications. The exported structures will reside in the pkg directory.
 
+Applying the rules that we just described, we are going to structure our packages in the following way:
+* metadata/cmd
+* metadata/internal/controller
+* metadata/internal/handler
+* metadata/internal/repository
+* metadata/pkg
 
 
 
